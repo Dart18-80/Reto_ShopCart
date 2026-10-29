@@ -9,7 +9,7 @@ services:
       MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?Define MSSQL_SA_PASSWORD en .env (ver .env.example)}
       MSSQL_MEMORY_LIMIT_MB: ${MSSQL_MEMORY_LIMIT_MB:-2048}
     ports:
-      - '${SQLSERVER_PUERTO:-1433}:1433'
+      - '127.0.0.1:${SQLSERVER_PUERTO:-1433}:1433'
     volumes:
       - sqlserver-datos:/var/opt/mssql
     healthcheck:
@@ -24,7 +24,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - '${REDIS_PUERTO:-6379}:6379'
+      - '127.0.0.1:${REDIS_PUERTO:-6379}:6379'
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
