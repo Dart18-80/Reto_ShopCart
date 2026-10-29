@@ -31,7 +31,7 @@ Eres el **desarrollador** de ShopCart. Diego es el Product Owner y el arquitecto
   - El servicio puede prevalidar para dar un mensaje claro, pero **el SP es la autoridad**: siempre vuelve a validar bajo bloqueo.
 - **Todo lo externo pasa por un puerto** (`PasarelaPago`, `Cache`, `ListaRevocados`, `Reloj`). Los adaptadores se inyectan en `app.ts`.
 - **La API es stateless** (RNF-2): nada de estado en memoria que deba compartirse entre réplicas. Redis solo guarda lo que se puede perder; lo crítico vive en SQL Server.
-- **Aislamiento entre clientes (RF-01):** los endpoints del cliente **nunca reciben su `IDUsuario`**: sale del token. Los SPs filtran con `@IDUsuario`. Un recurso ajeno responde `404`, igual que uno inexistente. El carrito no expone su ID.
+- **Aislamiento entre clientes (RF-01):** los endpoints del cliente **nunca reciben su `IDUsuario`**: sale del token. Los SPs de recursos propios filtran con `@IDUsuarioActor`. Un recurso ajeno responde `404`, igual que uno inexistente. El carrito no expone su ID.
 
 ## Reglas de base de datos
 
@@ -43,12 +43,40 @@ Eres el **desarrollador** de ShopCart. Diego es el Product Owner y el arquitecto
 - **Errores de negocio:** `THROW <código>, N'<mensaje para el usuario>', 1;` usando el rango del módulo (`02-modelo-datos.md` §8). Cada código nuevo se agrega también a `apps/api/src/shared/errors/catalogo.ts` con su HTTP.
 - **Concurrencia:** `WITH (UPDLOCK, ROWLOCK)` sobre las filas en disputa, bloqueo de variantes **siempre en orden de `IDVariante`**, contadores con `CHECK` (A-13), `UNIQUE` como candado de idempotencia y `sp_getapplock` en los jobs (A-04).
 - **`SP_Inventario_RegistrarMovimiento` es el único que modifica `ExistenciaFisica` y escribe el kardex.** Ningún otro SP lo hace directamente.
-- **Usuario y RequestId** llegan en `SESSION_CONTEXT(N'IDUsuario')` y `SESSION_CONTEXT(N'RequestId')`; `ejecutarSP` los establece.
+- **Parámetros estándar (A-18):** `ejecutarSP` agrega a todo SP `@IDUsuarioActor`, `@RolActor` y `@RequestId` desde el contexto de la petición. Todo SP invocado por la API los declara, y todo SP que escribe llama primero a `SP_Sistema_EstablecerContexto` para que los triggers lean `SESSION_CONTEXT(N'IDUsuario')`, `N'Rol'` y `N'RequestId'`.
+- **Errores con detalles (A-19):** cuando un `THROW` necesita datos estructurados, su mensaje es un JSON `{ "mensaje": ..., "detalles": ... }`, y `ejecutarSP` lo separa en `mensaje` y `detalles`.
 - **Scripts en `database/`:**
   - `migrations/V###__descripcion.sql`: tablas y datos estructurales. **Nunca edites un `V###` ya aplicado**: crea uno nuevo.
   - `programmability/R__<Objeto>.sql`: SPs, vistas, funciones y triggers con `CREATE OR ALTER`; un objeto por archivo.
   - `seeds/S###__descripcion.sql`: datos semilla.
 - `Bitacora`, `MovimientoKardex` e `HistorialEstadoPedido` son **ledger append-only** (M-01): solo se insertan filas; su diseño no se cambia sin preguntar.
+
+## Skills, agentes y plugins
+
+**Prioridad: `docs/` y este `CLAUDE.md` mandan sobre cualquier skill o plugin.** Si algo choca, sigue el documento y avísale a Diego.
+
+### Kit propio de ShopCart (en este repo)
+
+| Pieza | Ubicación | Cuándo |
+|---|---|---|
+| Skill `sqlserver-sp` | `.claude/skills/sqlserver-sp/` | **Siempre** que crees o modifiques algo en `database/`: plantillas de SP, errores, concurrencia, SQL dinámico seguro, ledger, triggers de bitácora |
+| Skill `modulo-express` | `.claude/skills/modulo-express/` | **Siempre** que crees o modifiques código en `apps/api/`: estructura del módulo, `ejecutarSP`, capas, Zod + OpenAPI, dinero, aislamiento y pruebas |
+| Agente `revisor-shopcart` | `.claude/agents/revisor-shopcart.md` | Al cerrar **cada historia de E5**, al cerrar **cada épica** y antes de cada entrega. Revisa contra las penalizaciones del enunciado |
+
+### Plugins instalados en el proyecto
+
+Con `/kit:init typescript` (kit de Diego, `Dart18-80/claude-kit`): el agente `typescript-reviewer` y los plugins base oficiales `superpowers`, `pr-review-toolkit`, `security-guidance` y `commit-commands`. En la Fase 2 se agrega `/kit:init nextjs` por `react-patterns` y `react-testing` (de ellas no aplica lo de Next.js ni Server Components: el frontend es una SPA con Vite).
+
+**No se instalan:** `stack-nestjs` (el enunciado exige Express; lo útil está en `modulo-express`), `stack-redis` (sus locks y sesiones en Redis contradicen A-04 y RNF-2), `stack-prisma` (ORM, penalizado por el enunciado) ni `stack-postgres` (otro motor).
+
+### Flujo por historia
+
+1. **Plan:** el alcance y los criterios de aceptación de la historia **son** el plan. Solo en las historias grandes (E3-H03, E4-H01, E5-H01, E5-H03, E6-H03) escribe primero un plan corto con `writing-plans` y espera la aprobación de Diego.
+2. **TDD:** con `test-driven-development`. Cada criterio de aceptación se convierte primero en una prueba que falla; las reglas de un SP se prueban con integración contra `shopcart_test`.
+3. **Verificación:** antes del resumen de cierre, `verification-before-completion`, mostrando la salida real de `pnpm lint`, `pnpm typecheck` y las pruebas.
+4. **Revisión:** en las historias de E5 y al cerrar cada épica, ejecuta `revisor-shopcart` y `typescript-reviewer` sobre el diff y corrige todo lo CRÍTICO y ALTO antes de entregar.
+5. **Errores sin causa clara:** `systematic-debugging`, nunca cambios al azar.
+6. **No uses `brainstorming` para reglas de negocio:** esas decisiones son de Diego y ya están en `docs/`. Si falta una, detente y pregunta.
 
 ## Estándar de código
 
@@ -59,6 +87,14 @@ Eres el **desarrollador** de ShopCart. Diego es el Product Owner y el arquitecto
 - Validación de toda entrada con Zod; los esquemas generan la documentación OpenAPI. Los esquemas compartidos con el frontend van en `packages/shared`.
 - Logs con pino, nunca `console.log`. Nunca registres contraseñas, tokens, cookies, número de tarjeta ni CVV.
 - Funciones pequeñas, sin comentarios obvios. Comenta el **porqué** cuando una decisión no es evidente y cita su ID (`// N-02: la garantía solo protege contra subidas`).
+- **Idioma:** a diferencia de la plantilla general del kit, aquí los nombres del dominio, los mensajes de commit y los comentarios van en **español**, porque el enunciado fija la nomenclatura de la base en español (`SP_Pedidos_CrearPedido`, `IDProducto`) y el código debe ser coherente con ella.
+
+## No hacer
+
+- No instales dependencias que no estén en A-16 (`01-arquitectura.md` §13) sin decir cuál y por qué, y esperar la aprobación.
+- No modifiques migraciones `V###` ya aplicadas: crea una nueva.
+- No desactives pruebas, reglas de lint ni chequeos de tipos para "hacer pasar" algo.
+- No hagas `git push` ni cambies la configuración de CI: eso lo hace Diego.
 
 ## Comandos
 

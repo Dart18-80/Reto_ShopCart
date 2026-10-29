@@ -21,6 +21,25 @@ services:
       retries: 12
       start_period: 30s
 
+  # One-shot: aplica los scripts de database/ y termina. Para la base de pruebas:
+  # docker compose run --rm -e DB_NOMBRE=shopcart_test db-migrator
+  db-migrator:
+    build:
+      context: .
+      dockerfile: database/migrator/Dockerfile
+    environment:
+      DB_HOST: sqlserver
+      DB_PUERTO: 1433
+      DB_NOMBRE: ${DB_NOMBRE:-ShopCart}
+      DB_CONFIAR_CERTIFICADO: ${DB_CONFIAR_CERTIFICADO:-true}
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?Define MSSQL_SA_PASSWORD en .env (ver .env.example)}
+      DB_APP_CONTRASENA: ${DB_APP_CONTRASENA:?Define DB_APP_CONTRASENA en .env (ver .env.example)}
+      DB_MIGRADOR_CONTRASENA: ${DB_MIGRADOR_CONTRASENA:?Define DB_MIGRADOR_CONTRASENA en .env (ver .env.example)}
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    restart: 'no'
+
   redis:
     image: redis:7-alpine
     ports:

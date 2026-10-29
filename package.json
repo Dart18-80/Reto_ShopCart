@@ -12,7 +12,8 @@
     "format": "prettier --write .",
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "pnpm -r --if-present test",
-    "build": "pnpm -r --if-present build"
+    "build": "pnpm -r --if-present build",
+    "db:migrar": "pnpm --filter @shopcart/migrator migrar"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

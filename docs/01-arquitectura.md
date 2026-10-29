@@ -1,7 +1,7 @@
 # ShopCart — Arquitectura del sistema
 
 > Etapa 2 del proceso. Se basa en las decisiones confirmadas de [`00-vision-y-contexto.md`](./00-vision-y-contexto.md) (D-xx, RNF-xx, N-xx).
-> Las decisiones de arquitectura (`A-xx`) de este documento son **propuestas 🟡** hasta que el PO las analice y confirme (sección 13).
+> Las decisiones de arquitectura (`A-xx`) fueron **confirmadas por el PO el 29 oct** (sección 13). A-02, A-04 y A-13 se analizaron en detalle.
 > El modelo de datos detallado está en [`02-modelo-datos.md`](./02-modelo-datos.md).
 
 ---
@@ -34,6 +34,10 @@ ShopCart es un **monolito modular** en Node.js/Express que se despliega como **d
 
 ## 3. Vista de componentes y despliegue
 
+![Arquitectura y despliegue](./diagramas/arquitectura.svg)
+
+Versión en texto:
+
 ```
                           ┌──────────────────────────────────────────────────────────┐
                           │                 Docker Compose (shopcart)                │
@@ -64,12 +68,14 @@ ShopCart es un **monolito modular** en Node.js/Express que se despliega como **d
 | `db-migrator` | Propia (Node + scripts) | Ejecuta los scripts numerados y termina | — (one-shot) | `sqlserver` saludable |
 | `redis` | `redis:7-alpine` | Rate limiting, lista de revocados y caché de reportes | `redis-cli ping` | — |
 | `api-1`, `api-2` | Propia (`apps/api`) | API REST; misma imagen y misma configuración salvo `INSTANCIA_ID` | `GET /api/v1/health` | Migrador completado, `redis` saludable |
-| `web` | Propia (nginx + build de `apps/web`) | Sirve la SPA y `/static`, y balancea `/api` entre las réplicas | `GET /` | `api-1`, `api-2` |
+| `web` | Propia (nginx + build de `apps/web`) | **Balanceador de carga** (`upstream` round-robin hacia `api-1` y `api-2`, con `max_fails=3 fail_timeout=10s`) y servidor de la SPA y `/static` | `GET /` | `api-1`, `api-2` |
 | `otel-lgtm` | `grafana/otel-lgtm` | Logs, trazas y métricas | — | Perfil `observability` |
 
 **Notas de despliegue:**
 
 - **Un solo origen** (`http://localhost:8080`): la SPA y la API se sirven desde el mismo host, así que las cookies (`refresh`, `carrito_invitado`) funcionan con `SameSite=Strict` sin trucos de CORS. CORS se configura igualmente con una lista explícita de orígenes (requisito del enunciado) para el servidor de desarrollo de Vite.
+- **nginx es el balanceador de carga.** Si una réplica deja de responder, nginx la marca como caída y envía todo el tráfico a la otra. **Escenario de demo:** `docker compose stop api-1` → la tienda sigue funcionando y el header `X-Instancia` muestra que todo lo atiende `api-2`. **Punto único de falla reconocido:** con un solo nginx, si nginx cae, cae todo. En producción se resuelve con un Ingress Controller con réplicas (Kubernetes) o un balanceador administrado (por ejemplo, ALB de AWS).
+- **Redis está detrás de la API, no delante.** Toda petición llega a la API, que valida el token y el rol. Redis evita ir a SQL Server, no evita pasar por el backend. No se usa la caché HTTP de nginx (`proxy_cache`): saltaría la autenticación y no permite la invalidación por eventos que exige el extra (sección 9).
 - **Réplicas explícitas** (`api-1`, `api-2`) en lugar de `deploy.replicas`: nginx resuelve los nombres al arrancar, y así cada respuesta lleva el header `X-Instancia`, que permite demostrar el balanceo en la defensa.
 - **Arranque con un solo comando:** `docker compose up -d`. El orden lo garantizan `depends_on` con `condition: service_healthy` y `service_completed_successfully`.
 - **RAM estimada:** SQL Server 2 GB (limitado con `MSSQL_MEMORY_LIMIT_MB`), cada API ~150 MB, Redis ~30 MB, nginx ~10 MB, LGTM ~700 MB. Total: ~3.5 GB con observabilidad.
@@ -128,7 +134,7 @@ src/modules/<modulo>/
 | Pieza | Qué hace |
 |---|---|
 | `config/` | Lee las variables de entorno y **las valida con Zod al arrancar**; si falta una, el proceso no inicia |
-| `db/` | Pool de `mssql`, helper `ejecutarSP<T>(nombre, parametros)` con **parámetros tipados obligatorios**, establece `SESSION_CONTEXT` (`IDUsuario`, `RequestId`) en cada llamada y traduce los errores de SQL |
+| `db/` | Pool de `mssql` y helper `ejecutarSP<T>(nombre, parametros)` con **parámetros tipados obligatorios**: agrega los parámetros estándar del actor (A-18), traduce los errores de SQL (A-06, A-19) y reintenta ante deadlocks |
 | `errors/` | `AppError` (código, mensaje, status, detalles), mapeo de errores de negocio de SQL (50000–59999) a HTTP y middleware central de errores |
 | `http/` | Middlewares: `requestId`, `autenticar`, `autorizar(roles)`, `validar(esquema)`, `rateLimit`, `idempotencia`; formato estándar de respuesta y paginación |
 | `observability/` | SDK de OpenTelemetry (http, express, tedious, ioredis), logger pino con `traceId`/`spanId` y **redacción** de datos sensibles |
@@ -393,7 +399,7 @@ Se ejecutan **dentro de cada réplica de la API** con un planificador interno. C
 
 - **Trazas:** el SDK de OpenTelemetry para Node, con instrumentación de `http`, `express`, `tedious` (cada llamada a un SP es un span con el nombre del SP) e `ioredis`, exporta por OTLP a `otel-lgtm`. Si el colector no está levantado, el exportador descarta en silencio y la API funciona igual.
 - **Logs:** pino en JSON hacia stdout y OTLP. Cada línea lleva `requestId`, `traceId`, `instancia`, `idUsuario` y el módulo.
-- **Correlación con la base:** `ejecutarSP` establece `SESSION_CONTEXT('RequestId')`, y la bitácora y los errores de SQL guardan ese `RequestId`. Desde una fila de la bitácora se puede llegar a la traza completa en Grafana.
+- **Correlación con la base:** `ejecutarSP` envía el `@RequestId` y cada SP que escribe lo fija en `SESSION_CONTEXT` (A-18), y la bitácora y los errores de SQL guardan ese `RequestId`. Desde una fila de la bitácora se puede llegar a la traza completa en Grafana.
 - **Demo:** un dashboard de Grafana provisionado con las peticiones por réplica, la latencia por endpoint y el top de SPs más lentos, más un enlace de la traza a sus logs.
 
 ---
@@ -440,23 +446,25 @@ Estado: 🟡 Propuesta · 🔍 En análisis · ✅ Confirmada · ✏️ Modifica
 
 | ID | Decisión | Alternativa descartada y por qué | Estado |
 |---|---|---|---|
-| A-01 | Monolito modular con fronteras por módulo, verificadas con lint | Microservicios: RF-06 exige una transacción que cruza pedidos, inventario y cupones | 🟡 |
-| A-02 | La BD protege invariantes (SP + constraints); el servicio orquesta y da mensajes claros | Todo en servicios: no resiste concurrencia entre réplicas. Todo en SPs: contradice "servicios con la lógica de negocio" | 🟡 |
-| A-03 | Un nginx sirve la SPA y balancea `/api` entre `api-1` y `api-2`; mismo origen | Gateway separado: un contenedor más sin beneficio. Orígenes distintos: complica las cookies | 🟡 |
-| A-04 | Jobs dentro de las réplicas con `sp_getapplock` | Worker dedicado: más servicios. Lock en Redis: depende de algo que se puede perder | 🟡 |
-| A-05 | `READ_COMMITTED_SNAPSHOT ON` + `UPDLOCK` explícito en escrituras críticas | `SERIALIZABLE` global: bloqueos y deadlocks innecesarios | 🟡 |
-| A-06 | Errores de negocio con `THROW 5xxxx` por rango de módulo, mapeados a HTTP con un catálogo | Códigos de retorno o `RAISERROR`: menos claros y fáciles de ignorar | 🟡 |
-| A-07 | Access JWT de 15 min en memoria + refresh opaco en cookie, rotación por familia y detección de reúso; revocados en Redis | Refresh JWT: no se puede revocar. Token en localStorage: expuesto a XSS | 🟡 |
-| A-08 | Zod para validar entradas y generar OpenAPI; esquemas compartidos con el frontend | class-validator: duplica tipos. OpenAPI escrito a mano: se desalinea | 🟡 |
-| A-09 | Migrador propio con versionado `V###` + `R__`, checksum y tabla de historial | Flyway: agrega Java a la imagen. Scripts sin control: no reproducible | 🟡 |
-| A-10 | Búsqueda con `LIKE` sobre una columna calculada que no distingue mayúsculas ni tildes (`COLLATE Latin1_General_CI_AI`): "camion" encuentra "Camión". El `LIKE '%texto%'` recorre solo la tabla `Producto` (cientos de filas, no los pedidos), y los filtros de categoría, precio y disponibilidad sí usan índices | Full-Text Search: no viene en la imagen oficial de Docker. Queda como mejora documentada | 🟡 |
-| A-11 | Caché de reportes en Redis con invalidación por versión | Borrado por patrón: frágil y costoso. Sin caché: se pierde el extra | 🟡 |
-| A-12 | Fechas en UTC (`DATETIME2(3)`) + columna `FechaPagoLocal DATE` (Guatemala) para agrupar reportes | `AT TIME ZONE` en cada consulta: no aprovecha índices | 🟡 |
-| A-13 | Contadores con `CHECK` para límites (cupón, devoluciones, reembolsos, existencia) | Solo `COUNT`/`SUM` en el SP: correcto con bloqueo, pero sin defensa ante un bug | 🟡 |
-| A-14 | Parámetros del sistema en una tabla tipada de una sola fila (`ParametroSistema`) | Tabla clave-valor: sin tipos ni `CHECK` | 🟡 |
-| A-15 | Estados con comportamiento en tablas de catálogo (`EstadoPedido`, `TipoMovimiento`, `Rol`); estados simples con `CHECK` | Todo con `CHECK`: las transiciones no pueden tener FK. Todo en tablas: exceso de joins | 🟡 |
-| A-16 | Librerías del backend: Express 5, `mssql`, Zod, `decimal.js`, pino, helmet, cors, argon2, jose, ioredis, rate-limiter-flexible, OpenTelemetry, Vitest + Supertest | Cada una se justifica en el README | 🟡 |
-| A-17 | Estrategia de pruebas: unitarias de servicios con puertos simulados, integración contra SQL Server real en Docker (base `shopcart_test`), test de concurrencia (RNF-3) y test de coincidencia de transiciones (N-08) | Mocks de la BD: no prueban los SPs, que es donde están las reglas críticas | 🟡 |
+| A-01 | Monolito modular con fronteras por módulo, verificadas con lint | Microservicios: RF-06 exige una transacción que cruza pedidos, inventario y cupones | ✅ |
+| A-02 | La BD protege invariantes (SP + constraints); el servicio orquesta y da mensajes claros | Todo en servicios: no resiste concurrencia entre réplicas. Todo en SPs: contradice "servicios con la lógica de negocio" | ✅ |
+| A-03 | Un nginx actúa como balanceador de carga (round-robin con detección pasiva de fallas) y sirve la SPA; mismo origen | Gateway separado: un contenedor más sin beneficio. Orígenes distintos: complica las cookies | ✅ |
+| A-04 | Jobs dentro de las réplicas con `sp_getapplock` | Worker dedicado: más servicios. Lock en Redis: depende de algo que se puede perder | ✅ |
+| A-05 | `READ_COMMITTED_SNAPSHOT ON` + `UPDLOCK` explícito en escrituras críticas | `SERIALIZABLE` global: bloqueos y deadlocks innecesarios | ✅ |
+| A-06 | Errores de negocio con `THROW 5xxxx` por rango de módulo, mapeados a HTTP con un catálogo | Códigos de retorno o `RAISERROR`: menos claros y fáciles de ignorar | ✅ |
+| A-07 | Access JWT de 15 min en memoria + refresh opaco en cookie, rotación por familia y detección de reúso; revocados en Redis | Refresh JWT: no se puede revocar. Token en localStorage: expuesto a XSS | ✅ |
+| A-08 | Zod para validar entradas y generar OpenAPI; esquemas compartidos con el frontend | class-validator: duplica tipos. OpenAPI escrito a mano: se desalinea | ✅ |
+| A-09 | Migrador propio con versionado `V###` + `R__`, checksum y tabla de historial | Flyway: agrega Java a la imagen. Scripts sin control: no reproducible | ✅ |
+| A-10 | Búsqueda con `LIKE` sobre una columna calculada que no distingue mayúsculas ni tildes (`COLLATE Latin1_General_CI_AI`): "camion" encuentra "Camión". El `LIKE '%texto%'` recorre solo la tabla `Producto` (cientos de filas, no los pedidos), y los filtros de categoría, precio y disponibilidad sí usan índices | Full-Text Search: no viene en la imagen oficial de Docker. Queda como mejora documentada | ✅ |
+| A-11 | Caché de reportes en Redis con invalidación por versión | Borrado por patrón: frágil y costoso. Sin caché: se pierde el extra | ✅ |
+| A-12 | Fechas en UTC (`DATETIME2(3)`) + columna `FechaPagoLocal DATE` (Guatemala) para agrupar reportes | `AT TIME ZONE` en cada consulta: no aprovecha índices | ✅ |
+| A-13 | Contadores con `CHECK` para límites (cupón, devoluciones, reembolsos, existencia) | Solo `COUNT`/`SUM` en el SP: correcto con bloqueo, pero sin defensa ante un bug | ✅ |
+| A-14 | Parámetros del sistema en una tabla tipada de una sola fila (`ParametroSistema`) | Tabla clave-valor: sin tipos ni `CHECK` | ✅ |
+| A-15 | Estados con comportamiento en tablas de catálogo (`EstadoPedido`, `TipoMovimiento`, `Rol`); estados simples con `CHECK` | Todo con `CHECK`: las transiciones no pueden tener FK. Todo en tablas: exceso de joins | ✅ |
+| A-16 | Librerías del backend: Express 5, `mssql`, Zod, `decimal.js`, pino, helmet, cors, argon2, jose, ioredis, rate-limiter-flexible, OpenTelemetry, Vitest + Supertest | Cada una se justifica en el README | ✅ |
+| A-17 | Estrategia de pruebas: unitarias de servicios con puertos simulados, integración contra SQL Server real en Docker (base `shopcart_test`), test de concurrencia (RNF-3) y test de coincidencia de transiciones (N-08) | Mocks de la BD: no prueban los SPs, que es donde están las reglas críticas | ✅ |
+| A-18 | **Contexto del actor por parámetros estándar.** `ejecutarSP` agrega a cada SP `@IDUsuarioActor`, `@RolActor` y `@RequestId` (tomados de un `AsyncLocalStorage` por petición). Los SPs de recursos propios filtran con `@IDUsuarioActor`, y todo SP que escribe llama primero a `SP_Sistema_EstablecerContexto`, que fija `SESSION_CONTEXT` para los triggers | Fijar `SESSION_CONTEXT` desde Node antes de cada llamada: con el pool de conexiones, el `sp_set_session_context` y el SP pueden ejecutarse en conexiones distintas, y amarrar la conexión exige transacciones del lado del cliente que chocan con las de los SPs | 🟡 |
+| A-19 | **Errores con detalles estructurados.** Si un `THROW` necesita datos (por ejemplo, qué líneas no tienen existencia), su mensaje es un JSON `{ mensaje, detalles }` y `ejecutarSP` lo separa | Devolver un conjunto de resultados con el error: obliga a cada SP a usar un formato de salida doble y complica el `TRY/CATCH` | 🟡 |
 
 ---
 

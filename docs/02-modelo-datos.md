@@ -1,7 +1,7 @@
 # ShopCart — Modelo de datos
 
 > Etapa 2 del proceso. Implementa las decisiones de [`00-vision-y-contexto.md`](./00-vision-y-contexto.md) y la arquitectura de [`01-arquitectura.md`](./01-arquitectura.md).
-> Las decisiones propias del modelo (`M-xx`, sección 10) son **propuestas 🟡** hasta que el PO las confirme.
+> Las decisiones propias del modelo (`M-xx`, sección 10) fueron **confirmadas por el PO el 29 oct**; M-01 se modificó a tablas ledger.
 > Motor: **SQL Server 2022** (imagen oficial de Docker). Base: `ShopCart`. Esquema: `dbo`.
 
 ---
@@ -45,13 +45,21 @@
 - **Nada se borra físicamente** si tiene historial (N-14). Las entidades desactivables tienen `Activo BIT NOT NULL DEFAULT 1`.
 - La base usa `READ_COMMITTED_SNAPSHOT ON` (A-05).
 - Todo SP que escribe empieza con `SET NOCOUNT ON; SET XACT_ABORT ON;` y usa `BEGIN TRY / BEGIN TRAN … COMMIT / END TRY BEGIN CATCH … ROLLBACK; THROW; END CATCH`.
-- El usuario que actúa y el `RequestId` llegan en `SESSION_CONTEXT`: `ejecutarSP` lo establece antes de cada llamada, y triggers y SPs lo leen con `SESSION_CONTEXT(N'IDUsuario')`.
+- **Contexto del actor (A-18):** todo SP invocado por la API declara `@IDUsuarioActor INT = NULL, @RolActor VARCHAR(20) = NULL, @RequestId UNIQUEIDENTIFIER = NULL`, que `ejecutarSP` envía siempre. Los SPs de recursos propios filtran con `@IDUsuarioActor`. Todo SP que escribe llama primero a `SP_Sistema_EstablecerContexto`, que fija `SESSION_CONTEXT` (`IDUsuario`, `Rol`, `RequestId`) para que los triggers lo lean.
 
 ---
 
 ## 2. Diagrama entidad-relación
 
-Se divide en tres áreas para que se pueda leer. Las entidades compartidas aparecen en más de un diagrama.
+El modelo se divide en **tres áreas temáticas** para que se pueda leer. En cada diagrama, las tablas de otras áreas aparecen en gris, solo con su llave primaria, como referencia.
+
+| Área | Contenido | Imagen |
+|---|---|---|
+| A | Usuarios, direcciones, catálogo e inventario | ![Área A](./diagramas/modelo-datos-area-a.svg) |
+| B | Carrito, cupones y checkout | ![Área B](./diagramas/modelo-datos-area-b.svg) |
+| C | Pedidos, devoluciones y bitácora | ![Área C](./diagramas/modelo-datos-area-c.svg) |
+
+Las imágenes se regeneran desde `diagramas/fuentes/`. Las tablas y relaciones se editan en `tablas_y_relaciones.py`; después se ejecuta `python generar_modelo_por_areas.py` y `dot -Tsvg ../modelo-datos-area-a.dot -o ../modelo-datos-area-a.svg`, y lo mismo para b y c. A continuación, una versión simplificada en Mermaid, que GitHub renderiza directamente.
 
 ### 2.1 Usuarios, catálogo e inventario
 
@@ -384,7 +392,7 @@ Cambiar un precio = cerrar la versión vigente (`VigenteHasta = ahora`) e insert
 
 UQ `(IDTipoMovimiento, Signo)`, destino de la FK compuesta del kardex.
 
-**`MovimientoKardex`** — inmutable (M-01)
+**`MovimientoKardex`** — ledger append-only (M-01)
 
 | Columna | Tipo | Reglas |
 |---|---|---|
@@ -644,7 +652,7 @@ Trigger **`TR_Pedidos_ValidarTransicion`** (`AFTER UPDATE`): si cambia `IDEstado
 
 UQ `(IDPedido, IDVariante)`. Índices: `IX_DetallePedido_Variante (IDVariante) INCLUDE (Cantidad, TotalLinea)` e `IX_DetallePedido_Categoria (IDCategoria) INCLUDE (IDPedido, TotalLinea, Cantidad)`.
 
-**`HistorialEstadoPedido`** — inmutable (M-01)
+**`HistorialEstadoPedido`** — ledger append-only (M-01)
 
 | Columna | Tipo | Reglas |
 |---|---|---|
@@ -686,7 +694,7 @@ UQ `(IDPedido, IDVariante)`. Índices: `IX_DetallePedido_Variante (IDVariante) I
 
 ### 3.10 Bitácora
 
-**`Bitacora`** — inmutable (M-01)
+**`Bitacora`** — ledger append-only (M-01)
 
 | Columna | Tipo | Reglas |
 |---|---|---|
@@ -764,7 +772,7 @@ Los SPs marcados **(interno)** solo los invocan otros SPs, nunca la API. Así ha
 `SP_Pedidos_CrearPedido` (la transacción atómica de RF-06) · `SP_Pedidos_ListarPropios` · `SP_Pedidos_ObtenerDetalle` (con `@IDUsuario` si el rol es Cliente) · `SP_Pedidos_Listar` (gestión: filtros por estado, cliente y fechas, paginado) · `SP_Pedidos_CambiarEstado` · `SP_Pedidos_Cancelar` · `SP_Pedidos_RegistrarDevolucion` · `SP_Pedidos_ListarReembolsos` · `SP_Pedidos_ObtenerReembolsosPendientes` (job) · `SP_Pedidos_ActualizarReembolso` · `SP_Pedidos_ListarTransiciones` (para el test de coincidencia de N-08)
 
 ### Dashboard, bitácora y sistema
-`SP_Dashboard_Resumen` (ventas, pedidos, ticket promedio, carritos abandonados) · `SP_Dashboard_VentasPorPeriodo` (`@Agrupacion` = día, semana o mes) · `SP_Dashboard_VentasPorCategoria` · `SP_Dashboard_TopProductos` (top 10) · `SP_Dashboard_CarritosAbandonados` · `SP_Bitacora_Listar` (filtro por módulo, entidad y fechas; paginado) · `SP_Sistema_Health`
+`SP_Dashboard_Resumen` (ventas, pedidos, ticket promedio, carritos abandonados) · `SP_Dashboard_VentasPorPeriodo` (`@Agrupacion` = día, semana o mes) · `SP_Dashboard_VentasPorCategoria` · `SP_Dashboard_TopProductos` (top 10) · `SP_Dashboard_CarritosAbandonados` · `SP_Bitacora_Listar` (filtro por módulo, entidad y fechas; paginado) · `SP_Sistema_Health` · `SP_Sistema_EstablecerContexto` **(interno: fija `SESSION_CONTEXT` a partir de los parámetros estándar)**
 
 ### Datos semilla y carga
 `SP_Semilla_GenerarDatosDemo (@Pedidos, @Dias, @Semilla)` genera clientes, carritos y pedidos **consistentes** (detalle, kardex, historial y devoluciones) con fechas **relativas a hoy**, para que el dashboard siempre muestre los últimos 90 días. Termina verificando que `VW_Inventario_Conciliacion` esté vacía. La semilla normal usa `@Pedidos = 1500`; la carga pesada de la defensa, `@Pedidos = 50000`.
@@ -773,13 +781,17 @@ Los SPs marcados **(interno)** solo los invocan otros SPs, nunca la API. Así ha
 
 ## 6. Inmutabilidad
 
-**Tablas inmutables:** `Bitacora`, `MovimientoKardex` y `HistorialEstadoPedido`. Ver M-01 para el mecanismo.
+**Tablas inmutables:** `Bitacora`, `MovimientoKardex` y `HistorialEstadoPedido` (M-01).
 
 **Defensa en capas:**
 
-1. La aplicación no tiene permisos directos sobre ninguna tabla: solo `EXECUTE` sobre los SPs, y ningún SP actualiza ni borra estas tablas.
-2. Un trigger `INSTEAD OF UPDATE, DELETE` (`TR_Bitacora_Inmutable`, `TR_Inventario_KardexInmutable`, `TR_Pedidos_HistorialInmutable`) rechaza cualquier intento con `THROW 50901`.
-3. **Opción reforzada (M-01):** tablas *ledger* de solo inserción de SQL Server 2022 (`LEDGER = ON (APPEND_ONLY = ON)`). El motor rechaza `UPDATE` y `DELETE` incluso a un administrador y mantiene un digest criptográfico que permite **verificar** que no se alteraron.
+1. **Tablas ledger de solo inserción** (`WITH (LEDGER = ON (APPEND_ONLY = ON))`). El motor rechaza cualquier `UPDATE` o `DELETE`, incluso de un administrador. Un `DROP TABLE` tampoco borra los datos: SQL Server conserva la tabla renombrada y oculta.
+2. **Verificación criptográfica:** `sys.sp_generate_database_ledger_digest` genera el digest y `sys.sp_verify_database_ledger` confirma que ninguna fila fue alterada. Es una demostración para la defensa.
+3. **La aplicación no tiene permisos** directos sobre ninguna tabla: solo `EXECUTE` sobre los SPs, y ningún SP actualiza ni borra estas tablas.
+
+**Consecuencias para el desarrollo:** no se puede usar `TRUNCATE` ni corregir filas a mano (en desarrollo se recrea la base completa con Docker); solo se pueden agregar columnas `NULL` y no se puede cambiar el tipo de una columna. Por eso el diseño de estas tres tablas se cierra antes de crearlas.
+
+**Respaldo:** si la prueba de E1-H01 detecta una incompatibilidad (por ejemplo, con las FKs), se usan triggers `INSTEAD OF UPDATE, DELETE` (`TR_Bitacora_Inmutable`, `TR_Inventario_KardexInmutable`, `TR_Pedidos_HistorialInmutable`) que hacen `THROW 50901`, sin cambiar nada más del diseño.
 
 ---
 
@@ -840,11 +852,11 @@ Rangos por módulo para `THROW`. El catálogo completo, con su código estable y
 
 | ID | Decisión | Alternativa | Estado |
 |---|---|---|---|
-| M-01 | Inmutabilidad de bitácora, kardex e historial: **trigger `INSTEAD OF` + sin permisos** como base (compatible con 2019, el mínimo del enunciado). **Tablas ledger append-only (2022) como refuerzo**, sujeto a una prueba rápida al crear el esquema | Solo trigger: un administrador puede deshabilitarlo. Solo ledger: ata el proyecto a SQL Server 2022 | 🟡 |
-| M-02 | `DECIMAL(12,2)` para montos y `DECIMAL(5,2)` para porcentajes | `MONEY`: redondea mal en divisiones | 🟡 |
-| M-03 | UTC en todas las fechas + `FechaPagoLocal` y `FechaLocal` (`DATE`, Guatemala) calculadas al insertar | `DATETIMEOFFSET`: más pesado y no resuelve el agrupado por día local | 🟡 |
-| M-04 | Copias (snapshot) de dirección, método de envío, cupón, SKU, nombre y categoría en sesión y pedido | Solo FKs: el pedido cambiaría si cambia el catálogo o la dirección | 🟡 |
-| M-05 | `BIGINT` solo en tablas de alto volumen; `INT` en las demás | `BIGINT` en todo: desperdicio en índices | 🟡 |
-| M-06 | Extensión de la nomenclatura del enunciado para triggers (`TR_Modulo_Proceso`), constraints e índices | Nombres automáticos de SQL Server: ilegibles e incomparables entre entornos | 🟡 |
-| M-07 | La vista `VW_Dashboard_HechosVenta` como definición única de "venta" para todos los reportes | Cada SP de reporte con su propio cálculo: riesgo de que dos reportes no coincidan | 🟡 |
-| M-08 | Generador de datos demo con fechas relativas a hoy y verificación de conciliación al final | Datos fijos: el dashboard se vería vacío un mes después | 🟡 |
+| M-01 | **Inmutabilidad con tablas ledger append-only** (`LEDGER = ON (APPEND_ONLY = ON)`, SQL Server 2022) en `Bitacora`, `MovimientoKardex` y `HistorialEstadoPedido`: el motor rechaza `UPDATE` y `DELETE` incluso a un administrador y permite verificar con `sp_verify_database_ledger` que nada se alteró. La app sigue sin permisos sobre las tablas. **Respaldo:** si la prueba de E1-H01 muestra que no acepta las FKs, se usa trigger `INSTEAD OF` + permisos, sin otros cambios | Solo trigger: un administrador puede deshabilitarlo. Verificado en la documentación de Microsoft: nuestros tipos de datos son compatibles | ✏️ |
+| M-02 | `DECIMAL(12,2)` para montos y `DECIMAL(5,2)` para porcentajes | `MONEY`: redondea mal en divisiones | ✅ |
+| M-03 | UTC en todas las fechas + `FechaPagoLocal` y `FechaLocal` (`DATE`, Guatemala) calculadas al insertar | `DATETIMEOFFSET`: más pesado y no resuelve el agrupado por día local | ✅ |
+| M-04 | Copias (snapshot) de dirección, método de envío, cupón, SKU, nombre y categoría en sesión y pedido | Solo FKs: el pedido cambiaría si cambia el catálogo o la dirección | ✅ |
+| M-05 | `BIGINT` solo en tablas de alto volumen; `INT` en las demás | `BIGINT` en todo: desperdicio en índices | ✅ |
+| M-06 | Extensión de la nomenclatura del enunciado para triggers (`TR_Modulo_Proceso`), constraints e índices | Nombres automáticos de SQL Server: ilegibles e incomparables entre entornos | ✅ |
+| M-07 | La vista `VW_Dashboard_HechosVenta` como definición única de "venta" para todos los reportes | Cada SP de reporte con su propio cálculo: riesgo de que dos reportes no coincidan | ✅ |
+| M-08 | Generador de datos demo con fechas relativas a hoy y verificación de conciliación al final | Datos fijos: el dashboard se vería vacío un mes después | ✅ |

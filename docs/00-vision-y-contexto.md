@@ -31,8 +31,8 @@ Es el reto técnico **Tech Challenge 360 (Grupo Pentandra / Don Arturo)**, nivel
 El diseño sigue el marco de la skill `engineering:system-design`: requerimientos → diseño de alto nivel → detalle → escala y confiabilidad → trade-offs.
 
 1. **Decisiones de negocio y requerimientos** (funcionales, no funcionales y restricciones) ✅ *cerrada el 29 oct*
-2. **Diseño de arquitectura:** componentes, modelo de datos (ER), flujos críticos, contratos de la API, escala y trade-offs ← *estamos aquí*
-3. **Backlog:** épicas por módulo, cada una con historias que tengan alcance y criterios de aceptación (estilo Jira).
+2. **Diseño de arquitectura:** componentes, modelo de datos (ER), flujos críticos, contratos de la API, escala y trade-offs ✅ *cerrada el 29 oct*
+3. **Backlog:** ← *estamos aquí* épicas por módulo, cada una con historias que tengan alcance y criterios de aceptación (estilo Jira).
 4. **Desarrollo** historia por historia.
 
 ### Reglas
@@ -147,6 +147,7 @@ Cada fase se evalúa con el último commit anterior a su fecha límite. No se ac
 | D-01 | El ambiente entregado se levanta con **Docker Compose** en local. La nube es opcional. |
 | D-02 | El backend es **modular por dominio**, con capas dentro de cada módulo. |
 | D-03 | El proceso es PO/Arquitecto (chat) → Dev (Claude Code), y nada se desarrolla sin estar definido en papel. |
+| D-05 | **Buenas prácticas con un kit propio del proyecto** en `.claude/`: skills `sqlserver-sp` y `modulo-express` y agente `revisor-shopcart`, escritos a partir de estos documentos. Del kit de Diego (`Dart18-80/claude-kit`) se instala solo `stack-typescript` y los plugins base oficiales (TDD, verificación, revisión, seguridad); `stack-nextjs` se agrega en la Fase 2. **No se usan** `stack-nestjs`, `stack-redis`, `stack-prisma` ni `stack-postgres`. Ante cualquier diferencia, `docs/` y `CLAUDE.md` mandan. Después del reto, lo genérico del kit propio se publica en claude-kit como `stack-sqlserver` y `stack-express`. |
 | D-04 | **Kubernetes queda diferido.** Solo se evalúa después de completar todo lo obligatorio. El diseño stateless (RNF-2) lo deja preparado. |
 
 ### Requerimientos no funcionales
@@ -219,7 +220,7 @@ Son solo para dar contexto. **Se deciden en la etapa 2**, después de cerrar las
 
 | Documento | Contenido | Etapa |
 |---|---|---|
-| `01-arquitectura.md` | Componentes, diagrama de despliegue, módulos y flujos críticos (checkout, reservas, idempotencia) | 2 |
-| `02-modelo-datos.md` | Diagrama ER, tablas, constraints, índices y catálogo de SPs, vistas y funciones | 2 |
-| `03-backlog.md` | Épicas por módulo e historias con alcance y criterios de aceptación | 3 |
-| `CLAUDE.md` | Instrucciones breves para el desarrollador (Claude Code), apuntando a estos documentos | 3 |
+| `01-arquitectura.md` ✅ | Componentes, diagrama de despliegue, módulos y flujos críticos (checkout, reservas, idempotencia) | 2 |
+| `02-modelo-datos.md` ✅ | Diagrama ER, tablas, constraints, índices y catálogo de SPs, vistas y funciones | 2 |
+| `03-backlog.md` 🟡 | Épicas por módulo e historias con alcance y criterios de aceptación | 3 |
+| `CLAUDE.md` 🟡 | Instrucciones breves para el desarrollador (Claude Code), apuntando a estos documentos | 3 |

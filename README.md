@@ -38,4 +38,26 @@ docker compose ps                 # ambos servicios deben quedar "healthy"
 
 SQL Server y Redis solo se publican en `127.0.0.1`: son accesibles desde tu máquina (SSMS, Azure Data Studio, pruebas), no desde la red.
 
+### Migraciones de base de datos
+
+`db-migrator` crea la base, los logins y aplica los scripts de `database/` en orden `migrations/V###` → `programmability/R__*` → `seeds/S###`. Se ejecuta solo y termina:
+
+```bash
+docker compose up -d --build db-migrator   # tras agregar o cambiar scripts
+docker compose logs db-migrator
+```
+
+Base de pruebas (`shopcart_test`), con Compose o desde el host:
+
+```bash
+docker compose run --rm -e DB_NOMBRE=shopcart_test db-migrator
+DB_NOMBRE=shopcart_test pnpm db:migrar                    # Bash
+```
+
+```powershell
+$env:DB_NOMBRE = 'shopcart_test'; pnpm db:migrar; Remove-Item Env:DB_NOMBRE   # PowerShell
+```
+
+Un `V###` o `S###` ya aplicado **no se edita**: si cambia, el migrador falla. Se crea un script nuevo con el siguiente número.
+
 > **Licencia de SQL Server:** el entorno usa la edición **Developer** (`MSSQL_PID=Developer`), gratuita para desarrollo y pruebas pero **no licenciada para producción**. En producción se usaría Standard o Enterprise (o Express, con sus límites).
