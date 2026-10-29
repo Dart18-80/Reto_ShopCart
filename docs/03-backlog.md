@@ -113,7 +113,9 @@
 ### E0-H04 · Esqueleto de la API y piezas compartidas — `Must` · 0.75 h
 **Alcance**
 - `src/shared/config`: variables de entorno validadas con Zod al arrancar (el proceso termina con un mensaje claro si falta alguna).
-- `src/shared/db`: pool `mssql` con el login `shopcart_app`; helper `ejecutarSP<T>(nombre, parametros, opciones)` que exige tipos SQL explícitos por parámetro, establece `SESSION_CONTEXT` (`IDUsuario`, `Rol`, `RequestId`) antes de cada llamada, reintenta hasta 3 veces ante deadlock (error 1205) y convierte los errores `50000–59999` en `AppError`.
+- `src/shared/db`: pool `mssql` con el login `shopcart_app`; helper `ejecutarSP<T>(nombre, parametros, opciones)` que exige tipos SQL explícitos por parámetro, **agrega a cada SP `@IDUsuarioActor`, `@RolActor` y `@RequestId`** tomados del contexto de la petición (A-18; en los jobs van en `NULL`), reintenta hasta 3 veces ante deadlock (error 1205) y convierte los errores `50000–59999` en `AppError`. **Si el mensaje del error es un JSON `{ mensaje, detalles }`, lo separa en `mensaje` y `detalles`** (A-19).
+- `src/shared/http/contexto.ts`: `AsyncLocalStorage` por petición con `{ requestId, idUsuario, rol }`; lo abre el middleware `requestId` y lo leen `ejecutarSP` y el logger, sin pasarlo a mano por las capas.
+- `database/programmability/R__SP_Sistema_EstablecerContexto.sql`: fija `SESSION_CONTEXT` (`IDUsuario`, `Rol`, `RequestId`) a partir de los parámetros estándar, para que los triggers lo lean. Todo SP que escribe lo llama como primera instrucción (A-18).
 - `src/shared/errors`: `AppError`, catálogo de códigos (`catalogo.ts`) con su HTTP, middleware central con el formato estándar.
 - `src/shared/http`: middlewares `requestId`, `validar(esquema)`, formato de paginación y header `X-Instancia`.
 - `src/shared/observability`: logger pino en JSON con redacción (`contrasena`, `numeroTarjeta`, `cvv`, `authorization`, `cookie`). OpenTelemetry se agrega en la semana 2.
@@ -127,7 +129,7 @@
 - [ ] Un error inesperado responde `500` sin detalles internos y queda registrado en el log con su `requestId`.
 - [ ] `ejecutarSP` no acepta texto SQL: su firma solo recibe el nombre del SP (verificable por tipos).
 
-**Referencias:** A-02, A-06, A-08, `01-arquitectura.md` §4.4–4.6 y §5.1.
+**Referencias:** A-02, A-06, A-08, A-18, A-19, `01-arquitectura.md` §4.4–4.6 y §5.1.
 
 ### E0-H05 · Dos réplicas detrás de nginx — `Must` · 0.25 h
 **Alcance**
@@ -146,12 +148,13 @@
 **Alcance**
 - Vitest para unitarias e integración; Supertest para la API.
 - Las pruebas de integración usan la base `shopcart_test`, que el migrador crea y prepara antes de correrlas (`pnpm test:integracion`).
+- **Las pruebas no contienen texto SQL.** Los datos de prueba se preparan con SPs que solo existen en `shopcart_test` (`database/test/R__SP_Pruebas_*.sql`); el migrador aplica `database/test/` únicamente a esa base.
 - Una prueba de ejemplo de cada tipo (health y mapeo de errores).
 
 **CA**
 - [ ] `pnpm test` (unitarias) y `pnpm test:integracion` pasan.
 
-**Referencias:** A-17.
+**Referencias:** A-17, A-18.
 
 ---
 

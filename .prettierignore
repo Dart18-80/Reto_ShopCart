@@ -3,5 +3,6 @@ dist/
 coverage/
 docs/
 CLAUDE.md
+.claude/
 LICENSE
 *.sql
