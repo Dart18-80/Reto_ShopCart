@@ -1,0 +1,223 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2040" height="1250" viewBox="0 0 2040 1250">
+<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#374151"/></marker><marker id="arrD" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#4B5563"/></marker></defs>
+<rect width="2040" height="1250" fill="white"/>
+<text x="30" y="48" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="28" font-weight="700" fill="#1F2937" text-anchor="start">ShopCart — Arquitectura y despliegue</text>
+<text x="30" y="76" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="14" font-weight="400" fill="#6B7280" text-anchor="start">Docker Compose en un solo host · monolito modular stateless con 2 réplicas balanceadas · SQL Server como fuente de verdad (acceso exclusivo por stored procedures)</text>
+<rect x="20" y="100" width="280" height="1130" rx="0" fill="#F8FAFC" stroke="none" stroke-width="1.5"/>
+<text x="160.0" y="124" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.5" font-weight="700" fill="#475569" text-anchor="middle">CLIENTE</text>
+<line x1="40" y1="134" x2="280" y2="134" stroke="#CBD5E1" stroke-width="1"/>
+<rect x="320" y="100" width="330" height="1130" rx="0" fill="#F1F5F9" stroke="none" stroke-width="1.5"/>
+<text x="485.0" y="124" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.5" font-weight="700" fill="#475569" text-anchor="middle">BORDE</text>
+<line x1="340" y1="134" x2="630" y2="134" stroke="#CBD5E1" stroke-width="1"/>
+<rect x="670" y="100" width="670" height="1130" rx="0" fill="#F8FAFC" stroke="none" stroke-width="1.5"/>
+<text x="1005.0" y="124" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.5" font-weight="700" fill="#475569" text-anchor="middle">APLICACIÓN</text>
+<line x1="690" y1="134" x2="1320" y2="134" stroke="#CBD5E1" stroke-width="1"/>
+<rect x="1360" y="100" width="380" height="1130" rx="0" fill="#F1F5F9" stroke="none" stroke-width="1.5"/>
+<text x="1550.0" y="124" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.5" font-weight="700" fill="#475569" text-anchor="middle">DATOS</text>
+<line x1="1380" y1="134" x2="1720" y2="134" stroke="#CBD5E1" stroke-width="1"/>
+<rect x="1760" y="100" width="260" height="1130" rx="0" fill="#F8FAFC" stroke="none" stroke-width="1.5"/>
+<text x="1890.0" y="124" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.5" font-weight="700" fill="#475569" text-anchor="middle">OPERACIÓN</text>
+<line x1="1780" y1="134" x2="2000" y2="134" stroke="#CBD5E1" stroke-width="1"/>
+<rect x="330" y="150" width="1680" height="1060" rx="12" fill="none" stroke="#64748B" stroke-width="1.6" stroke-dasharray="9 6"/>
+<rect x="350" y="140" width="292" height="22" fill="#F1F5F9"/>
+<text x="358" y="156" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="700" fill="#475569" text-anchor="start">docker compose · red interna shopcart</text>
+<rect x="40" y="200" width="240" height="150" rx="8" fill="white" stroke="#CBD5E1" stroke-width="1.5"/>
+<path d="M40 208 a8 8 0 0 1 8 -8 h224 a8 8 0 0 1 8 8 v26 h-240 z" fill="#3B6FD8"/>
+<text x="54" y="222" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="15" font-weight="700" fill="white" text-anchor="start">Navegador</text>
+<text x="54" y="255" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="600" fill="#1F2937" text-anchor="start">React 18 + TypeScript (SPA)</text>
+<text x="54" y="276" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="400" fill="#6B7280" text-anchor="start">Access JWT en memoria</text>
+<text x="54" y="297" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="400" fill="#6B7280" text-anchor="start">Cookies httpOnly:</text>
+<text x="54" y="318" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="400" fill="#6B7280" text-anchor="start">refresh · carrito_invitado</text>
+<rect x="40" y="430" width="240" height="230" rx="8" fill="white" stroke="#CBD5E1" stroke-width="1.5"/>
+<text x="54" y="456" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="14" font-weight="700" fill="#1F2937" text-anchor="start">Leyenda</text>
+<line x1="56" y1="484" x2="116" y2="484" stroke="#374151" stroke-width="1.8" marker-end="url(#arr)"/>
+<text x="128" y="488" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.5" font-weight="400" fill="#1F2937" text-anchor="start">Petición síncrona</text>
+<line x1="56" y1="514" x2="116" y2="514" stroke="#4B5563" stroke-width="1.8" stroke-dasharray="7 5" marker-end="url(#arrD)"/>
+<text x="128" y="518" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.5" font-weight="400" fill="#1F2937" text-anchor="start">Opcional / one-shot</text>
+<rect x="56" y="536" width="14" height="12" rx="2" fill="#3B6FD8" stroke="none" stroke-width="1.5"/>
+<text x="78" y="546" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="400" fill="#1F2937" text-anchor="start">Cliente</text>
+<rect x="56" y="555" width="14" height="12" rx="2" fill="#1F8A7A" stroke="none" stroke-width="1.5"/>
+<text x="78" y="565" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="400" fill="#1F2937" text-anchor="start">Borde (balanceo)</text>
+<rect x="56" y="574" width="14" height="12" rx="2" fill="#6D4BB8" stroke="none" stroke-width="1.5"/>
+<text x="78" y="584" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="400" fill="#1F2937" text-anchor="start">Aplicación</text>
+<rect x="56" y="593" width="14" height="12" rx="2" fill="#B9412E" stroke="none" stroke-width="1.5"/>
+<text x="78" y="603" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="400" fill="#1F2937" text-anchor="start">Persistencia</text>
+<rect x="56" y="612" width="14" height="12" rx="2" fill="#B7791F" stroke="none" stroke-width="1.5"/>
+<text x="78" y="622" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="400" fill="#1F2937" text-anchor="start">Estado volátil</text>
+<rect x="56" y="631" width="14" height="12" rx="2" fill="#5B6470" stroke="none" stroke-width="1.5"/>
+<text x="78" y="641" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="400" fill="#1F2937" text-anchor="start">Operación</text>
+<rect x="40" y="690" width="240" height="250" rx="8" fill="white" stroke="#CBD5E1" stroke-width="1.5"/>
+<text x="54" y="716" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="14" font-weight="700" fill="#1F2937" text-anchor="start">Arranque ordenado</text>
+<text x="54" y="746" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.5" font-weight="400" fill="#1F2937" text-anchor="start">1. sqlserver  → healthy</text>
+<text x="54" y="770" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.5" font-weight="400" fill="#1F2937" text-anchor="start">2. db-migrator  → completed</text>
+<text x="54" y="794" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.5" font-weight="400" fill="#1F2937" text-anchor="start">3. redis  → healthy</text>
+<text x="54" y="818" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.5" font-weight="400" fill="#1F2937" text-anchor="start">4. api-1 · api-2  → /health OK</text>
+<text x="54" y="842" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.5" font-weight="400" fill="#1F2937" text-anchor="start">5. web (nginx)</text>
+<text x="54" y="880" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#475569" text-anchor="start">docker compose up -d</text>
+<text x="54" y="902" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="400" fill="#6B7280" text-anchor="start">+ --profile observability</text>
+<text x="54" y="922" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="400" fill="#6B7280" text-anchor="start">(opcional)</text>
+<rect x="340" y="190" width="290" height="300" rx="8" fill="white" stroke="#CBD5E1" stroke-width="1.5"/>
+<path d="M340 198 a8 8 0 0 1 8 -8 h274 a8 8 0 0 1 8 8 v26 h-290 z" fill="#1F8A7A"/>
+<text x="354" y="212" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="15" font-weight="700" fill="white" text-anchor="start">web · nginx</text>
+<text x="618" y="212" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="11.5" font-weight="500" fill="#FFFFFFD9" text-anchor="end">:8080</text>
+<text x="354" y="248" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="700" fill="#1F2937" text-anchor="start">Balanceador de carga + estáticos</text>
+<text x="354" y="272" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="600" fill="#1F2937" text-anchor="start">upstream api (round-robin)</text>
+<text x="354" y="296" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="400" fill="#6B7280" text-anchor="start">  server api-1:3000  max_fails=3</text>
+<text x="354" y="320" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="400" fill="#6B7280" text-anchor="start">  server api-2:3000  max_fails=3</text>
+<text x="354" y="344" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="400" fill="#1F2937" text-anchor="start">/          → SPA (build de React)</text>
+<text x="354" y="368" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="400" fill="#1F2937" text-anchor="start">/static  → imágenes del catálogo</text>
+<text x="354" y="392" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="400" fill="#1F2937" text-anchor="start">/api      → upstream api</text>
+<text x="354" y="416" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="400" fill="#6B7280" text-anchor="start">Cabeceras de seguridad · gzip</text>
+<text x="354" y="440" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="400" fill="#6B7280" text-anchor="start">Un solo origen (SameSite=Strict)</text>
+<line x1="280" y1="285" x2="340" y2="285" stroke="#374151" stroke-width="1.8" marker-end="url(#arr)"/>
+<text x="303" y="258" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#374151" text-anchor="middle">HTTP</text>
+<text x="303" y="273" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#374151" text-anchor="middle">:8080</text>
+<rect x="340" y="530" width="290" height="160" rx="8" fill="#FFFBEB" stroke="#F2C94C" stroke-width="1.5"/>
+<text x="354" y="556" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="14" font-weight="700" fill="#7A5A00" text-anchor="start">Tolerancia a fallas (demo)</text>
+<text x="354" y="582" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#5C4400" text-anchor="start">docker compose stop api-1</text>
+<text x="354" y="600" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="400" fill="#5C4400" text-anchor="start">→ nginx marca api-1 como caída</text>
+<text x="354" y="618" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="400" fill="#5C4400" text-anchor="start">→ api-2 atiende todo el tráfico</text>
+<text x="354" y="636" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="400" fill="#5C4400" text-anchor="start">→ el header X-Instancia lo muestra</text>
+<text x="354" y="654" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="400" fill="#8A6D1F" text-anchor="start">Punto único: nginx (en K8s: Ingress</text>
+<text x="354" y="672" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="400" fill="#8A6D1F" text-anchor="start">con réplicas o balanceador cloud)</text>
+<rect x="690" y="170" width="630" height="1020" rx="10" fill="#FAF8FF" stroke="#6D4BB8" stroke-width="1.6"/>
+<text x="710" y="198" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="16" font-weight="700" fill="#4C2F99" text-anchor="start">API · Node 24 + Express 5 + TypeScript strict</text>
+<text x="710" y="218" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.5" font-weight="400" fill="#6B7280" text-anchor="start">Monolito modular stateless · 2 réplicas idénticas detrás del balanceador</text>
+<rect x="720" y="235" width="240" height="70" rx="8" fill="white" stroke="#CBD5E1" stroke-width="1.5"/>
+<path d="M720 243 a8 8 0 0 1 8 -8 h224 a8 8 0 0 1 8 8 v26 h-240 z" fill="#6D4BB8"/>
+<text x="734" y="257" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="15" font-weight="700" fill="white" text-anchor="start">api-1</text>
+<text x="734" y="289" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="400" fill="#6B7280" text-anchor="start">INSTANCIA_ID=api-1 · :3000</text>
+<rect x="720" y="355" width="240" height="70" rx="8" fill="white" stroke="#CBD5E1" stroke-width="1.5"/>
+<path d="M720 363 a8 8 0 0 1 8 -8 h224 a8 8 0 0 1 8 8 v26 h-240 z" fill="#6D4BB8"/>
+<text x="734" y="377" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="15" font-weight="700" fill="white" text-anchor="start">api-2</text>
+<text x="734" y="409" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="400" fill="#6B7280" text-anchor="start">INSTANCIA_ID=api-2 · :3000</text>
+<line x1="630" y1="270" x2="720" y2="270" stroke="#374151" stroke-width="1.8" marker-end="url(#arr)"/>
+<text x="675.0" y="262" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#374151" text-anchor="middle">/api</text>
+<line x1="630" y1="390" x2="720" y2="390" stroke="#374151" stroke-width="1.8" marker-end="url(#arr)"/>
+<text x="675.0" y="382" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#374151" text-anchor="middle">/api</text>
+<rect x="990" y="235" width="300" height="190" rx="8" fill="white" stroke="#CBD5E1" stroke-width="1.5"/>
+<text x="1004" y="260" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13.5" font-weight="700" fill="#1F2937" text-anchor="start">Común a ambas réplicas</text>
+<text x="1004" y="284" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.5" font-weight="400" fill="#1F2937" text-anchor="start">• Misma imagen y configuración</text>
+<text x="1004" y="306" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.5" font-weight="400" fill="#1F2937" text-anchor="start">• Sin estado en memoria (stateless)</text>
+<text x="1004" y="328" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.5" font-weight="400" fill="#1F2937" text-anchor="start">• GET /api/v1/health (BD + Redis)</text>
+<text x="1004" y="350" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.5" font-weight="400" fill="#1F2937" text-anchor="start">• Header X-Instancia en respuestas</text>
+<text x="1004" y="372" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.5" font-weight="400" fill="#1F2937" text-anchor="start">• Apagado ordenado con SIGTERM</text>
+<text x="1004" y="394" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.5" font-weight="400" fill="#1F2937" text-anchor="start">• Escala a N réplicas sin cambios</text>
+<rect x="710" y="450" width="590" height="720" rx="8" fill="white" stroke="#B9A7E6" stroke-width="1.4"/>
+<path d="M710 458 a8 8 0 0 1 8 -8 h574 a8 8 0 0 1 8 8 v24 h-590 z" fill="#EDE7FA"/>
+<text x="726" y="472" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13.5" font-weight="700" fill="#4C2F99" text-anchor="start">Arquitectura interna de cada réplica</text>
+<rect x="730" y="500" width="270" height="74" rx="8" fill="#F6F2FE" stroke="#B9A7E6" stroke-width="1.5"/>
+<text x="744" y="521" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="700" fill="#3B2380" text-anchor="start">Middlewares transversales</text>
+<text x="744" y="540" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="11.5" font-weight="400" fill="#6B7280" text-anchor="start">requestId · autenticar · autorizar(rol)</text>
+<text x="744" y="557" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="11.5" font-weight="400" fill="#6B7280" text-anchor="start">validar(Zod) · rateLimit · idempotencia</text>
+<rect x="730" y="596" width="270" height="56" rx="8" fill="#F6F2FE" stroke="#B9A7E6" stroke-width="1.5"/>
+<text x="744" y="617" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="700" fill="#3B2380" text-anchor="start">Rutas + Controladores</text>
+<text x="744" y="636" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="11.5" font-weight="400" fill="#6B7280" text-anchor="start">HTTP ↔ caso de uso, sin lógica</text>
+<rect x="730" y="674" width="270" height="56" rx="8" fill="#F6F2FE" stroke="#B9A7E6" stroke-width="1.5"/>
+<text x="744" y="695" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="700" fill="#3B2380" text-anchor="start">Servicios</text>
+<text x="744" y="714" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="11.5" font-weight="400" fill="#6B7280" text-anchor="start">reglas de negocio y orquestación</text>
+<rect x="730" y="752" width="270" height="56" rx="8" fill="#F6F2FE" stroke="#B9A7E6" stroke-width="1.5"/>
+<text x="744" y="773" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="700" fill="#3B2380" text-anchor="start">Repositorios</text>
+<text x="744" y="792" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="11.5" font-weight="400" fill="#6B7280" text-anchor="start">solo EXEC SP con parámetros tipados</text>
+<line x1="865" y1="574" x2="865" y2="596" stroke="#374151" stroke-width="1.8" marker-end="url(#arr)"/>
+<line x1="865" y1="652" x2="865" y2="674" stroke="#374151" stroke-width="1.8" marker-end="url(#arr)"/>
+<line x1="865" y1="730" x2="865" y2="752" stroke="#374151" stroke-width="1.8" marker-end="url(#arr)"/>
+<text x="1020" y="516" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="700" fill="#3B2380" text-anchor="start">13 módulos de dominio</text>
+<rect x="1020" y="528" width="125" height="28" rx="5" fill="white" stroke="#B9A7E6" stroke-width="1.5"/>
+<text x="1082.5" y="547" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#3B2380" text-anchor="middle">auth</text>
+<rect x="1155" y="528" width="125" height="28" rx="5" fill="white" stroke="#B9A7E6" stroke-width="1.5"/>
+<text x="1217.5" y="547" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#3B2380" text-anchor="middle">usuarios</text>
+<rect x="1020" y="564" width="125" height="28" rx="5" fill="white" stroke="#B9A7E6" stroke-width="1.5"/>
+<text x="1082.5" y="583" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#3B2380" text-anchor="middle">direcciones</text>
+<rect x="1155" y="564" width="125" height="28" rx="5" fill="white" stroke="#B9A7E6" stroke-width="1.5"/>
+<text x="1217.5" y="583" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#3B2380" text-anchor="middle">catalogo</text>
+<rect x="1020" y="600" width="125" height="28" rx="5" fill="white" stroke="#B9A7E6" stroke-width="1.5"/>
+<text x="1082.5" y="619" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#3B2380" text-anchor="middle">inventario</text>
+<rect x="1155" y="600" width="125" height="28" rx="5" fill="white" stroke="#B9A7E6" stroke-width="1.5"/>
+<text x="1217.5" y="619" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#3B2380" text-anchor="middle">carrito</text>
+<rect x="1020" y="636" width="125" height="28" rx="5" fill="white" stroke="#B9A7E6" stroke-width="1.5"/>
+<text x="1082.5" y="655" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#3B2380" text-anchor="middle">cupones</text>
+<rect x="1155" y="636" width="125" height="28" rx="5" fill="white" stroke="#B9A7E6" stroke-width="1.5"/>
+<text x="1217.5" y="655" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#3B2380" text-anchor="middle">envios</text>
+<rect x="1020" y="672" width="125" height="28" rx="5" fill="white" stroke="#B9A7E6" stroke-width="1.5"/>
+<text x="1082.5" y="691" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#3B2380" text-anchor="middle">checkout</text>
+<rect x="1155" y="672" width="125" height="28" rx="5" fill="white" stroke="#B9A7E6" stroke-width="1.5"/>
+<text x="1217.5" y="691" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#3B2380" text-anchor="middle">pedidos</text>
+<rect x="1020" y="708" width="125" height="28" rx="5" fill="white" stroke="#B9A7E6" stroke-width="1.5"/>
+<text x="1082.5" y="727" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#3B2380" text-anchor="middle">reportes</text>
+<rect x="1155" y="708" width="125" height="28" rx="5" fill="white" stroke="#B9A7E6" stroke-width="1.5"/>
+<text x="1217.5" y="727" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#3B2380" text-anchor="middle">bitacora</text>
+<rect x="1020" y="744" width="260" height="28" rx="5" fill="white" stroke="#B9A7E6" stroke-width="1.5"/>
+<text x="1150.0" y="763" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#3B2380" text-anchor="middle">configuracion</text>
+<text x="1020" y="800" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="11.5" font-weight="400" fill="#6B7280" text-anchor="start">Un módulo solo usa a otro por su index.ts</text>
+<text x="1020" y="816" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="11.5" font-weight="400" fill="#6B7280" text-anchor="start">(regla verificada con lint)</text>
+<rect x="730" y="845" width="270" height="160" rx="8" fill="#FDF2F8" stroke="#E9B8D3" stroke-width="1.5"/>
+<text x="744" y="869" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="700" fill="#8A2E5D" text-anchor="start">Puertos → Adaptadores</text>
+<text x="744" y="895" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.5" font-weight="400" fill="#1F2937" text-anchor="start">PasarelaPago → PasarelaSimulada</text>
+<text x="744" y="919" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.5" font-weight="400" fill="#1F2937" text-anchor="start">Cache → Redis</text>
+<text x="744" y="943" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.5" font-weight="400" fill="#1F2937" text-anchor="start">ListaRevocados → Redis</text>
+<text x="744" y="967" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.5" font-weight="400" fill="#1F2937" text-anchor="start">Reloj → sistema</text>
+<rect x="1020" y="845" width="260" height="160" rx="8" fill="#FFF7E6" stroke="#EBC98A" stroke-width="1.5"/>
+<text x="1034" y="869" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="700" fill="#7A4E00" text-anchor="start">Tareas periódicas</text>
+<text x="1034" y="887" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="11.5" font-weight="400" fill="#6B7280" text-anchor="start">(coordinadas con sp_getapplock)</text>
+<text x="1034" y="911" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.5" font-weight="400" fill="#1F2937" text-anchor="start">Expirar sesiones · 1 min</text>
+<text x="1034" y="934" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.5" font-weight="400" fill="#1F2937" text-anchor="start">Conciliar pagos · 2 min</text>
+<text x="1034" y="957" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.5" font-weight="400" fill="#1F2937" text-anchor="start">Reintentar reembolsos · 5 min</text>
+<text x="1034" y="980" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.5" font-weight="400" fill="#1F2937" text-anchor="start">Expirar carritos invitado · 1 h</text>
+<rect x="730" y="1025" width="550" height="125" rx="8" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.5"/>
+<text x="744" y="1049" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="700" fill="#1F2937" text-anchor="start">Transversal</text>
+<text x="744" y="1073" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.2" font-weight="400" fill="#1F2937" text-anchor="start">Configuración validada con Zod al arrancar · .env (sin secretos en el repo)</text>
+<text x="744" y="1094" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.2" font-weight="400" fill="#1F2937" text-anchor="start">Errores centralizados: THROW 5xxxx en SP → código estable → HTTP</text>
+<text x="744" y="1115" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.2" font-weight="400" fill="#1F2937" text-anchor="start">OpenAPI 3.1 en /api/docs generado desde los esquemas Zod</text>
+<text x="744" y="1136" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.2" font-weight="400" fill="#1F2937" text-anchor="start">OpenTelemetry + pino (requestId, traceId, redacción de datos sensibles)</text>
+<rect x="1420" y="190" width="300" height="268" rx="8" fill="white" stroke="#CBD5E1" stroke-width="1.5"/>
+<path d="M1420 198 a8 8 0 0 1 8 -8 h284 a8 8 0 0 1 8 8 v26 h-300 z" fill="#B9412E"/>
+<text x="1434" y="212" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="15" font-weight="700" fill="white" text-anchor="start">sqlserver</text>
+<text x="1708" y="212" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="11.5" font-weight="500" fill="#FFFFFFD9" text-anchor="end">SQL Server 2022</text>
+<text x="1434" y="246" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="700" fill="#1F2937" text-anchor="start">Fuente de verdad del sistema</text>
+<text x="1434" y="268" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="400" fill="#1F2937" text-anchor="start">READ_COMMITTED_SNAPSHOT ON</text>
+<text x="1434" y="290" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="400" fill="#1F2937" text-anchor="start">SPs: UPDLOCK · XACT_ABORT</text>
+<text x="1434" y="312" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="400" fill="#1F2937" text-anchor="start">Errores de negocio: THROW 5xxxx</text>
+<text x="1434" y="334" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="400" fill="#1F2937" text-anchor="start">CHECK · UNIQUE · triggers</text>
+<text x="1434" y="356" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="400" fill="#1F2937" text-anchor="start">Kardex, historial y bitácora</text>
+<text x="1434" y="378" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="400" fill="#1F2937" text-anchor="start">inmutables</text>
+<text x="1434" y="400" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="400" fill="#6B7280" text-anchor="start">Login shopcart_app: solo EXECUTE</text>
+<text x="1434" y="422" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="400" fill="#6B7280" text-anchor="start">(DENY sobre tablas)</text>
+<rect x="1420" y="540" width="300" height="190" rx="8" fill="white" stroke="#CBD5E1" stroke-width="1.5"/>
+<path d="M1420 548 a8 8 0 0 1 8 -8 h284 a8 8 0 0 1 8 8 v26 h-300 z" fill="#B7791F"/>
+<text x="1434" y="562" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="15" font-weight="700" fill="white" text-anchor="start">redis</text>
+<text x="1708" y="562" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="11.5" font-weight="500" fill="#FFFFFFD9" text-anchor="end">7</text>
+<text x="1434" y="598" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="700" fill="#1F2937" text-anchor="start">Estado compartido entre réplicas</text>
+<text x="1434" y="622" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="400" fill="#1F2937" text-anchor="start">Rate limiting</text>
+<text x="1434" y="646" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="400" fill="#1F2937" text-anchor="start">Lista de usuarios revocados</text>
+<text x="1434" y="670" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="400" fill="#1F2937" text-anchor="start">Caché de reportes (por versión)</text>
+<text x="1434" y="694" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="13" font-weight="400" fill="#6B7280" text-anchor="start">Solo datos que se pueden perder</text>
+<line x1="1320" y1="300" x2="1420" y2="300" stroke="#374151" stroke-width="1.8" marker-end="url(#arr)"/>
+<text x="1370.0" y="268" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#374151" text-anchor="middle">mssql</text>
+<text x="1370.0" y="283" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#374151" text-anchor="middle">solo EXEC SP</text>
+<line x1="1320" y1="630" x2="1420" y2="630" stroke="#374151" stroke-width="1.8" marker-end="url(#arr)"/>
+<text x="1370.0" y="620" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#374151" text-anchor="middle">ioredis</text>
+<rect x="1780" y="190" width="220" height="150" rx="8" fill="white" stroke="#CBD5E1" stroke-width="1.5"/>
+<path d="M1780 198 a8 8 0 0 1 8 -8 h204 a8 8 0 0 1 8 8 v26 h-220 z" fill="#5B6470"/>
+<text x="1794" y="212" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="15" font-weight="700" fill="white" text-anchor="start">db-migrator</text>
+<text x="1988" y="212" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="11.5" font-weight="500" fill="#FFFFFFD9" text-anchor="end">one-shot</text>
+<text x="1794" y="246" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.2" font-weight="400" fill="#1F2937" text-anchor="start">V### migraciones (inmutables)</text>
+<text x="1794" y="268" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.2" font-weight="400" fill="#1F2937" text-anchor="start">R__ SPs · vistas · funciones</text>
+<text x="1794" y="290" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.2" font-weight="400" fill="#1F2937" text-anchor="start">S### semillas</text>
+<text x="1794" y="312" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.2" font-weight="400" fill="#6B7280" text-anchor="start">Checksum en HistorialMigracion</text>
+<line x1="1780" y1="265" x2="1720" y2="265" stroke="#4B5563" stroke-width="1.8" stroke-dasharray="7 5" marker-end="url(#arrD)"/>
+<text x="1750.0" y="238" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#4B5563" text-anchor="middle">DDL +</text>
+<text x="1750.0" y="253" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#4B5563" text-anchor="middle">semillas</text>
+<rect x="1772" y="800" width="236" height="210" rx="10" fill="none" stroke="#3E8E3A" stroke-width="1.4" stroke-dasharray="7 5"/>
+<text x="1786" y="824" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.5" font-weight="700" fill="#2F6E2C" text-anchor="start">perfil opcional: observability</text>
+<rect x="1786" y="840" width="208" height="155" rx="8" fill="white" stroke="#CBD5E1" stroke-width="1.5"/>
+<path d="M1786 848 a8 8 0 0 1 8 -8 h192 a8 8 0 0 1 8 8 v26 h-208 z" fill="#3E8E3A"/>
+<text x="1800" y="862" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="15" font-weight="700" fill="white" text-anchor="start">otel-lgtm</text>
+<text x="1982" y="862" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="11.5" font-weight="500" fill="#FFFFFFD9" text-anchor="end">Grafana :3001</text>
+<text x="1800" y="896" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.2" font-weight="400" fill="#1F2937" text-anchor="start">Loki · logs</text>
+<text x="1800" y="918" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.2" font-weight="400" fill="#1F2937" text-anchor="start">Tempo · trazas</text>
+<text x="1800" y="940" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.2" font-weight="400" fill="#1F2937" text-anchor="start">Prometheus · métricas</text>
+<text x="1800" y="962" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.2" font-weight="400" fill="#6B7280" text-anchor="start">Dashboards provisionados</text>
+<line x1="1320" y1="915" x2="1786" y2="915" stroke="#4B5563" stroke-width="1.8" stroke-dasharray="7 5" marker-end="url(#arrD)"/>
+<text x="1553.0" y="905" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#4B5563" text-anchor="middle">OTLP · trazas y logs de ambas réplicas</text>
+</svg>

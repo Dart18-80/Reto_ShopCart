@@ -1,0 +1,7 @@
+# Los scripts y el SQL se ejecutan dentro de contenedores Linux aunque el desarrollo sea en Windows.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff2 binary
