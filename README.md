@@ -1,1 +1,3 @@
-# Reto_ShopCart
+# ShopCart
+
+En construcción: ver [docs/](./docs/).

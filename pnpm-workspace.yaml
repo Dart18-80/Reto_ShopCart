@@ -2,3 +2,7 @@ packages:
   - apps/*
   - packages/*
   - database/migrator
+
+# Únicas dependencias autorizadas a ejecutar scripts de instalación.
+onlyBuiltDependencies:
+  - unrs-resolver
