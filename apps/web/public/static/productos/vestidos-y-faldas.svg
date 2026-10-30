@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Vestidos y faldas">
+  <rect width="400" height="400" fill="#a8436b"/>
+  <path d="M170 75 L230 75 L235 140 L300 300 L100 300 L165 140 Z" fill="#ffffff" fill-opacity="0.92" fill-rule="evenodd"/>
+  <text x="200" y="360" font-family="system-ui, sans-serif" font-size="26" font-weight="600" fill="#ffffff" text-anchor="middle">Vestidos y faldas</text>
+</svg>

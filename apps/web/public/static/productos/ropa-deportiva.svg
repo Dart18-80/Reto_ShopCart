@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Ropa deportiva">
+  <rect width="400" height="400" fill="#2e8b57"/>
+  <path d="M160 80 L145 120 L120 140 L120 300 L280 300 L280 140 L255 120 L240 80 Q200 115 160 80 Z" fill="#ffffff" fill-opacity="0.92" fill-rule="evenodd"/>
+  <text x="200" y="360" font-family="system-ui, sans-serif" font-size="26" font-weight="600" fill="#ffffff" text-anchor="middle">Ropa deportiva</text>
+</svg>

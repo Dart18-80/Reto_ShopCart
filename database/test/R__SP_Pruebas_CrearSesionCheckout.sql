@@ -1,5 +1,5 @@
 -- Solo existe en shopcart_test: crea una sesión de checkout Activa para el usuario, con sus
--- requisitos (carrito activo, municipio y método de envío). Reutiliza el carrito activo del usuario.
+-- requisitos. Reutiliza el carrito activo del usuario; el municipio y el método de envío salen de la semilla.
 CREATE OR ALTER PROCEDURE dbo.SP_Pruebas_CrearSesionCheckout
     @IDUsuario      INT,
     @IDUsuarioActor INT              = NULL,
@@ -22,13 +22,8 @@ BEGIN
             SET @IDCarrito = SCOPE_IDENTITY();
         END;
 
-        INSERT INTO dbo.Departamento (Nombre) VALUES (LEFT(N'D' + @Sufijo, 50));
-        DECLARE @IDDepartamento INT = SCOPE_IDENTITY();
-        INSERT INTO dbo.Municipio (IDDepartamento, Nombre) VALUES (@IDDepartamento, N'Municipio de prueba');
-        DECLARE @IDMunicipio INT = SCOPE_IDENTITY();
-        INSERT INTO dbo.MetodoEnvio (Codigo, Nombre, Costo, DiasMin, DiasMax)
-        VALUES (LEFT('E' + CONVERT(VARCHAR(32), @Sufijo), 20), N'Envío de prueba', 35, 3, 5);
-        DECLARE @IDMetodoEnvio INT = SCOPE_IDENTITY();
+        DECLARE @IDMunicipio   INT = (SELECT MIN(IDMunicipio) FROM dbo.Municipio);
+        DECLARE @IDMetodoEnvio INT = (SELECT IDMetodoEnvio FROM dbo.MetodoEnvio WHERE Codigo = 'Estandar');
 
         INSERT INTO dbo.SesionCheckout (
             IDUsuario, IDCarrito, Estado, HashContenido, NombreRecibe, TelefonoRecibe, IDMunicipio,

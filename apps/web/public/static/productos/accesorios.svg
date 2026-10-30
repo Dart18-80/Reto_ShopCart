@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Accesorios">
+  <rect width="400" height="400" fill="#b8860b"/>
+  <path d="M110 160 L290 160 L310 300 L90 300 Z M160 160 Q160 95 200 95 Q240 95 240 160 L225 160 Q225 110 200 110 Q175 110 175 160 Z" fill="#ffffff" fill-opacity="0.92" fill-rule="evenodd"/>
+  <text x="200" y="360" font-family="system-ui, sans-serif" font-size="26" font-weight="600" fill="#ffffff" text-anchor="middle">Accesorios</text>
+</svg>

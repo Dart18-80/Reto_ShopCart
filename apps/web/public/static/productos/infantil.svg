@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Infantil">
+  <rect width="400" height="400" fill="#e07b39"/>
+  <path d="M165 120 L135 135 L110 170 L135 185 L150 170 L150 280 L250 280 L250 170 L265 185 L290 170 L265 135 L235 120 Q200 145 165 120 Z" fill="#ffffff" fill-opacity="0.92" fill-rule="evenodd"/>
+  <text x="200" y="360" font-family="system-ui, sans-serif" font-size="26" font-weight="600" fill="#ffffff" text-anchor="middle">Infantil</text>
+</svg>

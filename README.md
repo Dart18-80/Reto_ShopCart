@@ -72,6 +72,19 @@ $env:DB_NOMBRE = 'shopcart_test'; pnpm db:migrar; Remove-Item Env:DB_NOMBRE   # 
 
 Un `V###` o `S###` ya aplicado **no se edita**: si cambia, el migrador falla. Se crea un script nuevo con el siguiente número.
 
+### Datos demo
+
+Las semillas cargan los catálogos fijos, los 22 departamentos y 340 municipios de Guatemala y un catálogo de ropa, calzado y accesorios (61 productos, 244 variantes, imágenes en `apps/web/public/static/productos/`). Cuentas de prueba:
+
+| Correo                 | Contraseña      | Rol                                                             |
+| ---------------------- | --------------- | --------------------------------------------------------------- |
+| `admin@shopcart.gt`    | `Admin2026!`    | Administrador                                                   |
+| `operador@shopcart.gt` | `Operador2026!` | Operador                                                        |
+| `cliente@shopcart.gt`  | `Cliente2026!`  | Cliente                                                         |
+| `cliente2@shopcart.gt` | `Cliente2026!`  | Cliente (para demostrar que un cliente no ve los datos de otro) |
+
+La variante `DEMO-CONCURRENCIA` es la única con una sola unidad: sirve para la demo de compra simultánea (RF-06).
+
 ### API (desarrollo, desde el host)
 
 Requiere SQL Server y Redis levantados y la base migrada:

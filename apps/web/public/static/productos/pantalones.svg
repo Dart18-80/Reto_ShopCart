@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Pantalones">
+  <rect width="400" height="400" fill="#3b4f7a"/>
+  <path d="M135 80 L265 80 L285 310 L225 310 L200 160 L175 310 L115 310 Z" fill="#ffffff" fill-opacity="0.92" fill-rule="evenodd"/>
+  <text x="200" y="360" font-family="system-ui, sans-serif" font-size="26" font-weight="600" fill="#ffffff" text-anchor="middle">Pantalones</text>
+</svg>

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Calzado">
+  <rect width="400" height="400" fill="#4a4a4a"/>
+  <path d="M90 200 L90 270 L320 270 Q330 230 290 220 L220 200 L200 160 L130 160 Q110 200 90 200 Z" fill="#ffffff" fill-opacity="0.92" fill-rule="evenodd"/>
+  <text x="200" y="360" font-family="system-ui, sans-serif" font-size="26" font-weight="600" fill="#ffffff" text-anchor="middle">Calzado</text>
+</svg>
