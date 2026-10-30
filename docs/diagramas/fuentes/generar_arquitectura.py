@@ -105,8 +105,8 @@ rect(710,450,590,720,fill="white",stroke="#B9A7E6",sw=1.4,rx=8)
 a('<path d="M710 458 a8 8 0 0 1 8 -8 h574 a8 8 0 0 1 8 8 v24 h-590 z" fill="#EDE7FA"/>')
 text(726,472,"Arquitectura interna de cada réplica",13.5,700,"#4C2F99")
 # layer stack
-layers=[("Middlewares transversales","requestId · autenticar · autorizar(rol)","validar(Zod) · rateLimit · idempotencia"),
-        ("Rutas + Controladores","HTTP ↔ caso de uso, sin lógica",None),
+layers=[("Middlewares transversales","requestId · autenticar · autorizar(rol)","rateLimit · idempotencia"),
+        ("Rutas + Controladores","manejar(Zod): valida y tipa la entrada (A-20)",None),
         ("Servicios","reglas de negocio y orquestación",None),
         ("Repositorios","solo EXEC SP con parámetros tipados",None)]
 y=500
@@ -122,11 +122,11 @@ for i in range(len(ys)-1):
     y0=ys[i][0]+ys[i][1]; y1=ys[i+1][0]
     arrow(865,y0,865,y1)
 # modules
-mx=1020; text(mx,516,"13 módulos de dominio",13,700,"#3B2380")
-mods=["auth","usuarios","direcciones","catalogo","inventario","carrito","cupones","envios","checkout","pedidos","reportes","bitacora","configuracion"]
+mx=1020; text(mx,516,"13 módulos de dominio + sistema",13,700,"#3B2380")
+mods=["auth","usuarios","direcciones","catalogo","inventario","carrito","cupones","envios","checkout","pedidos","reportes","bitacora","configuracion","sistema"]
 for i,m in enumerate(mods):
     r,c=divmod(i,2)
-    w=125 if not (i==12) else 260
+    w=125
     xx=mx+c*135; yy=528+r*36
     rect(xx,yy,w,28,fill="white",stroke="#B9A7E6",rx=5)
     text(xx+w/2,yy+19,m,12,600,"#3B2380",anchor="middle")
