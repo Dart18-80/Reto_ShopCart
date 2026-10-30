@@ -60,4 +60,16 @@ $env:DB_NOMBRE = 'shopcart_test'; pnpm db:migrar; Remove-Item Env:DB_NOMBRE   # 
 
 Un `V###` o `S###` ya aplicado **no se edita**: si cambia, el migrador falla. Se crea un script nuevo con el siguiente número.
 
+### API (desarrollo, desde el host)
+
+Requiere SQL Server y Redis levantados y la base migrada:
+
+```bash
+pnpm --filter @shopcart/api build
+pnpm --filter @shopcart/api start      # http://localhost:3000/api/v1/health · Swagger en /api/docs
+pnpm test                               # pruebas unitarias
+```
+
+Redis exige contraseña (`requirepass`). Su única fuente es `REDIS_URL` en `.env` (`redis://:<contraseña>@localhost:6379`): el contenedor de Redis la toma de ahí.
+
 > **Licencia de SQL Server:** el entorno usa la edición **Developer** (`MSSQL_PID=Developer`), gratuita para desarrollo y pruebas pero **no licenciada para producción**. En producción se usaría Standard o Enterprise (o Express, con sus límites).

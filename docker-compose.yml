@@ -42,10 +42,21 @@ services:
 
   redis:
     image: redis:7-alpine
+    environment:
+      REDIS_URL: ${REDIS_URL:?Define REDIS_URL en .env (ver .env.example)}
+    # La contraseña tiene una sola fuente: REDIS_URL (redis://:<contraseña>@host:puerto).
+    # Se extrae con expansión de parámetros de sh: lo que va entre "://:" y la última "@".
+    command:
+      - sh
+      - -c
+      - 'p="$${REDIS_URL#*://:}"; exec redis-server --requirepass "$${p%@*}"'
     ports:
       - '127.0.0.1:${REDIS_PUERTO:-6379}:6379'
     healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
+      # redis-cli -u lee "redis://:clave@" como usuario vacío y falla: se usa -a con la misma extracción.
+      test:
+        - CMD-SHELL
+        - 'p="$${REDIS_URL#*://:}"; redis-cli --no-auth-warning -a "$${p%@*}" ping | grep -q PONG'
       interval: 5s
       timeout: 3s
       retries: 5
