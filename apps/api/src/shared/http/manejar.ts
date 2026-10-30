@@ -35,6 +35,13 @@ export function manejar<E extends EsquemasEntrada>(
   handler: (entrada: Entrada<E>, res: Response) => void | Promise<void>,
 ): RequestHandler {
   return async (req, res, next) => {
+    // express.json() ignora un cuerpo declarado con otro tipo y el esquema vería un body vacío: el
+    // problema real es el tipo de contenido, no los campos.
+    const tipoDeclarado = req.get('Content-Type') !== undefined;
+    if (esquemas.body !== undefined && tipoDeclarado && req.is('application/json') === false) {
+      next(new AppError('CONTENIDO_NO_SOPORTADO'));
+      return;
+    }
     const errores: ErrorDeCampo[] = [];
     const entrada = Object.fromEntries(
       PARTES.map((parte) => [parte, validarParte(req, parte, esquemas[parte], errores)]),
