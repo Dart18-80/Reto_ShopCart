@@ -1,4 +1,5 @@
--- Solo existe en shopcart_test: crea un cliente con correo único y devuelve su ID.
+-- Solo existe en shopcart_test (los "insertar si no existe" usan UPDLOCK, HOLDLOCK porque varias pruebas
+-- corren a la vez sobre una base recién creada): crea un cliente con correo único y devuelve su ID.
 CREATE OR ALTER PROCEDURE dbo.SP_Pruebas_CrearUsuario
     @IDUsuarioActor INT              = NULL,
     @RolActor       VARCHAR(20)      = NULL,
@@ -10,7 +11,7 @@ BEGIN
 
     BEGIN TRY
         BEGIN TRAN;
-        IF NOT EXISTS (SELECT 1 FROM dbo.Rol WHERE Codigo = 'Cliente')
+        IF NOT EXISTS (SELECT 1 FROM dbo.Rol WITH (UPDLOCK, HOLDLOCK) WHERE Codigo = 'Cliente')
             INSERT INTO dbo.Rol (Codigo, Nombre) VALUES ('Cliente', N'Cliente');
 
         INSERT INTO dbo.Usuario (Correo, HashContrasena, Nombre, IDRol)

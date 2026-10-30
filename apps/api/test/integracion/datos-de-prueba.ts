@@ -32,3 +32,17 @@ export async function crearSesionCheckout(idUsuario: number): Promise<number> {
   });
   return fila.IDSesionCheckout;
 }
+
+export async function crearPedido(idUsuario: number): Promise<number> {
+  const fila = await unaFila<{ IDPedido: number }>('SP_Pruebas_CrearPedido', {
+    IDUsuario: { tipo: sql.Int, valor: idUsuario },
+  });
+  return fila.IDPedido;
+}
+
+export async function crearCupon(limiteUsosTotal: number): Promise<number> {
+  const fila = await unaFila<{ IDCupon: number }>('SP_Pruebas_CrearCupon', {
+    LimiteUsosTotal: { tipo: sql.Int, valor: limiteUsosTotal },
+  });
+  return fila.IDCupon;
+}

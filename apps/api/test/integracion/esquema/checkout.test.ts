@@ -4,11 +4,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ejecutarSP } from '../../../src/shared/db/index.js';
 import { conectarBaseDePruebas } from '../base-de-pruebas.js';
 import {
+  crearCupon,
   crearSesionCheckout,
   crearUsuario,
   ERROR_DE_CONSTRAINT,
   ERROR_DE_INDICE_UNICO,
-  unaFila,
 } from '../datos-de-prueba.js';
 
 let pool: sql.ConnectionPool | undefined;
@@ -20,13 +20,6 @@ beforeAll(async () => {
 afterAll(async () => {
   await pool?.close();
 });
-
-async function crearCupon(limiteUsosTotal: number): Promise<number> {
-  const fila = await unaFila<{ IDCupon: number }>('SP_Pruebas_CrearCupon', {
-    LimiteUsosTotal: { tipo: sql.Int, valor: limiteUsosTotal },
-  });
-  return fila.IDCupon;
-}
 
 function fijarUsosCupon(idCupon: number, usosComprometidos: number) {
   return ejecutarSP('SP_Pruebas_FijarUsosCupon', {

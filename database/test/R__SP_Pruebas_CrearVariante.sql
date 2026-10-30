@@ -1,4 +1,5 @@
--- Solo existe en shopcart_test: crea una variante con datos únicos (categoría, producto, SKU) y un
+-- Solo existe en shopcart_test (los "insertar si no existe" usan UPDLOCK, HOLDLOCK porque varias pruebas
+-- corren a la vez sobre una base recién creada): crea una variante con datos únicos (categoría, producto, SKU) y un
 -- usuario, y asegura los tipos de movimiento de entrada y salida. Cada prueba arma sus propios datos.
 CREATE OR ALTER PROCEDURE dbo.SP_Pruebas_CrearVariante
     @IDUsuarioActor INT              = NULL,
@@ -14,12 +15,12 @@ BEGIN
     BEGIN TRY
         BEGIN TRAN;
 
-        IF NOT EXISTS (SELECT 1 FROM dbo.Rol WHERE Codigo = 'Cliente')
+        IF NOT EXISTS (SELECT 1 FROM dbo.Rol WITH (UPDLOCK, HOLDLOCK) WHERE Codigo = 'Cliente')
             INSERT INTO dbo.Rol (Codigo, Nombre) VALUES ('Cliente', N'Cliente');
-        IF NOT EXISTS (SELECT 1 FROM dbo.TipoMovimiento WHERE Codigo = 'EntradaCompra')
+        IF NOT EXISTS (SELECT 1 FROM dbo.TipoMovimiento WITH (UPDLOCK, HOLDLOCK) WHERE Codigo = 'EntradaCompra')
             INSERT INTO dbo.TipoMovimiento (Codigo, Nombre, Signo, EsManual)
             VALUES ('EntradaCompra', N'Entrada por compra', 1, 1);
-        IF NOT EXISTS (SELECT 1 FROM dbo.TipoMovimiento WHERE Codigo = 'SalidaVenta')
+        IF NOT EXISTS (SELECT 1 FROM dbo.TipoMovimiento WITH (UPDLOCK, HOLDLOCK) WHERE Codigo = 'SalidaVenta')
             INSERT INTO dbo.TipoMovimiento (Codigo, Nombre, Signo, EsManual)
             VALUES ('SalidaVenta', N'Salida por venta', -1, 0);
 
