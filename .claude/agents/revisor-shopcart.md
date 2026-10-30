@@ -67,6 +67,9 @@ grep -rnEi "float|real|money|\bdatetime\b|\bn?text\b" database/ # tipos prohibid
 - Estado en memoria compartido entre peticiones: rompe las dos réplicas (RNF-2).
 - Una llamada externa (pasarela, Redis) dentro de una transacción de la base.
 - Una promesa sin `await` o sin manejo de error.
+- Violaciones de SOLID: un servicio que importa mssql, ioredis o Express (D); un puerto que mezcla
+  responsabilidades (I); un adaptador que no cumple el contrato de su puerto (L); una función o SP
+  que resuelve más de una operación (S).
 
 ## 4. MEDIO — calidad y defensa
 
@@ -76,6 +79,10 @@ grep -rnEi "float|real|money|\bdatetime\b|\bn?text\b" database/ # tipos prohibid
 - `SELECT *` en SPs o vistas.
 - Una decisión no evidente sin el comentario del porqué con su ID.
 - Nombres que no siguen la convención (dominio en español, `camelCase`, archivos `<modulo>.<capa>.ts`).
+- Clean code: nombres genéricos o abreviados, funciones largas o con varios niveles de
+  abstracción, anidamiento profundo, números mágicos, duplicación, código muerto, comentarios
+  que repiten el código.
+- Sobreingeniería: interfaces, clases o capas que ninguna historia necesita.
 
 ## 5. Formato del reporte
 

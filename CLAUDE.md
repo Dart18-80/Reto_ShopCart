@@ -90,6 +90,40 @@ Con `/kit:init typescript` (kit de Diego, `Dart18-80/claude-kit`): el agente `ty
 - Funciones pequeñas, sin comentarios obvios. Comenta el **porqué** cuando una decisión no es evidente y cita su ID (`// N-02: la garantía solo protege contra subidas`).
 - **Idioma:** a diferencia de la plantilla general del kit, aquí los nombres del dominio, los mensajes de commit y los comentarios van en **español**, porque el enunciado fija la nomenclatura de la base en español (`SP_Pedidos_CrearPedido`, `IDProducto`) y el código debe ser coherente con ella.
 
+### SOLID y clean code (aplican a todo el código nuevo y modificado)
+
+**SOLID, aplicado a esta arquitectura:**
+- **S · Responsabilidad única:** un módulo por dominio; cada capa tiene una sola razón para cambiar
+  (rutas → HTTP, servicio → caso de uso, repositorio → acceso a SPs); cada función hace una cosa;
+  cada SP resuelve una sola operación de negocio.
+- **O · Abierto/cerrado:** se extiende agregando, no modificando el núcleo: un adaptador nuevo para un
+  puerto (PasarelaPago), un código nuevo en el catálogo de errores, una fila nueva en
+  TransicionEstadoPedido. Prefiere mapas o tablas a cadenas de if/switch que crecen con cada caso.
+- **L · Sustitución de Liskov:** todo adaptador cumple el contrato completo de su puerto (mismas
+  entradas, salidas y errores); el adaptador simulado, uno real y los falsos de las pruebas son
+  intercambiables sin cambiar el servicio.
+- **I · Segregación de interfaces:** puertos pequeños y específicos (Cache, ListaRevocados, Reloj),
+  nunca un "RedisService" que lo haga todo; cada servicio depende solo de lo que usa.
+- **D · Inversión de dependencias:** los servicios dependen de puertos y tipos propios, nunca de
+  mssql, ioredis ni Express; todo se compone en app.ts.
+
+**Clean code:**
+- Nombres que revelan intención, en español en el dominio; sin abreviaturas ni nombres genéricos
+  (data, info, manager, helper, utils).
+- Funciones pequeñas, un solo nivel de abstracción, cláusulas de guarda en lugar de anidamiento.
+- Sin argumentos booleanos que cambian el comportamiento; separa comandos de consultas; sin efectos
+  secundarios ocultos.
+- Sin números ni cadenas mágicas: constantes con nombre o valores de ParametroSistema.
+- Sin duplicación, sin código muerto, sin exports ni dependencias sin uso.
+- Ningún error tragado en silencio; el manejo de errores separado de la lógica principal.
+- Comentarios: solo el porqué de lo no evidente, citando su ID cuando exista. Nada de narración,
+  historia del cambio, código comentado ni comentarios que repiten el código.
+- Pruebas legibles: un comportamiento por prueba, con estructura preparar / ejecutar / verificar.
+
+**Límite (KISS y YAGNI):** no crees interfaces, clases, capas ni patrones que ninguna historia
+necesita. Funciones y fábricas simples antes que jerarquías de clases. Un puerto solo existe si
+hay algo externo detrás. Si dudas entre una abstracción y código directo, elige lo directo y anótalo.
+
 ## No hacer
 
 - No instales dependencias que no estén en A-16 (`01-arquitectura.md` §13) sin decir cuál y por qué, y esperar la aprobación.
@@ -115,7 +149,7 @@ Swagger: `http://localhost:8080/api/docs`. Entorno de Diego: Windows con Docker 
 
 ## Definición de terminado
 
-Una historia está terminada cuando se cumplen **todos** sus criterios de aceptación y la definición de terminado de `docs/03-backlog.md` §2: lint y tipos en verde, sin SQL en el backend, SPs con su plantilla y nomenclatura, validación Zod, OpenAPI actualizado, pruebas del servicio (y de integración si hay reglas críticas), `docker compose up -d` funcionando desde cero y un commit con el formato acordado.
+Una historia está terminada cuando se cumplen **todos** sus criterios de aceptación y la definición de terminado de `docs/03-backlog.md` §2: lint y tipos en verde, sin SQL en el backend, SPs con su plantilla y nomenclatura, validación Zod, OpenAPI actualizado, pruebas del servicio (y de integración si hay reglas críticas), `docker compose up -d` funcionando desde cero y un commit con el formato acordado, y el código cumple la subsección SOLID y clean code del estándar de código.
 
 ## Resumen de cierre de cada historia
 

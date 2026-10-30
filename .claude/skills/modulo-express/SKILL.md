@@ -332,3 +332,5 @@ expect(resultados.filter((r) => r.status === 409)).toHaveLength(clientes.length 
 - [ ] Los montos son texto en JSON y `Decimal` en TypeScript.
 - [ ] Hay pruebas para cada criterio de aceptación, incluida la de aislamiento si el endpoint es de cliente.
 - [ ] `pnpm lint`, `pnpm typecheck` y las pruebas pasan, y se muestra su salida real.
+- [ ] Cumple la subsección SOLID y clean code de CLAUDE.md, sin abstracciones que ninguna
+  historia necesite.
