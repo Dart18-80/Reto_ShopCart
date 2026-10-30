@@ -24,19 +24,31 @@ Bash (Linux, macOS, Git Bash):
 
 ```bash
 cp .env.example .env              # y cambia los valores marcados como EJEMPLO
-docker compose up -d sqlserver redis
-docker compose ps                 # ambos servicios deben quedar "healthy"
+docker compose up -d              # SQL Server, Redis, migrador, api-1, api-2 y nginx
+docker compose ps                 # todo "healthy"; db-migrator "Exited (0)"
 ```
 
 PowerShell (Windows):
 
 ```powershell
 Copy-Item .env.example .env       # y cambia los valores marcados como EJEMPLO
-docker compose up -d sqlserver redis
-docker compose ps                 # ambos servicios deben quedar "healthy"
+docker compose up -d              # SQL Server, Redis, migrador, api-1, api-2 y nginx
+docker compose ps                 # todo "healthy"; db-migrator "Exited (0)"
 ```
 
-SQL Server y Redis solo se publican en `127.0.0.1`: son accesibles desde tu máquina (SSMS, Azure Data Studio, pruebas), no desde la red.
+Todo se sirve en <http://localhost:8080>: `/api/*` va a las réplicas y `/` a la web. API: `http://localhost:8080/api/v1/health` · Swagger: `http://localhost:8080/api/docs`.
+
+SQL Server, Redis y nginx solo se publican en `127.0.0.1`: son accesibles desde tu máquina (SSMS, Azure Data Studio, pruebas), no desde la red.
+
+### Balanceo entre réplicas (demo)
+
+```bash
+for i in 1 2 3 4; do curl -s -o /dev/null -D - localhost:8080/api/v1/health | grep -i x-instancia; done
+# X-Instancia alterna: api-1, api-2, api-1, api-2
+
+docker compose stop api-1         # la tienda sigue respondiendo, todo desde api-2
+docker compose start api-1        # nginx la reincorpora sola
+```
 
 ### Migraciones de base de datos
 

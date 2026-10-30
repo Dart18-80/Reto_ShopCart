@@ -587,8 +587,8 @@ Se detalla en historias al cerrar la Fase 1.
 | E0-H01 | Monorepo y estándares de código | Must | 0.5 | Hecha |
 | E0-H02 | Docker Compose base: SQL Server y Redis | Must | 0.5 | Hecha |
 | E0-H03 | Migrador de base de datos | Must | 0.75 | Hecha |
-| E0-H04 | Esqueleto de la API y piezas compartidas | Must | 0.75 | En revisión |
-| E0-H05 | Dos réplicas detrás de nginx | Must | 0.25 | Lista |
+| E0-H04 | Esqueleto de la API y piezas compartidas | Must | 0.75 | Hecha |
+| E0-H05 | Dos réplicas detrás de nginx | Must | 0.25 | En revisión |
 | E0-H06 | Base de pruebas | Should | 0.25 | Lista |
 | E1-H01 | Prueba de tablas ledger con llaves foráneas | Must | 0.25 | Propuesta |
 | E1-H02 | Tablas de seguridad, direcciones, catálogo e inventario | Must | 0.75 | Propuesta |

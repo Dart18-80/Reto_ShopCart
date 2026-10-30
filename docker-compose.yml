@@ -3,6 +3,21 @@ name: shopcart
 # Cada valor tiene una sola fuente en .env. Los puertos también: SQL Server y Redis escuchan dentro
 # del contenedor en el mismo DB_PORT / REDIS_PORT que se publica en el host.
 
+# A-03, RNF-2: dos réplicas idénticas de la API; solo cambian el host de SQL Server y de Redis
+# (dentro de la red de Compose) y el nombre de la réplica.
+x-api: &api
+  build:
+    context: .
+    dockerfile: apps/api/Dockerfile
+  image: shopcart-api:local
+  env_file: .env
+  depends_on:
+    db-migrator:
+      condition: service_completed_successfully
+    redis:
+      condition: service_healthy
+  restart: unless-stopped
+
 services:
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
@@ -62,6 +77,35 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+
+  api-1:
+    <<: *api
+    environment:
+      INSTANCIA_ID: api-1
+      DB_HOST: sqlserver
+      REDIS_HOST: redis
+
+  api-2:
+    <<: *api
+    environment:
+      INSTANCIA_ID: api-2
+      DB_HOST: sqlserver
+      REDIS_HOST: redis
+
+  # Balanceador y único origen: http://localhost:8080 (/api/* → api-1 y api-2; / → estáticos).
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    image: shopcart-web:local
+    ports:
+      - '127.0.0.1:8080:80'
+    depends_on:
+      api-1:
+        condition: service_healthy
+      api-2:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   sqlserver-datos:
