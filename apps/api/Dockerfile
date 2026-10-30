@@ -5,7 +5,6 @@ RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json apps/api/
 
-# 1. Compilación con todas las dependencias (TypeScript, tipos).
 FROM base AS build
 RUN pnpm install --frozen-lockfile --filter @shopcart/api
 COPY tsconfig.base.json ./
@@ -13,11 +12,10 @@ COPY apps/api/tsconfig.json apps/api/tsconfig.build.json apps/api/
 COPY apps/api/src apps/api/src
 RUN pnpm --filter @shopcart/api build
 
-# 2. Solo dependencias de producción.
 FROM base AS dependencias
 RUN pnpm install --frozen-lockfile --prod --filter @shopcart/api
 
-# 3. Imagen final: sin compilador, sin fuentes TypeScript y sin pnpm.
+# Imagen final sin compilador, fuentes TypeScript ni pnpm.
 FROM node:24-alpine
 ENV NODE_ENV=production
 WORKDIR /app

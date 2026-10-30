@@ -16,7 +16,7 @@ export function ejecutarConContexto<T>(contexto: ContextoPeticion, funcion: () =
   return almacen.run(contexto, funcion);
 }
 
-/** Devuelve el contexto de la petición en curso, o undefined en un job o fuera de una petición. */
+/** undefined en un job o fuera de una petición. */
 export function obtenerContexto(): ContextoPeticion | undefined {
   return almacen.getStore();
 }

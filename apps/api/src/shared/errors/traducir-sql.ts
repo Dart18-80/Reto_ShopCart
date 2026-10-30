@@ -12,7 +12,6 @@ export function numeroErrorSql(error: unknown): number | undefined {
   return typeof error.number === 'number' ? error.number : undefined;
 }
 
-/** Convierte un THROW de negocio (50000–59999) en AppError; cualquier otro error devuelve undefined. */
 export function traducirErrorSql(error: unknown): AppError | undefined {
   const numero = numeroErrorSql(error);
   if (numero === undefined || numero < RANGO_NEGOCIO.desde || numero > RANGO_NEGOCIO.hasta) {

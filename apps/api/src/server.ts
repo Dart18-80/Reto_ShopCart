@@ -32,8 +32,8 @@ async function iniciar(): Promise<void> {
     logger.info({ puerto: config.puerto, entorno: config.entorno }, 'API escuchando');
   });
 
-  // Apagado ordenado: deja de aceptar conexiones, termina las peticiones en curso y cierra recursos.
-  const apagar = (senal: string): void => {
+  // servidor.close deja de aceptar conexiones pero espera a que terminen las peticiones en curso.
+  const apagarOrdenadamente = (senal: string): void => {
     logger.info({ senal }, 'Apagando la API');
     const forzar = setTimeout(() => {
       logger.error('El apagado tardó demasiado; se fuerza la salida');
@@ -48,8 +48,8 @@ async function iniciar(): Promise<void> {
       });
     });
   };
-  process.once('SIGTERM', apagar);
-  process.once('SIGINT', apagar);
+  process.once('SIGTERM', apagarOrdenadamente);
+  process.once('SIGINT', apagarOrdenadamente);
 }
 
 iniciar().catch((error: unknown) => {

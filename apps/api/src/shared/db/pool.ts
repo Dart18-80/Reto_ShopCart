@@ -15,7 +15,7 @@ export function conectarPool(config: ConfiguracionBaseDatos): Promise<sql.Connec
   }).connect();
 }
 
-/** Adaptador del puerto ConexionSP sobre mssql: request.execute() solo acepta el nombre de un SP. */
+/** request.execute() solo acepta el nombre de un SP: nunca texto SQL. */
 export function conexionMssql(pool: sql.ConnectionPool): ConexionSP {
   return {
     async ejecutar(nombre, parametros) {

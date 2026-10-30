@@ -14,7 +14,7 @@ export interface ParametroSP {
 
 export type ParametrosSP = Record<string, ParametroSP>;
 
-/** Puerto hacia SQL Server: ejecuta un SP y devuelve sus conjuntos de resultados. */
+/** Puerto hacia SQL Server. */
 export interface ConexionSP {
   ejecutar(nombre: NombreSP, parametros: ParametrosSP): Promise<unknown[][]>;
 }

@@ -27,10 +27,7 @@ export function leerDependencias(contenido: string): string[] {
     .filter((nombre) => nombre.length > 0);
 }
 
-/**
- * Ordena los R__ por tipo (FU → VW → SP → TR) y, dentro de cada tipo, alfabéticamente respetando las
- * dependencias declaradas. Una dependencia solo puede apuntar a un objeto del mismo tipo.
- */
+/** Dentro de cada tipo, orden alfabético que respeta las dependencias declaradas (solo del mismo tipo). */
 export function ordenarProgramables<T extends Programable>(programables: T[]): T[] {
   const porNombre = new Map(programables.map((p) => [p.nombre, p]));
   validarDependencias(programables, porNombre);
