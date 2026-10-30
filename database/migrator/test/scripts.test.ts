@@ -51,4 +51,49 @@ describe('dividirEnLotes', () => {
   it('descarta los lotes vacíos', () => {
     expect(dividirEnLotes('GO\n\nGO\nSELECT 1;\nGO\n')).toEqual(['SELECT 1;']);
   });
+
+  it('no corta en un GO que está dentro de un comentario de bloque', () => {
+    const script = '/* Ejemplo de uso:\nGO\n*/\nSELECT 1;';
+
+    expect(dividirEnLotes(script)).toEqual([script]);
+  });
+
+  it('respeta comentarios de bloque anidados, como T-SQL', () => {
+    const script = '/* externo /* interno */\nGO\n*/\nSELECT 1;';
+
+    expect(dividirEnLotes(script)).toEqual([script]);
+  });
+
+  it('no corta en un GO que está dentro de una cadena de varias líneas', () => {
+    const script = "SELECT N'primera línea\nGO\núltima línea';";
+
+    expect(dividirEnLotes(script)).toEqual([script]);
+  });
+
+  it('una comilla escapada no cierra la cadena', () => {
+    const script = "SELECT N'it''s\nGO\nfin';";
+
+    expect(dividirEnLotes(script)).toEqual([script]);
+  });
+
+  it('una comilla dentro de un comentario de línea no abre una cadena', () => {
+    expect(dividirEnLotes("SELECT 1; -- it's\nGO\nSELECT 2;")).toEqual([
+      "SELECT 1; -- it's",
+      'SELECT 2;',
+    ]);
+  });
+
+  it('corta en el GO que sigue a un comentario de bloque ya cerrado', () => {
+    expect(dividirEnLotes('/* nota */\nSELECT 1;\nGO\nSELECT 2;')).toEqual([
+      '/* nota */\nSELECT 1;',
+      'SELECT 2;',
+    ]);
+  });
+
+  it('tilde y Unicode no alteran el corte', () => {
+    expect(dividirEnLotes("SELECT N'Camión ñandú 🚚';\nGO\nSELECT N'Sololá';")).toEqual([
+      "SELECT N'Camión ñandú 🚚';",
+      "SELECT N'Sololá';",
+    ]);
+  });
 });

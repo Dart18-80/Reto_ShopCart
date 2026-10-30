@@ -42,7 +42,7 @@ export function carpetasPara(baseDatos: string): readonly Carpeta[] {
 
 const BOM = String.fromCharCode(0xfeff);
 
-const SEPARADOR_GO = /^[ \t]*GO[ \t]*(?:--.*)?$/im;
+const SEPARADOR_GO = /^[ \t]*GO[ \t]*(?:--.*)?$/i;
 
 // Se normaliza antes del hash para que un checkout con CRLF o un BOM no cuenten como "script modificado".
 export function normalizar(contenido: string): string {
@@ -55,10 +55,64 @@ export function calcularChecksum(contenido: string): Buffer {
 }
 
 export function dividirEnLotes(contenido: string): string[] {
-  return normalizar(contenido)
-    .split(SEPARADOR_GO)
-    .map((lote) => lote.trim())
-    .filter((lote) => lote.length > 0);
+  const lotes: string[] = [];
+  let lineasDelLote: string[] = [];
+  let estado: EstadoLexico = { tipo: 'codigo' };
+
+  for (const linea of normalizar(contenido).split('\n')) {
+    // Un GO solo separa si la línea empieza fuera de comentarios de bloque, cadenas e identificadores.
+    if (estado.tipo === 'codigo' && SEPARADOR_GO.test(linea)) {
+      lotes.push(lineasDelLote.join('\n'));
+      lineasDelLote = [];
+      continue;
+    }
+    lineasDelLote.push(linea);
+    estado = recorrerLinea(linea, estado);
+  }
+  lotes.push(lineasDelLote.join('\n'));
+
+  return lotes.map((lote) => lote.trim()).filter((lote) => lote.length > 0);
+}
+
+type EstadoLexico =
+  | { tipo: 'codigo' }
+  | { tipo: 'comentario'; profundidad: number }
+  | { tipo: 'delimitado'; cierre: "'" | '"' | ']' };
+
+const CIERRE_DE_DELIMITADOR: Readonly<Record<string, "'" | '"' | ']'>> = {
+  "'": "'",
+  '"': '"',
+  '[': ']',
+};
+
+/** Estado léxico al final de la línea. T-SQL anida los comentarios de bloque y escapa duplicando el cierre. */
+function recorrerLinea(linea: string, inicial: EstadoLexico): EstadoLexico {
+  let estado = inicial;
+  for (let i = 0; i < linea.length; i++) {
+    const actual = linea.charAt(i);
+    const par = linea.slice(i, i + 2);
+
+    if (estado.tipo === 'comentario') {
+      if (par === '/*' || par === '*/') {
+        const profundidad = estado.profundidad + (par === '/*' ? 1 : -1);
+        estado = profundidad === 0 ? { tipo: 'codigo' } : { tipo: 'comentario', profundidad };
+        i++;
+      }
+    } else if (estado.tipo === 'delimitado') {
+      if (actual !== estado.cierre) continue;
+      if (linea.charAt(i + 1) === estado.cierre) i++;
+      else estado = { tipo: 'codigo' };
+    } else if (par === '--') {
+      return estado;
+    } else if (par === '/*') {
+      estado = { tipo: 'comentario', profundidad: 1 };
+      i++;
+    } else {
+      const cierre = CIERRE_DE_DELIMITADOR[actual];
+      if (cierre !== undefined) estado = { tipo: 'delimitado', cierre };
+    }
+  }
+  return estado;
 }
 
 export async function leerScripts(
