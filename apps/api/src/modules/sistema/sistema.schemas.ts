@@ -1,6 +1,6 @@
 import { z } from '../../shared/openapi/zod.js';
 
-export const estadoSaludSchema = z
+const estadoSaludSchema = z
   .object({
     estado: z.enum(['ok', 'degradado', 'caido']),
     instancia: z.string().openapi({ example: 'api-1' }),

@@ -1,9 +1,17 @@
 import type { ErrorRequestHandler, RequestHandler, Response } from 'express';
 import type { Logger } from 'pino';
 import { obtenerContexto } from '../http/contexto.js';
+import { ENCABEZADO_REQUEST_ID } from '../http/request-id.js';
 import { AppError } from './app-error.js';
+import type { CodigoError } from './catalogo.js';
 
 const ESTADO_PRIMER_ERROR_INTERNO = 500;
+
+// express.json() marca sus errores con la propiedad `type`; un caso nuevo se agrega aquí.
+const ERRORES_DEL_PARSER_JSON: Readonly<Record<string, CodigoError>> = {
+  'entity.parse.failed': 'JSON_INVALIDO',
+  'entity.too.large': 'CUERPO_DEMASIADO_GRANDE',
+};
 
 interface RespuestaError {
   error: {
@@ -53,18 +61,17 @@ function cuerpoDeError(appError: AppError, requestId: string): RespuestaError {
 }
 
 function requestIdDe(res: Response): string {
-  return obtenerContexto()?.requestId ?? res.getHeader('X-Request-Id')?.toString() ?? '';
+  return obtenerContexto()?.requestId ?? res.getHeader(ENCABEZADO_REQUEST_ID)?.toString() ?? '';
 }
 
 function aAppError(error: unknown): AppError {
   if (error instanceof AppError) return error;
   const tipo = errorDelParserJson(error);
-  if (tipo === 'entity.parse.failed') return new AppError('JSON_INVALIDO');
-  if (tipo === 'entity.too.large') return new AppError('CUERPO_DEMASIADO_GRANDE');
+  const codigoDelParser = tipo === undefined ? undefined : ERRORES_DEL_PARSER_JSON[tipo];
+  if (codigoDelParser !== undefined) return new AppError(codigoDelParser);
   return new AppError('ERROR_INTERNO', undefined, undefined, { cause: error });
 }
 
-// express.json() marca sus errores con la propiedad `type`.
 function errorDelParserJson(error: unknown): string | undefined {
   if (typeof error !== 'object' || error === null || !('type' in error)) return undefined;
   return typeof error.type === 'string' ? error.type : undefined;
