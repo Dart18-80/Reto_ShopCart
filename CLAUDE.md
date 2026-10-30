@@ -75,7 +75,7 @@ Con `/kit:init typescript` (kit de Diego, `Dart18-80/claude-kit`): el agente `ty
 1. **Plan:** el alcance y los criterios de aceptación de la historia **son** el plan. Solo en las historias grandes (E3-H03, E4-H01, E5-H01, E5-H03, E6-H03) escribe primero un plan corto con `writing-plans` y espera la aprobación de Diego.
 2. **TDD:** con `test-driven-development`. Cada criterio de aceptación se convierte primero en una prueba que falla; las reglas de un SP se prueban con integración contra `shopcart_test`.
 3. **Verificación:** antes del resumen de cierre, `verification-before-completion`, mostrando la salida real de `pnpm lint`, `pnpm typecheck` y las pruebas.
-4. **Revisión:** en las historias de E5 y al cerrar cada épica, ejecuta `revisor-shopcart` y `typescript-reviewer` sobre el diff y corrige todo lo CRÍTICO y ALTO antes de entregar.
+4. **Revisión:** en las historias de E5 y al cerrar cada épica, ejecuta `revisor-shopcart` y `typescript-reviewer` sobre el diff y corrige todo lo CRÍTICO y ALTO antes de entregar. Al cerrar cada épica, ejecuta además `/validar <épica>` (`.claude/commands/validar.md`).
 5. **Errores sin causa clara:** `systematic-debugging`, nunca cambios al azar.
 6. **No uses `brainstorming` para reglas de negocio:** esas decisiones son de Diego y ya están en `docs/`. Si falta una, detente y pregunta.
 
