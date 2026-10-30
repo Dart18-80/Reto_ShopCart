@@ -2,7 +2,7 @@
 import sys, re
 import os
 AQUI=os.path.dirname(os.path.abspath(__file__))
-src=open(os.path.join(AQUI,'tablas_y_relaciones.py')).read()
+src=open(os.path.join(AQUI,'tablas_y_relaciones.py'),encoding="utf-8").read()
 # reuse table + relation definitions from er.py
 ns={}
 exec(src.split("def esc")[0].replace("out = sys.argv[1]","out=None"), ns)
@@ -51,5 +51,5 @@ for a,(title,ms,rd) in AREAS.items():
     for p,c,pc,cc in rels:
         L.append(f'"{p}" -> "{c}" [arrowtail={tails[pc]}, arrowhead={heads[cc]}];')
     L.append('}')
-    open(os.path.join(AQUI,"..",f"modelo-datos-area-{a.lower()}.dot"),"w").write("\n".join(L))
+    open(os.path.join(AQUI,"..",f"modelo-datos-area-{a.lower()}.dot"),"w",encoding="utf-8",newline="\n").write("\n".join(L))
 print("ok")
