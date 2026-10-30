@@ -347,7 +347,7 @@
 
 ### E3-H06 · Inventario y kardex — `Must` · 0.75 h (+ `Could` 0.25 h)
 **Alcance**
-- `SP_Inventario_RegistrarMovimiento` (**único** punto que modifica `ExistenciaFisica` y escribe el kardex, con bloqueo de la variante).
+- `SP_Inventario_RegistrarMovimiento` (**único** punto que modifica `ExistenciaFisica` y escribe el kardex, con bloqueo de la variante). **Ya existe:** se adelantó en E1-H06 para que la semilla S004 cargue las existencias iniciales a través de él, con sus pruebas de integración. Esta historia solo agrega los SPs de entrada y ajuste y los endpoints.
 - Operador: `POST /inventario/entradas`, `POST /inventario/ajustes` (motivo obligatorio), `GET /inventario/kardex?variante=` (paginado), `GET /inventario/existencias` (física, reservada y disponible), `GET /inventario/conciliacion`.
 - *Could:* `GET /inventario/bodega` con `VW_Inventario_ExistenciaBodega`.
 
@@ -609,7 +609,7 @@ Se detalla en historias al cerrar la Fase 1.
 | E1-H03 | Tablas de carrito, cupones, envíos, parámetros y checkout | Must | 0.5 | En revisión |
 | E1-H04 | Tablas de pedidos, devoluciones, reembolsos y bitácora con sus triggers | Must | 0.75 | En revisión |
 | E1-H05 | Funciones y vistas base | Must | 0.5 | En revisión |
-| E1-H06 | Semillas de catálogos, geografía, usuarios y catálogo demo | Must | 0.75 | En revisión |
+| E1-H06 | Semillas de catálogos, geografía, usuarios y catálogo demo | Must | 0.75 | Hecha |
 | E2-H01 | Registro e inicio de sesión | Must | 0.75 | Lista |
 | E2-H02 | Rotación del refresh token y logout | Must | 0.5 | Lista |
 | E2-H03 | Autenticación, autorización y revocación | Must | 0.5 | Lista |

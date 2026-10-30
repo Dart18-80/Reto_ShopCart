@@ -1,10 +1,10 @@
 -- S004: catálogo demo de una cadena de ropa, calzado y accesorios en Guatemala (E1-H06).
--- Precios en quetzales con IVA incluido. Toda existencia inicial entra por el kardex con la misma
--- cantidad que queda en Variante.ExistenciaFisica, así VW_Inventario_Conciliacion queda vacía (N-07).
--- La semilla actúa como el administrador demo: los triggers de bitácora lo registran como autor.
+-- Precios en quetzales con IVA incluido. Las variantes nacen sin existencia y toda existencia inicial
+-- entra con SP_Inventario_RegistrarMovimiento, así VW_Inventario_Conciliacion queda vacía (N-07).
+-- La semilla actúa como el administrador demo: el kardex y la bitácora lo registran como autor.
+-- El migrador corre el script dentro de una transacción, que es la que exige el SP interno.
 
 DECLARE @IDAdmin INT = (SELECT IDUsuario FROM dbo.Usuario WHERE CorreoNormalizado = N'admin@shopcart.gt');
-DECLARE @IDTipoEntrada INT = (SELECT IDTipoMovimiento FROM dbo.TipoMovimiento WHERE Codigo = 'EntradaCompra');
 DECLARE @FechaInicial DATETIME2(3) = DATEADD(DAY, -90, SYSUTCDATETIME());
 DECLARE @FechaCambioPrecio DATETIME2(3) = DATEADD(DAY, -20, SYSUTCDATETIME());
 
@@ -216,8 +216,8 @@ SET    Existencia = CASE
                         ELSE 10 + (Numero * 7) % 41
                     END;
 
-INSERT INTO dbo.Variante (IDProducto, SKU, FirmaAtributos, DescripcionAtributos, ExistenciaFisica)
-SELECT v.IDProducto, v.SKU, v.FirmaAtributos, v.DescripcionAtributos, v.Existencia
+INSERT INTO dbo.Variante (IDProducto, SKU, FirmaAtributos, DescripcionAtributos)
+SELECT v.IDProducto, v.SKU, v.FirmaAtributos, v.DescripcionAtributos
 FROM   @Variante AS v
 WHERE  NOT EXISTS (SELECT 1 FROM dbo.Variante WHERE SKU = v.SKU);
 
@@ -255,14 +255,27 @@ JOIN   dbo.Variante AS dv ON dv.SKU = v.SKU
 LEFT JOIN @ConHistorial AS h ON h.SKU = v.SKU
 WHERE  NOT EXISTS (SELECT 1 FROM dbo.PrecioVariante WHERE IDVariante = dv.IDVariante AND VigenteHasta IS NULL);
 
--- N-07: la entrada inicial de cada variante con existencia, con el mismo saldo que quedó en la variante.
-INSERT INTO dbo.MovimientoKardex (IDVariante, IDTipoMovimiento, Signo, Cantidad, ExistenciaAnterior,
-                                  ExistenciaResultante, Motivo, Referencia, IDUsuario, Fecha)
-SELECT dv.IDVariante, @IDTipoEntrada, 1, dv.ExistenciaFisica, 0, dv.ExistenciaFisica,
-       N'Inventario inicial', N'S004__catalogo_demo', @IDAdmin, @FechaInicial
+-- N-07: una entrada inicial por variante con existencia, a través del único SP que escribe el kardex.
+DECLARE @Entrada TABLE (IDVariante INT NOT NULL PRIMARY KEY, Cantidad INT NOT NULL);
+INSERT INTO @Entrada (IDVariante, Cantidad)
+SELECT dv.IDVariante, v.Existencia
 FROM   @Variante AS v
 JOIN   dbo.Variante AS dv ON dv.SKU = v.SKU
-WHERE  dv.ExistenciaFisica > 0
+WHERE  v.Existencia > 0
   AND  NOT EXISTS (SELECT 1 FROM dbo.MovimientoKardex WHERE IDVariante = dv.IDVariante);
+
+DECLARE @IDVariante INT, @Cantidad INT;
+SELECT TOP (1) @IDVariante = IDVariante, @Cantidad = Cantidad FROM @Entrada ORDER BY IDVariante;
+WHILE @IDVariante IS NOT NULL
+BEGIN
+    EXEC dbo.SP_Inventario_RegistrarMovimiento
+         @IDVariante = @IDVariante, @CodigoTipo = 'EntradaCompra', @Cantidad = @Cantidad,
+         @Motivo = N'Inventario inicial', @Referencia = N'S004__catalogo_demo',
+         @IDPedido = NULL, @IDDevolucion = NULL;
+
+    DELETE FROM @Entrada WHERE IDVariante = @IDVariante;
+    SET @IDVariante = NULL;
+    SELECT TOP (1) @IDVariante = IDVariante, @Cantidad = Cantidad FROM @Entrada ORDER BY IDVariante;
+END;
 
 EXEC dbo.SP_Sistema_EstablecerContexto;

@@ -577,7 +577,7 @@ UQ `(IDSesionCheckout, IDVariante)`. **Invariante (lo valida el SP):** `SUM(Desc
 
 ### 3.9 Pedidos
 
-**`EstadoPedido`** (semilla): `IDEstadoPedido` PK, `Codigo VARCHAR(20)` UQ (`Pagado`, `EnPreparacion`, `Despachado`, `Entregado`, `Cancelado`, `DevueltoParcial`, `Devuelto`), `Nombre NVARCHAR(40)`, `EsFinal BIT`, `Orden TINYINT`.
+**`EstadoPedido`** (semilla): `IDEstadoPedido` PK, `Codigo VARCHAR(20)` UQ (`Pagado`, `EnPreparacion`, `Despachado`, `Entregado`, `Cancelado`, `DevueltoParcial`, `Devuelto`), `Nombre NVARCHAR(40)`, `EsFinal BIT` (1 = estado sin transiciones de salida: `Cancelado` y `Devuelto`), `Orden TINYINT`.
 
 **`TransicionEstadoPedido`** (semilla)
 
