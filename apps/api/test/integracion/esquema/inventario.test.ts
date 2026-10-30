@@ -2,13 +2,7 @@ import sql from 'mssql';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ejecutarSP } from '../../../src/shared/db/index.js';
 import { conectarBaseDePruebas } from '../base-de-pruebas.js';
-
-interface VarianteDePrueba {
-  IDVariante: number;
-  IDUsuario: number;
-  IDTipoEntrada: number;
-  IDTipoSalida: number;
-}
+import { crearVariante, ERROR_DE_CONSTRAINT, type VarianteDePrueba } from '../datos-de-prueba.js';
 
 interface Movimiento {
   idTipoMovimiento: number;
@@ -17,8 +11,6 @@ interface Movimiento {
   existenciaAnterior: number;
   existenciaResultante: number;
 }
-
-const ERROR_DE_CONSTRAINT = 547;
 
 let pool: sql.ConnectionPool | undefined;
 
@@ -29,12 +21,6 @@ beforeAll(async () => {
 afterAll(async () => {
   await pool?.close();
 });
-
-async function crearVariante(): Promise<VarianteDePrueba> {
-  const [variante] = await ejecutarSP<VarianteDePrueba>('SP_Pruebas_CrearVariante');
-  if (variante === undefined) throw new Error('SP_Pruebas_CrearVariante no devolvió la variante');
-  return variante;
-}
 
 function insertarMovimiento(variante: VarianteDePrueba, movimiento: Movimiento) {
   return ejecutarSP('SP_Pruebas_InsertarMovimientoKardex', {

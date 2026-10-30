@@ -1,0 +1,29 @@
+-- Solo existe en shopcart_test: crea un cliente con correo único y devuelve su ID.
+CREATE OR ALTER PROCEDURE dbo.SP_Pruebas_CrearUsuario
+    @IDUsuarioActor INT              = NULL,
+    @RolActor       VARCHAR(20)      = NULL,
+    @RequestId      UNIQUEIDENTIFIER = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    BEGIN TRY
+        BEGIN TRAN;
+        IF NOT EXISTS (SELECT 1 FROM dbo.Rol WHERE Codigo = 'Cliente')
+            INSERT INTO dbo.Rol (Codigo, Nombre) VALUES ('Cliente', N'Cliente');
+
+        INSERT INTO dbo.Usuario (Correo, HashContrasena, Nombre, IDRol)
+        SELECT N'prueba-' + CONVERT(NVARCHAR(36), NEWID()) + N'@shopcart.test', 'hash-de-prueba',
+               N'Usuario de prueba', IDRol
+        FROM dbo.Rol WHERE Codigo = 'Cliente';
+        COMMIT;
+
+        SELECT CONVERT(INT, SCOPE_IDENTITY()) AS IDUsuario;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK;
+        THROW;
+    END CATCH
+END
+GO
