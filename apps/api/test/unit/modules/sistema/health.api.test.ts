@@ -96,6 +96,28 @@ describe('GET /api/v1/health', () => {
     expect(datos.estado).toBe('degradado');
   });
 
+  it('con la base y Redis caídos responde 503 y reporta ambos', async () => {
+    ejecutar.mockRejectedValue(new Error('Failed to connect'));
+
+    const respuesta = await request(crearAppDePrueba(REDIS_DETENIDO)).get('/api/v1/health');
+
+    expect(respuesta.status).toBe(503);
+    expect(leerDatos(respuesta, saludSchema)).toMatchObject({
+      estado: 'caido',
+      baseDatos: 'caida',
+      redis: 'degradado',
+    });
+  });
+
+  it('si SP_Sistema_Health no devuelve filas, la base cuenta como caída', async () => {
+    ejecutar.mockResolvedValue([[]]);
+
+    const respuesta = await request(crearAppDePrueba(REDIS_DISPONIBLE)).get('/api/v1/health');
+
+    expect(respuesta.status).toBe(503);
+    expect(leerDatos(respuesta, saludSchema).baseDatos).toBe('caida');
+  });
+
   it('con la base caída responde 503 para que el balanceador saque la réplica', async () => {
     ejecutar.mockRejectedValue(new Error('Failed to connect'));
 

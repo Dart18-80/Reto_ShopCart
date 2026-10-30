@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { crearApp } from '../../src/app.js';
 import { registroOpenApi } from '../../src/shared/openapi/index.js';
+import { leerError } from './respuestas.js';
 
 // Las cabeceras se prueban sobre el documento OpenAPI: no necesita base de datos y pasa por los
 // mismos middlewares que cualquier otra ruta.
@@ -103,5 +104,53 @@ describe('OpenAPI', () => {
 
     expect(respuesta.status).toBe(200);
     expect(respuesta.text).toContain('swagger-ui');
+  });
+});
+
+describe('rutas y métodos que no existen', () => {
+  it.each([
+    ['POST', '/api/v1/health'],
+    ['DELETE', '/api/v1/health'],
+    ['GET', '/api/v1/no-existe'],
+    ['GET', '/no-existe'],
+  ] as const)('%s %s responde 404 NO_ENCONTRADO con el formato estándar', async (metodo, ruta) => {
+    const agente = request(crearAppDePrueba());
+    const respuesta = await (metodo === 'GET'
+      ? agente.get(ruta)
+      : metodo === 'POST'
+        ? agente.post(ruta)
+        : agente.delete(ruta));
+
+    expect(respuesta.status).toBe(404);
+    expect(respuesta.get('Content-Type')).toMatch(/application\/json/);
+    expect(leerError(respuesta)).toMatchObject({
+      codigo: 'NO_ENCONTRADO',
+      requestId: respuesta.get('X-Request-Id'),
+    });
+  });
+});
+
+describe('límite del cuerpo JSON (100 kb)', () => {
+  const LIMITE_BYTES = 100 * 1024;
+  // {"x":"…"} ocupa 8 bytes además del relleno.
+  const cuerpoDe = (bytes: number) => `{"x":"${'a'.repeat(bytes - 8)}"}`;
+
+  it('un cuerpo de exactamente 100 kb se acepta (llega al ruteo y responde 404)', async () => {
+    const respuesta = await request(crearAppDePrueba())
+      .post('/api/v1/no-existe')
+      .set('Content-Type', 'application/json')
+      .send(cuerpoDe(LIMITE_BYTES));
+
+    expect(respuesta.status).toBe(404);
+  });
+
+  it('un byte más responde 413 CUERPO_DEMASIADO_GRANDE', async () => {
+    const respuesta = await request(crearAppDePrueba())
+      .post('/api/v1/no-existe')
+      .set('Content-Type', 'application/json')
+      .send(cuerpoDe(LIMITE_BYTES + 1));
+
+    expect(respuesta.status).toBe(413);
+    expect(leerError(respuesta).codigo).toBe('CUERPO_DEMASIADO_GRANDE');
   });
 });
