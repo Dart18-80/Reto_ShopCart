@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 import {
   ejecutarConContexto,
   establecerUsuario,
   obtenerContexto,
+  type ContextoPeticion,
 } from '../../../../src/shared/http/contexto.js';
 
 const PETICION_ANONIMA = {
@@ -35,5 +36,12 @@ describe('establecerUsuario', () => {
     expect(() => {
       establecerUsuario(7, 'Cliente');
     }).toThrow(/fuera de una petición/);
+  });
+});
+
+describe('obtenerContexto', () => {
+  // Prueba de tipos: la verifica `pnpm typecheck`, no la ejecución.
+  it('RF-01: entrega el contexto en solo lectura; solo establecerUsuario cambia el usuario', () => {
+    expectTypeOf(obtenerContexto).returns.toEqualTypeOf<Readonly<ContextoPeticion> | undefined>();
   });
 });

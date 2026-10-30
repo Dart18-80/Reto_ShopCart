@@ -9,11 +9,7 @@ import { conectarBaseDePruebas } from '../base-de-pruebas.js';
 
 const saludSchema = z.object({
   estado: z.literal('ok'),
-  baseDatos: z.object({
-    estado: z.literal('ok'),
-    versionServidor: z.string().regex(/^\d+\.\d+/),
-    fechaHoraUtc: z.iso.datetime(),
-  }),
+  baseDatos: z.literal('ok'),
   redis: z.literal('ok'),
 });
 
@@ -28,7 +24,7 @@ afterAll(async () => {
 });
 
 describe('GET /api/v1/health contra SQL Server', () => {
-  it('responde 200 con la versión y la hora reales del servidor (SP_Sistema_Health)', async () => {
+  it('responde 200 con la base en ok tras ejecutar el SP_Sistema_Health real', async () => {
     const app = crearApp({
       logger: pino({ level: 'silent' }),
       instancia: 'api-integracion',
@@ -39,6 +35,6 @@ describe('GET /api/v1/health contra SQL Server', () => {
     const respuesta = await request(app).get('/api/v1/health');
 
     expect(respuesta.status).toBe(200);
-    expect(leerDatos(respuesta, saludSchema).baseDatos.estado).toBe('ok');
+    expect(leerDatos(respuesta, saludSchema).baseDatos).toBe('ok');
   });
 });

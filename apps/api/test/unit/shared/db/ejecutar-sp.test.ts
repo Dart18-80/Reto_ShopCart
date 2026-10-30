@@ -69,6 +69,16 @@ describe('ejecutarSP', () => {
     expect(ejecutar).not.toHaveBeenCalled();
   });
 
+  it('RF-01: también lo rechaza si el nombre difiere solo en mayúsculas', async () => {
+    const { conexion, ejecutar } = conexionFalsa(() => Promise.resolve([[]]));
+    const { ejecutarSP } = crearEjecutorSP({ conexion, logger, esperar: sinEspera });
+
+    await expect(
+      ejecutarSP('SP_Pruebas_Leer', { idUsuarioActor: { tipo: sql.Int, valor: 99 } }),
+    ).rejects.toThrow(/IDUsuarioActor/);
+    expect(ejecutar).not.toHaveBeenCalled();
+  });
+
   it('ejecutarSP devuelve solo las filas del primer conjunto de resultados', async () => {
     const { conexion } = conexionFalsa(() => Promise.resolve([[{ A: 1 }, { A: 2 }], [{ B: 3 }]]));
     const { ejecutarSP } = crearEjecutorSP({ conexion, logger, esperar: sinEspera });

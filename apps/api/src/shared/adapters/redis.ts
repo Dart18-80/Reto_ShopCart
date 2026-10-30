@@ -23,21 +23,23 @@ export function crearClienteRedis(config: ConfiguracionRedis): Redis {
 }
 
 /** Adaptador del puerto VerificadorRedis (módulo sistema). */
-export function crearVerificadorRedis(cliente: Redis) {
+export function crearVerificadorRedis(cliente: Redis): { ping(): Promise<boolean> } {
   return {
     async ping(): Promise<boolean> {
+      let temporizador: NodeJS.Timeout | undefined;
+      const tiempoAgotado = new Promise<never>((_resolve, rechazar) => {
+        temporizador = setTimeout(() => {
+          rechazar(new Error('Tiempo de espera de Redis agotado'));
+        }, ESPERA_PING_MS);
+      });
       try {
-        await Promise.race([
-          cliente.ping(),
-          new Promise<never>((_resolve, rechazar) =>
-            setTimeout(() => {
-              rechazar(new Error('Tiempo de espera de Redis agotado'));
-            }, ESPERA_PING_MS),
-          ),
-        ]);
+        await Promise.race([cliente.ping(), tiempoAgotado]);
         return true;
       } catch {
+        // RNF-2: Redis caído es "degradado", no un error; el fallo ya lo registra el evento 'error'.
         return false;
+      } finally {
+        clearTimeout(temporizador);
       }
     },
   };

@@ -33,10 +33,13 @@ function crearAppDePrueba() {
   app.use(requestId);
   app.use(express.json({ limit: '1kb' }));
   app.get('/negocio', () => {
-    throw new AppError('PARAMETRO_INVALIDO', 'La página no es válida.');
+    throw new AppError('PARAMETRO_INVALIDO', { mensaje: 'La página no es válida.' });
   });
   app.get('/detalles', () => {
-    throw new AppError('STOCK_INSUFICIENTE', 'Sin existencia.', [{ idVariante: 7 }]);
+    throw new AppError('STOCK_INSUFICIENTE', {
+      mensaje: 'Sin existencia.',
+      detalles: [{ idVariante: 7 }],
+    });
   });
   app.get('/inesperado', () => {
     throw new Error(DETALLE_INTERNO);
@@ -123,6 +126,18 @@ describe('middleware central de errores', () => {
 
     expect(respuesta.status).toBe(413);
     expect(leerError(respuesta).codigo).toBe('CUERPO_DEMASIADO_GRANDE');
+  });
+
+  it('un charset no soportado responde 415 CONTENIDO_NO_SOPORTADO', async () => {
+    const { app } = crearAppDePrueba();
+
+    const respuesta = await request(app)
+      .post('/json')
+      .set('Content-Type', 'application/json; charset=latin2')
+      .send('{"nombre":"Ana"}');
+
+    expect(respuesta.status).toBe(415);
+    expect(leerError(respuesta).codigo).toBe('CONTENIDO_NO_SOPORTADO');
   });
 
   it('una ruta inexistente responde 404 NO_ENCONTRADO', async () => {

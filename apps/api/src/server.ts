@@ -71,7 +71,12 @@ function registrarApagadoOrdenado({ servidor, pool, redis, logger }: RecursosAbi
     forzarSalida.unref();
 
     servidor.close(() => {
-      void Promise.allSettled([pool.close(), redis.quit()]).then(() => {
+      void Promise.allSettled([pool.close(), redis.quit()]).then((cierres) => {
+        for (const cierre of cierres) {
+          if (cierre.status === 'rejected') {
+            logger.warn({ err: cierre.reason }, 'Un recurso no se cerró limpiamente');
+          }
+        }
         logger.info('API detenida');
         process.exit(0);
       });

@@ -3,6 +3,7 @@ import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { crearApp } from '../../src/app.js';
+import { registroOpenApi } from '../../src/shared/openapi/index.js';
 
 // Las cabeceras se prueban sobre el documento OpenAPI: no necesita base de datos y pasa por los
 // mismos middlewares que cualquier otra ruta.
@@ -85,6 +86,16 @@ describe('OpenAPI', () => {
     expect(respuesta.status).toBe(200);
     expect(documento.openapi).toMatch(/^3\.1/);
     expect(Object.keys(documento.paths)).toContain('/api/v1/health');
+  });
+
+  it('registra cada endpoint una sola vez aunque se creen varias apps', () => {
+    crearAppDePrueba();
+    crearAppDePrueba();
+
+    const registrosDelHealth = registroOpenApi.definitions.filter(
+      (definicion) => definicion.type === 'route' && definicion.route.path === '/api/v1/health',
+    );
+    expect(registrosDelHealth).toHaveLength(1);
   });
 
   it('sirve la interfaz de Swagger en /api/docs', async () => {

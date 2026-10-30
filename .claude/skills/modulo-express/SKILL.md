@@ -55,6 +55,7 @@ Qué hace por dentro:
 3. Si el error está entre 50000 y 59999, lo convierte en `AppError` con el catálogo (`shared/errors/catalogo.ts`). Si el mensaje es un JSON (`{ mensaje, detalles }`), separa los detalles (A-19).
 4. Reintenta hasta 3 veces ante un deadlock (error 1205), con espera breve y creciente.
 5. Registra en el log la duración y el nombre del SP, nunca los valores de los parámetros.
+6. Devuelve las filas como `T[]` **sin validarlas**: es el único cast del backend y vive solo aquí. Cada repositorio declara su interfaz `Fila…` con las columnas del SP y la mapea a los tipos del dominio (§4); los montos se convierten en ese mapeo (§10).
 
 ## 4. Repositorio
 
@@ -281,8 +282,8 @@ export type ParamsId = z.infer<typeof paramsIdSchema>;
 import { AppError } from '../../shared/errors/index.js';
 
 export const erroresDirecciones = {
-  noEncontrada: () => new AppError('NO_ENCONTRADO', 'La dirección no existe.'),
-  limiteAlcanzado: () => new AppError('LIMITE_DIRECCIONES', 'Solo puedes registrar hasta 10 direcciones.'),
+  noEncontrada: () => new AppError('NO_ENCONTRADO', { mensaje: 'La dirección no existe.' }),
+  limiteAlcanzado: () => new AppError('LIMITE_DIRECCIONES', { mensaje: 'Solo puedes registrar hasta 10 direcciones.' }),
 };
 ```
 
@@ -301,6 +302,7 @@ export const aMonto = (valor: number | string): string => new Decimal(valor).toF
 
 - **En JSON los montos son texto** (`"149.90"`). El esquema compartido es `montoSchema = z.string().regex(/^\d{1,10}(\.\d{1,2})?$/)`.
 - Para enviar un monto a un SP: `{ tipo: sql.Decimal(12, 2), valor: monto.toFixed(2) }`.
+- **Al leer un monto de un SP:** la interfaz `Fila…` lo declara como `number` (así lo entrega el driver), y la función de mapeo del repositorio lo convierte de inmediato con `aMonto` (texto para JSON) o `new Decimal(...)` (para operar). Ninguna capa por encima del repositorio ve ese `number`.
 - Los cálculos de dinero (descuentos, totales, reembolsos) se hacen en el SP. En TypeScript solo se formatea o se compara, siempre con `Decimal`.
 
 ## 11. Aislamiento entre clientes (RF-01)

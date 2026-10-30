@@ -21,11 +21,11 @@ export function traducirErrorSql(error: unknown): AppError | undefined {
   const codigo = codigoPorNumeroSql(numero);
   if (codigo === undefined) {
     // Un número sin catalogar es un error de programación: no se muestra el mensaje del SP.
-    return new AppError('ERROR_INTERNO', undefined, undefined, { cause: error });
+    return new AppError('ERROR_INTERNO', { cause: error });
   }
 
   const { mensaje, detalles } = separarMensaje(error instanceof Error ? error.message : '');
-  return new AppError(codigo, mensaje, detalles, { cause: error });
+  return new AppError(codigo, { mensaje, detalles, cause: error });
 }
 
 function separarMensaje(texto: string): { mensaje: string | undefined; detalles: unknown } {

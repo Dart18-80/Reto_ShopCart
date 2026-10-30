@@ -63,7 +63,7 @@ export interface ConfiguracionRedis {
 }
 
 export interface Configuracion {
-  entorno: 'development' | 'test' | 'production';
+  entorno: z.infer<typeof esquema>['NODE_ENV'];
   puerto: number;
   instancia: string;
   nivelLog: Level;

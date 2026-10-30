@@ -12,6 +12,10 @@ export const CATALOGO = {
   VALIDACION_FALLIDA: { http: 400, mensaje: 'Los datos enviados no son válidos.' },
   JSON_INVALIDO: { http: 400, mensaje: 'El cuerpo de la petición no es un JSON válido.' },
   CUERPO_DEMASIADO_GRANDE: { http: 413, mensaje: 'El cuerpo de la petición es demasiado grande.' },
+  CONTENIDO_NO_SOPORTADO: {
+    http: 415,
+    mensaje: 'El tipo o la codificación del contenido no es compatible.',
+  },
   ERROR_INTERNO: { http: 500, mensaje: 'Ocurrió un error inesperado. Intenta de nuevo más tarde.' },
 
   // 50001–50099 General

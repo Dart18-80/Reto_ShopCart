@@ -1,3 +1,6 @@
+import type { z } from '../../shared/openapi/zod.js';
+import type { estadoSaludSchema } from './sistema.schemas.js';
+
 /** Puerto hacia Redis para el health; el adaptador vive en shared/adapters/redis.ts. */
 export interface VerificadorRedis {
   ping(): Promise<boolean>;
@@ -8,13 +11,5 @@ export interface ServidorBaseDatos {
   fechaHoraUtc: Date;
 }
 
-export type EstadoBaseDatos =
-  { estado: 'ok'; versionServidor: string; fechaHoraUtc: string } | { estado: 'caida' };
-
-export interface EstadoSalud {
-  /** ok: todo responde · degradado: Redis caído (se sigue vendiendo, RNF-2) · caido: sin base. */
-  estado: 'ok' | 'degradado' | 'caido';
-  instancia: string;
-  baseDatos: EstadoBaseDatos;
-  redis: 'ok' | 'degradado';
-}
+export type EstadoSalud = z.infer<typeof estadoSaludSchema>;
+export type EstadoBaseDatos = EstadoSalud['baseDatos'];

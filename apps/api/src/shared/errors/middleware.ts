@@ -11,6 +11,8 @@ const ESTADO_PRIMER_ERROR_INTERNO = 500;
 const ERRORES_DEL_PARSER_JSON: Readonly<Record<string, CodigoError>> = {
   'entity.parse.failed': 'JSON_INVALIDO',
   'entity.too.large': 'CUERPO_DEMASIADO_GRANDE',
+  'charset.unsupported': 'CONTENIDO_NO_SOPORTADO',
+  'encoding.unsupported': 'CONTENIDO_NO_SOPORTADO',
 };
 
 interface RespuestaError {
@@ -23,7 +25,7 @@ interface RespuestaError {
 }
 
 export const rutaNoEncontrada: RequestHandler = (_req, _res, next) => {
-  next(new AppError('NO_ENCONTRADO', 'La ruta solicitada no existe.'));
+  next(new AppError('NO_ENCONTRADO', { mensaje: 'La ruta solicitada no existe.' }));
 };
 
 /** Middleware central (A-06): un solo formato de error para toda la API. */
@@ -69,7 +71,7 @@ function aAppError(error: unknown): AppError {
   const tipo = errorDelParserJson(error);
   const codigoDelParser = tipo === undefined ? undefined : ERRORES_DEL_PARSER_JSON[tipo];
   if (codigoDelParser !== undefined) return new AppError(codigoDelParser);
-  return new AppError('ERROR_INTERNO', undefined, undefined, { cause: error });
+  return new AppError('ERROR_INTERNO', { cause: error });
 }
 
 function errorDelParserJson(error: unknown): string | undefined {

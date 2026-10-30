@@ -1,12 +1,13 @@
 import sql from 'mssql';
 import type { Logger } from 'pino';
+import { z } from 'zod';
 import type { Configuracion } from './config.ts';
 import { conectar, LOGIN_MIGRADOR } from './conexion.ts';
 import { leerConsulta } from './consultas.ts';
 import { ErrorMigracion, mensajeDe } from './errores.ts';
 import { planificar, validarIntegridad, type ScriptAplicado } from './plan.ts';
 import { prepararServidor } from './preparacion.ts';
-import { carpetasPara, leerScripts, type Script, type TipoScript } from './scripts.ts';
+import { carpetasPara, leerScripts, type Script } from './scripts.ts';
 
 const RECURSO_BLOQUEO = 'ShopCart.Migrador';
 const ESPERA_BLOQUEO_MS = 60_000;
@@ -17,26 +18,39 @@ export async function migrar(config: Configuracion, logger: Logger): Promise<voi
 
   const credenciales = { usuario: LOGIN_MIGRADOR, contrasena: config.contrasenaMigrador };
   // El bloqueo vive en su propia conexión, que no se reutiliza, para que dure toda la ejecución.
+  // Un try/finally por pool: si falla abrir o cerrar uno, el otro se cierra igual.
   const bloqueo = await conectar(config, credenciales, config.baseDatos);
-  const trabajo = await conectar(config, credenciales, config.baseDatos);
   try {
-    await adquirirBloqueo(bloqueo);
-    const aplicados = await leerHistorial(trabajo);
-    validarIntegridad(scripts, aplicados);
-
-    const pendientes = planificar(scripts, aplicados);
-    for (const script of pendientes) {
-      await aplicar(trabajo, script);
-      logger.info({ script: script.nombre, tipo: script.tipo }, 'Script aplicado');
+    const trabajo = await conectar(config, credenciales, config.baseDatos);
+    try {
+      await adquirirBloqueo(bloqueo);
+      await aplicarPendientes(trabajo, scripts, config.baseDatos, logger);
+    } finally {
+      await trabajo.close();
     }
-    logger.info(
-      { baseDatos: config.baseDatos, aplicados: pendientes.length, total: scripts.length },
-      pendientes.length === 0 ? 'La base ya estaba al día' : 'Migración completada',
-    );
   } finally {
-    await trabajo.close();
     await bloqueo.close();
   }
+}
+
+async function aplicarPendientes(
+  trabajo: sql.ConnectionPool,
+  scripts: Script[],
+  baseDatos: string,
+  logger: Logger,
+): Promise<void> {
+  const aplicados = await leerHistorial(trabajo);
+  validarIntegridad(scripts, aplicados);
+
+  const pendientes = planificar(scripts, aplicados);
+  for (const script of pendientes) {
+    await aplicar(trabajo, script);
+    logger.info({ script: script.nombre, tipo: script.tipo }, 'Script aplicado');
+  }
+  logger.info(
+    { baseDatos, aplicados: pendientes.length, total: scripts.length },
+    pendientes.length === 0 ? 'La base ya estaba al día' : 'Migración completada',
+  );
 }
 
 async function adquirirBloqueo(pool: sql.ConnectionPool): Promise<void> {
@@ -54,17 +68,19 @@ async function adquirirBloqueo(pool: sql.ConnectionPool): Promise<void> {
   }
 }
 
-interface FilaHistorial {
-  Script: string;
-  Tipo: TipoScript;
-  Checksum: Buffer;
-}
+// Lo que viene de la base se valida: un Tipo fuera de V/R/S cambiaría qué se considera inmutable.
+const filasHistorialSchema = z.array(
+  z.object({
+    Script: z.string(),
+    Tipo: z.enum(['V', 'R', 'S']),
+    Checksum: z.instanceof(Buffer),
+  }),
+);
 
 async function leerHistorial(pool: sql.ConnectionPool): Promise<Map<string, ScriptAplicado>> {
-  const resultado = await pool.request().query<FilaHistorial>(await leerConsulta('leer-historial'));
-  return new Map(
-    resultado.recordset.map((fila) => [fila.Script, { tipo: fila.Tipo, checksum: fila.Checksum }]),
-  );
+  const resultado = await pool.request().query(await leerConsulta('leer-historial'));
+  const filas = filasHistorialSchema.parse(resultado.recordset);
+  return new Map(filas.map((fila) => [fila.Script, { tipo: fila.Tipo, checksum: fila.Checksum }]));
 }
 
 // Cada script corre en su propia transacción junto con su fila de historial: o queda todo aplicado y

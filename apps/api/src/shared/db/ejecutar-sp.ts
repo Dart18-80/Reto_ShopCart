@@ -31,7 +31,13 @@ interface Dependencias {
   esperar?: (ms: number) => Promise<void>;
 }
 
-export function crearEjecutorSP({ conexion, logger, esperar = dormir }: Dependencias) {
+// Propiedades con tipo de función: se usan sueltas (const { ejecutarSP } = ...).
+export interface EjecutorSP {
+  ejecutarSP: <T>(nombre: NombreSP, parametros?: ParametrosSP) => Promise<T[]>;
+  ejecutarSPMultiple: (nombre: NombreSP, parametros?: ParametrosSP) => Promise<unknown[][]>;
+}
+
+export function crearEjecutorSP({ conexion, logger, esperar = dormir }: Dependencias): EjecutorSP {
   async function ejecutarSPMultiple(
     nombre: NombreSP,
     parametros: ParametrosSP = {},
@@ -69,11 +75,11 @@ export function crearEjecutorSP({ conexion, logger, esperar = dormir }: Dependen
   return { ejecutarSP, ejecutarSPMultiple };
 }
 
-export type EjecutorSP = ReturnType<typeof crearEjecutorSP>;
-
 // A-18: el actor sale siempre del contexto de la petición, nunca del llamador (RF-01).
 function parametrosEstandar(parametros: ParametrosSP): ParametrosSP {
-  const repetido = PARAMETROS_ESTANDAR.find((nombre) => nombre in parametros);
+  // SQL Server no distingue mayúsculas en los nombres de parámetros.
+  const recibidos = Object.keys(parametros).map((nombre) => nombre.toLowerCase());
+  const repetido = PARAMETROS_ESTANDAR.find((nombre) => recibidos.includes(nombre.toLowerCase()));
   if (repetido !== undefined) {
     throw new Error(`@${repetido} lo agrega ejecutarSP desde el contexto; no se pasa a mano.`);
   }

@@ -17,7 +17,8 @@ export function ejecutarConContexto<T>(contexto: ContextoPeticion, funcion: () =
 }
 
 /** undefined en un job o fuera de una petición. */
-export function obtenerContexto(): ContextoPeticion | undefined {
+// Solo lectura: el usuario de la petición solo lo cambia establecerUsuario (RF-01).
+export function obtenerContexto(): Readonly<ContextoPeticion> | undefined {
   return almacen.getStore();
 }
 

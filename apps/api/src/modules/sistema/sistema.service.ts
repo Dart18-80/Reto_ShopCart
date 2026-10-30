@@ -9,18 +9,31 @@ interface Dependencias {
   logger: Logger;
 }
 
-export function crearSistemaService({ repositorio, redis, instancia, logger }: Dependencias) {
+export interface SistemaService {
+  salud(): Promise<EstadoSalud>;
+}
+
+export function crearSistemaService({
+  repositorio,
+  redis,
+  instancia,
+  logger,
+}: Dependencias): SistemaService {
   async function estadoBaseDatos(): Promise<EstadoBaseDatos> {
     try {
       const servidor = await repositorio.health();
-      return {
-        estado: 'ok',
-        versionServidor: servidor.versionServidor,
-        fechaHoraUtc: servidor.fechaHoraUtc.toISOString(),
-      };
+      // En debug: el healthcheck de Docker lo llama cada pocos segundos en cada réplica.
+      logger.debug(
+        {
+          versionServidor: servidor.versionServidor,
+          fechaHoraUtc: servidor.fechaHoraUtc.toISOString(),
+        },
+        'SQL Server responde',
+      );
+      return 'ok';
     } catch (error) {
       logger.error({ err: error }, 'La base de datos no responde');
-      return { estado: 'caida' };
+      return 'caida';
     }
   }
 
@@ -42,9 +55,7 @@ function calcularEstadoGeneral(
   baseDatos: EstadoBaseDatos,
   estadoRedis: EstadoSalud['redis'],
 ): EstadoSalud['estado'] {
-  if (baseDatos.estado === 'caida') return 'caido';
+  if (baseDatos === 'caida') return 'caido';
   if (estadoRedis === 'degradado') return 'degradado';
   return 'ok';
 }
-
-export type SistemaService = ReturnType<typeof crearSistemaService>;

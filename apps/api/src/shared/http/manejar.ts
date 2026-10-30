@@ -40,7 +40,7 @@ export function manejar<E extends EsquemasEntrada>(
       PARTES.map((parte) => [parte, validarParte(req, parte, esquemas[parte], errores)]),
     );
     if (errores.length > 0) {
-      next(new AppError('VALIDACION_FALLIDA', undefined, { errores }));
+      next(new AppError('VALIDACION_FALLIDA', { detalles: { errores } }));
       return;
     }
     // Las claves y los tipos de cada parte salen de los mismos esquemas que acaban de validarlas.

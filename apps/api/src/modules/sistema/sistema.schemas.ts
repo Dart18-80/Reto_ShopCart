@@ -1,17 +1,14 @@
 import { z } from '../../shared/openapi/zod.js';
 
-const estadoSaludSchema = z
+// Solo estados: el endpoint es público y no expone la versión ni la hora de SQL Server.
+export const estadoSaludSchema = z
   .object({
-    estado: z.enum(['ok', 'degradado', 'caido']),
+    estado: z.enum(['ok', 'degradado', 'caido']).openapi({
+      description:
+        'ok: todo responde · degradado: Redis caído, se sigue vendiendo (RNF-2) · caido: sin base',
+    }),
     instancia: z.string().openapi({ example: 'api-1' }),
-    baseDatos: z.union([
-      z.object({
-        estado: z.literal('ok'),
-        versionServidor: z.string().openapi({ example: '16.0.4305.5' }),
-        fechaHoraUtc: z.iso.datetime(),
-      }),
-      z.object({ estado: z.literal('caida') }),
-    ]),
+    baseDatos: z.enum(['ok', 'caida']),
     redis: z.enum(['ok', 'degradado']),
   })
   .openapi('EstadoSalud');
