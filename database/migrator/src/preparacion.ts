@@ -13,6 +13,13 @@ export async function prepararServidor(config: Configuracion, logger: Logger): P
 
   const master = await conectar(config, admin, 'master');
   try {
+    if (config.recrearBase) {
+      await master
+        .request()
+        .input('Base', sql.NVarChar(128), config.baseDatos)
+        .query(await leerConsulta('recrear-base'));
+      logger.info({ baseDatos: config.baseDatos }, 'Base de pruebas borrada para recrearla');
+    }
     await master
       .request()
       .input('Base', sql.NVarChar(128), config.baseDatos)

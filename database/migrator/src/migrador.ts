@@ -6,14 +6,14 @@ import { leerConsulta } from './consultas.ts';
 import { ErrorMigracion, mensajeDe } from './errores.ts';
 import { planificar, validarIntegridad, type ScriptAplicado } from './plan.ts';
 import { prepararServidor } from './preparacion.ts';
-import { leerScripts, type Script, type TipoScript } from './scripts.ts';
+import { carpetasPara, leerScripts, type Script, type TipoScript } from './scripts.ts';
 
 const RECURSO_BLOQUEO = 'ShopCart.Migrador';
 const ESPERA_BLOQUEO_MS = 60_000;
 
 export async function migrar(config: Configuracion, logger: Logger): Promise<void> {
   await prepararServidor(config, logger);
-  const scripts = await leerScripts(config.directorioScripts);
+  const scripts = await leerScripts(config.directorioScripts, carpetasPara(config.baseDatos));
 
   const credenciales = { usuario: LOGIN_MIGRADOR, contrasena: config.contrasenaMigrador };
   // El bloqueo vive en su propia conexión, que no se reutiliza, para que dure toda la ejecución.

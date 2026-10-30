@@ -17,6 +17,7 @@ COPY database/migrator/sql database/migrator/sql
 COPY database/migrations database/migrations
 COPY database/programmability database/programmability
 COPY database/seeds database/seeds
+COPY database/test database/test
 USER node
 WORKDIR /app/database/migrator
 # Node 24 ejecuta TypeScript directamente (type stripping): no hay paso de compilación.

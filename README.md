@@ -79,8 +79,16 @@ Requiere SQL Server y Redis levantados y la base migrada:
 ```bash
 pnpm --filter @shopcart/api build
 pnpm --filter @shopcart/api start      # http://localhost:3000/api/v1/health · Swagger en /api/docs
-pnpm test                               # pruebas unitarias
 ```
+
+### Pruebas
+
+```bash
+pnpm test                # unitarias: servicios y middlewares con puertos falsos, sin infraestructura
+pnpm test:integracion    # contra SQL Server real (requiere `docker compose up -d sqlserver`)
+```
+
+`pnpm test:integracion` recrea la base `shopcart_test` desde cero en cada corrida (las tablas ledger no admiten `DELETE`), aplica todos los scripts y, solo en esa base, los SPs de `database/test/`. Las pruebas no escriben SQL: preparan sus datos con esos `SP_Pruebas_*`, y cada prueba crea datos únicos en lugar de borrar los de otras.
 
 Redis exige contraseña (`requirepass`). Cada valor tiene una sola fuente en `.env` (`DB_HOST`, `DB_PORT`, `DB_USUARIO`, `DB_CONTRASENA`, `REDIS_HOST`, `REDIS_PORT`, `REDIS_CONTRASENA`): Compose, el migrador y la API leen las mismas variables.
 

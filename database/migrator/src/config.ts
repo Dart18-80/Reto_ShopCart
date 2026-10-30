@@ -1,10 +1,12 @@
 import { resolve } from 'node:path';
 import { z } from 'zod';
-import { LOGIN_APP } from './conexion.ts';
+import { BASE_PRUEBAS, LOGIN_APP } from './conexion.ts';
 import { ErrorMigracion } from './errores.ts';
 
 // El nombre de la base se usa en la cadena de conexión y en CREATE DATABASE; se restringe a un identificador simple.
 const NOMBRE_BASE = /^[A-Za-z][A-Za-z0-9_]{0,127}$/;
+
+const ARGUMENTO_PRUEBAS = '--pruebas';
 
 // CREATE LOGIN no acepta parámetros: la contraseña se escapa con QUOTENAME, que devuelve NULL con más de 128 caracteres.
 const contrasena = z.string().min(8).max(128);
@@ -38,6 +40,8 @@ export interface Configuracion {
   servidor: string;
   puerto: number;
   baseDatos: string;
+  /** Solo con --pruebas: borra y vuelve a crear shopcart_test antes de migrar. */
+  recrearBase: boolean;
   confiarCertificado: boolean;
   contrasenaAdmin: string;
   contrasenaApp: string;
@@ -45,16 +49,21 @@ export interface Configuracion {
   directorioScripts: string;
 }
 
-export function leerConfiguracion(entorno: NodeJS.ProcessEnv = process.env): Configuracion {
+export function leerConfiguracion(
+  entorno: NodeJS.ProcessEnv = process.env,
+  argumentos: readonly string[] = process.argv.slice(2),
+): Configuracion {
   const resultado = esquema.safeParse(entorno);
   if (!resultado.success) {
     throw new ErrorMigracion(`Configuración inválida:\n${z.prettifyError(resultado.error)}`);
   }
   const variables = resultado.data;
+  const modoPruebas = argumentos.includes(ARGUMENTO_PRUEBAS);
   return {
     servidor: variables.DB_HOST,
     puerto: variables.DB_PORT,
-    baseDatos: variables.DB_NOMBRE,
+    baseDatos: modoPruebas ? BASE_PRUEBAS : variables.DB_NOMBRE,
+    recrearBase: modoPruebas,
     confiarCertificado: variables.DB_CONFIAR_CERTIFICADO,
     contrasenaAdmin: variables.MSSQL_SA_PASSWORD,
     contrasenaApp: variables.DB_CONTRASENA,

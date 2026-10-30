@@ -5,6 +5,9 @@ export const LOGIN_ADMIN = 'sa';
 export const LOGIN_APP = 'shopcart_app';
 export const LOGIN_MIGRADOR = 'shopcart_migrator';
 
+// Nombre fijo: database/test/ y la recreación nunca pueden alcanzar otra base por configuración.
+export const BASE_PRUEBAS = 'shopcart_test';
+
 // Los seeds y la carga pesada pueden tardar más que el timeout por defecto de 15 s.
 const TIEMPO_MAXIMO_MS = 5 * 60 * 1000;
 

@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 const DIRECTORIO_SQL = resolve(import.meta.dirname, '../sql');
 
 export type NombreConsulta =
+  | 'recrear-base'
   | 'preparar-servidor'
   | 'preparar-base'
   | 'adquirir-bloqueo'

@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { BASE_PRUEBAS } from './conexion.ts';
 import { ErrorMigracion } from './errores.ts';
 import { leerDependencias, ordenarProgramables } from './orden.ts';
 
@@ -15,7 +16,7 @@ export interface Script {
   dependencias: string[];
 }
 
-interface Carpeta {
+export interface Carpeta {
   tipo: TipoScript;
   carpeta: string;
   patron: RegExp;
@@ -27,6 +28,17 @@ const CARPETAS: readonly Carpeta[] = [
   { tipo: 'R', carpeta: 'programmability', patron: /^R__(?:FU|VW|SP|TR)_[A-Za-z0-9_]+\.sql$/ },
   { tipo: 'S', carpeta: 'seeds', patron: /^S(\d{3})__[A-Za-z0-9_]+\.sql$/ },
 ];
+
+// Solo en shopcart_test y al final: SPs que preparan datos de prueba, para que las pruebas no escriban SQL.
+const CARPETA_PRUEBAS: Carpeta = {
+  tipo: 'R',
+  carpeta: 'test',
+  patron: /^R__SP_Pruebas_[A-Za-z0-9_]+\.sql$/,
+};
+
+export function carpetasPara(baseDatos: string): readonly Carpeta[] {
+  return baseDatos === BASE_PRUEBAS ? [...CARPETAS, CARPETA_PRUEBAS] : CARPETAS;
+}
 
 const BOM = String.fromCharCode(0xfeff);
 
@@ -49,9 +61,12 @@ export function dividirEnLotes(contenido: string): string[] {
     .filter((lote) => lote.length > 0);
 }
 
-export async function leerScripts(directorio: string): Promise<Script[]> {
+export async function leerScripts(
+  directorio: string,
+  carpetas: readonly Carpeta[],
+): Promise<Script[]> {
   const scripts: Script[] = [];
-  for (const carpeta of CARPETAS) {
+  for (const carpeta of carpetas) {
     const leidos = await leerCarpeta(directorio, carpeta);
     scripts.push(...(carpeta.tipo === 'R' ? ordenarProgramables(leidos) : leidos));
   }

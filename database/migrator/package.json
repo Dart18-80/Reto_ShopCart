@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "migrar": "node --env-file-if-exists=../../.env src/index.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "migrar:pruebas": "node --env-file-if-exists=../../.env src/index.ts --pruebas"
   },
   "dependencies": {
     "mssql": "^12.7.13",
