@@ -18,6 +18,13 @@ BEGIN
     EXEC sys.sp_executesql @sql;
 END;
 
+-- M-01: sys.sp_verify_database_ledger exige ALLOW_SNAPSHOT_ISOLATION (E1-H01); RCSI no basta.
+IF EXISTS (SELECT 1 FROM sys.databases WHERE name = @Base AND snapshot_isolation_state = 0)
+BEGIN
+    SET @sql = N'ALTER DATABASE ' + QUOTENAME(@Base) + N' SET ALLOW_SNAPSHOT_ISOLATION ON;';
+    EXEC sys.sp_executesql @sql;
+END;
+
 -- CREATE/ALTER LOGIN no aceptan la contraseña como parámetro: QUOTENAME(..., '''') la convierte en un literal
 -- seguro duplicando las comillas. Devuelve NULL con más de 128 caracteres, y un @sql NULL no ejecutaría nada.
 IF QUOTENAME(@ContrasenaApp, '''') IS NULL OR QUOTENAME(@ContrasenaMigrador, '''') IS NULL

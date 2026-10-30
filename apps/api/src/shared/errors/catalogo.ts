@@ -146,13 +146,6 @@ export const CATALOGO = {
     numeroSql: 50705,
     mensaje: 'El reembolso excede el total pagado.',
   },
-
-  // 50900–50999 Integridad
-  REGISTRO_INMUTABLE: {
-    http: 409,
-    numeroSql: 50901,
-    mensaje: 'El registro no se puede modificar.',
-  },
 } as const satisfies Record<string, EntradaCatalogo>;
 
 export type CodigoError = keyof typeof CATALOGO;

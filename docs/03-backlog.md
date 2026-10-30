@@ -219,8 +219,22 @@
 **Alcance**
 - `S001__catalogos.sql`: roles, estados de pedido, **todas las transiciones** de `02-modelo-datos.md` §3.9, tipos de movimiento, métodos de envío (Estándar Q35 3–5 días, Express Q75 1 día) y la fila de `ParametroSistema`.
 - `S002__geografia_gt.sql`: 22 departamentos y 340 municipios de Guatemala.
-- `S003__usuarios_demo.sql`: `admin@shopcart.gt`, `operador@shopcart.gt`, `cliente@shopcart.gt` con hashes argon2 precalculados; contraseñas documentadas para el README.
-- `S004__catalogo_demo.sql`: ~8 categorías, ~60 productos, ~250 variantes (atributos Talla y Color), precios con al menos una versión anterior en algunas variantes, imágenes SVG locales en `apps/web/public/static/productos/` y entradas iniciales **registradas en el kardex**.
+- `S003__usuarios_demo.sql`, con hashes argon2 precalculados y contraseñas documentadas en el README:
+
+  | Correo | Contraseña | Rol |
+  |---|---|---|
+  | `admin@shopcart.gt` | `Admin2026!` | Administrador |
+  | `operador@shopcart.gt` | `Operador2026!` | Operador |
+  | `cliente@shopcart.gt` | `Cliente2026!` | Cliente |
+  | `cliente2@shopcart.gt` | `Cliente2026!` | Cliente (segundo cliente para demostrar RF-01) |
+
+- `S004__catalogo_demo.sql`: **cadena de ropa, calzado y accesorios en Guatemala.**
+  - 8 categorías con sus atributos: Camisas y blusas (Talla S–XL, Color), Pantalones (Talla 28–38, Color), Vestidos y faldas (Talla S–XL, Color), Chaquetas y suéteres (Talla S–XL, Color), Calzado (Talla 36–44, Color), Ropa deportiva (Talla S–XL, Color), Accesorios (solo Color), Infantil (Talla 2–12, Color).
+  - ~60 productos y ~250 variantes; precios en quetzales de Q79 a Q899, con IVA incluido. Al menos una variante de ~Q899 y varias entre Q79 y Q150 (para mostrar el envío gratis desde Q500).
+  - Existencias: la mayoría entre 10 y 50; algunas entre 1 y 5; algunas en 0; y **exactamente una** variante con 1 unidad, con SKU `DEMO-CONCURRENCIA`, para la demo de RF-06.
+  - Historial de precios en ~10 variantes; 2 productos desactivados.
+  - Imágenes SVG locales generadas por categoría en `apps/web/public/static/productos/`.
+  - Todas las existencias iniciales **entran por el kardex**; al final, `VW_Inventario_Conciliacion` queda vacía.
 
 **CA**
 - [ ] Después de la semilla, `VW_Inventario_Conciliacion` está vacía.
@@ -590,7 +604,7 @@ Se detalla en historias al cerrar la Fase 1.
 | E0-H04 | Esqueleto de la API y piezas compartidas | Must | 0.75 | Hecha |
 | E0-H05 | Dos réplicas detrás de nginx | Must | 0.25 | Hecha |
 | E0-H06 | Base de pruebas | Should | 0.25 | Hecha |
-| E1-H01 | Prueba de tablas ledger con llaves foráneas | Must | 0.25 | En revisión |
+| E1-H01 | Prueba de tablas ledger con llaves foráneas | Must | 0.25 | Hecha |
 | E1-H02 | Tablas de seguridad, direcciones, catálogo e inventario | Must | 0.75 | Lista |
 | E1-H03 | Tablas de carrito, cupones, envíos, parámetros y checkout | Must | 0.5 | Lista |
 | E1-H04 | Tablas de pedidos, devoluciones, reembolsos y bitácora con sus triggers | Must | 0.75 | Lista |
