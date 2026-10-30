@@ -2,6 +2,7 @@ import sql from 'mssql';
 import type { Logger } from 'pino';
 import type { Configuracion } from './config.ts';
 import { conectar, LOGIN_MIGRADOR } from './conexion.ts';
+import { leerConsulta } from './consultas.ts';
 import { ErrorMigracion, mensajeDe } from './errores.ts';
 import { planificar, validarIntegridad, type ScriptAplicado } from './plan.ts';
 import { prepararServidor } from './preparacion.ts';
@@ -38,17 +39,13 @@ export async function migrar(config: Configuracion, logger: Logger): Promise<voi
   }
 }
 
-// Evita que dos migradores (por ejemplo, Compose y una ejecución manual) apliquen scripts a la vez.
 async function adquirirBloqueo(pool: sql.ConnectionPool): Promise<void> {
   const resultado = await pool
     .request()
     .input('Recurso', sql.NVarChar(255), RECURSO_BLOQUEO)
     .input('Espera', sql.Int, ESPERA_BLOQUEO_MS)
     .output('Resultado', sql.Int)
-    .query(
-      `EXEC @Resultado = sys.sp_getapplock
-         @Resource = @Recurso, @LockMode = N'Exclusive', @LockOwner = N'Session', @LockTimeout = @Espera;`,
-    );
+    .query(await leerConsulta('adquirir-bloqueo'));
   const codigo = resultado.output.Resultado as number;
   if (codigo < 0) {
     throw new ErrorMigracion(
@@ -64,13 +61,7 @@ interface FilaHistorial {
 }
 
 async function leerHistorial(pool: sql.ConnectionPool): Promise<Map<string, ScriptAplicado>> {
-  const resultado = await pool.request().query<FilaHistorial>(
-    `SELECT h.Script, h.Tipo, h.Checksum
-       FROM dbo.HistorialMigracion AS h
-      WHERE h.IDHistorialMigracion = (SELECT MAX(u.IDHistorialMigracion)
-                                        FROM dbo.HistorialMigracion AS u
-                                       WHERE u.Script = h.Script);`,
-  );
+  const resultado = await pool.request().query<FilaHistorial>(await leerConsulta('leer-historial'));
   return new Map(
     resultado.recordset.map((fila) => [fila.Script, { tipo: fila.Tipo, checksum: fila.Checksum }]),
   );
@@ -96,9 +87,7 @@ async function aplicar(pool: sql.ConnectionPool, script: Script): Promise<void> 
       .input('Script', sql.NVarChar(260), script.nombre)
       .input('Tipo', sql.Char(1), script.tipo)
       .input('Checksum', sql.VarBinary(32), script.checksum)
-      .query(
-        'INSERT INTO dbo.HistorialMigracion (Script, Tipo, Checksum) VALUES (@Script, @Tipo, @Checksum);',
-      );
+      .query(await leerConsulta('registrar-script'));
     await transaccion.commit();
   } catch (error) {
     await revertir(transaccion);

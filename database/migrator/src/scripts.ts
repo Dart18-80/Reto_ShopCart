@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { ErrorMigracion } from './errores.ts';
+import { leerDependencias, ordenarProgramables } from './orden.ts';
 
 export type TipoScript = 'V' | 'R' | 'S';
 
@@ -10,6 +11,8 @@ export interface Script {
   tipo: TipoScript;
   checksum: Buffer;
   lotes: string[];
+  /** Solo R__: dependencias declaradas con `-- depende-de:` en la primera línea. */
+  dependencias: string[];
 }
 
 interface Carpeta {
@@ -21,7 +24,7 @@ interface Carpeta {
 // A-09: primero la estructura (V), luego la programabilidad que depende de ella (R) y al final los datos (S).
 const CARPETAS: readonly Carpeta[] = [
   { tipo: 'V', carpeta: 'migrations', patron: /^V(\d{3})__[A-Za-z0-9_]+\.sql$/ },
-  { tipo: 'R', carpeta: 'programmability', patron: /^R__[A-Za-z0-9_]+\.sql$/ },
+  { tipo: 'R', carpeta: 'programmability', patron: /^R__(?:FU|VW|SP|TR)_[A-Za-z0-9_]+\.sql$/ },
   { tipo: 'S', carpeta: 'seeds', patron: /^S(\d{3})__[A-Za-z0-9_]+\.sql$/ },
 ];
 
@@ -49,7 +52,8 @@ export function dividirEnLotes(contenido: string): string[] {
 export async function leerScripts(directorio: string): Promise<Script[]> {
   const scripts: Script[] = [];
   for (const carpeta of CARPETAS) {
-    scripts.push(...(await leerCarpeta(directorio, carpeta)));
+    const leidos = await leerCarpeta(directorio, carpeta);
+    scripts.push(...(carpeta.tipo === 'R' ? ordenarProgramables(leidos) : leidos));
   }
   return scripts;
 }
@@ -77,6 +81,7 @@ async function leerCarpeta(
         tipo,
         checksum: calcularChecksum(contenido),
         lotes: dividirEnLotes(contenido),
+        dependencias: tipo === 'R' ? leerDependencias(normalizar(contenido)) : [],
       };
     }),
   );

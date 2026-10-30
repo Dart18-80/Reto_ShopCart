@@ -1,11 +1,8 @@
-import { readFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
 import sql from 'mssql';
 import type { Logger } from 'pino';
 import type { Configuracion } from './config.ts';
 import { conectar, LOGIN_ADMIN } from './conexion.ts';
-
-const DIRECTORIO_SQL = resolve(import.meta.dirname, '../sql');
+import { leerConsulta } from './consultas.ts';
 
 /**
  * Pasos que exigen permisos de administrador y no pueden vivir en un V###: crear la base, activar RCSI,
@@ -21,21 +18,17 @@ export async function prepararServidor(config: Configuracion, logger: Logger): P
       .input('Base', sql.NVarChar(128), config.baseDatos)
       .input('ContrasenaApp', sql.NVarChar(128), config.contrasenaApp)
       .input('ContrasenaMigrador', sql.NVarChar(128), config.contrasenaMigrador)
-      .query(await leerSql('preparar-servidor.sql'));
+      .query(await leerConsulta('preparar-servidor'));
   } finally {
     await master.close();
   }
 
   const base = await conectar(config, admin, config.baseDatos);
   try {
-    await base.request().batch(await leerSql('preparar-base.sql'));
+    await base.request().batch(await leerConsulta('preparar-base'));
   } finally {
     await base.close();
   }
 
   logger.info({ baseDatos: config.baseDatos }, 'Base, RCSI, logins y HistorialMigracion listos');
-}
-
-function leerSql(archivo: string): Promise<string> {
-  return readFile(resolve(DIRECTORIO_SQL, archivo), 'utf8');
 }
