@@ -793,6 +793,20 @@ Los SPs marcados **(interno)** solo los invocan otros SPs, nunca la API. Así ha
 
 **Respaldo:** si la prueba de E1-H01 detecta una incompatibilidad (por ejemplo, con las FKs), se usan triggers `INSTEAD OF UPDATE, DELETE` (`TR_Bitacora_Inmutable`, `TR_Inventario_KardexInmutable`, `TR_Pedidos_HistorialInmutable`) que hacen `THROW 50901`, sin cambiar nada más del diseño.
 
+**Resultado de E1-H01 (30 oct): ledger confirmado; el respaldo con triggers no hace falta.** Prueba desechable contra SQL Server 2022 (16.0.4305.5) con una tabla `LEDGER = ON (APPEND_ONLY = ON)` como `MovimientoKardex` y otra como `Bitacora`:
+
+| Caso | Resultado |
+|---|---|
+| Crear la tabla dentro de una transacción (como el migrador con cada `V###`), con PK `BIGINT IDENTITY`, FK simple y FK compuesta `(IDTipoMovimiento, Signo)` a tablas normales, `CHECK` de varias columnas, `CHECK (ISJSON(...) = 1)`, `DEFAULT SYSUTCDATETIME()` e índice no agrupado | Funciona |
+| `INSERT` válido; FK, `CHECK` e `ISJSON` siguen rechazando datos inválidos (error 547) | Funciona |
+| Trigger `AFTER` de una tabla normal que inserta en la ledger (patrón `TR_*_Bitacora`) | Funciona |
+| `ROLLBACK` con `XACT_ABORT` revierte un `INSERT` en la ledger | Funciona |
+| `UPDATE` y `DELETE` | Rechazados: **error 37359** "Updates are not allowed for the append only Ledger table". Es un error de **compilación**: tampoco se puede crear un SP que contenga un `UPDATE` o `DELETE` sobre estas tablas (el migrador fallaría al aplicarlo) |
+| `TRUNCATE` | Rechazado: error 13545 |
+| `ALTER TABLE ADD` columna `NULL` / columna `NOT NULL` con `DEFAULT` | Permitido / rechazado (error 37387) |
+| `sys.sp_verify_database_ledger` con el digest de `sp_generate_database_ledger_digest` | Verificación exitosa, **pero exige `ALLOW_SNAPSHOT_ISOLATION ON`** en la base (error 37498); `READ_COMMITTED_SNAPSHOT` no basta |
+| `DROP DATABASE` con tablas ledger (lo usa `pnpm test:integracion` para recrear `shopcart_test`) | Funciona |
+
 ---
 
 ## 7. Datos semilla
@@ -822,7 +836,7 @@ Rangos por módulo para `THROW`. El catálogo completo, con su código estable y
 | 50500–50599 | Cupones | 50501 `CUPON_NO_EXISTE` · 50502 `CUPON_INACTIVO` · 50503 `CUPON_NO_VIGENTE_AUN` · 50504 `CUPON_VENCIDO` · 50505 `CUPON_AGOTADO` · 50506 `CUPON_LIMITE_CLIENTE` · 50507 `CUPON_MINIMO_NO_ALCANZADO` · 50508 `CUPON_SIN_PRODUCTOS_CATEGORIA` (todos 422) · 50509 `CUPON_USADO_NO_EDITABLE` (409) |
 | 50600–50699 | Checkout y pago | 50601 `SESION_VENCIDA` (409) · 50602 `PAGO_EN_CURSO` (409) · 50603 `LLAVE_REUTILIZADA` (422) · 50604 `PAGO_RECHAZADO` (402) · 50605 `MAX_INTENTOS` (409) |
 | 50700–50799 | Pedidos | 50701 `TRANSICION_INVALIDA` (409) · 50702 `NO_CANCELABLE` (409) · 50703 `DEVOLUCION_EXCEDE_VENDIDO` (422) · 50704 `PLAZO_DEVOLUCION_VENCIDO` (422) · 50705 `REEMBOLSO_EXCEDE_TOTAL` (422) |
-| 50900–50999 | Integridad | 50901 `REGISTRO_INMUTABLE` (409) |
+| 50900–50999 | Integridad | 50901 `REGISTRO_INMUTABLE` (409). Con ledger confirmado (E1-H01), el motor rechaza `UPDATE`/`DELETE` con su propio **error 37359** (y `TRUNCATE` con 13545), fuera del rango de negocio: `ejecutarSP` lo trataría como `ERROR_INTERNO` (500). En la práctica no llega a ejecución, porque un SP que contenga ese `UPDATE` no se puede ni crear |
 | — (API, sin número SQL) | Errores que nacen en la API | `VALIDACION_FALLIDA` (400, esquema Zod) · `JSON_INVALIDO` (400, cuerpo mal formado) · `CUERPO_DEMASIADO_GRANDE` (413) · `CONTENIDO_NO_SOPORTADO` (415, charset o codificación del cuerpo no compatible) · `ERROR_INTERNO` (500, sin detalles para el cliente) · `NO_ENCONTRADO` (404) también para rutas inexistentes |
 
 ---
@@ -853,7 +867,7 @@ Rangos por módulo para `THROW`. El catálogo completo, con su código estable y
 
 | ID | Decisión | Alternativa | Estado |
 |---|---|---|---|
-| M-01 | **Inmutabilidad con tablas ledger append-only** (`LEDGER = ON (APPEND_ONLY = ON)`, SQL Server 2022) en `Bitacora`, `MovimientoKardex` y `HistorialEstadoPedido`: el motor rechaza `UPDATE` y `DELETE` incluso a un administrador y permite verificar con `sp_verify_database_ledger` que nada se alteró. La app sigue sin permisos sobre las tablas. **Respaldo:** si la prueba de E1-H01 muestra que no acepta las FKs, se usa trigger `INSTEAD OF` + permisos, sin otros cambios | Solo trigger: un administrador puede deshabilitarlo. Verificado en la documentación de Microsoft: nuestros tipos de datos son compatibles | ✏️ |
+| M-01 | **Inmutabilidad con tablas ledger append-only** (`LEDGER = ON (APPEND_ONLY = ON)`, SQL Server 2022) en `Bitacora`, `MovimientoKardex` y `HistorialEstadoPedido`: el motor rechaza `UPDATE` y `DELETE` incluso a un administrador y permite verificar con `sp_verify_database_ledger` que nada se alteró. La app sigue sin permisos sobre las tablas. **Respaldo:** si la prueba de E1-H01 muestra que no acepta las FKs, se usa trigger `INSTEAD OF` + permisos, sin otros cambios. **E1-H01 (30 oct): ledger confirmado con FKs, `CHECK` y triggers de bitácora; el respaldo no se usa** (detalle en §6) | Solo trigger: un administrador puede deshabilitarlo. Verificado en la documentación de Microsoft: nuestros tipos de datos son compatibles | ✏️ |
 | M-02 | `DECIMAL(12,2)` para montos y `DECIMAL(5,2)` para porcentajes | `MONEY`: redondea mal en divisiones | ✅ |
 | M-03 | UTC en todas las fechas + `FechaPagoLocal` y `FechaLocal` (`DATE`, Guatemala) calculadas al insertar | `DATETIMEOFFSET`: más pesado y no resuelve el agrupado por día local | ✅ |
 | M-04 | Copias (snapshot) de dirección, método de envío, cupón, SKU, nombre y categoría en sesión y pedido | Solo FKs: el pedido cambiaría si cambia el catálogo o la dirección | ✅ |
