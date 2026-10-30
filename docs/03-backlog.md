@@ -589,24 +589,24 @@ Se detalla en historias al cerrar la Fase 1.
 | E0-H03 | Migrador de base de datos | Must | 0.75 | Hecha |
 | E0-H04 | Esqueleto de la API y piezas compartidas | Must | 0.75 | Hecha |
 | E0-H05 | Dos réplicas detrás de nginx | Must | 0.25 | Hecha |
-| E0-H06 | Base de pruebas | Should | 0.25 | En revisión |
-| E1-H01 | Prueba de tablas ledger con llaves foráneas | Must | 0.25 | Propuesta |
-| E1-H02 | Tablas de seguridad, direcciones, catálogo e inventario | Must | 0.75 | Propuesta |
-| E1-H03 | Tablas de carrito, cupones, envíos, parámetros y checkout | Must | 0.5 | Propuesta |
-| E1-H04 | Tablas de pedidos, devoluciones, reembolsos y bitácora con sus triggers | Must | 0.75 | Propuesta |
-| E1-H05 | Funciones y vistas base | Must | 0.5 | Propuesta |
-| E1-H06 | Semillas de catálogos, geografía, usuarios y catálogo demo | Must | 0.75 | Propuesta |
-| E2-H01 | Registro e inicio de sesión | Must | 0.75 | Propuesta |
-| E2-H02 | Rotación del refresh token y logout | Must | 0.5 | Propuesta |
-| E2-H03 | Autenticación, autorización y revocación | Must | 0.5 | Propuesta |
-| E2-H04 | Gestión de usuarios y perfil | Should | 0.5 | Propuesta |
-| E2-H05 | Direcciones y catálogo geográfico | Must | 0.25 | Propuesta |
-| E3-H01 | Categorías | Must | 0.25 | Propuesta |
-| E3-H02 | Atributos y valores | Must | 0.25 | Propuesta |
-| E3-H03 | Productos, imágenes y variantes | Must | 1.0 | Propuesta |
-| E3-H04 | Precios versionados | Must | 0.5 | Propuesta |
-| E3-H05 | Búsqueda y filtros del catálogo | Must | 0.75 | Propuesta |
-| E3-H06 | Inventario y kardex | Must | 0.75 | Propuesta |
+| E0-H06 | Base de pruebas | Should | 0.25 | Hecha |
+| E1-H01 | Prueba de tablas ledger con llaves foráneas | Must | 0.25 | Lista |
+| E1-H02 | Tablas de seguridad, direcciones, catálogo e inventario | Must | 0.75 | Lista |
+| E1-H03 | Tablas de carrito, cupones, envíos, parámetros y checkout | Must | 0.5 | Lista |
+| E1-H04 | Tablas de pedidos, devoluciones, reembolsos y bitácora con sus triggers | Must | 0.75 | Lista |
+| E1-H05 | Funciones y vistas base | Must | 0.5 | Lista |
+| E1-H06 | Semillas de catálogos, geografía, usuarios y catálogo demo | Must | 0.75 | Lista |
+| E2-H01 | Registro e inicio de sesión | Must | 0.75 | Lista |
+| E2-H02 | Rotación del refresh token y logout | Must | 0.5 | Lista |
+| E2-H03 | Autenticación, autorización y revocación | Must | 0.5 | Lista |
+| E2-H04 | Gestión de usuarios y perfil | Should | 0.5 | Lista |
+| E2-H05 | Direcciones y catálogo geográfico | Must | 0.25 | Lista |
+| E3-H01 | Categorías | Must | 0.25 | Lista |
+| E3-H02 | Atributos y valores | Must | 0.25 | Lista |
+| E3-H03 | Productos, imágenes y variantes | Must | 1.0 | Lista |
+| E3-H04 | Precios versionados | Must | 0.5 | Lista |
+| E3-H05 | Búsqueda y filtros del catálogo | Must | 0.75 | Lista |
+| E3-H06 | Inventario y kardex | Must | 0.75 | Lista |
 | E4-H01 | Carrito de invitado y de cliente | Must | 0.75 | Propuesta |
 | E4-H02 | Garantía de precio de 3 días | Must | 0.5 | Propuesta |
 | E4-H03 | Fusión del carrito al iniciar sesión o registrarse | Must | 0.25 | Propuesta |
