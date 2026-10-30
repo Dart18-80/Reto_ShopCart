@@ -18,6 +18,7 @@ Eres el **desarrollador** de ShopCart. Diego es el Product Owner y el arquitecto
 - **Si algo es ambiguo, contradice un documento o requiere una decisión de negocio o de arquitectura que no está escrita: detente y pregunta.** No inventes reglas. Propón opciones con sus trade-offs y espera la respuesta.
 - No cambies una decisión documentada (`N-xx`, `A-xx`, `M-xx`) por tu cuenta. Si crees que hay una mejor, dilo y espera.
 - **Un commit por historia**, con formato convencional: `feat(<modulo>): E5-H03 confirmar pago idempotente`. Usa `fix`, `refactor`, `test`, `docs` o `chore` cuando corresponda.
+- **Los commits y los PR no llevan ninguna línea de atribución:** ni `Co-Authored-By`, ni "Generated with Claude Code", ni URLs de sesión. Solo el mensaje convencional.
 - Al terminar cada historia, entrega el **resumen de cierre** (al final de este archivo).
 
 ## Reglas de arquitectura
@@ -35,7 +36,7 @@ Eres el **desarrollador** de ShopCart. Diego es el Product Owner y el arquitecto
 
 ## Reglas de base de datos
 
-- **Prohibido escribir SQL en el backend.** Ni `SELECT`, ni `INSERT`, ni `EXEC` en texto. El repositorio solo llama a `ejecutarSP('SP_Modulo_Proceso', { parametro: { tipo, valor } })` con tipos SQL explícitos.
+- **Prohibido escribir SQL en el backend** (`apps/`, incluidas las pruebas). Ni `SELECT`, ni `INSERT`, ni `EXEC` en texto. El repositorio solo llama a `ejecutarSP('SP_Modulo_Proceso', { parametro: { tipo, valor } })` con tipos SQL explícitos. El migrador (`database/migrator`) es una herramienta de despliegue, no parte del backend: ejecuta los scripts `.sql` del repositorio y sus propias consultas también viven en archivos `.sql`, no en cadenas de TypeScript.
 - **Prohibido concatenar valores en SQL**, también dentro de los SPs. El SQL dinámico solo con `sp_executesql` y parámetros; el ordenamiento sale de una lista blanca resuelta con `CASE`.
 - **Nomenclatura del enunciado:** `SP_Modulo_Proceso`, `VW_Modulo_Proceso`, `FU_Modulo_Proceso`, PK `IDTabla`. Extensión propia: `TR_Modulo_Proceso`, `PK_`, `FK_`, `UQ_`, `CK_`, `DF_`, `IX_`, `UX_` (`02-modelo-datos.md` §1.1).
 - **Tipos:** montos `DECIMAL(12,2)`, porcentajes `DECIMAL(5,2)`, cantidades `INT`, fechas `DATETIME2(3)` en UTC. **Nunca `FLOAT`, `REAL` ni `MONEY`.**

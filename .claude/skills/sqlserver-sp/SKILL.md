@@ -18,7 +18,7 @@ Esta skill concreta las decisiones de `docs/02-modelo-datos.md` y `docs/01-arqui
 - Codificación UTF-8 con finales de línea LF (lo fuerza `.gitattributes`).
 - Separa lotes con `GO` en una línea propia.
 - Siempre con esquema: `dbo.Pedido`, `dbo.SP_Pedidos_CrearPedido`.
-- Un objeto `R__` que depende de otro se nombra de modo que el orden alfabético lo cree después, o se declara la dependencia en el encabezado del archivo para que el migrador la respete.
+- **Orden de los `R__`:** el migrador los aplica por tipo (`FU_` → `VW_` → `SP_` → `TR_`) y, dentro de cada tipo, en orden alfabético. Si un objeto depende de otro **del mismo tipo**, declara la dependencia en la primera línea del archivo: `-- depende-de: R__FU_Catalogo_PrecioVigente.sql`.
 
 ## 2. Nomenclatura
 
@@ -364,6 +364,8 @@ EXEC sys.sp_executesql @Sql,
 ```
 
 **Prohibido:** `EXEC(@Sql)`, `EXEC (N'...' + @Valor)` y cualquier `+ @Parametro +` fuera de un literal que solo referencia al parámetro.
+
+**Única excepción documentada:** `CREATE LOGIN ... WITH PASSWORD` no acepta parámetros. Solo en el script de arranque del migrador (`preparar-servidor.sql`), la contraseña que viene de `.env` se concatena con `QUOTENAME(@Contrasena, '''')` validando antes que no supere 128 caracteres. Esta excepción **nunca** se usa en SPs ni en ningún otro script.
 
 ## 12. Tablas ledger (M-01)
 

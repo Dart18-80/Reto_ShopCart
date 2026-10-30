@@ -296,11 +296,13 @@ Cada criterio de aceptación de la historia se convierte en una prueba **antes**
 | Tipo | Dónde | Qué prueba | Cómo |
 |---|---|---|---|
 | Unitaria | `test/unit/<modulo>/*.test.ts` | Reglas y orquestación del servicio | Vitest con repositorio y puertos falsos (objetos que cumplen el tipo) |
-| Integración | `test/integracion/<modulo>/*.test.ts` | SPs y reglas críticas en la base real | Contra `shopcart_test`; cada archivo empieza con `SP_Pruebas_Reiniciar` |
+| Integración | `test/integracion/<modulo>/*.test.ts` | SPs y reglas críticas en la base real | Contra `shopcart_test`; se recrea desde cero al inicio de cada corrida; cada prueba crea sus propios datos |
 | API | `test/integracion/<modulo>/*.api.test.ts` | Contrato HTTP, códigos, aislamiento entre clientes | Supertest sobre la app real con `shopcart_test` |
 | Concurrencia | `test/concurrencia/*.test.ts` | RNF-3 | Contra el entorno de Docker, a través de nginx |
 
 - **Las pruebas tampoco escriben SQL.** Preparan los datos con SPs de prueba que solo existen en `shopcart_test` (`database/test/R__SP_Pruebas_*.sql`, que el migrador aplica únicamente a esa base).
+- **Nada se borra entre pruebas:** las tablas ledger no admiten `DELETE` ni `TRUNCATE`; por eso `pnpm test:integracion` recrea `shopcart_test` al empezar y cada prueba crea datos únicos.
+- **La prueba de concurrencia** corre contra el entorno de Docker con datos propios (por ejemplo, una variante nueva con existencia 1), sin reiniciar nada.
 - Una prueba de integración por cada regla que vive en un SP (límites, transiciones, idempotencia, atomicidad).
 - **Patrón de concurrencia:**
 
