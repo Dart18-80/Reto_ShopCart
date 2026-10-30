@@ -30,7 +30,12 @@ async function iniciar(): Promise<void> {
     verificadorRedis: crearVerificadorRedis(redis),
   });
 
-  const servidor = app.listen(config.puerto, () => {
+  // Express 5 también llama a este callback si listen falla (por ejemplo, puerto ocupado).
+  const servidor = app.listen(config.puerto, (error?: Error) => {
+    if (error !== undefined) {
+      logger.fatal({ err: error, puerto: config.puerto }, 'La API no pudo escuchar en el puerto');
+      process.exit(1);
+    }
     logger.info({ puerto: config.puerto, entorno: config.entorno }, 'API escuchando');
   });
 

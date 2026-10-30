@@ -28,7 +28,9 @@ export function conectar(
     user: credenciales.usuario,
     password: credenciales.contrasena,
     requestTimeout: TIEMPO_MAXIMO_MS,
-    pool: { min: 0, max: 1 },
+    // min: 1 impide que el pool cierre la conexión ociosa a los 30 s: la que guarda el sp_getapplock de
+    // sesión no hace nada mientras dura la migración, y al cerrarse soltaría el bloqueo.
+    pool: { min: 1, max: 1 },
     options: { encrypt: true, trustServerCertificate: config.confiarCertificado },
   }).connect();
 }
