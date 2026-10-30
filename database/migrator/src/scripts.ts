@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { readdir, readFile } from 'node:fs/promises';
+import { readdir, readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { BASE_PRUEBAS } from './conexion.ts';
 import { ErrorMigracion } from './errores.ts';
@@ -119,6 +119,7 @@ export async function leerScripts(
   directorio: string,
   carpetas: readonly Carpeta[],
 ): Promise<Script[]> {
+  await verificarDirectorio(directorio);
   const scripts: Script[] = [];
   for (const carpeta of carpetas) {
     const leidos = await leerCarpeta(directorio, carpeta);
@@ -132,7 +133,9 @@ async function leerCarpeta(
   { tipo, carpeta, patron }: Carpeta,
 ): Promise<Script[]> {
   const ruta = join(directorio, carpeta);
-  const archivos = (await readdir(ruta)).filter((archivo) => archivo.endsWith('.sql')).sort();
+  const archivos = (await listarArchivos(ruta))
+    .filter((archivo) => archivo.endsWith('.sql'))
+    .sort();
 
   const invalidos = archivos.filter((archivo) => !patron.test(archivo));
   if (invalidos.length > 0) {
@@ -154,6 +157,28 @@ async function leerCarpeta(
       };
     }),
   );
+}
+
+// Sin la raíz no hay nada que leer: seguir reportaría "la base ya estaba al día" con la ruta equivocada.
+async function verificarDirectorio(directorio: string): Promise<void> {
+  const info = await stat(directorio).catch(() => undefined);
+  if (info?.isDirectory() !== true) {
+    throw new ErrorMigracion(`No existe el directorio de scripts: ${directorio} (DB_SCRIPTS_DIR).`);
+  }
+}
+
+// git no versiona carpetas vacías: en un clon limpio, una carpeta sin scripts simplemente no existe.
+async function listarArchivos(ruta: string): Promise<string[]> {
+  try {
+    return await readdir(ruta);
+  } catch (error) {
+    if (codigoDeError(error) === 'ENOENT') return [];
+    throw error;
+  }
+}
+
+function codigoDeError(error: unknown): unknown {
+  return typeof error === 'object' && error !== null && 'code' in error ? error.code : undefined;
 }
 
 function verificarVersionesUnicas(carpeta: string, archivos: string[], patron: RegExp): void {
