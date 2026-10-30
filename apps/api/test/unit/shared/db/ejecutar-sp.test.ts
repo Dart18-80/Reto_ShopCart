@@ -135,6 +135,112 @@ describe('ejecutarSP', () => {
     await expect(ejecutarSP('SP_Pruebas_Leer')).rejects.not.toBeInstanceOf(AppError);
   });
 
+  it('una conexión perdida (error sin número) se propaga sin reintentar', async () => {
+    const perdida = Object.assign(new Error('Connection lost - read ECONNRESET'), {
+      code: 'ESOCKET',
+    });
+    const { conexion, ejecutar } = conexionFalsa(() => Promise.reject(perdida));
+    const { ejecutarSP } = crearEjecutorSP({ conexion, logger, esperar: sinEspera });
+
+    await expect(ejecutarSP('SP_Pruebas_Leer')).rejects.toBe(perdida);
+    expect(ejecutar).toHaveBeenCalledTimes(1);
+  });
+
+  it('entre reintentos por deadlock espera 50, 100 y 200 ms (backoff exponencial)', async () => {
+    const esperas: number[] = [];
+    const { conexion } = conexionFalsa(() => Promise.reject(errorSql(1205)));
+    const { ejecutarSP } = crearEjecutorSP({
+      conexion,
+      logger,
+      esperar: (ms) => {
+        esperas.push(ms);
+        return Promise.resolve();
+      },
+    });
+
+    await ejecutarSP('SP_Pruebas_Escribir').catch(() => undefined);
+
+    expect(esperas).toEqual([50, 100, 200]);
+  });
+
+  it('si tras un deadlock el reintento falla por una regla de negocio, devuelve ese AppError', async () => {
+    let intentos = 0;
+    const { conexion } = conexionFalsa(() => {
+      intentos += 1;
+      return Promise.reject(errorSql(intentos === 1 ? 1205 : 50301));
+    });
+    const { ejecutarSP } = crearEjecutorSP({ conexion, logger, esperar: sinEspera });
+
+    await expect(ejecutarSP('SP_Pruebas_Escribir')).rejects.toMatchObject({
+      codigo: 'STOCK_INSUFICIENTE',
+    });
+  });
+
+  it('los reintentos envían el mismo actor que la primera ejecución', async () => {
+    let intentos = 0;
+    const { conexion, ejecutar } = conexionFalsa(() => {
+      intentos += 1;
+      return intentos === 1 ? Promise.reject(errorSql(1205)) : Promise.resolve([[]]);
+    });
+    const { ejecutarSP } = crearEjecutorSP({ conexion, logger, esperar: sinEspera });
+
+    await ejecutarConContexto(
+      { requestId: '8f1c2e9a-0000-4000-8000-000000000002', idUsuario: 3, rol: 'Operador' },
+      () => ejecutarSP('SP_Pruebas_Escribir'),
+    );
+
+    const [primera, segunda] = ejecutar.mock.calls.map(([, parametros]) => valores(parametros));
+    expect(segunda).toEqual(primera);
+  });
+
+  it('pasa los parámetros con valor null tal cual', async () => {
+    const { conexion, ejecutar } = conexionFalsa(() => Promise.resolve([[]]));
+    const { ejecutarSP } = crearEjecutorSP({ conexion, logger, esperar: sinEspera });
+
+    await ejecutarSP('SP_Pruebas_Leer', { Referencia: { tipo: sql.NVarChar(100), valor: null } });
+
+    expect(valores(ejecutar.mock.calls[0]?.[1])).toMatchObject({ Referencia: null });
+  });
+
+  it('un SP sin conjuntos de resultados devuelve una lista vacía', async () => {
+    const { conexion } = conexionFalsa(() => Promise.resolve([]));
+    const { ejecutarSP } = crearEjecutorSP({ conexion, logger, esperar: sinEspera });
+
+    await expect(ejecutarSP('SP_Pruebas_Escribir')).resolves.toEqual([]);
+  });
+
+  it('A-18: con peticiones concurrentes, cada SP recibe el actor de su propia petición', async () => {
+    // La conexión tarda distinto en cada llamada para que las peticiones se intercalen.
+    const { conexion, ejecutar } = conexionFalsa(
+      () =>
+        new Promise((resolve) => {
+          setTimeout(() => {
+            resolve([[]]);
+          }, Math.random() * 20);
+        }),
+    );
+    const { ejecutarSP } = crearEjecutorSP({ conexion, logger, esperar: sinEspera });
+    const peticiones = Array.from({ length: 20 }, (_, indice) => indice + 1);
+
+    await Promise.all(
+      peticiones.map((idUsuario) =>
+        ejecutarConContexto(
+          { requestId: crypto.randomUUID(), idUsuario, rol: 'Cliente' },
+          async () => {
+            await new Promise((resolve) => setTimeout(resolve, Math.random() * 20));
+            return ejecutarSP('SP_Pruebas_Leer', { Marca: { tipo: sql.Int, valor: idUsuario } });
+          },
+        ),
+      ),
+    );
+
+    for (const [, parametros] of ejecutar.mock.calls) {
+      const { Marca, IDUsuarioActor } = valores(parametros);
+      expect(IDUsuarioActor).toBe(Marca);
+    }
+    expect(ejecutar).toHaveBeenCalledTimes(peticiones.length);
+  });
+
   // Prueba de tipos: la verifica `pnpm typecheck`, no la ejecución.
   it('su firma solo acepta nombres SP_Modulo_Proceso, nunca texto SQL', () => {
     expectTypeOf<Parameters<EjecutorSP['ejecutarSP']>[0]>().toEqualTypeOf<NombreSP>();
