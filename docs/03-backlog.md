@@ -117,7 +117,7 @@
 - `src/shared/http/contexto.ts`: `AsyncLocalStorage` por petición con `{ requestId, idUsuario, rol }`; lo abre el middleware `requestId` y lo leen `ejecutarSP` y el logger, sin pasarlo a mano por las capas.
 - `database/programmability/R__SP_Sistema_EstablecerContexto.sql`: fija `SESSION_CONTEXT` (`IDUsuario`, `Rol`, `RequestId`) a partir de los parámetros estándar, para que los triggers lo lean. Todo SP que escribe lo llama como primera instrucción (A-18).
 - `src/shared/errors`: `AppError`, catálogo de códigos (`catalogo.ts`) con su HTTP, middleware central con el formato estándar.
-- `src/shared/http`: middlewares `requestId`, `validar(esquema)`, formato de paginación y header `X-Instancia`.
+- `src/shared/http`: middleware `requestId`, envoltorio `manejar(esquemas, handler)` que valida la entrada con Zod en el controlador (A-20), formato de paginación y header `X-Instancia`.
 - `src/shared/observability`: logger pino en JSON con redacción (`contrasena`, `numeroTarjeta`, `cvv`, `authorization`, `cookie`). OpenTelemetry se agrega en la semana 2.
 - `helmet`, `cors` con `CORS_ORIGINS`, `express.json` con límite de tamaño.
 - `GET /api/v1/health` (llama a `SP_Sistema_Health` y hace `PING` a Redis), OpenAPI base en `/api/docs`, apagado ordenado con `SIGTERM`.

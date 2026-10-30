@@ -26,7 +26,7 @@ apps/api/src/modules/direcciones/
 ## 2. Recorrido de una petición
 
 ```
-requestId → (autenticar → autorizar) → validar(Zod) → controller → service → repository → ejecutarSP → SP
+requestId → (autenticar → autorizar) → controller: manejar(Zod) → service → repository → ejecutarSP → SP
                                                                                    ↓
                          middleware de errores ← AppError ← THROW 5xxxx del SP
 ```
@@ -158,34 +158,54 @@ export type DireccionesService = ReturnType<typeof crearDireccionesService>;
 - **Prevalidación (A-02):** el servicio puede validar antes para dar un mensaje claro, pero el SP vuelve a validar bajo bloqueo y es la autoridad. Usa los mismos códigos del catálogo.
 - **Coordinación con sistemas externos** (pasarela, caché): aquí, en el orden de `01-arquitectura.md` §6. Una llamada externa **nunca** va dentro de una transacción de la base.
 
-## 6. Controlador
+## 6. Controlador y manejar
+
+`manejar` (A-20, `shared/http/manejar.ts`) valida la entrada con Zod y llama al handler con los valores ya transformados y **tipados por los propios esquemas**:
+
+```ts
+// firma de referencia
+function manejar<E extends { params?: ZodType; body?: ZodType; query?: ZodType }>(
+  esquemas: E,
+  handler: (entrada: { params: z.infer<E['params']>; body: z.infer<E['body']>; query: z.infer<E['query']> },
+            res: Response) => void | Promise<void>,
+): RequestHandler;   // una parte sin esquema llega como undefined
+```
+
+- Si algo no valida, responde `400 VALIDACION_FALLIDA` con `detalles.errores: [{ campo: 'body.nombre', mensaje }]` (todas las partes a la vez) y el handler no se ejecuta.
+- **No modifica `req`**: en Express 5 `req.query` es de solo lectura. El handler no recibe `req`; si necesita algo más, se agrega a `manejar` con su propia validación.
 
 ```ts
 // direcciones.controller.ts
-import type { Request, Response } from 'express';
+import type { RequestHandler } from 'express';
+import { manejar } from '../../shared/http/index.js';
+import { crearDireccionSchema, paramsIdSchema } from './direcciones.schemas.js';
 import type { DireccionesService } from './direcciones.service.js';
-import type { CrearDireccion, ParamsId } from './direcciones.schemas.js';
 
-export function crearDireccionesController(servicio: DireccionesService) {
-  return {
-    async listar(_req: Request, res: Response): Promise<void> {
-      res.json({ datos: await servicio.listar() });
-    },
-
-    async obtener(req: Request<ParamsId>, res: Response): Promise<void> {
-      res.json({ datos: await servicio.obtener(req.params.id) });
-    },
-
-    async crear(req: Request<unknown, unknown, CrearDireccion>, res: Response): Promise<void> {
-      res.status(201).json({ datos: await servicio.crear(req.body) });
-    },
-  };
+export interface DireccionesController {
+  listar: RequestHandler;
+  obtener: RequestHandler;
+  crear: RequestHandler;
 }
 
-export type DireccionesController = ReturnType<typeof crearDireccionesController>;
+export function crearDireccionesController(servicio: DireccionesService): DireccionesController {
+  return {
+    listar: manejar({}, async (_entrada, res) => {
+      res.json({ datos: await servicio.listar() });
+    }),
+
+    obtener: manejar({ params: paramsIdSchema }, async ({ params }, res) => {
+      res.json({ datos: await servicio.obtener(params.id) });   // params.id ya es number
+    }),
+
+    crear: manejar({ body: crearDireccionSchema }, async ({ body }, res) => {
+      res.status(201).json({ datos: await servicio.crear(body) });
+    }),
+  };
+}
 ```
 
-- Los genéricos de `Request` tipan `params` y `body` **sin `as`**. `validar(...)` ya reemplazó `req.params`, `req.body` y `req.query` por los valores validados y transformados.
+- Los tipos de `params`, `body` y `query` salen de `z.infer` de los esquemas: **sin `as` ni genéricos escritos a mano**, que podrían no coincidir con lo validado.
+- El controlador declara su interfaz (`DireccionesController`) con el tipo de retorno explícito.
 - Respuesta estándar: `{ datos }` y, en listados, `{ datos, paginacion: { pagina, tamano, total, totalPaginas } }`.
 
 ## 7. Rutas y OpenAPI
@@ -193,18 +213,18 @@ export type DireccionesController = ReturnType<typeof crearDireccionesController
 ```ts
 // direcciones.routes.ts
 import { Router } from 'express';
-import { autenticar, autorizar, validar } from '../../shared/http/index.js';
+import { autenticar, autorizar } from '../../shared/http/index.js';
 import { registroOpenApi, respuestasError } from '../../shared/openapi/index.js';
 import type { DireccionesController } from './direcciones.controller.js';
-import { crearDireccionSchema, direccionSchema, paramsIdSchema } from './direcciones.schemas.js';
+import { crearDireccionSchema, direccionSchema } from './direcciones.schemas.js';
 
 export function crearDireccionesRouter(controller: DireccionesController): Router {
   const router = Router();
   router.use(autenticar, autorizar('Cliente'));
 
   router.get('/', controller.listar);
-  router.get('/:id', validar({ params: paramsIdSchema }), controller.obtener);
-  router.post('/', validar({ body: crearDireccionSchema }), controller.crear);
+  router.get('/:id', controller.obtener);
+  router.post('/', controller.crear);
 
   registroOpenApi.registerPath({
     method: 'post',
@@ -223,6 +243,7 @@ export function crearDireccionesRouter(controller: DireccionesController): Route
 ```
 
 - **Cada ruta declara quién puede usarla** (`autenticar` + `autorizar(...)`). Una ruta pública lo indica con un comentario explícito.
+- **La validación no va en las rutas: la hace `manejar` en el controlador** (A-20). Las rutas solo aplican `autenticar`/`autorizar` y registran OpenAPI.
 - **Cada endpoint se registra en OpenAPI** en el mismo archivo de rutas, con sus respuestas de error.
 
 ## 8. Esquemas Zod
@@ -327,7 +348,8 @@ expect(resultados.filter((r) => r.status === 409)).toHaveLength(clientes.length 
 - [ ] El repositorio solo usa `ejecutarSP` con tipos SQL explícitos; no hay texto SQL en ningún archivo (tampoco en las pruebas).
 - [ ] El servicio no importa Express y recibe sus dependencias inyectadas.
 - [ ] Los controladores no tienen `if` de negocio ni `try/catch`.
-- [ ] Cada ruta tiene `autenticar`/`autorizar` (o un comentario que justifica que es pública), validación Zod y registro en OpenAPI.
+- [ ] Cada ruta tiene `autenticar`/`autorizar` (o un comentario que justifica que es pública) y registro en OpenAPI.
+- [ ] Cada handler del controlador valida su entrada con `manejar` (A-20).
 - [ ] Los cuerpos usan `.strict()` y ningún endpoint de cliente recibe un ID de usuario.
 - [ ] Los montos son texto en JSON y `Decimal` en TypeScript.
 - [ ] Hay pruebas para cada criterio de aceptación, incluida la de aislamiento si el endpoint es de cliente.

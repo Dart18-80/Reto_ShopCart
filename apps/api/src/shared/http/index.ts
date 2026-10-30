@@ -14,4 +14,4 @@ export {
   type RespuestaPaginada,
 } from './paginacion.js';
 export { requestId } from './request-id.js';
-export { validar } from './validar.js';
+export { manejar, type Entrada } from './manejar.js';

@@ -138,7 +138,7 @@ src/modules/<modulo>/
 | `config/` | Lee las variables de entorno y **las valida con Zod al arrancar**; si falta una, el proceso no inicia |
 | `db/` | Pool de `mssql` y helper `ejecutarSP<T>(nombre, parametros)` con **parámetros tipados obligatorios**: agrega los parámetros estándar del actor (A-18), traduce los errores de SQL (A-06, A-19) y reintenta ante deadlocks |
 | `errors/` | `AppError` (código, mensaje, status, detalles), mapeo de errores de negocio de SQL (50000–59999) a HTTP y middleware central de errores |
-| `http/` | Middlewares: `requestId`, `autenticar`, `autorizar(roles)`, `validar(esquema)`, `rateLimit`, `idempotencia`; formato estándar de respuesta y paginación |
+| `http/` | Middlewares: `requestId`, `autenticar`, `autorizar(roles)`, `rateLimit`, `idempotencia`; envoltorio tipado `manejar(esquemas, handler)` que valida la entrada con Zod en el controlador (A-20); formato estándar de respuesta y paginación |
 | `observability/` | SDK de OpenTelemetry (http, express, tedious, ioredis), logger pino con `traceId`/`spanId` y **redacción** de datos sensibles |
 | `jobs/` | Planificador interno de tareas periódicas (sección 8) |
 | `adapters/` | `PasarelaSimulada`, `CacheRedis`, `ListaRevocadosRedis` |
@@ -467,6 +467,7 @@ Estado: 🟡 Propuesta · 🔍 En análisis · ✅ Confirmada · ✏️ Modifica
 | A-17 | Estrategia de pruebas: unitarias de servicios con puertos simulados, integración contra SQL Server real en Docker (base `shopcart_test`), test de concurrencia (RNF-3) y test de coincidencia de transiciones (N-08) | Mocks de la BD: no prueban los SPs, que es donde están las reglas críticas | ✅ |
 | A-18 | **Contexto del actor por parámetros estándar.** `ejecutarSP` agrega a cada SP `@IDUsuarioActor`, `@RolActor` y `@RequestId` (tomados de un `AsyncLocalStorage` por petición). Los SPs de recursos propios filtran con `@IDUsuarioActor`, y todo SP que escribe llama primero a `SP_Sistema_EstablecerContexto`, que fija `SESSION_CONTEXT` para los triggers | Fijar `SESSION_CONTEXT` desde Node antes de cada llamada: con el pool de conexiones, el `sp_set_session_context` y el SP pueden ejecutarse en conexiones distintas, y amarrar la conexión exige transacciones del lado del cliente que chocan con las de los SPs | ✅ |
 | A-19 | **Errores con detalles estructurados.** Si un `THROW` necesita datos (por ejemplo, qué líneas no tienen existencia), su mensaje es un JSON `{ mensaje, detalles }` y `ejecutarSP` lo separa | Devolver un conjunto de resultados con el error: obliga a cada SP a usar un formato de salida doble y complica el `TRY/CATCH` | ✅ |
+| A-20 | **Envoltorio tipado `manejar` para la entrada HTTP.** Cada handler del controlador se declara con `manejar(esquemas, handler)`: valida `params`, `body` y `query` con Zod, responde `400 VALIDACION_FALLIDA` con los detalles si falla y llama al handler con los valores transformados, tipados con `z.infer` de los mismos esquemas. No modifica `req` | Middleware que reemplaza `req.body`/`req.query` y genéricos de `Request` escritos a mano: `req.query` es de solo lectura en Express 5, y los genéricos no garantizan coincidir con el esquema validado | ✅ |
 
 ---
 
