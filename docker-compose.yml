@@ -3,14 +3,30 @@ name: shopcart
 # Cada valor tiene una sola fuente en .env. Los puertos también: SQL Server y Redis escuchan dentro
 # del contenedor en el mismo DB_PORT / REDIS_PORT que se publica en el host.
 
-# A-03, RNF-2: dos réplicas idénticas de la API; solo cambian el host de SQL Server y de Redis
-# (dentro de la red de Compose) y el nombre de la réplica.
+# §10, mínimo privilegio: cada servicio recibe solo las variables que usa. Las réplicas nunca ven
+# MSSQL_SA_PASSWORD ni DB_MIGRADOR_CONTRASENA.
+x-api-entorno: &api-entorno
+  NODE_ENV: ${NODE_ENV:-development}
+  # nginx apunta a api-N:3000: el puerto de las réplicas no se toma de .env.
+  PUERTO: '3000'
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  CORS_ORIGINS: ${CORS_ORIGINS:?Define CORS_ORIGINS en .env (ver .env.example)}
+  DB_HOST: sqlserver
+  DB_PORT: ${DB_PORT:-1433}
+  DB_NOMBRE: ${DB_NOMBRE:-ShopCart}
+  DB_USUARIO: ${DB_USUARIO:?Define DB_USUARIO en .env (ver .env.example)}
+  DB_CONTRASENA: ${DB_CONTRASENA:?Define DB_CONTRASENA en .env (ver .env.example)}
+  DB_CONFIAR_CERTIFICADO: ${DB_CONFIAR_CERTIFICADO:-true}
+  REDIS_HOST: redis
+  REDIS_PORT: ${REDIS_PORT:-6379}
+  REDIS_CONTRASENA: ${REDIS_CONTRASENA:?Define REDIS_CONTRASENA en .env (ver .env.example)}
+
+# A-03, RNF-2: dos réplicas idénticas de la API; solo cambia el nombre de la réplica.
 x-api: &api
   build:
     context: .
     dockerfile: apps/api/Dockerfile
   image: shopcart-api:local
-  env_file: .env
   depends_on:
     db-migrator:
       condition: service_completed_successfully
@@ -81,16 +97,14 @@ services:
   api-1:
     <<: *api
     environment:
+      <<: *api-entorno
       INSTANCIA_ID: api-1
-      DB_HOST: sqlserver
-      REDIS_HOST: redis
 
   api-2:
     <<: *api
     environment:
+      <<: *api-entorno
       INSTANCIA_ID: api-2
-      DB_HOST: sqlserver
-      REDIS_HOST: redis
 
   # Balanceador y único origen: http://localhost:8080 (/api/* → api-1 y api-2; / → estáticos).
   web:
@@ -99,7 +113,7 @@ services:
       dockerfile: apps/web/Dockerfile
     image: shopcart-web:local
     ports:
-      - '127.0.0.1:8080:80'
+      - '${WEB_IP:-127.0.0.1}:8080:80'
     depends_on:
       api-1:
         condition: service_healthy

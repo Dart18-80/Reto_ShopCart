@@ -38,7 +38,7 @@ docker compose ps                 # todo "healthy"; db-migrator "Exited (0)"
 
 Todo se sirve en <http://localhost:8080>: `/api/*` va a las réplicas y `/` a la web. API: `http://localhost:8080/api/v1/health` · Swagger: `http://localhost:8080/api/docs`.
 
-SQL Server, Redis y nginx solo se publican en `127.0.0.1`: son accesibles desde tu máquina (SSMS, Azure Data Studio, pruebas), no desde la red.
+SQL Server y Redis solo se publican en `127.0.0.1`: son accesibles desde tu máquina (SSMS, Azure Data Studio, pruebas), no desde la red. nginx se publica en `WEB_IP` (por defecto `127.0.0.1`; con `0.0.0.0` queda visible en la red local).
 
 ### Balanceo entre réplicas (demo)
 
