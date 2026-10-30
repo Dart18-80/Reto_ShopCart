@@ -14,7 +14,7 @@
     "test": "pnpm -r --if-present test",
     "build": "pnpm -r --if-present build",
     "db:migrar": "pnpm --filter @shopcart/migrator migrar",
-    "test:integracion": "pnpm --filter @shopcart/migrator migrar:pruebas && pnpm --filter @shopcart/api test:integracion"
+    "test:integracion": "pnpm --filter @shopcart/migrator test:integracion && pnpm --filter @shopcart/migrator migrar:pruebas && pnpm --filter @shopcart/api test:integracion"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
