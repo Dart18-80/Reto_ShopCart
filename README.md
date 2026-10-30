@@ -70,6 +70,6 @@ pnpm --filter @shopcart/api start      # http://localhost:3000/api/v1/health · 
 pnpm test                               # pruebas unitarias
 ```
 
-Redis exige contraseña (`requirepass`). Su única fuente es `REDIS_URL` en `.env` (`redis://:<contraseña>@localhost:6379`): el contenedor de Redis la toma de ahí.
+Redis exige contraseña (`requirepass`). Cada valor tiene una sola fuente en `.env` (`DB_HOST`, `DB_PORT`, `DB_USUARIO`, `DB_CONTRASENA`, `REDIS_HOST`, `REDIS_PORT`, `REDIS_CONTRASENA`): Compose, el migrador y la API leen las mismas variables.
 
 > **Licencia de SQL Server:** el entorno usa la edición **Developer** (`MSSQL_PID=Developer`), gratuita para desarrollo y pruebas pero **no licenciada para producción**. En producción se usaría Standard o Enterprise (o Express, con sus límites).

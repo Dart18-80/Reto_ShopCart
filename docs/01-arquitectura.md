@@ -75,6 +75,7 @@ Versión en texto:
 
 - **Un solo origen** (`http://localhost:8080`): la SPA y la API se sirven desde el mismo host, así que las cookies (`refresh`, `carrito_invitado`) funcionan con `SameSite=Strict` sin trucos de CORS. CORS se configura igualmente con una lista explícita de orígenes (requisito del enunciado) para el servidor de desarrollo de Vite.
 - **nginx es el balanceador de carga.** Si una réplica deja de responder, nginx la marca como caída y envía todo el tráfico a la otra. **Escenario de demo:** `docker compose stop api-1` → la tienda sigue funcionando y el header `X-Instancia` muestra que todo lo atiende `api-2`. **Punto único de falla reconocido:** con un solo nginx, si nginx cae, cae todo. En producción se resuelve con un Ingress Controller con réplicas (Kubernetes) o un balanceador administrado (por ejemplo, ALB de AWS).
+- **Health (`GET /api/v1/health`):** responde `200` cuando la réplica puede atender, con `redis: "degradado"` si solo falta Redis (RNF-2: se sigue vendiendo), y `503` cuando la base no responde, para que el healthcheck de Docker y nginx saquen la réplica.
 - **Redis está detrás de la API, no delante.** Toda petición llega a la API, que valida el token y el rol. Redis evita ir a SQL Server, no evita pasar por el backend. No se usa la caché HTTP de nginx (`proxy_cache`): saltaría la autenticación y no permite la invalidación por eventos que exige el extra (sección 9).
 - **Réplicas explícitas** (`api-1`, `api-2`) en lugar de `deploy.replicas`: nginx resuelve los nombres al arrancar, y así cada respuesta lleva el header `X-Instancia`, que permite demostrar el balanceo en la defensa.
 - **Arranque con un solo comando:** `docker compose up -d`. El orden lo garantizan `depends_on` con `condition: service_healthy` y `service_completed_successfully`.
@@ -108,6 +109,7 @@ Un solo proceso desplegable, dividido internamente en **módulos por dominio** c
 | `reportes` | Dashboard y listados | `SP_Dashboard_*` | RF-08 |
 | `bitacora` | Consulta de la bitácora | `SP_Bitacora_*` | RF-09 |
 | `configuracion` | Parámetros del sistema (plazos y umbrales) | `SP_Configuracion_*` | N-02, N-04, N-06, N-13 |
+| `sistema` | Salud de la réplica (`GET /api/v1/health`) y contexto del actor para los triggers (`SP_Sistema_EstablecerContexto`) | `SP_Sistema_*` | RNF-2, A-18 |
 
 ### 4.3 Estructura interna de cada módulo
 

@@ -1,5 +1,8 @@
 name: shopcart
 
+# Cada valor tiene una sola fuente en .env. Los puertos también: SQL Server y Redis escuchan dentro
+# del contenedor en el mismo DB_PORT / REDIS_PORT que se publica en el host.
+
 services:
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
@@ -8,14 +11,15 @@ services:
       MSSQL_PID: Developer
       MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?Define MSSQL_SA_PASSWORD en .env (ver .env.example)}
       MSSQL_MEMORY_LIMIT_MB: ${MSSQL_MEMORY_LIMIT_MB:-2048}
+      MSSQL_TCP_PORT: ${DB_PORT:-1433}
     ports:
-      - '127.0.0.1:${SQLSERVER_PUERTO:-1433}:1433'
+      - '127.0.0.1:${DB_PORT:-1433}:${DB_PORT:-1433}'
     volumes:
       - sqlserver-datos:/var/opt/mssql
     healthcheck:
       test:
         - CMD-SHELL
-        - /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -b -Q "SELECT 1" -o /dev/null
+        - /opt/mssql-tools18/bin/sqlcmd -C -S "localhost,$$MSSQL_TCP_PORT" -U sa -P "$$MSSQL_SA_PASSWORD" -b -Q "SELECT 1" -o /dev/null
       interval: 10s
       timeout: 5s
       retries: 12
@@ -29,11 +33,12 @@ services:
       dockerfile: database/migrator/Dockerfile
     environment:
       DB_HOST: sqlserver
-      DB_PUERTO: 1433
+      DB_PORT: ${DB_PORT:-1433}
       DB_NOMBRE: ${DB_NOMBRE:-ShopCart}
       DB_CONFIAR_CERTIFICADO: ${DB_CONFIAR_CERTIFICADO:-true}
       MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?Define MSSQL_SA_PASSWORD en .env (ver .env.example)}
-      DB_APP_CONTRASENA: ${DB_APP_CONTRASENA:?Define DB_APP_CONTRASENA en .env (ver .env.example)}
+      DB_USUARIO: ${DB_USUARIO:?Define DB_USUARIO en .env (ver .env.example)}
+      DB_CONTRASENA: ${DB_CONTRASENA:?Define DB_CONTRASENA en .env (ver .env.example)}
       DB_MIGRADOR_CONTRASENA: ${DB_MIGRADOR_CONTRASENA:?Define DB_MIGRADOR_CONTRASENA en .env (ver .env.example)}
     depends_on:
       sqlserver:
@@ -43,20 +48,17 @@ services:
   redis:
     image: redis:7-alpine
     environment:
-      REDIS_URL: ${REDIS_URL:?Define REDIS_URL en .env (ver .env.example)}
-    # La contraseña tiene una sola fuente: REDIS_URL (redis://:<contraseña>@host:puerto).
-    # Se extrae con expansión de parámetros de sh: lo que va entre "://:" y la última "@".
+      REDIS_CONTRASENA: ${REDIS_CONTRASENA:?Define REDIS_CONTRASENA en .env (ver .env.example)}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+    # La contraseña va en una variable y no en la línea de comandos de Compose, que se ve en docker inspect.
     command:
-      - sh
-      - -c
-      - 'p="$${REDIS_URL#*://:}"; exec redis-server --requirepass "$${p%@*}"'
+      ['sh', '-c', 'exec redis-server --port "$$REDIS_PORT" --requirepass "$$REDIS_CONTRASENA"']
     ports:
-      - '127.0.0.1:${REDIS_PUERTO:-6379}:6379'
+      - '127.0.0.1:${REDIS_PORT:-6379}:${REDIS_PORT:-6379}'
     healthcheck:
-      # redis-cli -u lee "redis://:clave@" como usuario vacío y falla: se usa -a con la misma extracción.
       test:
         - CMD-SHELL
-        - 'p="$${REDIS_URL#*://:}"; redis-cli --no-auth-warning -a "$${p%@*}" ping | grep -q PONG'
+        - 'redis-cli --no-auth-warning -p "$$REDIS_PORT" -a "$$REDIS_CONTRASENA" ping | grep -q PONG'
       interval: 5s
       timeout: 3s
       retries: 5

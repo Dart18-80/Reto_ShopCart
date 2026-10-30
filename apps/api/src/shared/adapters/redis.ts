@@ -1,4 +1,5 @@
 import { Redis } from 'ioredis';
+import type { ConfiguracionRedis } from '../config/index.js';
 
 const ESPERA_PING_MS = 500;
 
@@ -6,8 +7,11 @@ const ESPERA_PING_MS = 500;
  * RNF-2: Redis solo guarda lo que se puede perder. Sin cola fuera de línea y con un solo intento por
  * comando, una caída de Redis falla rápido en lugar de dejar peticiones esperando.
  */
-export function crearClienteRedis(url: string): Redis {
-  return new Redis(url, {
+export function crearClienteRedis(config: ConfiguracionRedis): Redis {
+  return new Redis({
+    host: config.servidor,
+    port: config.puerto,
+    password: config.contrasena,
     lazyConnect: true,
     enableOfflineQueue: false,
     maxRetriesPerRequest: 1,

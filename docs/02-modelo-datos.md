@@ -823,6 +823,7 @@ Rangos por módulo para `THROW`. El catálogo completo, con su código estable y
 | 50600–50699 | Checkout y pago | 50601 `SESION_VENCIDA` (409) · 50602 `PAGO_EN_CURSO` (409) · 50603 `LLAVE_REUTILIZADA` (422) · 50604 `PAGO_RECHAZADO` (402) · 50605 `MAX_INTENTOS` (409) |
 | 50700–50799 | Pedidos | 50701 `TRANSICION_INVALIDA` (409) · 50702 `NO_CANCELABLE` (409) · 50703 `DEVOLUCION_EXCEDE_VENDIDO` (422) · 50704 `PLAZO_DEVOLUCION_VENCIDO` (422) · 50705 `REEMBOLSO_EXCEDE_TOTAL` (422) |
 | 50900–50999 | Integridad | 50901 `REGISTRO_INMUTABLE` (409) |
+| — (API, sin número SQL) | Errores que nacen en la API | `VALIDACION_FALLIDA` (400, esquema Zod) · `JSON_INVALIDO` (400, cuerpo mal formado) · `CUERPO_DEMASIADO_GRANDE` (413) · `ERROR_INTERNO` (500, sin detalles para el cliente) · `NO_ENCONTRADO` (404) también para rutas inexistentes |
 
 ---
 

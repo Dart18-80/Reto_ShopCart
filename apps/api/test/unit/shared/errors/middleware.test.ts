@@ -1,7 +1,7 @@
 import { Writable } from 'node:stream';
 import express from 'express';
 import request from 'supertest';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { AppError } from '../../../../src/shared/errors/app-error.js';
 import { manejadorErrores, rutaNoEncontrada } from '../../../../src/shared/errors/middleware.js';
@@ -153,5 +153,41 @@ describe('middleware central de errores', () => {
 
     expect(respuesta.status).toBe(404);
     expect(leerError(respuesta).codigo).toBe('NO_ENCONTRADO');
+  });
+});
+
+describe('NODE_ENV no relaja la seguridad de los errores', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  async function errorInesperadoCon(entorno: string) {
+    vi.stubEnv('NODE_ENV', entorno);
+    // La app se crea después de fijar NODE_ENV: Express lee el entorno al crearse.
+    const { app } = crearAppDePrueba();
+    const respuesta = await request(app).get('/inesperado');
+    return { respuesta, error: leerError(respuesta) };
+  }
+
+  it.each(['development', 'production'])(
+    'en %s un error inesperado responde 500 sin mensaje interno, stack ni detalles',
+    async (entorno) => {
+      const { respuesta, error } = await errorInesperadoCon(entorno);
+
+      expect(respuesta.status).toBe(500);
+      expect(error.codigo).toBe('ERROR_INTERNO');
+      expect(error.detalles).toBeUndefined();
+      expect(respuesta.text).not.toContain('10.0.0.5');
+      expect(respuesta.text).not.toMatch(/at |stack|Error:/);
+    },
+  );
+
+  it('development y production responden exactamente lo mismo, salvo el requestId', async () => {
+    const desarrollo = await errorInesperadoCon('development');
+    const produccion = await errorInesperadoCon('production');
+
+    const sinId = ({ requestId: _id, ...resto }: typeof desarrollo.error) => resto;
+    expect(sinId(desarrollo.error)).toEqual(sinId(produccion.error));
+    expect(desarrollo.respuesta.get('Content-Type')).toBe(produccion.respuesta.get('Content-Type'));
   });
 });

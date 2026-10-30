@@ -2,15 +2,13 @@ import sql from 'mssql';
 import type { ConfiguracionBaseDatos } from '../config/index.js';
 import type { ConexionSP } from './ejecutar-sp.js';
 
-// §10: la API se conecta con un login que solo puede ejecutar SPs.
-const LOGIN_APP = 'shopcart_app';
-
+// §10: DB_USUARIO es shopcart_app, un login que solo puede ejecutar SPs.
 export function conectarPool(config: ConfiguracionBaseDatos): Promise<sql.ConnectionPool> {
   return new sql.ConnectionPool({
     server: config.servidor,
     port: config.puerto,
     database: config.nombre,
-    user: LOGIN_APP,
+    user: config.usuario,
     password: config.contrasena,
     pool: { min: 0, max: 10 },
     options: { encrypt: true, trustServerCertificate: config.confiarCertificado },

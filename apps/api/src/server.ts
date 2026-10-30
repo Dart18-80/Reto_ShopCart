@@ -14,7 +14,7 @@ async function iniciar(): Promise<void> {
   const pool = await conectarPool(config.baseDatos);
   configurarBaseDatos(conexionMssql(pool), logger);
 
-  const redis = crearClienteRedis(config.redisUrl);
+  const redis = crearClienteRedis(config.redis);
   redis.on('error', (error: Error) => {
     logger.warn({ err: error }, 'Redis no responde: la API sigue en modo degradado');
   });
