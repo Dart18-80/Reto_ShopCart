@@ -1,5 +1,5 @@
 import { ejecutarSP } from '../../shared/db/index.js';
-import type { InfoBaseDatos } from './sistema.types.js';
+import type { ServidorBaseDatos } from './sistema.types.js';
 
 interface FilaHealth {
   VersionServidor: string;
@@ -7,7 +7,7 @@ interface FilaHealth {
 }
 
 export const sistemaRepository = {
-  async health(): Promise<InfoBaseDatos> {
+  async health(): Promise<ServidorBaseDatos> {
     const [fila] = await ejecutarSP<FilaHealth>('SP_Sistema_Health');
     if (fila === undefined) throw new Error('SP_Sistema_Health no devolvió filas');
     return { versionServidor: fila.VersionServidor, fechaHoraUtc: fila.FechaHoraUtc };

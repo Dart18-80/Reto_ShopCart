@@ -1,4 +1,4 @@
-import { pino, type DestinationStream, type Logger } from 'pino';
+import { pino, type DestinationStream, type LevelWithSilent, type Logger } from 'pino';
 import { obtenerContexto } from '../http/contexto.js';
 
 const CAMPOS_SENSIBLES = [
@@ -22,7 +22,7 @@ const RUTAS_REDACTADAS = CAMPOS_SENSIBLES.flatMap((campo) => [
 ]);
 
 export interface OpcionesLogger {
-  nivel?: string;
+  nivel?: LevelWithSilent;
   instancia?: string;
   destino?: DestinationStream;
 }

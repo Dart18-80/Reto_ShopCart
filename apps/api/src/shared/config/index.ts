@@ -1,3 +1,4 @@
+import type { Level } from 'pino';
 import { z } from 'zod';
 
 export class ErrorConfiguracion extends Error {
@@ -65,7 +66,7 @@ export interface Configuracion {
   entorno: 'development' | 'test' | 'production';
   puerto: number;
   instancia: string;
-  nivelLog: string;
+  nivelLog: Level;
   baseDatos: ConfiguracionBaseDatos;
   redis: ConfiguracionRedis;
   origenesCors: string[];
@@ -80,32 +81,36 @@ export function cargarConfiguracion(entorno: NodeJS.ProcessEnv): Configuracion {
   if (!resultado.success) {
     throw new ErrorConfiguracion(`Configuración inválida:\n${z.prettifyError(resultado.error)}`);
   }
-  const v = resultado.data;
-
-  // §10: en producción no se arranca con los secretos de ejemplo de .env.example.
-  if (v.NODE_ENV === 'production') {
-    const conEjemplo = SECRETOS.filter((clave) => v[clave].includes(MARCA_EJEMPLO));
-    if (conEjemplo.length > 0) {
-      throw new ErrorConfiguracion(
-        `En producción no se permiten los secretos de ejemplo (${MARCA_EJEMPLO}): ${conEjemplo.join(', ')}`,
-      );
-    }
-  }
+  const variables = resultado.data;
+  if (variables.NODE_ENV === 'production') rechazarSecretosDeEjemplo(variables);
 
   return {
-    entorno: v.NODE_ENV,
-    puerto: v.PUERTO,
-    instancia: v.INSTANCIA_ID,
-    nivelLog: v.LOG_LEVEL,
+    entorno: variables.NODE_ENV,
+    puerto: variables.PUERTO,
+    instancia: variables.INSTANCIA_ID,
+    nivelLog: variables.LOG_LEVEL,
     baseDatos: {
-      servidor: v.DB_HOST,
-      puerto: v.DB_PORT,
-      nombre: v.DB_NOMBRE,
-      usuario: v.DB_USUARIO,
-      contrasena: v.DB_CONTRASENA,
-      confiarCertificado: v.DB_CONFIAR_CERTIFICADO,
+      servidor: variables.DB_HOST,
+      puerto: variables.DB_PORT,
+      nombre: variables.DB_NOMBRE,
+      usuario: variables.DB_USUARIO,
+      contrasena: variables.DB_CONTRASENA,
+      confiarCertificado: variables.DB_CONFIAR_CERTIFICADO,
     },
-    redis: { servidor: v.REDIS_HOST, puerto: v.REDIS_PORT, contrasena: v.REDIS_CONTRASENA },
-    origenesCors: v.CORS_ORIGINS,
+    redis: {
+      servidor: variables.REDIS_HOST,
+      puerto: variables.REDIS_PORT,
+      contrasena: variables.REDIS_CONTRASENA,
+    },
+    origenesCors: variables.CORS_ORIGINS,
   };
+}
+
+// §10: en producción no se arranca con los secretos de ejemplo de .env.example.
+function rechazarSecretosDeEjemplo(variables: z.infer<typeof esquema>): void {
+  const conEjemplo = SECRETOS.filter((clave) => variables[clave].includes(MARCA_EJEMPLO));
+  if (conEjemplo.length === 0) return;
+  throw new ErrorConfiguracion(
+    `En producción no se permiten los secretos de ejemplo (${MARCA_EJEMPLO}): ${conEjemplo.join(', ')}`,
+  );
 }

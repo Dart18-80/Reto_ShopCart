@@ -3,7 +3,7 @@ export interface VerificadorRedis {
   ping(): Promise<boolean>;
 }
 
-export interface InfoBaseDatos {
+export interface ServidorBaseDatos {
   versionServidor: string;
   fechaHoraUtc: Date;
 }

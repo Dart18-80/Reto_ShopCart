@@ -10,6 +10,7 @@ import { registrarPeticiones } from './shared/observability/index.js';
 import { generarDocumentoOpenApi } from './shared/openapi/index.js';
 
 const LIMITE_CUERPO_JSON = '100kb';
+const SALTOS_DE_PROXY_CONFIABLES = 1;
 
 export interface DependenciasApp {
   logger: Logger;
@@ -28,7 +29,7 @@ export function crearApp({
   const app = express();
   app.disable('x-powered-by');
   // nginx está delante: req.ip y el protocolo salen de X-Forwarded-* (necesario para rate limit en E2).
-  app.set('trust proxy', 1);
+  app.set('trust proxy', SALTOS_DE_PROXY_CONFIABLES);
 
   app.use(requestId);
   app.use(encabezadoInstancia(instancia));

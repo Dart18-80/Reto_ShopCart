@@ -2,6 +2,8 @@ import { Redis } from 'ioredis';
 import type { ConfiguracionRedis } from '../config/index.js';
 
 const ESPERA_PING_MS = 500;
+const ESPERA_REINTENTO_MS = 200;
+const ESPERA_MAXIMA_REINTENTO_MS = 2000;
 
 /**
  * RNF-2: Redis solo guarda lo que se puede perder. Sin cola fuera de línea y con un solo intento por
@@ -15,7 +17,8 @@ export function crearClienteRedis(config: ConfiguracionRedis): Redis {
     lazyConnect: true,
     enableOfflineQueue: false,
     maxRetriesPerRequest: 1,
-    retryStrategy: (intentos) => Math.min(intentos * 200, 2000),
+    retryStrategy: (intentos) =>
+      Math.min(intentos * ESPERA_REINTENTO_MS, ESPERA_MAXIMA_REINTENTO_MS),
   });
 }
 

@@ -2,6 +2,9 @@ import sql from 'mssql';
 import type { ConfiguracionBaseDatos } from '../config/index.js';
 import type { ConexionSP } from './ejecutar-sp.js';
 
+const CONEXIONES_MINIMAS = 0;
+const CONEXIONES_MAXIMAS = 10;
+
 // §10: DB_USUARIO es shopcart_app, un login que solo puede ejecutar SPs.
 export function conectarPool(config: ConfiguracionBaseDatos): Promise<sql.ConnectionPool> {
   return new sql.ConnectionPool({
@@ -10,7 +13,7 @@ export function conectarPool(config: ConfiguracionBaseDatos): Promise<sql.Connec
     database: config.nombre,
     user: config.usuario,
     password: config.contrasena,
-    pool: { min: 0, max: 10 },
+    pool: { min: CONEXIONES_MINIMAS, max: CONEXIONES_MAXIMAS },
     options: { encrypt: true, trustServerCertificate: config.confiarCertificado },
   }).connect();
 }

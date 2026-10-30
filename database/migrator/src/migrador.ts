@@ -46,8 +46,8 @@ async function adquirirBloqueo(pool: sql.ConnectionPool): Promise<void> {
     .input('Espera', sql.Int, ESPERA_BLOQUEO_MS)
     .output('Resultado', sql.Int)
     .query(await leerConsulta('adquirir-bloqueo'));
-  const codigo = resultado.output.Resultado as number;
-  if (codigo < 0) {
+  const codigo: unknown = resultado.output.Resultado;
+  if (typeof codigo !== 'number' || codigo < 0) {
     throw new ErrorMigracion(
       `Otro migrador está aplicando scripts sobre esta base (sp_getapplock devolvió ${String(codigo)}).`,
     );

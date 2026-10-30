@@ -1,9 +1,11 @@
-import type { ErrorRequestHandler, RequestHandler } from 'express';
+import type { ErrorRequestHandler, RequestHandler, Response } from 'express';
 import type { Logger } from 'pino';
 import { obtenerContexto } from '../http/contexto.js';
 import { AppError } from './app-error.js';
 
-export interface RespuestaError {
+const ESTADO_PRIMER_ERROR_INTERNO = 500;
+
+interface RespuestaError {
   error: {
     codigo: string;
     mensaje: string;
@@ -25,23 +27,33 @@ export function manejadorErrores(logger: Logger): ErrorRequestHandler {
     }
 
     const appError = aAppError(error);
-    if (appError.status >= 500) {
-      // El detalle completo solo va al log; el cliente recibe un mensaje genérico.
-      logger.error({ err: error }, 'Error inesperado');
-    } else {
-      logger.warn({ codigo: appError.codigo, estado: appError.status }, appError.message);
-    }
-
-    const cuerpo: RespuestaError = {
-      error: {
-        codigo: appError.codigo,
-        mensaje: appError.message,
-        ...(appError.detalles === undefined ? {} : { detalles: appError.detalles }),
-        requestId: obtenerContexto()?.requestId ?? res.getHeader('X-Request-Id')?.toString() ?? '',
-      },
-    };
-    res.status(appError.status).json(cuerpo);
+    registrarError(logger, appError, error);
+    res.status(appError.status).json(cuerpoDeError(appError, requestIdDe(res)));
   };
+}
+
+function registrarError(logger: Logger, appError: AppError, original: unknown): void {
+  if (appError.status >= ESTADO_PRIMER_ERROR_INTERNO) {
+    // El detalle completo solo va al log; el cliente recibe un mensaje genérico.
+    logger.error({ err: original }, 'Error inesperado');
+    return;
+  }
+  logger.warn({ codigo: appError.codigo, estado: appError.status }, appError.message);
+}
+
+function cuerpoDeError(appError: AppError, requestId: string): RespuestaError {
+  return {
+    error: {
+      codigo: appError.codigo,
+      mensaje: appError.message,
+      ...(appError.detalles === undefined ? {} : { detalles: appError.detalles }),
+      requestId,
+    },
+  };
+}
+
+function requestIdDe(res: Response): string {
+  return obtenerContexto()?.requestId ?? res.getHeader('X-Request-Id')?.toString() ?? '';
 }
 
 function aAppError(error: unknown): AppError {

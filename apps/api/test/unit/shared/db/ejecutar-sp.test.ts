@@ -1,7 +1,12 @@
 import sql from 'mssql';
 import { pino } from 'pino';
-import { describe, expect, it, vi } from 'vitest';
-import type { ConexionSP, ParametroSP } from '../../../../src/shared/db/ejecutar-sp.js';
+import { describe, expect, expectTypeOf, it, vi } from 'vitest';
+import type {
+  ConexionSP,
+  EjecutorSP,
+  NombreSP,
+  ParametroSP,
+} from '../../../../src/shared/db/ejecutar-sp.js';
 import { crearEjecutorSP } from '../../../../src/shared/db/ejecutar-sp.js';
 import { AppError } from '../../../../src/shared/errors/app-error.js';
 import { ejecutarConContexto } from '../../../../src/shared/http/contexto.js';
@@ -64,19 +69,22 @@ describe('ejecutarSP', () => {
     expect(ejecutar).not.toHaveBeenCalled();
   });
 
-  it('devuelve las filas del primer conjunto de resultados', async () => {
+  it('ejecutarSP devuelve solo las filas del primer conjunto de resultados', async () => {
     const { conexion } = conexionFalsa(() => Promise.resolve([[{ A: 1 }, { A: 2 }], [{ B: 3 }]]));
-    const { ejecutarSP, ejecutarSPMultiple } = crearEjecutorSP({
-      conexion,
-      logger,
-      esperar: sinEspera,
-    });
+    const { ejecutarSP } = crearEjecutorSP({ conexion, logger, esperar: sinEspera });
 
-    await expect(ejecutarSP<{ A: number }>('SP_Pruebas_Leer')).resolves.toEqual([
-      { A: 1 },
-      { A: 2 },
-    ]);
-    await expect(ejecutarSPMultiple('SP_Pruebas_Leer')).resolves.toHaveLength(2);
+    const filas = await ejecutarSP<{ A: number }>('SP_Pruebas_Leer');
+
+    expect(filas).toEqual([{ A: 1 }, { A: 2 }]);
+  });
+
+  it('ejecutarSPMultiple devuelve todos los conjuntos de resultados', async () => {
+    const { conexion } = conexionFalsa(() => Promise.resolve([[{ A: 1 }, { A: 2 }], [{ B: 3 }]]));
+    const { ejecutarSPMultiple } = crearEjecutorSP({ conexion, logger, esperar: sinEspera });
+
+    const conjuntos = await ejecutarSPMultiple('SP_Pruebas_Leer');
+
+    expect(conjuntos).toEqual([[{ A: 1 }, { A: 2 }], [{ B: 3 }]]);
   });
 
   it('convierte un THROW de negocio en AppError sin reintentar', async () => {
@@ -117,14 +125,11 @@ describe('ejecutarSP', () => {
     await expect(ejecutarSP('SP_Pruebas_Leer')).rejects.not.toBeInstanceOf(AppError);
   });
 
-  it('su firma solo acepta nombres de SP, nunca texto SQL (verificado por tipos)', () => {
-    const { conexion } = conexionFalsa(() => Promise.resolve([[]]));
-    const { ejecutarSP } = crearEjecutorSP({ conexion, logger, esperar: sinEspera });
-
-    // @ts-expect-error: el nombre debe tener la forma SP_Modulo_Proceso.
-    void ejecutarSP('dbo.Pedido').catch(() => undefined);
-    // @ts-expect-error: tampoco basta con empezar por "SP_".
-    void ejecutarSP('SP_SinProceso').catch(() => undefined);
-    expect(true).toBe(true);
+  // Prueba de tipos: la verifica `pnpm typecheck`, no la ejecución.
+  it('su firma solo acepta nombres SP_Modulo_Proceso, nunca texto SQL', () => {
+    expectTypeOf<Parameters<EjecutorSP['ejecutarSP']>[0]>().toEqualTypeOf<NombreSP>();
+    expectTypeOf<'SP_Sistema_Health'>().toExtend<NombreSP>();
+    expectTypeOf<'dbo.Pedido'>().not.toExtend<NombreSP>();
+    expectTypeOf<'SP_SinProceso'>().not.toExtend<NombreSP>();
   });
 });

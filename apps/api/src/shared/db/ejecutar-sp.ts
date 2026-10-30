@@ -22,6 +22,7 @@ export interface ConexionSP {
 const PARAMETROS_ESTANDAR = ['IDUsuarioActor', 'RolActor', 'RequestId'] as const;
 const DEADLOCK = 1205;
 const REINTENTOS_DEADLOCK = 3;
+const ESPERA_BASE_DEADLOCK_MS = 50;
 
 interface Dependencias {
   conexion: ConexionSP;
@@ -51,7 +52,7 @@ export function crearEjecutorSP({ conexion, logger, esperar = dormir }: Dependen
         // Con XACT_ABORT el SP ya revirtió todo, así que repetirlo completo es seguro.
         if (numero === DEADLOCK && intento < REINTENTOS_DEADLOCK) {
           logger.warn({ sp: nombre, intento: intento + 1 }, 'Deadlock: se reintenta el SP');
-          await esperar(50 * 2 ** intento);
+          await esperar(ESPERA_BASE_DEADLOCK_MS * 2 ** intento);
           continue;
         }
         throw traducirErrorSql(error) ?? error;

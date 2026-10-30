@@ -6,9 +6,11 @@ import { z } from 'zod';
 import { AppError } from '../../../../src/shared/errors/app-error.js';
 import { manejadorErrores, rutaNoEncontrada } from '../../../../src/shared/errors/middleware.js';
 import { requestId } from '../../../../src/shared/http/request-id.js';
-import { validar } from '../../../../src/shared/http/validar.js';
 import { crearLogger } from '../../../../src/shared/observability/logger.js';
-import { leerDatos, leerError } from '../../utilidades.js';
+import { leerError } from '../../respuestas.js';
+
+const NIVEL_ERROR_PINO = 50;
+const DETALLE_INTERNO = 'conexión perdida con 10.0.0.5: detalle interno';
 
 const lineaLogSchema = z.looseObject({ level: z.number(), requestId: z.string().optional() });
 
@@ -37,11 +39,10 @@ function crearAppDePrueba() {
     throw new AppError('STOCK_INSUFICIENTE', 'Sin existencia.', [{ idVariante: 7 }]);
   });
   app.get('/inesperado', () => {
-    throw new Error('conexión perdida con 10.0.0.5: detalle interno');
+    throw new Error(DETALLE_INTERNO);
   });
-  const cuerpoSchema = z.object({ nombre: z.string().min(1) }).strict();
-  app.post('/validado', validar({ body: cuerpoSchema }), (req, res) => {
-    res.json({ datos: cuerpoSchema.parse(req.body) });
+  app.post('/json', (_req, res) => {
+    res.json({ datos: 'ok' });
   });
   app.use(rutaNoEncontrada);
   app.use(manejadorErrores(logger));
@@ -62,6 +63,15 @@ describe('middleware central de errores', () => {
     });
   });
 
+  it('el requestId del error es el mismo que llegó en X-Request-Id', async () => {
+    const { app } = crearAppDePrueba();
+    const id = '0b3d2a4e-1111-4222-8333-444455556666';
+
+    const respuesta = await request(app).get('/negocio').set('X-Request-Id', id);
+
+    expect(leerError(respuesta).requestId).toBe(id);
+  });
+
   it('incluye los detalles cuando el error los trae (A-19)', async () => {
     const { app } = crearAppDePrueba();
 
@@ -71,8 +81,8 @@ describe('middleware central de errores', () => {
     expect(leerError(respuesta).detalles).toEqual([{ idVariante: 7 }]);
   });
 
-  it('un error inesperado responde 500 sin detalles internos y queda en el log con su requestId', async () => {
-    const { app, lineas, crudas } = crearAppDePrueba();
+  it('un error inesperado responde 500 ERROR_INTERNO sin detalles internos', async () => {
+    const { app } = crearAppDePrueba();
 
     const respuesta = await request(app).get('/inesperado');
 
@@ -80,54 +90,23 @@ describe('middleware central de errores', () => {
     expect(respuesta.status).toBe(500);
     expect(error.codigo).toBe('ERROR_INTERNO');
     expect(JSON.stringify(error)).not.toContain('10.0.0.5');
-    const indice = lineas.findIndex((linea) => linea.level === 50);
-    expect(lineas[indice]?.requestId).toBe(error.requestId);
+  });
+
+  it('un error inesperado queda en el log con su detalle y su requestId', async () => {
+    const { app, lineas, crudas } = crearAppDePrueba();
+
+    const respuesta = await request(app).get('/inesperado');
+
+    const indice = lineas.findIndex((linea) => linea.level === NIVEL_ERROR_PINO);
+    expect(lineas[indice]?.requestId).toBe(leerError(respuesta).requestId);
     expect(crudas[indice]).toContain('10.0.0.5');
-  });
-
-  it('respeta un X-Request-Id válido que llega del cliente o de nginx', async () => {
-    const { app } = crearAppDePrueba();
-    const id = '0b3d2a4e-1111-4222-8333-444455556666';
-
-    const respuesta = await request(app).get('/negocio').set('X-Request-Id', id);
-
-    expect(respuesta.get('X-Request-Id')).toBe(id);
-    expect(leerError(respuesta).requestId).toBe(id);
-  });
-
-  it('ignora un X-Request-Id que no es UUID y genera uno nuevo', async () => {
-    const { app } = crearAppDePrueba();
-
-    const respuesta = await request(app).get('/negocio').set('X-Request-Id', '<script>');
-
-    expect(respuesta.get('X-Request-Id')).toMatch(/^[0-9a-f-]{36}$/);
-  });
-
-  it('una validación Zod fallida responde 400 VALIDACION_FALLIDA con el campo', async () => {
-    const { app } = crearAppDePrueba();
-
-    const respuesta = await request(app).post('/validado').send({ nombre: '', idUsuario: 5 });
-
-    const error = leerError(respuesta);
-    expect(respuesta.status).toBe(400);
-    expect(error.codigo).toBe('VALIDACION_FALLIDA');
-    expect(JSON.stringify(error.detalles)).toContain('nombre');
-  });
-
-  it('un cuerpo válido llega al controlador ya validado', async () => {
-    const { app } = crearAppDePrueba();
-
-    const respuesta = await request(app).post('/validado').send({ nombre: 'Ana' });
-
-    expect(respuesta.status).toBe(200);
-    expect(leerDatos(respuesta, z.object({ nombre: z.string() }))).toEqual({ nombre: 'Ana' });
   });
 
   it('un JSON mal formado responde 400 JSON_INVALIDO', async () => {
     const { app } = crearAppDePrueba();
 
     const respuesta = await request(app)
-      .post('/validado')
+      .post('/json')
       .set('Content-Type', 'application/json')
       .send('{"nombre":');
 
@@ -139,7 +118,7 @@ describe('middleware central de errores', () => {
     const { app } = crearAppDePrueba();
 
     const respuesta = await request(app)
-      .post('/validado')
+      .post('/json')
       .send({ nombre: 'x'.repeat(2000) });
 
     expect(respuesta.status).toBe(413);

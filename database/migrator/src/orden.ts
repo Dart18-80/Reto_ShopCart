@@ -6,14 +6,15 @@ export interface Programable {
 }
 
 // Funciones antes que vistas (que las usan), SPs después (que usan ambas) y triggers al final.
-export const ORDEN_TIPOS = ['FU', 'VW', 'SP', 'TR'] as const;
-export type TipoObjeto = (typeof ORDEN_TIPOS)[number];
+const ORDEN_TIPOS = ['FU', 'VW', 'SP', 'TR'] as const;
+type TipoObjeto = (typeof ORDEN_TIPOS)[number];
 
 const PREFIJO = /^R__(FU|VW|SP|TR)_/;
 const ENCABEZADO_DEPENDENCIAS = /^--[ \t]*depende-de:(.*)$/i;
 
-export function tipoDeObjeto(nombre: string): TipoObjeto | undefined {
-  return PREFIJO.exec(nombre)?.[1] as TipoObjeto | undefined;
+function tipoDeObjeto(nombre: string): TipoObjeto | undefined {
+  const prefijo = PREFIJO.exec(nombre)?.[1];
+  return ORDEN_TIPOS.find((tipo) => tipo === prefijo);
 }
 
 /** Lee `-- depende-de: R__X.sql, R__Y.sql` de la primera línea del archivo (ya normalizado). */
@@ -29,10 +30,10 @@ export function leerDependencias(contenido: string): string[] {
 
 /** Dentro de cada tipo, orden alfabético que respeta las dependencias declaradas (solo del mismo tipo). */
 export function ordenarProgramables<T extends Programable>(programables: T[]): T[] {
-  const porNombre = new Map(programables.map((p) => [p.nombre, p]));
+  const porNombre = new Map(programables.map((programable) => [programable.nombre, programable]));
   validarDependencias(programables, porNombre);
   return ORDEN_TIPOS.flatMap((tipo) =>
-    ordenarGrupo(programables.filter((p) => tipoDeObjeto(p.nombre) === tipo)),
+    ordenarGrupo(programables.filter((programable) => tipoDeObjeto(programable.nombre) === tipo)),
   );
 }
 
@@ -54,17 +55,20 @@ function validarDependencias<T extends Programable>(
   }
   if (problemas.length > 0) {
     throw new ErrorMigracion(
-      ['Dependencias inválidas en programmability/:', ...problemas.map((p) => `  - ${p}`)].join(
-        '\n',
-      ),
+      [
+        'Dependencias inválidas en programmability/:',
+        ...problemas.map((problema) => `  - ${problema}`),
+      ].join('\n'),
     );
   }
 }
 
 // Orden topológico estable: en cada paso toma, en orden alfabético, el primero que ya no espera a nadie.
 function ordenarGrupo<T extends Programable>(grupo: T[]): T[] {
-  const pendientes = new Map(grupo.map((p) => [p.nombre, new Set(p.dependencias)]));
-  const porNombre = new Map(grupo.map((p) => [p.nombre, p]));
+  const pendientes = new Map(
+    grupo.map((programable) => [programable.nombre, new Set(programable.dependencias)]),
+  );
+  const porNombre = new Map(grupo.map((programable) => [programable.nombre, programable]));
   const ordenados: T[] = [];
 
   while (pendientes.size > 0) {
