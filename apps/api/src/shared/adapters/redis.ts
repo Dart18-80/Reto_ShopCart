@@ -23,7 +23,7 @@ export function crearClienteRedis(config: ConfiguracionRedis): Redis {
 }
 
 /** Adaptador del puerto VerificadorRedis (módulo sistema). */
-export function crearVerificadorRedis(cliente: Redis): { ping(): Promise<boolean> } {
+export function crearVerificadorRedis(cliente: Pick<Redis, 'ping'>): { ping(): Promise<boolean> } {
   return {
     async ping(): Promise<boolean> {
       let temporizador: NodeJS.Timeout | undefined;
