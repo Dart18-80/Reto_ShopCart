@@ -26,12 +26,15 @@ function obtenerEjecutor(): EjecutorSP {
   return ejecutor;
 }
 
+// async: si la base no está configurada, el error llega por la promesa (también a un .catch()) y no
+// como excepción síncrona.
+
 /** Única forma de hablar con la base desde los repositorios (CLAUDE.md: sin SQL en el backend). */
-export function ejecutarSP<T>(nombre: NombreSP, parametros?: ParametrosSP): Promise<T[]> {
+export async function ejecutarSP<T>(nombre: NombreSP, parametros?: ParametrosSP): Promise<T[]> {
   return obtenerEjecutor().ejecutarSP<T>(nombre, parametros);
 }
 
-export function ejecutarSPMultiple(
+export async function ejecutarSPMultiple(
   nombre: NombreSP,
   parametros?: ParametrosSP,
 ): Promise<unknown[][]> {
