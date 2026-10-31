@@ -105,6 +105,8 @@ pnpm test:integracion    # contra SQL Server real (requiere `docker compose up -
 
 `pnpm test:integracion` recrea la base `shopcart_test` desde cero en cada corrida (las tablas ledger no admiten `DELETE`), aplica todos los scripts y, solo en esa base, los SPs de `database/test/`. Las pruebas no escriben SQL: preparan sus datos con esos `SP_Pruebas_*`, y cada prueba crea datos únicos en lugar de borrar los de otras.
 
+La API usa timeouts explícitos hacia SQL Server: `DB_TIMEOUT_CONEXION_MS` (por defecto 2000) y `DB_TIMEOUT_CONSULTA_MS` (por defecto 15000). Con la base caída, el health responde `503` en unos 2 s.
+
 Redis exige contraseña (`requirepass`). Cada valor tiene una sola fuente en `.env` (`DB_HOST`, `DB_PORT`, `DB_USUARIO`, `DB_CONTRASENA`, `REDIS_HOST`, `REDIS_PORT`, `REDIS_CONTRASENA`): Compose, el migrador y la API leen las mismas variables.
 
 > **Licencia de SQL Server:** el entorno usa la edición **Developer** (`MSSQL_PID=Developer`), gratuita para desarrollo y pruebas pero **no licenciada para producción**. En producción se usaría Standard o Enterprise (o Express, con sus límites).

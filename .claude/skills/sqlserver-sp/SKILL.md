@@ -388,7 +388,7 @@ WITH (LEDGER = ON (APPEND_ONLY = ON));
 
 ## 13. Triggers de bitácora (RF-09)
 
-Una fila de bitácora por fila afectada, con el valor anterior y el nuevo en JSON. Lista las columnas explícitamente: así **nunca** se registra un dato sensible como `HashContrasena`.
+Una fila de bitácora por fila afectada, con el valor anterior y el nuevo en JSON. **Todo trigger de bitácora exige `Rol` en `SESSION_CONTEXT`** y falla con `50004 CONTEXTO_NO_ESTABLECIDO` si falta (A-18): un SP que escribe en una tabla auditada siempre llama antes a `SP_Sistema_EstablecerContexto`. Lista las columnas explícitamente: así **nunca** se registra un dato sensible como `HashContrasena`.
 
 ```sql
 CREATE OR ALTER TRIGGER dbo.TR_Cupones_Bitacora
@@ -397,6 +397,11 @@ AFTER INSERT, UPDATE, DELETE
 AS
 BEGIN
     SET NOCOUNT ON;
+
+    -- A-18: toda escritura auditada declara quién la hace (los jobs y el migrador, Rol = 'Sistema').
+    IF NOT EXISTS (SELECT 1 FROM inserted) AND NOT EXISTS (SELECT 1 FROM deleted) RETURN;
+    IF SESSION_CONTEXT(N'Rol') IS NULL
+        THROW 50004, N'Falta el contexto de la operación: llama a SP_Sistema_EstablecerContexto.', 1;
 
     DECLARE @IDUsuario INT              = TRY_CONVERT(INT, SESSION_CONTEXT(N'IDUsuario')),
             @RequestId UNIQUEIDENTIFIER = TRY_CONVERT(UNIQUEIDENTIFIER, SESSION_CONTEXT(N'RequestId'));

@@ -275,6 +275,7 @@
 
 ### E2-H03 · Autenticación, autorización y revocación — `Must` · 0.5 h
 **Alcance:** middlewares `autenticar` (verifica el JWT y la lista de revocados en Redis) y `autorizar(...roles)`; `ListaRevocados` como puerto con adaptador Redis.
+- **El esquema Zod del token solo admite los roles de usuario `Cliente`, `Operador` y `Administrador`.** `Sistema` es el rol con el que escriben los jobs y el migrador (A-18): ningún token puede traerlo.
 
 **CA**
 - [ ] Token expirado → `401`; token válido con rol no permitido → `403` (criterio de RF-01).
@@ -456,6 +457,7 @@
 - [ ] Misma llave con otro contenido → `422`; una llave nueva mientras otro intento está en curso → `409`; sesión ya pagada → devuelve el pedido existente.
 - [ ] La creación es **atómica**: si se fuerza un error dentro de `SP_Pedidos_CrearPedido`, no queda pedido, ni detalle, ni kardex, ni uso de cupón confirmado, y la autorización se anula (criterio de RF-06).
 - [ ] El pedido copia precios, descuentos, SKU, nombres, categoría, envío y dirección; calcula base imponible e IVA; registra `(ninguno) → Pagado` en el historial; el carrito queda `Convertido`.
+- [ ] `FechaPagoLocal` es el día de Guatemala (UTC−6): un pago a las 05:59 UTC queda en el día anterior y uno a las 06:00 UTC en el mismo día (A-12, M-03).
 - [ ] Si la reserva venció, se intenta reservar de nuevo dentro de la transacción; si no hay existencia, se rechaza sin cobro.
 - [ ] Una tarjeta rechazada responde `402 PAGO_RECHAZADO`; el quinto rechazo cancela la sesión y libera reservas y cupón.
 
@@ -519,6 +521,7 @@
 - [ ] Solo para pedidos `Entregado` o `DevueltoParcial` y dentro de 30 días (`422 PLAZO_DEVOLUCION_VENCIDO`).
 - [ ] El estado pasa a `DevueltoParcial` o `Devuelto` según corresponda; el producto reingresa con `ReingresoDevolucion`.
 - [ ] El reembolso es proporcional (precio pagado menos descuento repartido) y la suma de reembolsos nunca supera el total.
+- [ ] `FechaLocal` de la devolución es el día de Guatemala (UTC−6): una devolución a las 05:59 UTC queda en el día anterior y una a las 06:00 UTC en el mismo día (N-11, M-03).
 
 **Referencias:** N-10, RF-07, A-13.
 
