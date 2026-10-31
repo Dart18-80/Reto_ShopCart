@@ -53,8 +53,17 @@ export const sesionSchema = z
 
 export const respuestaSesionSchema = z.object({ datos: sesionSchema });
 
-// El refresh token llega en la cookie httpOnly (A-07): 43 caracteres base64url, 256 bits.
-export const cookiesRefreshSchema = z.object({ refresh: z.string().max(100).optional() });
+// El refresh token llega en la cookie httpOnly (A-07): 43 caracteres base64url, 256 bits. Un valor que no
+// puede ser uno cuenta como cookie ausente: el refresh responde 401 y el logout igual borra la cookie.
+const LARGO_MAXIMO_REFRESH = 100;
+export const cookiesRefreshSchema = z.object({
+  refresh: z
+    .string()
+    .optional()
+    .transform((valor) =>
+      valor !== undefined && valor.length <= LARGO_MAXIMO_REFRESH ? valor : undefined,
+    ),
+});
 
 export type DatosRegistro = z.infer<typeof registroSchema>;
 export type DatosLogin = z.infer<typeof loginSchema>;
