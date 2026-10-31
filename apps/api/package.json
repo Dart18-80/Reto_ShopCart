@@ -8,7 +8,8 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node --env-file-if-exists=../../.env dist/server.js",
     "test": "vitest run",
-    "test:integracion": "vitest run --config vitest.integracion.config.ts"
+    "test:integracion": "vitest run --config vitest.integracion.config.ts",
+    "test:cobertura": "vitest run --coverage"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
@@ -17,6 +18,7 @@
     "@types/node": "^24.19.2",
     "@types/supertest": "^7.2.1",
     "@types/swagger-ui-express": "^4.1.8",
+    "@vitest/coverage-v8": "^5.0.5",
     "supertest": "^7.3.1",
     "typescript": "~6.0.3",
     "vitest": "^5.0.5"
