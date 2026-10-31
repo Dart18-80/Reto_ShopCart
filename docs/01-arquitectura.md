@@ -438,6 +438,12 @@ shopcart/
 └─ README.md
 ```
 
+**Cómo se publica `@shopcart/shared` dentro del monorepo:** es un paquete de workspace que la API declara como `"@shopcart/shared": "workspace:*"`. Compila con `tsc` a `dist/` (ESM con sus `.d.ts`), y su `package.json` declara `"files": ["dist"]` y `exports` con `types` y `default` apuntando a `dist/`, más la condición propia **`@shopcart/fuente`** apuntando a `src/`.
+- **En desarrollo** (`pnpm typecheck`, `pnpm test`, ESLint), el `tsconfig.json` de la API (`customConditions`) y Vitest (`resolve.conditions`) activan `@shopcart/fuente`, así que se usa el código fuente sin compilar antes.
+- **Al compilar la API** (`tsconfig.build.json`, sin la condición), los tipos salen de `dist/`, por eso `pnpm build` compila `shared` primero (`pnpm -r` respeta el orden de dependencias).
+- **En la imagen**, el Dockerfile compila `shared` y luego la API, y `pnpm deploy --prod` copia la API con sus dependencias de producción y `shared` como paquete (solo `dist/`): la imagen final no lleva `src/`, TypeScript ni pnpm.
+- **Fase 2 (Vite):** la SPA consume el mismo paquete. En desarrollo, `vite.config.ts` agrega `@shopcart/fuente` a `resolve.conditions`; el build de la web se hace después de compilar `shared`.
+
 **Migraciones (A-09):** los scripts `V###` son inmutables una vez aplicados: el migrador guarda su checksum y falla si alguien edita uno ya aplicado. Los scripts `R__` (programabilidad) usan `CREATE OR ALTER` y se reaplican cuando cambia su checksum. Es el mismo modelo que Flyway, sin agregar Java a la imagen, y se explica en dos minutos.
 
 ---

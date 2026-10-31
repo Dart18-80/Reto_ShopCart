@@ -3,7 +3,14 @@
   "compilerOptions": {
     "rootDir": ".",
     "noEmit": true,
-    "types": ["node"]
+    "types": ["node"],
+    "customConditions": ["@shopcart/fuente"]
   },
-  "include": ["src", "test", "vitest.config.ts", "vitest.integracion.config.ts"]
+  "include": [
+    "src",
+    "test",
+    "vitest.config.ts",
+    "vitest.integracion.config.ts",
+    "vitest.humo.config.ts"
+  ]
 }
