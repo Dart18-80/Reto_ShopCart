@@ -1,3 +1,4 @@
+import { pino } from 'pino';
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
@@ -7,7 +8,18 @@ import { dependenciasDePrueba } from '../../app-de-prueba.js';
 import { usarBaseDePruebas } from '../base-de-pruebas.js';
 import { iniciarSesion, leerSesion, registrar } from '../auth/apoyo-auth.js';
 
-usarBaseDePruebas();
+// Los reintentos por deadlock de ejecutarSP ocultarían una carrera: las pruebas de concurrencia exigen cero.
+const avisosDeDeadlock: string[] = [];
+usarBaseDePruebas(
+  pino(
+    { level: 'warn' },
+    {
+      write: (linea: string) => {
+        if (linea.includes('Deadlock')) avisosDeDeadlock.push(linea);
+      },
+    },
+  ),
+);
 
 const app = crearApp(dependenciasDePrueba());
 
@@ -133,6 +145,80 @@ describe('direcciones propias (E2-H05, RF-01, N-17)', () => {
 
     await crear(token, { esPredeterminada: true });
 
+    const lista = leerDatos(
+      await request(app).get('/api/v1/direcciones').set(con(token)),
+      listaSchema,
+    );
+    expect(lista.filter((d) => d.esPredeterminada)).toHaveLength(1);
+  });
+
+  it('marcar 5 direcciones como predeterminadas a la vez deja exactamente una, sin deadlocks', async () => {
+    avisosDeDeadlock.length = 0;
+    const token = await tokenDeCliente();
+    await crear(token, { esPredeterminada: true });
+    const ids: number[] = [];
+    for (let i = 0; i < 5; i++)
+      ids.push(leerDatos(await crear(token), direccionSchema).idDireccion);
+
+    const respuestas = await Promise.all(
+      ids.map((id) =>
+        request(app)
+          .patch(`/api/v1/direcciones/${String(id)}`)
+          .set(con(token))
+          .send({ esPredeterminada: true }),
+      ),
+    );
+
+    expect(avisosDeDeadlock).toEqual([]);
+    expect(respuestas.map((r) => r.status)).toEqual([200, 200, 200, 200, 200]);
+    const lista = leerDatos(
+      await request(app).get('/api/v1/direcciones').set(con(token)),
+      listaSchema,
+    );
+    expect(lista.filter((d) => d.esPredeterminada)).toHaveLength(1);
+  });
+
+  it('borrar y cambiar la predeterminada a la vez no produce deadlocks', async () => {
+    avisosDeDeadlock.length = 0;
+    const token = await tokenDeCliente();
+    const ids: number[] = [];
+    for (let i = 0; i < 6; i++) {
+      ids.push(
+        leerDatos(await crear(token, { esPredeterminada: i === 0 }), direccionSchema).idDireccion,
+      );
+    }
+    const ruta = (id: number | undefined) => `/api/v1/direcciones/${String(id)}`;
+
+    const respuestas = await Promise.all([
+      request(app).delete(ruta(ids[0])).set(con(token)),
+      request(app).patch(ruta(ids[1])).set(con(token)).send({ esPredeterminada: true }),
+      request(app).delete(ruta(ids[2])).set(con(token)),
+      request(app).patch(ruta(ids[3])).set(con(token)).send({ esPredeterminada: true }),
+      request(app).delete(ruta(ids[4])).set(con(token)),
+      request(app).patch(ruta(ids[5])).set(con(token)).send({ esPredeterminada: true }),
+    ]);
+
+    expect(avisosDeDeadlock).toEqual([]);
+    expect(respuestas.map((r) => r.status)).toEqual([204, 200, 204, 200, 204, 200]);
+    const lista = leerDatos(
+      await request(app).get('/api/v1/direcciones').set(con(token)),
+      listaSchema,
+    );
+    expect(lista).toHaveLength(3);
+    expect(lista.filter((d) => d.esPredeterminada)).toHaveLength(1);
+  });
+
+  it('5 altas predeterminadas simultáneas dejan exactamente una, sin deadlocks', async () => {
+    avisosDeDeadlock.length = 0;
+    const token = await tokenDeCliente();
+    await crear(token, { esPredeterminada: true });
+
+    const respuestas = await Promise.all(
+      Array.from({ length: 5 }, () => crear(token, { esPredeterminada: true })),
+    );
+
+    expect(avisosDeDeadlock).toEqual([]);
+    expect(respuestas.map((r) => r.status)).toEqual([201, 201, 201, 201, 201]);
     const lista = leerDatos(
       await request(app).get('/api/v1/direcciones').set(con(token)),
       listaSchema,

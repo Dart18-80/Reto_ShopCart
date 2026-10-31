@@ -26,8 +26,15 @@ BEGIN
     BEGIN TRY
         BEGIN TRAN;
 
-        IF NOT EXISTS (SELECT 1 FROM dbo.Direccion WITH (UPDLOCK, ROWLOCK)
-                       WHERE IDDireccion = @IDDireccion AND IDUsuario = @IDUsuarioActor)
+        -- Bloquea todas las direcciones del cliente en el orden del índice, igual que SP_Direcciones_Crear:
+        -- dos cambios simultáneos de la predeterminada se serializan. Bloquear solo la fila propia producía
+        -- deadlocks al desmarcar la anterior (cada transacción esperaba la fila que tenía otra).
+        DECLARE @EsPropia INT;
+        SELECT @EsPropia = MAX(CASE WHEN IDDireccion = @IDDireccion THEN 1 ELSE 0 END)
+        FROM   dbo.Direccion WITH (UPDLOCK, HOLDLOCK)
+        WHERE  IDUsuario = @IDUsuarioActor;
+
+        IF ISNULL(@EsPropia, 0) = 0
             THROW 50001, N'La dirección no existe.', 1;
 
         IF @EsPredeterminada = 1
