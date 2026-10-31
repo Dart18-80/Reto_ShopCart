@@ -32,6 +32,8 @@ export const rutaNoEncontrada: RequestHandler = (_req, _res, next) => {
 export function manejadorErrores(logger: Logger): ErrorRequestHandler {
   return (error: unknown, _req, res, next) => {
     if (res.headersSent) {
+      // El manejador final de Express solo usa console.error: se registra aquí, con el requestId.
+      logger.error({ err: error }, 'Error después de enviar la respuesta');
       next(error);
       return;
     }
@@ -44,8 +46,9 @@ export function manejadorErrores(logger: Logger): ErrorRequestHandler {
 
 function registrarError(logger: Logger, appError: AppError, original: unknown): void {
   if (appError.status >= ESTADO_PRIMER_ERROR_INTERNO) {
-    // El detalle completo solo va al log; el cliente recibe un mensaje genérico.
-    logger.error({ err: original }, 'Error inesperado');
+    // El detalle completo solo va al log; el cliente recibe un mensaje genérico. Si hay causa (el error
+    // de SQL detrás de un ERROR_INTERNO), se registra esa: trae el número y el SP.
+    logger.error({ err: appError.cause ?? original }, 'Error inesperado');
     return;
   }
   logger.warn({ codigo: appError.codigo, estado: appError.status }, appError.message);

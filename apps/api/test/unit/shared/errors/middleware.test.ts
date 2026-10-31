@@ -48,6 +48,10 @@ function crearAppDePrueba() {
     res.status(200).write('{"datos":');
     throw new Error('fallo después de enviar las cabeceras');
   });
+  app.get('/sin-catalogar', () => {
+    const errorSql = Object.assign(new Error('Mensaje del SP'), { number: 50606 });
+    throw new AppError('ERROR_INTERNO', { cause: errorSql });
+  });
   app.post('/json', (_req, res) => {
     res.json({ datos: 'ok' });
   });
@@ -144,15 +148,24 @@ describe('middleware central de errores', () => {
     expect(leerError(respuesta).codigo).toBe('CONTENIDO_NO_SOPORTADO');
   });
 
-  it('si las cabeceras ya se enviaron, delega en Express y no intenta escribir otra respuesta', async () => {
-    const { app } = crearAppDePrueba();
+  it('si las cabeceras ya se enviaron, registra el error con pino y su requestId antes de delegar en Express', async () => {
+    const { app, lineas, crudas } = crearAppDePrueba();
 
-    const respuesta = await request(app)
+    await request(app)
       .get('/a-medias')
-      .catch((error: unknown) => error);
+      .catch(() => undefined);
 
-    // Express corta la conexión: lo que importa es que no se mezclan dos respuestas ni se cuelga.
-    expect(respuesta).toBeDefined();
+    const indice = lineas.findIndex((linea) => linea.level === NIVEL_ERROR_PINO);
+    expect(crudas[indice]).toContain('fallo después de enviar las cabeceras');
+    expect(lineas[indice]?.requestId).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it('un error interno con causa registra la causa (por ejemplo, el número del THROW sin catalogar)', async () => {
+    const { app, crudas } = crearAppDePrueba();
+
+    await request(app).get('/sin-catalogar');
+
+    expect(crudas.join('')).toContain('"number":50606');
   });
 
   it('una ruta inexistente responde 404 NO_ENCONTRADO', async () => {
