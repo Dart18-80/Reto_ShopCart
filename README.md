@@ -40,6 +40,8 @@ Todo se sirve en <http://localhost:8080>: `/api/*` va a las réplicas y `/` a la
 
 SQL Server y Redis solo se publican en `127.0.0.1`: son accesibles desde tu máquina (SSMS, Azure Data Studio, pruebas), no desde la red. nginx se publica en `WEB_IP` (por defecto `127.0.0.1`; con `0.0.0.0` queda visible en la red local).
 
+Los contenedores viven en una subred fija (`RED_PREFIJO`, por defecto `172.28.10`, en `.env`) con una IP fija por servicio, y cada uno resuelve los nombres de los demás desde su `/etc/hosts`. Así, si un servicio está detenido, su nombre nunca se consulta al DNS del host (que podría devolver una IP pública). Si esa subred choca con otra red de tu máquina, cambia `RED_PREFIJO` y vuelve a levantar con `docker compose down && docker compose up -d`.
+
 ### Balanceo entre réplicas (demo)
 
 ```bash

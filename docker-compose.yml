@@ -32,6 +32,14 @@ x-api: &api
       condition: service_completed_successfully
     redis:
       condition: service_healthy
+  # A-03: los nombres de las dependencias salen de /etc/hosts. Con un contenedor detenido, el DNS de
+  # Docker reenvía el nombre al DNS del host, que puede devolver una IP pública (comprobado en la
+  # validación de E0-E1): la API mandaría el login de SQL Server o el AUTH de Redis fuera de la subred.
+  extra_hosts:
+    - 'sqlserver:${RED_PREFIJO:-172.28.10}.10'
+    - 'redis:${RED_PREFIJO:-172.28.10}.11'
+    # Reservada para el colector de OpenTelemetry (Fase 2), para que su nombre tampoco salga al DNS.
+    - 'otel-lgtm:${RED_PREFIJO:-172.28.10}.40'
   restart: unless-stopped
 
 services:
@@ -47,6 +55,9 @@ services:
       - '127.0.0.1:${DB_PORT:-1433}:${DB_PORT:-1433}'
     volumes:
       - sqlserver-datos:/var/opt/mssql
+    networks:
+      shopcart:
+        ipv4_address: ${RED_PREFIJO:-172.28.10}.10
     healthcheck:
       test:
         - CMD-SHELL
@@ -74,6 +85,11 @@ services:
     depends_on:
       sqlserver:
         condition: service_healthy
+    networks:
+      shopcart:
+        ipv4_address: ${RED_PREFIJO:-172.28.10}.12
+    extra_hosts:
+      - 'sqlserver:${RED_PREFIJO:-172.28.10}.10'
     restart: 'no'
 
   redis:
@@ -86,6 +102,9 @@ services:
       ['sh', '-c', 'exec redis-server --port "$$REDIS_PORT" --requirepass "$$REDIS_CONTRASENA"']
     ports:
       - '127.0.0.1:${REDIS_PORT:-6379}:${REDIS_PORT:-6379}'
+    networks:
+      shopcart:
+        ipv4_address: ${RED_PREFIJO:-172.28.10}.11
     healthcheck:
       test:
         - CMD-SHELL
@@ -99,12 +118,18 @@ services:
     environment:
       <<: *api-entorno
       INSTANCIA_ID: api-1
+    networks:
+      shopcart:
+        ipv4_address: ${RED_PREFIJO:-172.28.10}.21
 
   api-2:
     <<: *api
     environment:
       <<: *api-entorno
       INSTANCIA_ID: api-2
+    networks:
+      shopcart:
+        ipv4_address: ${RED_PREFIJO:-172.28.10}.22
 
   # Balanceador y único origen: http://localhost:8080 (/api/* → api-1 y api-2; / → estáticos).
   web:
@@ -119,7 +144,25 @@ services:
         condition: service_healthy
       api-2:
         condition: service_healthy
+    networks:
+      shopcart:
+        ipv4_address: ${RED_PREFIJO:-172.28.10}.30
+    # nginx resuelve las réplicas una sola vez, al arrancar, desde /etc/hosts (A-03).
+    extra_hosts:
+      - 'api-1:${RED_PREFIJO:-172.28.10}.21'
+      - 'api-2:${RED_PREFIJO:-172.28.10}.22'
     restart: unless-stopped
+
+# A-03: subred fija. Las IPs de .2 a .127 son fijas (una por servicio); un contenedor sin IP fija
+# (por ejemplo, el perfil de observabilidad) toma una de .128 a .254, así nadie ocupa la IP de una
+# réplica detenida. RED_PREFIJO se cambia en .env si la subred choca con otra red de la máquina.
+networks:
+  shopcart:
+    ipam:
+      config:
+        - subnet: ${RED_PREFIJO:-172.28.10}.0/24
+          ip_range: ${RED_PREFIJO:-172.28.10}.128/25
+          gateway: ${RED_PREFIJO:-172.28.10}.1
 
 volumes:
   sqlserver-datos:

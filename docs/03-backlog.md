@@ -135,6 +135,7 @@
 **Alcance**
 - Servicios `api-1` y `api-2` (misma imagen, `INSTANCIA_ID` distinto) que esperan a `db-migrator` completado y a `redis` `healthy`.
 - `infra/nginx/nginx.conf`: `upstream api { server api-1:3000 max_fails=3 fail_timeout=10s; server api-2:3000 max_fails=3 fail_timeout=10s; }`, `/api` → upstream, `/` → placeholder estático, `server_tokens off`.
+- Red con subred fija e IPs fijas por servicio; cada contenedor resuelve los nombres que usa desde `/etc/hosts` (`extra_hosts`), sin DNS en tiempo de ejecución (A-03). nginx: `proxy_connect_timeout 250ms`, `proxy_next_upstream error timeout`.
 - Servicio `web` en `:8080`.
 
 **CA**
