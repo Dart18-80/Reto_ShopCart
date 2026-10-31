@@ -45,6 +45,18 @@ function leerBitacora(entidad: string, idEntidad: number): Promise<FilaBitacora[
   });
 }
 
+async function filasDe(entidad: string, idEntidad: number, accion: string) {
+  return (await leerBitacora(entidad, idEntidad)).filter((fila) => fila.Accion === accion);
+}
+
+function cambioDeEstado(anterior: string, nuevo: string) {
+  return expect.objectContaining({
+    Accion: 'CambioEstado',
+    ValorAnterior: expect.stringContaining(`"Estado":"${anterior}"`) as unknown,
+    ValorNuevo: expect.stringContaining(`"Estado":"${nuevo}"`) as unknown,
+  }) as unknown;
+}
+
 function violaConstraint(numero: number, nombre: string) {
   return { number: numero, message: expect.stringContaining(nombre) as unknown };
 }
@@ -103,11 +115,11 @@ describe('triggers con varias filas en un solo UPDATE', () => {
       cambiarEstados(pedido1, 'EnPreparacion', pedido2, 'Cancelado'),
     );
 
-    const [bitacora1] = await leerBitacora('Pedido', pedido1);
-    const [bitacora2] = await leerBitacora('Pedido', pedido2);
-    expect(bitacora1?.ValorNuevo).toContain('EnPreparacion');
-    expect(bitacora2?.ValorNuevo).toContain('Cancelado');
-    expect(bitacora1?.ValorAnterior).toContain('Pagado');
+    // La lista completa: un JOIN mal hecho entre inserted y deleted dejaría filas cruzadas o de más.
+    expect(await leerBitacora('Pedido', pedido1)).toEqual([
+      cambioDeEstado('Pagado', 'EnPreparacion'),
+    ]);
+    expect(await leerBitacora('Pedido', pedido2)).toEqual([cambioDeEstado('Pagado', 'Cancelado')]);
   });
 
   it('TR_Pedidos_ValidarTransicion rechaza el UPDATE completo si una sola fila es inválida', async () => {
@@ -122,7 +134,13 @@ describe('triggers con varias filas en un solo UPDATE', () => {
     );
 
     await expect(intento).rejects.toMatchObject({ codigo: 'TRANSICION_INVALIDA' });
-    expect(await leerBitacora('Pedido', valido)).toEqual([]);
+    // Sigue en Pagado: la transición Pagado → EnPreparacion todavía es posible y es la primera registrada.
+    await comoActor(idOperador, 'Operador', () =>
+      cambiarEstados(valido, 'EnPreparacion', invalido, 'EnPreparacion'),
+    );
+    expect(await leerBitacora('Pedido', valido)).toEqual([
+      cambioDeEstado('Pagado', 'EnPreparacion'),
+    ]);
   });
 
   it('TR_Cupones_Bitacora registra una fila por cupón, cada una con su valor anterior', async () => {
@@ -138,9 +156,10 @@ describe('triggers con varias filas en un solo UPDATE', () => {
     );
 
     for (const idCupon of [cupon1, cupon2]) {
-      const [fila] = await leerBitacora('Cupon', idCupon);
-      expect(fila?.ValorAnterior).not.toContain('(editado)');
-      expect(fila?.ValorNuevo).toContain('(editado)');
+      const modificaciones = await filasDe('Cupon', idCupon, 'Modificar');
+      expect(modificaciones).toHaveLength(1);
+      expect(modificaciones[0]?.ValorAnterior).not.toContain('(editado)');
+      expect(modificaciones[0]?.ValorNuevo).toContain('(editado)');
     }
   });
 
@@ -156,11 +175,20 @@ describe('triggers con varias filas en un solo UPDATE', () => {
       }),
     );
 
-    const [fila1] = await leerBitacora('Variante', variante1.IDVariante);
-    const [fila2] = await leerBitacora('Variante', variante2.IDVariante);
-    expect(fila1).toMatchObject({ Modulo: 'Inventario', Accion: 'Modificar' });
-    expect(fila1?.ValorNuevo).toContain('"ExistenciaFisica":5');
-    expect(fila2?.ValorNuevo).toContain('"ExistenciaFisica":9');
+    const modificaciones1 = await filasDe('Variante', variante1.IDVariante, 'Modificar');
+    const modificaciones2 = await filasDe('Variante', variante2.IDVariante, 'Modificar');
+    expect(modificaciones1).toEqual([
+      expect.objectContaining({
+        Modulo: 'Inventario',
+        ValorNuevo: expect.stringContaining('"ExistenciaFisica":5') as unknown,
+      }),
+    ]);
+    expect(modificaciones2).toEqual([
+      expect.objectContaining({
+        Modulo: 'Inventario',
+        ValorNuevo: expect.stringContaining('"ExistenciaFisica":9') as unknown,
+      }),
+    ]);
   });
 });
 
