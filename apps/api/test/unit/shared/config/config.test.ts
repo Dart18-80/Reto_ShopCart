@@ -74,3 +74,31 @@ describe('cargarConfiguracion', () => {
     expect(config.entorno).toBe('production');
   });
 });
+
+describe('timeouts hacia SQL Server', () => {
+  it('usa 2 s para conectar y 15 s por consulta si no se configuran', () => {
+    expect(cargarConfiguracion(ENTORNO_VALIDO).baseDatos).toMatchObject({
+      tiempoMaximoConexionMs: 2000,
+      tiempoMaximoConsultaMs: 15000,
+    });
+  });
+
+  it('toma los valores de DB_TIMEOUT_CONEXION_MS y DB_TIMEOUT_CONSULTA_MS', () => {
+    const config = cargarConfiguracion({
+      ...ENTORNO_VALIDO,
+      DB_TIMEOUT_CONEXION_MS: '5000',
+      DB_TIMEOUT_CONSULTA_MS: '30000',
+    });
+
+    expect(config.baseDatos).toMatchObject({
+      tiempoMaximoConexionMs: 5000,
+      tiempoMaximoConsultaMs: 30000,
+    });
+  });
+
+  it.each(['0', '-1', '1.5', 'dos'])('rechaza un timeout de %j', (valor) => {
+    expect(() => cargarConfiguracion({ ...ENTORNO_VALIDO, DB_TIMEOUT_CONEXION_MS: valor })).toThrow(
+      ErrorConfiguracion,
+    );
+  });
+});

@@ -14,6 +14,14 @@ const SECRETOS = ['DB_CONTRASENA', 'REDIS_CONTRASENA'] as const;
 const puerto = (porDefecto: number) =>
   z.coerce.number().int().min(1).max(65535).default(porDefecto);
 
+const milisegundos = (porDefecto: number) => z.coerce.number().int().positive().default(porDefecto);
+
+// 2 s para conectar: dentro de la subred una conexión tarda milisegundos, y el health con la base
+// caída debe responder antes que el timeout de 3 s del healthcheck de Docker. 15 s por consulta: el
+// valor por defecto de mssql, ahora explícito.
+const TIMEOUT_CONEXION_MS = 2000;
+const TIMEOUT_CONSULTA_MS = 15000;
+
 // Cada valor tiene una sola fuente en .env; en Compose las réplicas solo reemplazan DB_HOST y REDIS_HOST.
 const esquema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -26,6 +34,8 @@ const esquema = z.object({
   DB_NOMBRE: z.string().min(1).default('ShopCart'),
   DB_USUARIO: z.string().min(1),
   DB_CONTRASENA: z.string().min(8),
+  DB_TIMEOUT_CONEXION_MS: milisegundos(TIMEOUT_CONEXION_MS),
+  DB_TIMEOUT_CONSULTA_MS: milisegundos(TIMEOUT_CONSULTA_MS),
   DB_CONFIAR_CERTIFICADO: z
     .enum(['true', 'false'])
     .default('true')
@@ -54,6 +64,8 @@ export interface ConfiguracionBaseDatos {
   usuario: string;
   contrasena: string;
   confiarCertificado: boolean;
+  tiempoMaximoConexionMs: number;
+  tiempoMaximoConsultaMs: number;
 }
 
 export interface ConfiguracionRedis {
@@ -96,6 +108,8 @@ export function cargarConfiguracion(entorno: NodeJS.ProcessEnv): Configuracion {
       usuario: variables.DB_USUARIO,
       contrasena: variables.DB_CONTRASENA,
       confiarCertificado: variables.DB_CONFIAR_CERTIFICADO,
+      tiempoMaximoConexionMs: variables.DB_TIMEOUT_CONEXION_MS,
+      tiempoMaximoConsultaMs: variables.DB_TIMEOUT_CONSULTA_MS,
     },
     redis: {
       servidor: variables.REDIS_HOST,

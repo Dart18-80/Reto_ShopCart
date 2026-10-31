@@ -1,5 +1,10 @@
+import { EventEmitter } from 'node:events';
+import { pino } from 'pino';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { crearVerificadorRedis } from '../../../../src/shared/adapters/redis.js';
+import {
+  crearVerificadorRedis,
+  registrarCambiosDeEstado,
+} from '../../../../src/shared/adapters/redis.js';
 
 const ESPERA_PING_MS = 500;
 
@@ -30,5 +35,47 @@ describe('crearVerificadorRedis (RNF-2)', () => {
     await vi.advanceTimersByTimeAsync(ESPERA_PING_MS);
 
     await expect(resultado).resolves.toBe(false);
+  });
+});
+
+describe('registrarCambiosDeEstado (logs de Redis)', () => {
+  function preparar() {
+    const cliente = new EventEmitter();
+    const lineas: { level: number; msg: string }[] = [];
+    const logger = pino(
+      { level: 'info' },
+      {
+        write: (linea: string) => {
+          lineas.push(JSON.parse(linea) as { level: number; msg: string });
+        },
+      },
+    );
+    registrarCambiosDeEstado(cliente, logger);
+    return { cliente, lineas };
+  }
+
+  it('mientras Redis sigue caído registra una sola advertencia, no una por reintento', () => {
+    const { cliente, lineas } = preparar();
+
+    for (let intento = 0; intento < 5; intento++) cliente.emit('error', new Error('ECONNREFUSED'));
+
+    expect(lineas.map((linea) => linea.msg)).toEqual([
+      'Redis no responde: la API sigue en modo degradado',
+    ]);
+  });
+
+  it('registra una vez cuando vuelve y otra vez si se cae de nuevo', () => {
+    const { cliente, lineas } = preparar();
+
+    cliente.emit('error', new Error('ECONNREFUSED'));
+    cliente.emit('ready');
+    cliente.emit('ready');
+    cliente.emit('error', new Error('ECONNRESET'));
+
+    expect(lineas.map((linea) => linea.msg)).toEqual([
+      'Redis no responde: la API sigue en modo degradado',
+      'Redis disponible',
+      'Redis no responde: la API sigue en modo degradado',
+    ]);
   });
 });

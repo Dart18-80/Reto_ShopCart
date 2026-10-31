@@ -1,7 +1,11 @@
 import type { Logger } from 'pino';
 import { registrarApagadoOrdenado } from './apagado.js';
 import { crearApp } from './app.js';
-import { crearClienteRedis, crearVerificadorRedis } from './shared/adapters/redis.js';
+import {
+  crearClienteRedis,
+  crearVerificadorRedis,
+  registrarCambiosDeEstado,
+} from './shared/adapters/redis.js';
 import {
   cargarConfiguracion,
   ErrorConfiguracion,
@@ -60,10 +64,8 @@ async function iniciar(): Promise<void> {
 // RNF-2: si Redis no está al arrancar, la API arranca igual y el cliente reintenta en segundo plano.
 function conectarRedis(config: ConfiguracionRedis, logger: Logger): ClienteRedis {
   const redis = crearClienteRedis(config);
-  redis.on('error', (error: Error) => {
-    logger.warn({ err: error }, 'Redis no responde: la API sigue en modo degradado');
-  });
-  // No se traga: el mismo fallo se emite como evento 'error' y lo registra el handler de arriba.
+  registrarCambiosDeEstado(redis, logger);
+  // No se traga: el mismo fallo se emite como evento 'error' y lo registra registrarCambiosDeEstado.
   redis.connect().catch(() => undefined);
   return redis;
 }

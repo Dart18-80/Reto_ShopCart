@@ -13,6 +13,8 @@ export function conectarPool(config: ConfiguracionBaseDatos): Promise<sql.Connec
     database: config.nombre,
     user: config.usuario,
     password: config.contrasena,
+    connectionTimeout: config.tiempoMaximoConexionMs,
+    requestTimeout: config.tiempoMaximoConsultaMs,
     pool: { min: CONEXIONES_MINIMAS, max: CONEXIONES_MAXIMAS },
     options: { encrypt: true, trustServerCertificate: config.confiarCertificado },
   }).connect();

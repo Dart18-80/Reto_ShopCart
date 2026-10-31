@@ -1,4 +1,6 @@
+import type { EventEmitter } from 'node:events';
 import { Redis } from 'ioredis';
+import type { Logger } from 'pino';
 import type { ConfiguracionRedis } from '../config/index.js';
 
 const ESPERA_PING_MS = 500;
@@ -43,4 +45,22 @@ export function crearVerificadorRedis(cliente: Pick<Redis, 'ping'>): { ping(): P
       }
     },
   };
+}
+
+/**
+ * RNF-2: con Redis caído, ioredis reintenta y emite 'error' en cada intento. Solo se registran los
+ * cambios de estado (una vez cuando cae, una vez cuando vuelve) para no llenar el log.
+ */
+export function registrarCambiosDeEstado(cliente: Pick<EventEmitter, 'on'>, logger: Logger): void {
+  let disponible: boolean | undefined;
+  cliente.on('error', (error: Error) => {
+    if (disponible === false) return;
+    disponible = false;
+    logger.warn({ err: error }, 'Redis no responde: la API sigue en modo degradado');
+  });
+  cliente.on('ready', () => {
+    if (disponible === true) return;
+    disponible = true;
+    logger.info('Redis disponible');
+  });
 }
