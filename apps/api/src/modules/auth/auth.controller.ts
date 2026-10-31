@@ -1,12 +1,13 @@
 import type { RequestHandler, Response } from 'express';
 import { manejar } from '../../shared/http/index.js';
 import { DIAS_VIGENCIA_REFRESH } from './auth.refresh.js';
-import { loginSchema, registroSchema } from './auth.schemas.js';
+import { cookiesRefreshSchema, loginSchema, registroSchema } from './auth.schemas.js';
 import type { AuthService } from './auth.service.js';
 import type { Sesion } from './auth.types.js';
 
 const HTTP_CREADO = 201;
 const HTTP_OK = 200;
+const HTTP_SIN_CONTENIDO = 204;
 const MS_POR_DIA = 24 * 60 * 60 * 1000;
 
 export const COOKIE_REFRESH = 'refresh';
@@ -30,6 +31,8 @@ export function enviarSesion(res: Response, sesion: Sesion, estado: number = HTT
 export interface AuthController {
   registro: RequestHandler;
   login: RequestHandler;
+  refresh: RequestHandler;
+  logout: RequestHandler;
 }
 
 export function crearAuthController(servicio: AuthService): AuthController {
@@ -40,6 +43,16 @@ export function crearAuthController(servicio: AuthService): AuthController {
 
     login: manejar({ body: loginSchema }, async ({ body, cliente }, res) => {
       enviarSesion(res, await servicio.iniciarSesion(body, cliente));
+    }),
+
+    refresh: manejar({ cookies: cookiesRefreshSchema }, async ({ cookies, cliente }, res) => {
+      enviarSesion(res, await servicio.refrescar(cookies.refresh, cliente));
+    }),
+
+    logout: manejar({ cookies: cookiesRefreshSchema }, async ({ cookies }, res) => {
+      await servicio.cerrarSesion(cookies.refresh);
+      res.clearCookie(COOKIE_REFRESH, { path: RUTA_COOKIE_REFRESH });
+      res.status(HTTP_SIN_CONTENIDO).end();
     }),
   };
 }

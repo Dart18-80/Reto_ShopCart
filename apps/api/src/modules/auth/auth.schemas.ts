@@ -53,5 +53,8 @@ export const sesionSchema = z
 
 export const respuestaSesionSchema = z.object({ datos: sesionSchema });
 
+// El refresh token llega en la cookie httpOnly (A-07): 43 caracteres base64url, 256 bits.
+export const cookiesRefreshSchema = z.object({ refresh: z.string().max(100).optional() });
+
 export type DatosRegistro = z.infer<typeof registroSchema>;
 export type DatosLogin = z.infer<typeof loginSchema>;

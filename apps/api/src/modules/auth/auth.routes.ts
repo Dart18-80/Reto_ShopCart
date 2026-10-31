@@ -54,10 +54,30 @@ registroOpenApi.registerPath({
   responses: { 200: respuestaSesion('Sesión abierta'), ...respuestasError(400, 401, 429) },
 });
 
+registroOpenApi.registerPath({
+  method: 'post',
+  path: '/api/v1/auth/refresh',
+  tags: ['Auth'],
+  summary: 'Rota el refresh token de la cookie y emite otro access token (A-07)',
+  description: 'Reusar un refresh ya rotado revoca toda la sesión: 401 REFRESH_REUTILIZADO.',
+  responses: { 200: respuestaSesion('Sesión renovada'), ...respuestasError(401) },
+});
+
+registroOpenApi.registerPath({
+  method: 'post',
+  path: '/api/v1/auth/logout',
+  tags: ['Auth'],
+  summary: 'Cierra la sesión: revoca el refresh token de la cookie y la borra',
+  responses: { 204: { description: 'Sesión cerrada (también si no había cookie)' } },
+});
+
 export function crearAuthRouter(controller: AuthController, limitadores: LimitadoresAuth): Router {
   const router = Router();
   // Públicas: no hay sesión todavía. Las protege el rate limiting (A-07).
   router.post('/registro', limitarIntentos(limitadores.registro, porIp), controller.registro);
   router.post('/login', limitarIntentos(limitadores.login, porIpYCorreo), controller.login);
+  // Sin access token: la prueba de la sesión es el refresh token de la cookie (A-07).
+  router.post('/refresh', controller.refresh);
+  router.post('/logout', controller.logout);
   return router;
 }

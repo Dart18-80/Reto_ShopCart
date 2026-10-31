@@ -615,7 +615,7 @@ Se detalla en historias al cerrar la Fase 1.
 | E1-H05 | Funciones y vistas base | Must | 0.5 | Hecha |
 | E1-H06 | Semillas de catálogos, geografía, usuarios y catálogo demo | Must | 0.75 | Hecha |
 | E2-H01 | Registro e inicio de sesión | Must | 0.75 | En revisión |
-| E2-H02 | Rotación del refresh token y logout | Must | 0.5 | Lista |
+| E2-H02 | Rotación del refresh token y logout | Must | 0.5 | En revisión |
 | E2-H03 | Autenticación, autorización y revocación | Must | 0.5 | Lista |
 | E2-H04 | Gestión de usuarios y perfil | Should | 0.5 | Lista |
 | E2-H05 | Direcciones y catálogo geográfico | Must | 0.25 | Lista |

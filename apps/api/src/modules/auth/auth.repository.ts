@@ -43,6 +43,16 @@ const aUsuario = (fila: FilaUsuario): UsuarioSesion => ({
   rol: aRol(fila.Rol),
 });
 
+export interface DatosRotacion {
+  hashActual: Buffer;
+  hashNuevo: Buffer;
+  diasVigencia: number;
+  ip: string | null;
+  userAgent: string | null;
+}
+
+export type MotivoRevocacion = 'Logout' | 'Reuso' | 'Desactivacion' | 'CambioContrasena';
+
 export const authRepository = {
   async registrarCliente(datos: DatosNuevoCliente): Promise<UsuarioSesion> {
     const [fila] = await ejecutarSP<FilaUsuario>('SP_Auth_RegistrarCliente', {
@@ -72,6 +82,26 @@ export const authRepository = {
       DiasVigencia: { tipo: sql.Int, valor: datos.diasVigencia },
       IP: { tipo: sql.VarChar(45), valor: datos.ip },
       UserAgent: { tipo: sql.NVarChar(300), valor: datos.userAgent },
+    });
+  },
+
+  /** null si la base no rotó el token (desconocido, vencido, revocado o usuario inactivo). */
+  async rotarRefresh(datos: DatosRotacion): Promise<UsuarioSesion | null> {
+    // El reúso llega como AppError REFRESH_REUTILIZADO (THROW 50102) desde el SP.
+    const [fila] = await ejecutarSP<FilaUsuario>('SP_Auth_RotarRefreshToken', {
+      HashToken: { tipo: sql.Binary, valor: datos.hashActual },
+      NuevoHash: { tipo: sql.Binary, valor: datos.hashNuevo },
+      DiasVigencia: { tipo: sql.Int, valor: datos.diasVigencia },
+      IP: { tipo: sql.VarChar(45), valor: datos.ip },
+      UserAgent: { tipo: sql.NVarChar(300), valor: datos.userAgent },
+    });
+    return fila === undefined ? null : aUsuario(fila);
+  },
+
+  async revocarSesion(hash: Buffer, motivo: MotivoRevocacion): Promise<void> {
+    await ejecutarSP('SP_Auth_RevocarSesion', {
+      HashToken: { tipo: sql.Binary, valor: hash },
+      Motivo: { tipo: sql.VarChar(30), valor: motivo },
     });
   },
 };

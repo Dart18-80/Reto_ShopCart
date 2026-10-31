@@ -6,7 +6,7 @@ import {
   type TokensAcceso,
 } from '../../shared/http/index.js';
 import { hashearContrasena, verificarContrasena } from './auth.contrasenas.js';
-import { DIAS_VIGENCIA_REFRESH, generarRefresh } from './auth.refresh.js';
+import { DIAS_VIGENCIA_REFRESH, generarRefresh, hashearRefresh } from './auth.refresh.js';
 import type { AuthRepository } from './auth.repository.js';
 import type { DatosLogin, DatosRegistro } from './auth.schemas.js';
 import type { Sesion, UsuarioSesion } from './auth.types.js';
@@ -14,7 +14,11 @@ import type { Sesion, UsuarioSesion } from './auth.types.js';
 interface Dependencias {
   repositorio: Pick<
     AuthRepository,
-    'registrarCliente' | 'obtenerCredenciales' | 'registrarRefresh'
+    | 'registrarCliente'
+    | 'obtenerCredenciales'
+    | 'registrarRefresh'
+    | 'rotarRefresh'
+    | 'revocarSesion'
   >;
   tokens: TokensAcceso;
 }
@@ -63,6 +67,28 @@ export function crearAuthService({ repositorio, tokens }: Dependencias) {
 
       const { idUsuario, correo: correoGuardado, nombre, rol } = credenciales;
       return abrirSesion({ idUsuario, correo: correoGuardado, nombre, rol }, cliente);
+    },
+
+    // A-07: rotación por familia. El SP marca el token como usado y guarda el nuevo bajo bloqueo; un
+    // reúso revoca la familia y llega como REFRESH_REUTILIZADO.
+    async refrescar(token: string | undefined, cliente: ClienteHttp): Promise<Sesion> {
+      if (token === undefined) throw new AppError('NO_AUTENTICADO');
+      const nuevo = generarRefresh();
+      const usuario = await repositorio.rotarRefresh({
+        hashActual: hashearRefresh(token),
+        hashNuevo: nuevo.hash,
+        diasVigencia: DIAS_VIGENCIA_REFRESH,
+        ip: cliente.ip,
+        userAgent: cliente.userAgent,
+      });
+      if (usuario === null) throw new AppError('NO_AUTENTICADO');
+      const accessToken = await tokens.emitir({ idUsuario: usuario.idUsuario, rol: usuario.rol });
+      return { accessToken, expiraEn: VIGENCIA_ACCESO_SEG, refreshToken: nuevo.token, usuario };
+    },
+
+    async cerrarSesion(token: string | undefined): Promise<void> {
+      if (token === undefined) return;
+      await repositorio.revocarSesion(hashearRefresh(token), 'Logout');
     },
   };
 }

@@ -31,6 +31,10 @@ function repositorioFalso(guardadas: Credenciales | null) {
       Promise.resolve({ idUsuario: 9, correo: datos.correo, nombre: datos.nombre, rol: 'Cliente' }),
     ),
     registrarRefresh: vi.fn<AuthRepository['registrarRefresh']>(() => Promise.resolve()),
+    rotarRefresh: vi.fn<AuthRepository['rotarRefresh']>(() =>
+      Promise.resolve({ idUsuario: 7, correo: 'ana@x.gt', nombre: 'Ana', rol: 'Cliente' as const }),
+    ),
+    revocarSesion: vi.fn<AuthRepository['revocarSesion']>(() => Promise.resolve()),
   };
   return { repositorio, servicio: crearAuthService({ repositorio, tokens }) };
 }
@@ -120,5 +124,58 @@ describe('registrar (E2-H01, N-15)', () => {
 
     expect(sesion.usuario).toMatchObject({ idUsuario: 9, rol: 'Cliente' });
     expect(await tokens.verificar(sesion.accessToken)).toEqual({ idUsuario: 9, rol: 'Cliente' });
+  });
+});
+
+describe('refrescar (E2-H02, A-07)', () => {
+  it('sin refresh token responde NO_AUTENTICADO sin tocar la base', async () => {
+    const { servicio, repositorio } = repositorioFalso(null);
+
+    await expect(servicio.refrescar(undefined, CLIENTE)).rejects.toMatchObject({
+      codigo: 'NO_AUTENTICADO',
+    });
+    expect(repositorio.rotarRefresh).not.toHaveBeenCalled();
+  });
+
+  it('un token que la base no rota (vencido, revocado o desconocido) responde NO_AUTENTICADO', async () => {
+    const { servicio, repositorio } = repositorioFalso(null);
+    repositorio.rotarRefresh.mockResolvedValue(null);
+
+    await expect(servicio.refrescar('token-viejo', CLIENTE)).rejects.toMatchObject({
+      codigo: 'NO_AUTENTICADO',
+    });
+  });
+
+  it('rota con el hash del token recibido y entrega un refresh nuevo y otro access token', async () => {
+    const { servicio, repositorio } = repositorioFalso(null);
+
+    const sesion = await servicio.refrescar('token-actual', CLIENTE);
+
+    const rotacion = repositorio.rotarRefresh.mock.calls[0]?.[0];
+    expect(rotacion?.hashActual).toEqual(createHash('sha256').update('token-actual').digest());
+    expect(rotacion?.hashNuevo).toEqual(createHash('sha256').update(sesion.refreshToken).digest());
+    expect(sesion.refreshToken).not.toBe('token-actual');
+    expect(await tokens.verificar(sesion.accessToken)).toEqual({ idUsuario: 7, rol: 'Cliente' });
+  });
+});
+
+describe('cerrarSesion (E2-H02, A-07)', () => {
+  it('revoca la familia del token con el motivo Logout', async () => {
+    const { servicio, repositorio } = repositorioFalso(null);
+
+    await servicio.cerrarSesion('token-actual');
+
+    expect(repositorio.revocarSesion).toHaveBeenCalledWith(
+      createHash('sha256').update('token-actual').digest(),
+      'Logout',
+    );
+  });
+
+  it('sin token no hace nada: el logout es idempotente', async () => {
+    const { servicio, repositorio } = repositorioFalso(null);
+
+    await servicio.cerrarSesion(undefined);
+
+    expect(repositorio.revocarSesion).not.toHaveBeenCalled();
   });
 });
