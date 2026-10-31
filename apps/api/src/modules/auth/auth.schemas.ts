@@ -4,7 +4,7 @@ import { z } from '../../shared/openapi/zod.js';
 
 // N-15: mínimo 8 caracteres con letras y números. El máximo evita que un cuerpo enorme se vuelva trabajo
 // de argon2. Las contraseñas no se recortan: los espacios son parte de ellas.
-const contrasenaSchema = z
+export const contrasenaSchema = z
   .string()
   .min(8, 'Mínimo 8 caracteres.')
   .max(128, 'Máximo 128 caracteres.')
@@ -12,7 +12,7 @@ const contrasenaSchema = z
   .regex(/\d/, 'Debe incluir al menos un número.');
 
 // Usuario.Correo es NVARCHAR(254).
-const correoSchema = textoNvarchar(254).pipe(z.email('El correo no es válido.'));
+export const correoSchema = textoNvarchar(254).pipe(z.email('El correo no es válido.'));
 
 export const registroSchema = z
   .object({

@@ -1,0 +1,112 @@
+import sql from 'mssql';
+import { ejecutarSP } from '../../shared/db/index.js';
+import { esRolDeUsuario, type Rol } from '../../shared/http/index.js';
+import type { FiltrosUsuarios, PerfilConHash, Usuario } from './usuarios.types.js';
+
+interface FilaUsuario {
+  IDUsuario: number;
+  Correo: string;
+  Nombre: string;
+  Telefono: string | null;
+  Rol: string;
+  Activo: boolean;
+}
+
+interface FilaPerfil extends FilaUsuario {
+  HashContrasena: string;
+}
+
+interface FilaListado extends FilaUsuario {
+  TotalFilas: number;
+}
+
+export interface DatosNuevoInterno {
+  correo: string;
+  hashContrasena: string;
+  nombre: string;
+  telefono: string | null;
+  rol: Rol;
+}
+
+function aRol(rol: string): Rol {
+  if (!esRolDeUsuario(rol)) throw new Error(`Rol inesperado desde la base: ${rol}`);
+  return rol;
+}
+
+const aUsuario = (fila: FilaUsuario): Usuario => ({
+  idUsuario: fila.IDUsuario,
+  correo: fila.Correo,
+  nombre: fila.Nombre,
+  telefono: fila.Telefono,
+  rol: aRol(fila.Rol),
+  activo: fila.Activo,
+});
+
+function unico(filas: FilaUsuario[], sp: string): Usuario {
+  const [fila] = filas;
+  if (fila === undefined) throw new Error(`${sp} no devolvió el usuario`);
+  return aUsuario(fila);
+}
+
+export const usuariosRepository = {
+  // RF-01: el perfil sale de @IDUsuarioActor (el token); el repositorio no recibe el ID del cliente.
+  async obtenerPerfil(): Promise<PerfilConHash | null> {
+    const [fila] = await ejecutarSP<FilaPerfil>('SP_Usuarios_ObtenerPerfil');
+    return fila === undefined ? null : { ...aUsuario(fila), hashContrasena: fila.HashContrasena };
+  },
+
+  async actualizarPerfil(nombre: string, telefono: string | null): Promise<Usuario> {
+    const filas = await ejecutarSP<FilaUsuario>('SP_Usuarios_ActualizarPerfil', {
+      Nombre: { tipo: sql.NVarChar(100), valor: nombre },
+      Telefono: { tipo: sql.VarChar(8), valor: telefono },
+    });
+    return unico(filas, 'SP_Usuarios_ActualizarPerfil');
+  },
+
+  async cambiarContrasena(hashContrasena: string): Promise<void> {
+    await ejecutarSP('SP_Usuarios_CambiarContrasena', {
+      HashContrasena: { tipo: sql.VarChar(255), valor: hashContrasena },
+    });
+  },
+
+  async listar(filtros: FiltrosUsuarios): Promise<{ usuarios: Usuario[]; total: number }> {
+    const filas = await ejecutarSP<FilaListado>('SP_Usuarios_Listar', {
+      Pagina: { tipo: sql.Int, valor: filtros.pagina },
+      Tamano: { tipo: sql.Int, valor: filtros.tamano },
+      Rol: { tipo: sql.VarChar(20), valor: filtros.rol },
+      Activo: { tipo: sql.Bit, valor: filtros.activo },
+    });
+    return { usuarios: filas.map(aUsuario), total: filas[0]?.TotalFilas ?? 0 };
+  },
+
+  async crearInterno(datos: DatosNuevoInterno): Promise<Usuario> {
+    const filas = await ejecutarSP<FilaUsuario>('SP_Usuarios_CrearInterno', {
+      Correo: { tipo: sql.NVarChar(254), valor: datos.correo },
+      HashContrasena: { tipo: sql.VarChar(255), valor: datos.hashContrasena },
+      Nombre: { tipo: sql.NVarChar(100), valor: datos.nombre },
+      Telefono: { tipo: sql.VarChar(8), valor: datos.telefono },
+      Rol: { tipo: sql.VarChar(20), valor: datos.rol },
+    });
+    return unico(filas, 'SP_Usuarios_CrearInterno');
+  },
+
+  /** nombre o rol en null: sin cambio. */
+  async actualizar(idUsuario: number, nombre: string | null, rol: Rol | null): Promise<Usuario> {
+    const filas = await ejecutarSP<FilaUsuario>('SP_Usuarios_Actualizar', {
+      IDUsuario: { tipo: sql.Int, valor: idUsuario },
+      Nombre: { tipo: sql.NVarChar(100), valor: nombre },
+      Rol: { tipo: sql.VarChar(20), valor: rol },
+    });
+    return unico(filas, 'SP_Usuarios_Actualizar');
+  },
+
+  async cambiarEstado(idUsuario: number, activo: boolean): Promise<Usuario> {
+    const filas = await ejecutarSP<FilaUsuario>('SP_Usuarios_CambiarEstado', {
+      IDUsuario: { tipo: sql.Int, valor: idUsuario },
+      Activo: { tipo: sql.Bit, valor: activo },
+    });
+    return unico(filas, 'SP_Usuarios_CambiarEstado');
+  },
+};
+
+export type UsuariosRepository = typeof usuariosRepository;

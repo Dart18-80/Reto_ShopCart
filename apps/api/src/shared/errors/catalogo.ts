@@ -45,6 +45,11 @@ export const CATALOGO = {
   CORREO_EN_USO: { http: 409, numeroSql: 50101, mensaje: 'El correo ya está registrado.' },
   REFRESH_REUTILIZADO: { http: 401, numeroSql: 50102, mensaje: 'La sesión ya no es válida.' },
   USUARIO_INACTIVO: { http: 401, numeroSql: 50103, mensaje: 'El usuario está inactivo.' },
+  ACCION_SOBRE_SI_MISMO: {
+    http: 409,
+    numeroSql: 50105,
+    mensaje: 'No puedes desactivar tu propia cuenta ni cambiar tu propio rol.',
+  },
   ULTIMO_ADMIN: {
     http: 409,
     numeroSql: 50104,
