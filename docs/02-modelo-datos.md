@@ -716,7 +716,7 @@ UQ `(IDPedido, IDVariante)`. Índices: `IX_DetallePedido_Variante (IDVariante) I
 | Tabla | Qué se registra | Módulo |
 |---|---|---|
 | `Categoria`, `Producto`, `Variante` | Creación, cambios, desactivación y existencia física | Catalogo / Inventario |
-| `PrecioVariante` | Cada nueva versión de precio, con el precio anterior | Catalogo |
+| `PrecioVariante` | Cada nueva versión de precio, con el precio anterior. `IDEntidad` es el `IDPrecioVariante` de la nueva versión (siempre la PK del registro afectado) y `ValorAnterior`/`ValorNuevo` incluyen `IDVariante` y el precio. El historial de precios de una variante se lee de `PrecioVariante` con `SP_Catalogo_HistorialPrecios`, no de la bitácora | Catalogo |
 | `Cupon` | Creación, cambios y desactivación | Cupones |
 | `Pedido` | **Solo cuando cambia `IDEstadoPedido`** | Pedidos |
 | `MetodoEnvio`, `ParametroSistema` | Cambios de tarifas y parámetros (N-04) | Envios / Configuracion |

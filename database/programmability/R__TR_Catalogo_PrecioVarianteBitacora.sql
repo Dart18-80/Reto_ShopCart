@@ -16,11 +16,14 @@ BEGIN
             @RequestId UNIQUEIDENTIFIER = TRY_CONVERT(UNIQUEIDENTIFIER, SESSION_CONTEXT(N'RequestId'));
 
     INSERT INTO dbo.Bitacora (Modulo, Entidad, IDEntidad, Accion, ValorAnterior, ValorNuevo, IDUsuario, RequestId)
-    SELECT  'Catalogo', 'PrecioVariante', CONVERT(VARCHAR(50), i.IDVariante),
+    -- 02 §3.10: IDEntidad es la PK del registro afectado, la nueva versión. El historial de precios de
+    -- una variante se lee de PrecioVariante (SP_Catalogo_HistorialPrecios), no de la bitácora.
+    SELECT  'Catalogo', 'PrecioVariante', CONVERT(VARCHAR(50), i.IDPrecioVariante),
             CASE WHEN anterior.IDPrecioVariante IS NULL THEN 'Crear' ELSE 'Modificar' END,
             CASE WHEN anterior.IDPrecioVariante IS NULL THEN NULL ELSE
-                (SELECT anterior.IDPrecioVariante, anterior.Precio FOR JSON PATH, WITHOUT_ARRAY_WRAPPER) END,
-            (SELECT i.IDPrecioVariante, i.Precio, i.VigenteDesde FOR JSON PATH, WITHOUT_ARRAY_WRAPPER),
+                (SELECT anterior.IDPrecioVariante, i.IDVariante, anterior.Precio
+                 FOR JSON PATH, WITHOUT_ARRAY_WRAPPER) END,
+            (SELECT i.IDPrecioVariante, i.IDVariante, i.Precio, i.VigenteDesde FOR JSON PATH, WITHOUT_ARRAY_WRAPPER),
             @IDUsuario, @RequestId
     FROM    inserted AS i
     OUTER APPLY (

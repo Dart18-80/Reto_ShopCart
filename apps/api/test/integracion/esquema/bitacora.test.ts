@@ -40,11 +40,12 @@ function ultimaBitacora(entidad: string, idEntidad: number): Promise<FilaBitacor
   });
 }
 
-function cambiarPrecio(idVariante: number, precio: string) {
-  return ejecutarSP('SP_Pruebas_CambiarPrecioVariante', {
+async function cambiarPrecio(idVariante: number, precio: string): Promise<number> {
+  const fila = await unaFila<{ IDPrecioVariante: number }>('SP_Pruebas_CambiarPrecioVariante', {
     IDVariante: { tipo: sql.Int, valor: idVariante },
     Precio: { tipo: sql.Decimal(12, 2), valor: precio },
   });
+  return fila.IDPrecioVariante;
 }
 
 function modificarCupon(idCupon: number, descripcion: string, usosComprometidos: number) {
@@ -58,16 +59,34 @@ function modificarCupon(idCupon: number, descripcion: string, usosComprometidos:
 describe('Bitácora (E1-H04, RF-09)', () => {
   it('un cambio de precio registra usuario, fecha, entidad, acción, precio anterior y nuevo', async () => {
     const { IDVariante, IDUsuario } = await crearVariante();
-    await comoAdministrador(IDUsuario, () => cambiarPrecio(IDVariante, '100.00'));
+    const idAnterior = await comoAdministrador(IDUsuario, () =>
+      cambiarPrecio(IDVariante, '100.00'),
+    );
 
-    await comoAdministrador(IDUsuario, () => cambiarPrecio(IDVariante, '120.00'));
+    const idNuevo = await comoAdministrador(IDUsuario, () => cambiarPrecio(IDVariante, '120.00'));
 
-    const fila = await ultimaBitacora('PrecioVariante', IDVariante);
+    // 02 §3.10: IDEntidad es la PK del registro afectado, aquí la nueva versión de precio (R5).
+    const fila = await ultimaBitacora('PrecioVariante', idNuevo);
     expect(fila).toMatchObject({ Modulo: 'Catalogo', Accion: 'Modificar', IDUsuario });
     expect(fila.RequestId?.toLowerCase()).toBe(REQUEST_ID);
     expect(fila.Fecha).toBeInstanceOf(Date);
-    expect(JSON.parse(fila.ValorAnterior ?? '{}')).toMatchObject({ Precio: 100 });
-    expect(JSON.parse(fila.ValorNuevo ?? '{}')).toMatchObject({ Precio: 120 });
+    expect(JSON.parse(fila.ValorAnterior ?? '{}')).toMatchObject({
+      IDPrecioVariante: idAnterior,
+      IDVariante,
+      Precio: 100,
+    });
+    expect(JSON.parse(fila.ValorNuevo ?? '{}')).toMatchObject({ IDVariante, Precio: 120 });
+  });
+
+  it('el primer precio de una variante queda como Crear con su propio IDPrecioVariante', async () => {
+    const { IDVariante, IDUsuario } = await crearVariante();
+
+    const idPrimero = await comoAdministrador(IDUsuario, () => cambiarPrecio(IDVariante, '80.00'));
+
+    expect(await ultimaBitacora('PrecioVariante', idPrimero)).toMatchObject({
+      Accion: 'Crear',
+      ValorAnterior: null,
+    });
   });
 
   it('un cambio de existencia física queda en el módulo Inventario con el valor anterior y el nuevo', async () => {

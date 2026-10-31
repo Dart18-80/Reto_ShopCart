@@ -1,5 +1,5 @@
 -- Solo existe en shopcart_test: cierra el precio vigente e inserta uno nuevo (como lo hará
--- SP_Catalogo_CambiarPrecio), con el actor de la petición, para comprobar la bitácora de precios.
+-- SP_Catalogo_CambiarPrecio), con el actor de la petición, y devuelve el IDPrecioVariante de la nueva versión.
 CREATE OR ALTER PROCEDURE dbo.SP_Pruebas_CambiarPrecioVariante
     @IDVariante     INT,
     @Precio         DECIMAL(12,2),
@@ -20,7 +20,9 @@ BEGIN
         UPDATE dbo.PrecioVariante SET VigenteHasta = @Ahora WHERE IDVariante = @IDVariante AND VigenteHasta IS NULL;
         INSERT INTO dbo.PrecioVariante (IDVariante, Precio, VigenteDesde, IDUsuario)
         VALUES (@IDVariante, @Precio, DATEADD(MILLISECOND, 1, @Ahora), @IDUsuarioActor);
+        DECLARE @IDPrecioVariante INT = SCOPE_IDENTITY();
         COMMIT;
+        SELECT @IDPrecioVariante AS IDPrecioVariante;
     END TRY
     BEGIN CATCH
         IF @@TRANCOUNT > 0 ROLLBACK;
