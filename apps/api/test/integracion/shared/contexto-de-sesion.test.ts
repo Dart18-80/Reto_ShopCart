@@ -1,4 +1,4 @@
-import type sql from 'mssql';
+import sql from 'mssql';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ejecutarSP } from '../../../src/shared/db/index.js';
 import { ejecutarConContexto } from '../../../src/shared/http/index.js';
@@ -41,10 +41,13 @@ describe('SP_Sistema_EstablecerContexto (A-18)', () => {
     });
   });
 
+  // En la misma sesión: con el pool, dos llamadas separadas podrían usar conexiones distintas y la
+  // prueba pasaría aunque el contexto anterior siguiera ahí.
   it('una llamada sin actor (job) limpia el contexto que dejó la petición anterior', async () => {
-    await ejecutarConContexto(CLIENTE, leerContextoDeSesion);
-
-    const [fila] = await leerContextoDeSesion();
+    const [fila] = await ejecutarSP<FilaContexto>('SP_Pruebas_ContextoTrasLimpiar', {
+      IDUsuarioAnterior: { tipo: sql.Int, valor: CLIENTE.idUsuario },
+      RolAnterior: { tipo: sql.VarChar(20), valor: CLIENTE.rol },
+    });
 
     expect(fila).toEqual({ IDUsuario: null, Rol: null, RequestId: null });
   });

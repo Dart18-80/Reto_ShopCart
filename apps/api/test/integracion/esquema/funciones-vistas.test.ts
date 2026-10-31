@@ -47,13 +47,18 @@ function registrarEntrada(variante: VarianteDePrueba, cantidad: number) {
   });
 }
 
+// Sin valores por defecto: si el SP dejara de devolver un conjunto, "conciliación vacía" pasaría sin probar nada.
 async function leerInventario(idVariante: number) {
-  const [disponible = [], conciliacion = []] = await ejecutarSPMultiple(
-    'SP_Pruebas_LeerInventario',
-    {
-      IDVariante: { tipo: sql.Int, valor: idVariante },
-    },
-  );
+  const conjuntos = await ejecutarSPMultiple('SP_Pruebas_LeerInventario', {
+    IDVariante: { tipo: sql.Int, valor: idVariante },
+  });
+  const [disponible, conciliacion] = conjuntos;
+  if (conjuntos.length !== 2 || disponible === undefined || conciliacion === undefined) {
+    throw new Error(
+      `SP_Pruebas_LeerInventario devolvió ${String(conjuntos.length)} conjuntos; se esperaban 2`,
+    );
+  }
+  // El SP define la forma de la fila; Disponible la declara.
   return { disponible: disponible[0] as Disponible | undefined, conciliacion };
 }
 
