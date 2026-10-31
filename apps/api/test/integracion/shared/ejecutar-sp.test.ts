@@ -2,22 +2,14 @@ import express, { type Express } from 'express';
 import sql from 'mssql';
 import { pino } from 'pino';
 import request from 'supertest';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { ejecutarSP } from '../../../src/shared/db/index.js';
 import { AppError, manejadorErrores } from '../../../src/shared/errors/index.js';
 import { ejecutarConContexto, manejar, requestId } from '../../../src/shared/http/index.js';
 import { leerError } from '../../unit/respuestas.js';
-import { conectarBaseDePruebas } from '../base-de-pruebas.js';
+import { usarBaseDePruebas } from '../base-de-pruebas.js';
 
-let pool: sql.ConnectionPool | undefined;
-
-beforeAll(async () => {
-  pool = await conectarBaseDePruebas();
-});
-
-afterAll(async () => {
-  await pool?.close();
-});
+usarBaseDePruebas();
 
 function lanzarError(numero: number, mensaje: string): Promise<unknown> {
   return ejecutarSP('SP_Pruebas_LanzarError', {

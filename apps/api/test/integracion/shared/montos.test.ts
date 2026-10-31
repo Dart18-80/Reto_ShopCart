@@ -1,8 +1,8 @@
 import { Decimal } from 'decimal.js';
 import sql from 'mssql';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { aMonto } from '../../../src/shared/dinero/index.js';
-import { conectarBaseDePruebas } from '../base-de-pruebas.js';
+import { usarBaseDePruebas } from '../base-de-pruebas.js';
 import { unaFila } from '../datos-de-prueba.js';
 
 interface FilaMonto {
@@ -10,15 +10,7 @@ interface FilaMonto {
   Promedio: number;
 }
 
-let pool: sql.ConnectionPool | undefined;
-
-beforeAll(async () => {
-  pool = await conectarBaseDePruebas();
-});
-
-afterAll(async () => {
-  await pool?.close();
-});
+usarBaseDePruebas();
 
 function ecoMonto(monto: Decimal): Promise<FilaMonto> {
   return unaFila<FilaMonto>('SP_Pruebas_EcoMonto', {

@@ -1,52 +1,19 @@
 import sql from 'mssql';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { ejecutarSP } from '../../../src/shared/db/index.js';
-import { ejecutarConContexto } from '../../../src/shared/http/index.js';
-import { conectarBaseDePruebas } from '../base-de-pruebas.js';
-import { crearCupon, crearUsuario, crearVariante, unaFila } from '../datos-de-prueba.js';
-
-interface FilaBitacora {
-  Modulo: string;
-  Entidad: string;
-  IDEntidad: string;
-  Accion: string;
-  ValorAnterior: string | null;
-  ValorNuevo: string | null;
-  IDUsuario: number | null;
-  RequestId: string | null;
-  Fecha: Date;
-}
+import { usarBaseDePruebas } from '../base-de-pruebas.js';
+import {
+  cambiarPrecio,
+  comoActor,
+  crearCupon,
+  crearUsuario,
+  crearVariante,
+  ultimaBitacora,
+} from '../datos-de-prueba.js';
 
 const REQUEST_ID = '8f1c2e9a-0000-4000-8000-000000000005';
 
-let pool: sql.ConnectionPool | undefined;
-
-beforeAll(async () => {
-  pool = await conectarBaseDePruebas();
-});
-
-afterAll(async () => {
-  await pool?.close();
-});
-
-function comoAdministrador<T>(idUsuario: number, accion: () => Promise<T>): Promise<T> {
-  return ejecutarConContexto({ requestId: REQUEST_ID, idUsuario, rol: 'Administrador' }, accion);
-}
-
-function ultimaBitacora(entidad: string, idEntidad: number): Promise<FilaBitacora> {
-  return unaFila<FilaBitacora>('SP_Pruebas_LeerBitacora', {
-    Entidad: { tipo: sql.VarChar(50), valor: entidad },
-    IDEntidad: { tipo: sql.VarChar(50), valor: String(idEntidad) },
-  });
-}
-
-async function cambiarPrecio(idVariante: number, precio: string): Promise<number> {
-  const fila = await unaFila<{ IDPrecioVariante: number }>('SP_Pruebas_CambiarPrecioVariante', {
-    IDVariante: { tipo: sql.Int, valor: idVariante },
-    Precio: { tipo: sql.Decimal(12, 2), valor: precio },
-  });
-  return fila.IDPrecioVariante;
-}
+usarBaseDePruebas();
 
 function modificarCupon(idCupon: number, descripcion: string, usosComprometidos: number) {
   return ejecutarSP('SP_Pruebas_ModificarCupon', {
@@ -59,11 +26,16 @@ function modificarCupon(idCupon: number, descripcion: string, usosComprometidos:
 describe('Bitácora (E1-H04, RF-09)', () => {
   it('un cambio de precio registra usuario, fecha, entidad, acción, precio anterior y nuevo', async () => {
     const { IDVariante, IDUsuario } = await crearVariante();
-    const idAnterior = await comoAdministrador(IDUsuario, () =>
+    const idAnterior = await comoActor(IDUsuario, 'Administrador', () =>
       cambiarPrecio(IDVariante, '100.00'),
     );
 
-    const idNuevo = await comoAdministrador(IDUsuario, () => cambiarPrecio(IDVariante, '120.00'));
+    const idNuevo = await comoActor(
+      IDUsuario,
+      'Administrador',
+      () => cambiarPrecio(IDVariante, '120.00'),
+      REQUEST_ID,
+    );
 
     // 02 §3.10: IDEntidad es la PK del registro afectado, aquí la nueva versión de precio (R5).
     const fila = await ultimaBitacora('PrecioVariante', idNuevo);
@@ -81,7 +53,9 @@ describe('Bitácora (E1-H04, RF-09)', () => {
   it('el primer precio de una variante queda como Crear con su propio IDPrecioVariante', async () => {
     const { IDVariante, IDUsuario } = await crearVariante();
 
-    const idPrimero = await comoAdministrador(IDUsuario, () => cambiarPrecio(IDVariante, '80.00'));
+    const idPrimero = await comoActor(IDUsuario, 'Administrador', () =>
+      cambiarPrecio(IDVariante, '80.00'),
+    );
 
     expect(await ultimaBitacora('PrecioVariante', idPrimero)).toMatchObject({
       Accion: 'Crear',
@@ -92,7 +66,7 @@ describe('Bitácora (E1-H04, RF-09)', () => {
   it('un cambio de existencia física queda en el módulo Inventario con el valor anterior y el nuevo', async () => {
     const { IDVariante, IDUsuario } = await crearVariante();
 
-    await comoAdministrador(IDUsuario, () =>
+    await comoActor(IDUsuario, 'Administrador', () =>
       ejecutarSP('SP_Pruebas_FijarExistencia', {
         IDVariante: { tipo: sql.Int, valor: IDVariante },
         ExistenciaFisica: { tipo: sql.Int, valor: 7 },
@@ -109,7 +83,9 @@ describe('Bitácora (E1-H04, RF-09)', () => {
     const idUsuario = await crearUsuario();
     const idCupon = await crearCupon(5);
 
-    await comoAdministrador(idUsuario, () => modificarCupon(idCupon, 'Descripción nueva', 0));
+    await comoActor(idUsuario, 'Administrador', () =>
+      modificarCupon(idCupon, 'Descripción nueva', 0),
+    );
 
     const fila = await ultimaBitacora('Cupon', idCupon);
     expect(fila).toMatchObject({ Modulo: 'Cupones', Accion: 'Modificar', IDUsuario: idUsuario });
@@ -121,7 +97,9 @@ describe('Bitácora (E1-H04, RF-09)', () => {
     const idCupon = await crearCupon(5);
     const antes = await ultimaBitacora('Cupon', idCupon);
 
-    await comoAdministrador(idUsuario, () => modificarCupon(idCupon, 'Cupón de prueba', 2));
+    await comoActor(idUsuario, 'Administrador', () =>
+      modificarCupon(idCupon, 'Cupón de prueba', 2),
+    );
 
     expect(await ultimaBitacora('Cupon', idCupon)).toEqual(antes);
   });
@@ -159,7 +137,7 @@ describe('contexto obligatorio en la bitácora (A-18)', () => {
     const idCupon = await crearCupon(5);
     const idAdministrador = await crearUsuario();
 
-    await comoAdministrador(idAdministrador, () =>
+    await comoActor(idAdministrador, 'Administrador', () =>
       modificarCupon(idCupon, 'Cambio del administrador', 0),
     );
 

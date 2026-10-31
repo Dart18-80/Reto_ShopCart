@@ -1,8 +1,8 @@
 import sql from 'mssql';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { ejecutarSP, ejecutarSPMultiple } from '../../../src/shared/db/index.js';
-import { conectarBaseDePruebas } from '../base-de-pruebas.js';
-import { crearVariante, type VarianteDePrueba } from '../datos-de-prueba.js';
+import { usarBaseDePruebas } from '../base-de-pruebas.js';
+import { crearVariante, fijarExistencia, type VarianteDePrueba } from '../datos-de-prueba.js';
 
 interface Disponible {
   ExistenciaFisica: number;
@@ -10,22 +10,7 @@ interface Disponible {
   Disponible: number;
 }
 
-let pool: sql.ConnectionPool | undefined;
-
-beforeAll(async () => {
-  pool = await conectarBaseDePruebas();
-});
-
-afterAll(async () => {
-  await pool?.close();
-});
-
-function fijarExistencia(idVariante: number, existenciaFisica: number) {
-  return ejecutarSP('SP_Pruebas_FijarExistencia', {
-    IDVariante: { tipo: sql.Int, valor: idVariante },
-    ExistenciaFisica: { tipo: sql.Int, valor: existenciaFisica },
-  });
-}
+usarBaseDePruebas();
 
 function crearReserva(idVariante: number, cantidad: number, minutosParaVencer: number) {
   return ejecutarSP('SP_Pruebas_CrearReserva', {

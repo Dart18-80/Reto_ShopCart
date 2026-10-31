@@ -1,49 +1,21 @@
 import { randomUUID } from 'node:crypto';
 import sql from 'mssql';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { ejecutarSP, type ParametrosSP } from '../../../src/shared/db/index.js';
-import { ejecutarConContexto } from '../../../src/shared/http/index.js';
-import { conectarBaseDePruebas } from '../base-de-pruebas.js';
+import { usarBaseDePruebas } from '../base-de-pruebas.js';
 import {
-  ERROR_DE_CONSTRAINT,
+  cambiarPrecio,
+  comoActor,
   crearCupon,
   crearPedido,
   crearUsuario,
   crearVariante,
+  leerBitacora,
   unaFila,
+  violaConstraint,
 } from '../datos-de-prueba.js';
 
-interface FilaBitacora {
-  Modulo: string;
-  Accion: string;
-  ValorAnterior: string | null;
-  ValorNuevo: string | null;
-}
-
-let pool: sql.ConnectionPool | undefined;
-
-beforeAll(async () => {
-  pool = await conectarBaseDePruebas();
-});
-
-afterAll(async () => {
-  await pool?.close();
-});
-
-function comoAdministrador<T>(idUsuario: number, accion: () => Promise<T>): Promise<T> {
-  return ejecutarConContexto({ requestId: randomUUID(), idUsuario, rol: 'Administrador' }, accion);
-}
-
-function leerBitacora(entidad: string, idEntidad: number): Promise<FilaBitacora[]> {
-  return ejecutarSP<FilaBitacora>('SP_Pruebas_LeerBitacora', {
-    Entidad: { tipo: sql.VarChar(50), valor: entidad },
-    IDEntidad: { tipo: sql.VarChar(50), valor: String(idEntidad) },
-  });
-}
-
-function violaConstraint(nombre: string) {
-  return { number: ERROR_DE_CONSTRAINT, message: expect.stringContaining(nombre) as unknown };
-}
+usarBaseDePruebas();
 
 const valores = (json: string | null): unknown => JSON.parse(json ?? 'null') as unknown;
 
@@ -51,7 +23,7 @@ describe('triggers de bitácora sin prueba hasta ahora (R4)', () => {
   it('Categoria y Producto registran el cambio de descripción y la desactivación', async () => {
     const { IDVariante, IDUsuario } = await crearVariante();
 
-    const { IDProducto, IDCategoria } = await comoAdministrador(IDUsuario, () =>
+    const { IDProducto, IDCategoria } = await comoActor(IDUsuario, 'Administrador', () =>
       unaFila<{ IDProducto: number; IDCategoria: number }>('SP_Pruebas_EditarCatalogo', {
         IDVariante: { tipo: sql.Int, valor: IDVariante },
       }),
@@ -69,7 +41,7 @@ describe('triggers de bitácora sin prueba hasta ahora (R4)', () => {
   it('MetodoEnvio registra la creación, el cambio de costo y la eliminación', async () => {
     const idAdministrador = await crearUsuario();
 
-    const { IDMetodoEnvio } = await comoAdministrador(idAdministrador, () =>
+    const { IDMetodoEnvio } = await comoActor(idAdministrador, 'Administrador', () =>
       unaFila<{ IDMetodoEnvio: number }>('SP_Pruebas_CicloMetodoEnvio'),
     );
 
@@ -83,7 +55,7 @@ describe('triggers de bitácora sin prueba hasta ahora (R4)', () => {
   it('ParametroSistema registra cada cambio en Configuración con el valor anterior y el nuevo', async () => {
     const idAdministrador = await crearUsuario();
 
-    const { MinutosReserva } = await comoAdministrador(idAdministrador, () =>
+    const { MinutosReserva } = await comoActor(idAdministrador, 'Administrador', () =>
       unaFila<{ MinutosReserva: number }>('SP_Pruebas_TocarParametroSistema'),
     );
 
@@ -141,13 +113,6 @@ describe('FU_Catalogo_PrecioVigente (R4, N-02)', () => {
     );
   }
 
-  function cambiarPrecio(idVariante: number, precio: string) {
-    return unaFila<{ IDPrecioVariante: number }>('SP_Pruebas_CambiarPrecioVariante', {
-      IDVariante: { tipo: sql.Int, valor: idVariante },
-      Precio: { tipo: sql.Decimal(12, 2), valor: precio },
-    });
-  }
-
   it('sin precio no devuelve filas', async () => {
     const { IDVariante } = await crearVariante();
 
@@ -156,9 +121,9 @@ describe('FU_Catalogo_PrecioVigente (R4, N-02)', () => {
 
   it('después de varios cambios devuelve solo la última versión', async () => {
     const { IDVariante, IDUsuario } = await crearVariante();
-    await comoAdministrador(IDUsuario, () => cambiarPrecio(IDVariante, '100.00'));
+    await comoActor(IDUsuario, 'Administrador', () => cambiarPrecio(IDVariante, '100.00'));
 
-    const { IDPrecioVariante } = await comoAdministrador(IDUsuario, () =>
+    const IDPrecioVariante = await comoActor(IDUsuario, 'Administrador', () =>
       cambiarPrecio(IDVariante, '120.00'),
     );
 

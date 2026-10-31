@@ -1,7 +1,7 @@
 import sql from 'mssql';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { ejecutarSP } from '../../../src/shared/db/index.js';
-import { conectarBaseDePruebas } from '../base-de-pruebas.js';
+import { usarBaseDePruebas } from '../base-de-pruebas.js';
 import { crearVariante, ERROR_DE_CONSTRAINT, type VarianteDePrueba } from '../datos-de-prueba.js';
 
 interface Movimiento {
@@ -12,15 +12,7 @@ interface Movimiento {
   existenciaResultante: number;
 }
 
-let pool: sql.ConnectionPool | undefined;
-
-beforeAll(async () => {
-  pool = await conectarBaseDePruebas();
-});
-
-afterAll(async () => {
-  await pool?.close();
-});
+usarBaseDePruebas();
 
 function insertarMovimiento(variante: VarianteDePrueba, movimiento: Movimiento) {
   return ejecutarSP('SP_Pruebas_InsertarMovimientoKardex', {

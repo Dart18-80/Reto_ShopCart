@@ -1,8 +1,8 @@
 import { randomBytes } from 'node:crypto';
 import sql from 'mssql';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { ejecutarSP } from '../../../src/shared/db/index.js';
-import { conectarBaseDePruebas } from '../base-de-pruebas.js';
+import { usarBaseDePruebas } from '../base-de-pruebas.js';
 import {
   crearCupon,
   crearSesionCheckout,
@@ -11,15 +11,7 @@ import {
   ERROR_DE_INDICE_UNICO,
 } from '../datos-de-prueba.js';
 
-let pool: sql.ConnectionPool | undefined;
-
-beforeAll(async () => {
-  pool = await conectarBaseDePruebas();
-});
-
-afterAll(async () => {
-  await pool?.close();
-});
+usarBaseDePruebas();
 
 function fijarUsosCupon(idCupon: number, usosComprometidos: number) {
   return ejecutarSP('SP_Pruebas_FijarUsosCupon', {

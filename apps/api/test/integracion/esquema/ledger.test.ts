@@ -1,20 +1,12 @@
 import sql from 'mssql';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { ejecutarSP } from '../../../src/shared/db/index.js';
-import { conectarBaseDePruebas } from '../base-de-pruebas.js';
+import { usarBaseDePruebas } from '../base-de-pruebas.js';
 
 // Error del motor ante UPDATE o DELETE sobre una tabla ledger append-only (E1-H01).
 const ERROR_LEDGER_SOLO_INSERCION = 37359;
 
-let pool: sql.ConnectionPool | undefined;
-
-beforeAll(async () => {
-  pool = await conectarBaseDePruebas();
-});
-
-afterAll(async () => {
-  await pool?.close();
-});
+usarBaseDePruebas();
 
 describe('Tablas ledger (E1-H04, M-01)', () => {
   it.each([

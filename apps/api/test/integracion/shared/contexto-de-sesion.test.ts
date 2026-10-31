@@ -1,8 +1,8 @@
 import sql from 'mssql';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { ejecutarSP } from '../../../src/shared/db/index.js';
 import { ejecutarConContexto } from '../../../src/shared/http/index.js';
-import { conectarBaseDePruebas } from '../base-de-pruebas.js';
+import { usarBaseDePruebas } from '../base-de-pruebas.js';
 
 interface FilaContexto {
   IDUsuario: number | null;
@@ -16,15 +16,7 @@ const CLIENTE = {
   rol: 'Cliente' as const,
 };
 
-let pool: sql.ConnectionPool | undefined;
-
-beforeAll(async () => {
-  pool = await conectarBaseDePruebas();
-});
-
-afterAll(async () => {
-  await pool?.close();
-});
+usarBaseDePruebas();
 
 function leerContextoDeSesion(): Promise<FilaContexto[]> {
   return ejecutarSP<FilaContexto>('SP_Pruebas_ContextoDeSesion');

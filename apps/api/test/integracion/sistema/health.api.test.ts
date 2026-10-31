@@ -1,11 +1,10 @@
-import type sql from 'mssql';
 import { pino } from 'pino';
 import request from 'supertest';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { crearApp } from '../../../src/app.js';
 import { leerDatos } from '../../unit/respuestas.js';
-import { conectarBaseDePruebas } from '../base-de-pruebas.js';
+import { usarBaseDePruebas } from '../base-de-pruebas.js';
 
 const saludSchema = z.object({
   estado: z.literal('ok'),
@@ -13,15 +12,7 @@ const saludSchema = z.object({
   redis: z.literal('ok'),
 });
 
-let pool: sql.ConnectionPool | undefined;
-
-beforeAll(async () => {
-  pool = await conectarBaseDePruebas();
-});
-
-afterAll(async () => {
-  await pool?.close();
-});
+usarBaseDePruebas();
 
 describe('GET /api/v1/health contra SQL Server', () => {
   it('responde 200 con la base en ok tras ejecutar el SP_Sistema_Health real', async () => {

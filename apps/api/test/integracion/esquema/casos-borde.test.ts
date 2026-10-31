@@ -1,16 +1,19 @@
 import { randomUUID } from 'node:crypto';
 import sql from 'mssql';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { ejecutarSP } from '../../../src/shared/db/index.js';
-import { ejecutarConContexto, type Rol } from '../../../src/shared/http/index.js';
-import { conectarBaseDePruebas } from '../base-de-pruebas.js';
+import { usarBaseDePruebas } from '../base-de-pruebas.js';
 import {
-  ERROR_DE_CONSTRAINT,
+  cambiarPrecio,
+  comoActor,
   crearCupon,
   crearPedido,
   crearUsuario,
   crearVariante,
+  fijarExistencia,
+  leerBitacora,
   unaFila,
+  violaConstraint,
 } from '../datos-de-prueba.js';
 import { aMonto } from '../../../src/shared/dinero/index.js';
 
@@ -18,33 +21,7 @@ const ERROR_DE_RESTRICCION_UNICA = 2627;
 // SP_Pruebas_CrearSesionCheckout congela Subtotal 100 + envío 35.
 const TOTAL_PEDIDO_DE_PRUEBA = 135;
 
-interface FilaBitacora {
-  Modulo: string;
-  Accion: string;
-  ValorAnterior: string | null;
-  ValorNuevo: string | null;
-}
-
-let pool: sql.ConnectionPool | undefined;
-
-beforeAll(async () => {
-  pool = await conectarBaseDePruebas();
-});
-
-afterAll(async () => {
-  await pool?.close();
-});
-
-function comoActor<T>(idUsuario: number, rol: Rol, accion: () => Promise<T>): Promise<T> {
-  return ejecutarConContexto({ requestId: randomUUID(), idUsuario, rol }, accion);
-}
-
-function leerBitacora(entidad: string, idEntidad: number): Promise<FilaBitacora[]> {
-  return ejecutarSP<FilaBitacora>('SP_Pruebas_LeerBitacora', {
-    Entidad: { tipo: sql.VarChar(50), valor: entidad },
-    IDEntidad: { tipo: sql.VarChar(50), valor: String(idEntidad) },
-  });
-}
+usarBaseDePruebas();
 
 async function filasDe(entidad: string, idEntidad: number, accion: string) {
   return (await leerBitacora(entidad, idEntidad)).filter((fila) => fila.Accion === accion);
@@ -58,30 +35,12 @@ function cambioDeEstado(anterior: string, nuevo: string) {
   }) as unknown;
 }
 
-function violaConstraint(numero: number, nombre: string) {
-  return { number: numero, message: expect.stringContaining(nombre) as unknown };
-}
-
 function cambiarEstados(idPedido1: number, estado1: string, idPedido2: number, estado2: string) {
   return ejecutarSP('SP_Pruebas_CambiarEstadoPedidos', {
     IDPedido1: { tipo: sql.Int, valor: idPedido1 },
     CodigoEstado1: { tipo: sql.VarChar(20), valor: estado1 },
     IDPedido2: { tipo: sql.Int, valor: idPedido2 },
     CodigoEstado2: { tipo: sql.VarChar(20), valor: estado2 },
-  });
-}
-
-function fijarExistencia(idVariante: number, existenciaFisica: number) {
-  return ejecutarSP('SP_Pruebas_FijarExistencia', {
-    IDVariante: { tipo: sql.Int, valor: idVariante },
-    ExistenciaFisica: { tipo: sql.Int, valor: existenciaFisica },
-  });
-}
-
-function fijarPrecio(idVariante: number, precio: string) {
-  return ejecutarSP('SP_Pruebas_CambiarPrecioVariante', {
-    IDVariante: { tipo: sql.Int, valor: idVariante },
-    Precio: { tipo: sql.Decimal(12, 2), valor: precio },
   });
 }
 
@@ -97,7 +56,7 @@ function crearDetalle(idPedido: number, idVariante: number, cantidad: number) {
 async function pedidoConLinea(cantidad: number) {
   const variante = await crearVariante();
   await comoActor(variante.IDUsuario, 'Administrador', () =>
-    fijarPrecio(variante.IDVariante, '50.00'),
+    cambiarPrecio(variante.IDVariante, '50.00'),
   );
   const idPedido = await crearPedido(await crearUsuario());
   await crearDetalle(idPedido, variante.IDVariante, cantidad);
@@ -209,7 +168,7 @@ describe('constraints en el límite', () => {
     'ParametroSistema rechaza MinutosReserva fuera del rango (%i)',
     async (minutos) => {
       await expect(probarParametros(minutos, '500.00')).rejects.toMatchObject(
-        violaConstraint(ERROR_DE_CONSTRAINT, 'CK_ParametroSistema_MinutosReserva'),
+        violaConstraint('CK_ParametroSistema_MinutosReserva'),
       );
     },
   );
@@ -221,7 +180,7 @@ describe('constraints en el límite', () => {
 
   it('ParametroSistema rechaza MontoEnvioGratis en 0', async () => {
     await expect(probarParametros(15, '0.00')).rejects.toMatchObject(
-      violaConstraint(ERROR_DE_CONSTRAINT, 'CK_ParametroSistema_MontoEnvioGratis'),
+      violaConstraint('CK_ParametroSistema_MontoEnvioGratis'),
     );
   });
 
@@ -253,7 +212,7 @@ describe('constraints en el límite', () => {
     ['un espacio', '5555 444'],
   ])('Usuario rechaza un teléfono con %s', async (_caso, telefono) => {
     await expect(crearUsuarioCon(correoUnico(), telefono)).rejects.toMatchObject(
-      violaConstraint(ERROR_DE_CONSTRAINT, 'CK_Usuario_Telefono'),
+      violaConstraint('CK_Usuario_Telefono'),
     );
   });
 
@@ -263,7 +222,7 @@ describe('constraints en el límite', () => {
 
     expect(creado.CorreoNormalizado).toBe(correo.toLowerCase());
     await expect(crearUsuarioCon(correo.toLowerCase(), null)).rejects.toMatchObject(
-      violaConstraint(ERROR_DE_RESTRICCION_UNICA, 'UQ_Usuario_CorreoNormalizado'),
+      violaConstraint('UQ_Usuario_CorreoNormalizado', ERROR_DE_RESTRICCION_UNICA),
     );
   });
 
@@ -279,10 +238,10 @@ describe('constraints en el límite', () => {
     const { IDVariante, IDUsuario } = await crearVariante();
 
     await comoActor(IDUsuario, 'Administrador', async () => {
-      await expect(fijarPrecio(IDVariante, '0.00')).rejects.toMatchObject(
-        violaConstraint(ERROR_DE_CONSTRAINT, 'CK_PrecioVariante_PrecioPositivo'),
+      await expect(cambiarPrecio(IDVariante, '0.00')).rejects.toMatchObject(
+        violaConstraint('CK_PrecioVariante_PrecioPositivo'),
       );
-      await expect(fijarPrecio(IDVariante, '0.01')).resolves.toBeDefined();
+      await expect(cambiarPrecio(IDVariante, '0.01')).resolves.toBeDefined();
     });
   });
 
@@ -290,7 +249,7 @@ describe('constraints en el límite', () => {
     const { IDVariante } = await crearVariante();
 
     await expect(fijarExistencia(IDVariante, -1)).rejects.toMatchObject(
-      violaConstraint(ERROR_DE_CONSTRAINT, 'CK_Variante_ExistenciaNoNegativa'),
+      violaConstraint('CK_Variante_ExistenciaNoNegativa'),
     );
   });
 
@@ -316,7 +275,7 @@ describe('constraints en el límite', () => {
       const idPedido = await crearPedido(await crearUsuario());
 
       await expect(probarMontoReembolsado(idPedido, monto)).rejects.toMatchObject(
-        violaConstraint(ERROR_DE_CONSTRAINT, 'CK_Pedido_MontoReembolsado'),
+        violaConstraint('CK_Pedido_MontoReembolsado'),
       );
     },
   );
@@ -333,7 +292,7 @@ describe('constraints en el límite', () => {
     await expect(probar(3)).resolves.toBeDefined();
     for (const cantidad of [4, -1]) {
       await expect(probar(cantidad)).rejects.toMatchObject(
-        violaConstraint(ERROR_DE_CONSTRAINT, 'CK_DetallePedido_CantidadDevuelta'),
+        violaConstraint('CK_DetallePedido_CantidadDevuelta'),
       );
     }
   });
