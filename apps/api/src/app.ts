@@ -3,9 +3,10 @@ import express, { type Express } from 'express';
 import helmet from 'helmet';
 import type { Logger } from 'pino';
 import swaggerUi from 'swagger-ui-express';
+import { crearModuloAuth, type LimitadoresAuth } from './modules/auth/index.js';
 import { crearModuloSistema, type VerificadorRedis } from './modules/sistema/index.js';
 import { manejadorErrores, rutaNoEncontrada } from './shared/errors/index.js';
-import { encabezadoInstancia, requestId } from './shared/http/index.js';
+import { encabezadoInstancia, requestId, type TokensAcceso } from './shared/http/index.js';
 import { registrarPeticiones } from './shared/observability/index.js';
 import { generarDocumentoOpenApi } from './shared/openapi/index.js';
 
@@ -17,6 +18,8 @@ export interface DependenciasApp {
   instancia: string;
   origenesCors: string[];
   verificadorRedis: VerificadorRedis;
+  tokensAcceso: TokensAcceso;
+  limitadores: LimitadoresAuth;
 }
 
 /** Composición: middlewares, rutas e inyección de adaptadores (01-arquitectura.md §4.3). */
@@ -25,6 +28,8 @@ export function crearApp({
   instancia,
   origenesCors,
   verificadorRedis,
+  tokensAcceso,
+  limitadores,
 }: DependenciasApp): Express {
   const app = express();
   app.disable('x-powered-by');
@@ -51,6 +56,7 @@ export function crearApp({
 
   const v1 = express.Router();
   v1.use(crearModuloSistema({ redis: verificadorRedis, instancia, logger }));
+  v1.use('/auth', crearModuloAuth({ tokens: tokensAcceso, limitadores }));
   app.use('/api/v1', v1);
 
   // Después de montar todas las rutas, para que el documento las incluya.

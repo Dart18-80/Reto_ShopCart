@@ -825,7 +825,7 @@ Rangos por módulo para `THROW`. El catálogo completo, con su código estable y
 | 50600–50699 | Checkout y pago | 50601 `SESION_VENCIDA` (409) · 50602 `PAGO_EN_CURSO` (409) · 50603 `LLAVE_REUTILIZADA` (422) · 50604 `PAGO_RECHAZADO` (402) · 50605 `MAX_INTENTOS` (409) |
 | 50700–50799 | Pedidos | 50701 `TRANSICION_INVALIDA` (409) · 50702 `NO_CANCELABLE` (409) · 50703 `DEVOLUCION_EXCEDE_VENDIDO` (422) · 50704 `PLAZO_DEVOLUCION_VENCIDO` (422) · 50705 `REEMBOLSO_EXCEDE_TOTAL` (422) |
 | — (error del motor) | Ledger | **37359**: SQL Server rechaza `UPDATE`/`DELETE` sobre una tabla ledger append-only. Se produce al **compilar** un SP que lo intente, así que nunca llega a la API y no se mapea a HTTP |
-| — (sin número SQL) | API | `VALIDACION_FALLIDA` (400) · `JSON_INVALIDO` (400) · `CUERPO_DEMASIADO_GRANDE` (413) · `CONTENIDO_NO_SOPORTADO` (415) · `NO_ENCONTRADO` (404, también para rutas inexistentes) · `ERROR_INTERNO` (500). Nacen en la API, no en un SP |
+| — (sin número SQL) | API | `VALIDACION_FALLIDA` (400) · `JSON_INVALIDO` (400) · `CUERPO_DEMASIADO_GRANDE` (413) · `CONTENIDO_NO_SOPORTADO` (415) · `CREDENCIALES_INVALIDAS` (401, el mismo mensaje para correo inexistente y contraseña incorrecta) · `NO_AUTENTICADO` (401) · `SIN_PERMISO` (403) · `DEMASIADAS_PETICIONES` (429) · `NO_ENCONTRADO` (404, también para rutas inexistentes) · `ERROR_INTERNO` (500). Nacen en la API, no en un SP |
 
 ---
 

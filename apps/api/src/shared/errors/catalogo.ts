@@ -16,6 +16,14 @@ export const CATALOGO = {
     http: 415,
     mensaje: 'El tipo o la codificación del contenido no es compatible.',
   },
+  // N-15: el mismo mensaje para correo inexistente y contraseña incorrecta.
+  CREDENCIALES_INVALIDAS: { http: 401, mensaje: 'Correo o contraseña incorrectos.' },
+  NO_AUTENTICADO: { http: 401, mensaje: 'Inicia sesión para continuar.' },
+  SIN_PERMISO: { http: 403, mensaje: 'No tienes permiso para esta operación.' },
+  DEMASIADAS_PETICIONES: {
+    http: 429,
+    mensaje: 'Demasiados intentos. Espera un momento e intenta de nuevo.',
+  },
   ERROR_INTERNO: { http: 500, mensaje: 'Ocurrió un error inesperado. Intenta de nuevo más tarde.' },
 
   // 50001–50099 General

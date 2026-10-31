@@ -10,6 +10,7 @@ import type { ConexionSP } from '../../../../src/shared/db/index.js';
 import { configurarBaseDatos } from '../../../../src/shared/db/index.js';
 import { crearLogger } from '../../../../src/shared/observability/logger.js';
 import { leerDatos } from '../../respuestas.js';
+import { dependenciasDePrueba } from '../../../app-de-prueba.js';
 
 const loggerSilencioso = pino({ level: 'silent' });
 const FILA_HEALTH = {
@@ -31,12 +32,7 @@ const saludSchema = z
 let ejecutar: ReturnType<typeof vi.fn<ConexionSP['ejecutar']>>;
 
 function crearAppDePrueba(verificadorRedis: VerificadorRedis, logger: Logger = loggerSilencioso) {
-  return crearApp({
-    logger,
-    instancia: 'api-prueba',
-    origenesCors: ['http://localhost:5173'],
-    verificadorRedis,
-  });
+  return crearApp(dependenciasDePrueba({ logger, verificadorRedis }));
 }
 
 beforeEach(() => {

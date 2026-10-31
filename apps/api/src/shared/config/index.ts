@@ -9,7 +9,9 @@ export class ErrorConfiguracion extends Error {
 }
 
 const MARCA_EJEMPLO = 'EJEMPLO';
-const SECRETOS = ['DB_CONTRASENA', 'REDIS_CONTRASENA'] as const;
+const SECRETOS = ['DB_CONTRASENA', 'REDIS_CONTRASENA', 'JWT_SECRETO'] as const;
+// HS256 (A-07): un secreto de al menos 256 bits.
+const LARGO_MINIMO_SECRETO_JWT = 32;
 
 const puerto = (porDefecto: number) =>
   z.coerce.number().int().min(1).max(65535).default(porDefecto);
@@ -44,6 +46,8 @@ const esquema = z.object({
   REDIS_HOST: z.string().min(1).default('localhost'),
   REDIS_PORT: puerto(6379),
   REDIS_CONTRASENA: z.string().min(8),
+
+  JWT_SECRETO: z.string().min(LARGO_MINIMO_SECRETO_JWT),
 
   CORS_ORIGINS: z
     .string()
@@ -82,6 +86,7 @@ export interface Configuracion {
   baseDatos: ConfiguracionBaseDatos;
   redis: ConfiguracionRedis;
   origenesCors: string[];
+  secretoJwt: string;
 }
 
 /**
@@ -117,6 +122,7 @@ export function cargarConfiguracion(entorno: NodeJS.ProcessEnv): Configuracion {
       contrasena: variables.REDIS_CONTRASENA,
     },
     origenesCors: variables.CORS_ORIGINS,
+    secretoJwt: variables.JWT_SECRETO,
   };
 }
 

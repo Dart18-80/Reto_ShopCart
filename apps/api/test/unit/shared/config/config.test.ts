@@ -6,6 +6,7 @@ const ENTORNO_VALIDO = {
   DB_CONTRASENA: 'EJEMPLO_Cambiar_App_2026!',
   REDIS_CONTRASENA: 'EJEMPLO_Cambiar_Redis_2026',
   CORS_ORIGINS: 'http://localhost:5173, http://localhost:8080',
+  JWT_SECRETO: 'EJEMPLO_secreto_de_al_menos_32_caracteres',
 };
 
 describe('cargarConfiguracion', () => {
@@ -41,7 +42,7 @@ describe('cargarConfiguracion', () => {
     expect(config.redis).toMatchObject({ servidor: 'redis', puerto: 6380 });
   });
 
-  it.each(['DB_USUARIO', 'DB_CONTRASENA', 'REDIS_CONTRASENA', 'CORS_ORIGINS'])(
+  it.each(['DB_USUARIO', 'DB_CONTRASENA', 'REDIS_CONTRASENA', 'CORS_ORIGINS', 'JWT_SECRETO'])(
     'falla con un mensaje que nombra la variable que falta: %s',
     (variable) => {
       const incompleto = { ...ENTORNO_VALIDO, [variable]: undefined };
@@ -69,6 +70,7 @@ describe('cargarConfiguracion', () => {
       NODE_ENV: 'production',
       DB_CONTRASENA: 'Una_Contrasena_Real_9',
       REDIS_CONTRASENA: 'OtraContrasenaReal',
+      JWT_SECRETO: 'un-secreto-propio-de-al-menos-32-caracteres',
     });
 
     expect(config.entorno).toBe('production');
@@ -100,5 +102,27 @@ describe('timeouts hacia SQL Server', () => {
     expect(() => cargarConfiguracion({ ...ENTORNO_VALIDO, DB_TIMEOUT_CONEXION_MS: valor })).toThrow(
       ErrorConfiguracion,
     );
+  });
+});
+
+describe('secreto del access token (A-07)', () => {
+  it('exige JWT_SECRETO de al menos 32 caracteres', () => {
+    expect(() => cargarConfiguracion({ ...ENTORNO_VALIDO, JWT_SECRETO: 'x'.repeat(31) })).toThrow(
+      ErrorConfiguracion,
+    );
+    expect(
+      cargarConfiguracion({ ...ENTORNO_VALIDO, JWT_SECRETO: 'x'.repeat(32) }).secretoJwt,
+    ).toHaveLength(32);
+  });
+
+  it('en producción rechaza el secreto de ejemplo', () => {
+    expect(() =>
+      cargarConfiguracion({
+        ...ENTORNO_VALIDO,
+        NODE_ENV: 'production',
+        DB_CONTRASENA: 'Propia.App.2026!',
+        REDIS_CONTRASENA: 'Propia.Redis.2026',
+      }),
+    ).toThrow(/JWT_SECRETO/);
   });
 });

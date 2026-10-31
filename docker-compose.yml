@@ -22,6 +22,7 @@ x-api-entorno: &api-entorno
   REDIS_HOST: redis
   REDIS_PORT: ${REDIS_PORT:-6379}
   REDIS_CONTRASENA: ${REDIS_CONTRASENA:?Define REDIS_CONTRASENA en .env (ver .env.example)}
+  JWT_SECRETO: ${JWT_SECRETO:?Define JWT_SECRETO en .env (ver .env.example)}
 
 # A-03, RNF-2: dos réplicas idénticas de la API; solo cambia el nombre de la réplica.
 x-api: &api

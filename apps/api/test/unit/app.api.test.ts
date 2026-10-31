@@ -1,10 +1,10 @@
-import { pino } from 'pino';
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { crearApp } from '../../src/app.js';
 import { registroOpenApi } from '../../src/shared/openapi/index.js';
 import { leerError } from './respuestas.js';
+import { dependenciasDePrueba } from '../app-de-prueba.js';
 
 // Las cabeceras se prueban sobre el documento OpenAPI: no necesita base de datos y pasa por los
 // mismos middlewares que cualquier otra ruta.
@@ -12,12 +12,7 @@ const RUTA_SIN_DEPENDENCIAS = '/api/docs/openapi.json';
 const ORIGEN_PERMITIDO = 'http://localhost:5173';
 
 function crearAppDePrueba() {
-  return crearApp({
-    logger: pino({ level: 'silent' }),
-    instancia: 'api-prueba',
-    origenesCors: [ORIGEN_PERMITIDO],
-    verificadorRedis: { ping: () => Promise.resolve(true) },
-  });
+  return crearApp(dependenciasDePrueba({ origenesCors: [ORIGEN_PERMITIDO] }));
 }
 
 describe('cabeceras de cada respuesta', () => {
