@@ -241,6 +241,61 @@ describe('ejecutarSP', () => {
     expect(ejecutar).toHaveBeenCalledTimes(peticiones.length);
   });
 
+  it('A-19: un JSON inválido en el THROW se registra como error con el SP, aunque el cliente vea el mensaje del catálogo', async () => {
+    const lineas: string[] = [];
+    const loggerEnMemoria = pino(
+      { level: 'info' },
+      {
+        write: (linea: string) => {
+          lineas.push(linea);
+        },
+      },
+    );
+    const roto = Object.assign(new Error('{"mensaje":"Sin existencia.","detalles":[1]'), {
+      number: 50301,
+    });
+    const { conexion } = conexionFalsa(() => Promise.reject(roto));
+    const { ejecutarSP } = crearEjecutorSP({
+      conexion,
+      logger: loggerEnMemoria,
+      esperar: sinEspera,
+    });
+
+    await expect(ejecutarSP('SP_Pruebas_Fallar')).rejects.toMatchObject({
+      codigo: 'STOCK_INSUFICIENTE',
+      message: 'No hay existencia suficiente.',
+    });
+    const registro = lineas.find((linea) => linea.includes('A-19'));
+    expect(registro).toContain('"level":50');
+    expect(registro).toContain('SP_Pruebas_Fallar');
+  });
+
+  it('A-19: un THROW con JSON válido no deja error en el log', async () => {
+    const lineas: string[] = [];
+    const loggerEnMemoria = pino(
+      { level: 'info' },
+      {
+        write: (linea: string) => {
+          lineas.push(linea);
+        },
+      },
+    );
+    const valido = Object.assign(
+      new Error(JSON.stringify({ mensaje: 'Sin existencia.', detalles: [1] })),
+      { number: 50301 },
+    );
+    const { conexion } = conexionFalsa(() => Promise.reject(valido));
+    const { ejecutarSP } = crearEjecutorSP({
+      conexion,
+      logger: loggerEnMemoria,
+      esperar: sinEspera,
+    });
+
+    await ejecutarSP('SP_Pruebas_Fallar').catch(() => undefined);
+
+    expect(lineas).toEqual([]);
+  });
+
   // Prueba de tipos: la verifica `pnpm typecheck`, no la ejecución.
   it('su firma solo acepta nombres SP_Modulo_Proceso, nunca texto SQL', () => {
     expectTypeOf<Parameters<EjecutorSP['ejecutarSP']>[0]>().toEqualTypeOf<NombreSP>();

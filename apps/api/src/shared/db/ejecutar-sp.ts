@@ -1,6 +1,10 @@
 import sql from 'mssql';
 import type { Logger } from 'pino';
-import { traducirErrorSql, numeroErrorSql } from '../errors/traducir-sql.js';
+import {
+  numeroErrorSql,
+  tieneMensajeEstructuradoInvalido,
+  traducirErrorSql,
+} from '../errors/traducir-sql.js';
 import { obtenerContexto } from '../http/contexto.js';
 
 /** Solo nombres con la nomenclatura del enunciado: la firma no admite texto SQL. */
@@ -60,6 +64,9 @@ export function crearEjecutorSP({ conexion, logger, esperar = dormir }: Dependen
           logger.warn({ sp: nombre, intento: intento + 1 }, 'Deadlock: se reintenta el SP');
           await esperar(ESPERA_BASE_DEADLOCK_MS * 2 ** intento);
           continue;
+        }
+        if (tieneMensajeEstructuradoInvalido(error)) {
+          logger.error({ err: error, sp: nombre }, 'A-19: el SP lanzó un mensaje JSON inválido');
         }
         throw traducirErrorSql(error) ?? error;
       }

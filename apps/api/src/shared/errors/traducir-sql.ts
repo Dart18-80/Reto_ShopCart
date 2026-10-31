@@ -12,11 +12,13 @@ export function numeroErrorSql(error: unknown): number | undefined {
   return typeof error.number === 'number' ? error.number : undefined;
 }
 
+function esDeNegocio(numero: number | undefined): numero is number {
+  return numero !== undefined && numero >= RANGO_NEGOCIO.desde && numero <= RANGO_NEGOCIO.hasta;
+}
+
 export function traducirErrorSql(error: unknown): AppError | undefined {
   const numero = numeroErrorSql(error);
-  if (numero === undefined || numero < RANGO_NEGOCIO.desde || numero > RANGO_NEGOCIO.hasta) {
-    return undefined;
-  }
+  if (!esDeNegocio(numero)) return undefined;
 
   const codigo = codigoPorNumeroSql(numero);
   if (codigo === undefined) {
@@ -28,15 +30,33 @@ export function traducirErrorSql(error: unknown): AppError | undefined {
   return new AppError(codigo, { mensaje, detalles, cause: error });
 }
 
-function separarMensaje(texto: string): { mensaje: string | undefined; detalles: unknown } {
-  if (!texto.trimStart().startsWith('{')) {
-    return { mensaje: texto.length > 0 ? texto : undefined, detalles: undefined };
-  }
+/**
+ * A-19: un THROW de negocio cuyo mensaje empieza con `{` pero no es un `{ mensaje, detalles }` válido.
+ * El cliente recibe el mensaje del catálogo; quien llama lo registra porque es un error del SP.
+ */
+export function tieneMensajeEstructuradoInvalido(error: unknown): boolean {
+  if (!esDeNegocio(numeroErrorSql(error)) || !(error instanceof Error)) return false;
+  return esEstructurado(error.message) && leerEstructurado(error.message) === undefined;
+}
+
+function esEstructurado(texto: string): boolean {
+  return texto.trimStart().startsWith('{');
+}
+
+function leerEstructurado(texto: string): z.infer<typeof mensajeEstructuradoSchema> | undefined {
   try {
     const resultado = mensajeEstructuradoSchema.safeParse(JSON.parse(texto));
-    if (resultado.success) return resultado.data;
+    return resultado.success ? resultado.data : undefined;
   } catch {
-    // JSON mal formado: se cae al mensaje del catálogo para no mostrar texto técnico.
+    // JSON mal formado: lo reporta tieneMensajeEstructuradoInvalido.
+    return undefined;
   }
-  return { mensaje: undefined, detalles: undefined };
+}
+
+function separarMensaje(texto: string): { mensaje: string | undefined; detalles: unknown } {
+  if (!esEstructurado(texto)) {
+    return { mensaje: texto.length > 0 ? texto : undefined, detalles: undefined };
+  }
+  // Inválido: se cae al mensaje del catálogo para no mostrar texto técnico al cliente.
+  return leerEstructurado(texto) ?? { mensaje: undefined, detalles: undefined };
 }
