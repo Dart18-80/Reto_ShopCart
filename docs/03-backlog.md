@@ -609,10 +609,10 @@ Se detalla en historias al cerrar la Fase 1.
 | E0-H05 | Dos réplicas detrás de nginx | Must | 0.25 | Hecha |
 | E0-H06 | Base de pruebas | Should | 0.25 | Hecha |
 | E1-H01 | Prueba de tablas ledger con llaves foráneas | Must | 0.25 | Hecha |
-| E1-H02 | Tablas de seguridad, direcciones, catálogo e inventario | Must | 0.75 | En revisión |
-| E1-H03 | Tablas de carrito, cupones, envíos, parámetros y checkout | Must | 0.5 | En revisión |
-| E1-H04 | Tablas de pedidos, devoluciones, reembolsos y bitácora con sus triggers | Must | 0.75 | En revisión |
-| E1-H05 | Funciones y vistas base | Must | 0.5 | En revisión |
+| E1-H02 | Tablas de seguridad, direcciones, catálogo e inventario | Must | 0.75 | Hecha |
+| E1-H03 | Tablas de carrito, cupones, envíos, parámetros y checkout | Must | 0.5 | Hecha |
+| E1-H04 | Tablas de pedidos, devoluciones, reembolsos y bitácora con sus triggers | Must | 0.75 | Hecha |
+| E1-H05 | Funciones y vistas base | Must | 0.5 | Hecha |
 | E1-H06 | Semillas de catálogos, geografía, usuarios y catálogo demo | Must | 0.75 | Hecha |
 | E2-H01 | Registro e inicio de sesión | Must | 0.75 | Lista |
 | E2-H02 | Rotación del refresh token y logout | Must | 0.5 | Lista |
