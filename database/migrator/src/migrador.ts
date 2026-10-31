@@ -89,6 +89,7 @@ async function aplicar(pool: sql.ConnectionPool, script: Script): Promise<void> 
   const transaccion = new sql.Transaction(pool);
   await transaccion.begin();
   try {
+    await new sql.Request(transaccion).batch(await leerConsulta('establecer-contexto-sistema'));
     for (const [indice, lote] of script.lotes.entries()) {
       try {
         await new sql.Request(transaccion).batch(lote);

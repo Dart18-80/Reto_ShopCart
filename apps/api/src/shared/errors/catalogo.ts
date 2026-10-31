@@ -26,6 +26,12 @@ export const CATALOGO = {
     mensaje: 'El recurso cambió mientras lo editabas. Recarga e intenta de nuevo.',
   },
   PARAMETRO_INVALIDO: { http: 400, numeroSql: 50003, mensaje: 'Un parámetro no es válido.' },
+  // A-18: un trigger de bitácora sin Rol en SESSION_CONTEXT. Es un error de programación: 500.
+  CONTEXTO_NO_ESTABLECIDO: {
+    http: 500,
+    numeroSql: 50004,
+    mensaje: 'Ocurrió un error inesperado. Intenta de nuevo más tarde.',
+  },
 
   // 50100–50199 Auth y usuarios
   CORREO_EN_USO: { http: 409, numeroSql: 50101, mensaje: 'El correo ya está registrado.' },

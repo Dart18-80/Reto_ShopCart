@@ -1,8 +1,9 @@
 import { z } from 'zod';
 import { AppError } from './app-error.js';
-import { codigoPorNumeroSql } from './catalogo.js';
+import { CATALOGO, codigoPorNumeroSql } from './catalogo.js';
 
 const RANGO_NEGOCIO = { desde: 50000, hasta: 59999 } as const;
+const PRIMER_ERROR_INTERNO = 500;
 
 // A-19: un THROW que necesita datos estructurados envía un JSON { mensaje, detalles }.
 const mensajeEstructuradoSchema = z.object({ mensaje: z.string().min(1), detalles: z.unknown() });
@@ -25,6 +26,9 @@ export function traducirErrorSql(error: unknown): AppError | undefined {
     // Un número sin catalogar es un error de programación: no se muestra el mensaje del SP.
     return new AppError('ERROR_INTERNO', { cause: error });
   }
+
+  // Un 5xx es un error de programación: el texto del SP queda en la causa (el log), no en la respuesta.
+  if (CATALOGO[codigo].http >= PRIMER_ERROR_INTERNO) return new AppError(codigo, { cause: error });
 
   const { mensaje, detalles } = separarMensaje(error instanceof Error ? error.message : '');
   return new AppError(codigo, { mensaje, detalles, cause: error });

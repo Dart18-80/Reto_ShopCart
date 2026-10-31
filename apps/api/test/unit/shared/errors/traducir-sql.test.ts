@@ -100,6 +100,15 @@ describe('traducirErrorSql', () => {
     expect(traducirErrorSql(errorSql(37359, 'Updates are not allowed.'))).toBeUndefined();
   });
 
+  it('A-18: 50004 es CONTEXTO_NO_ESTABLECIDO (500) y el cliente nunca ve el texto técnico del SP', () => {
+    const error = traducirErrorSql(
+      errorSql(50004, 'Falta el contexto de la operación: llama a SP_Sistema_EstablecerContexto.'),
+    );
+
+    expect(error).toMatchObject({ codigo: 'CONTEXTO_NO_ESTABLECIDO', status: 500 });
+    expect(error?.message).toBe('Ocurrió un error inesperado. Intenta de nuevo más tarde.');
+  });
+
   it('un error de negocio que no es instancia de Error usa el mensaje del catálogo', () => {
     expect(traducirErrorSql({ number: 50003 })?.message).toBe('Un parámetro no es válido.');
   });

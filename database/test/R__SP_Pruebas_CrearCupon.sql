@@ -9,6 +9,9 @@ BEGIN
     SET NOCOUNT ON;
     SET XACT_ABORT ON;
 
+    -- A-18: los triggers de bitácora exigen el contexto (en una prueba sin petición, Rol = 'Sistema').
+    EXEC dbo.SP_Sistema_EstablecerContexto @IDUsuarioActor, @RolActor, @RequestId;
+
     INSERT INTO dbo.Cupon (Codigo, Descripcion, Tipo, Valor, FechaInicio, FechaFin, LimiteUsosTotal, LimiteUsosPorCliente)
     VALUES ('PRUEBA' + LEFT(REPLACE(CONVERT(VARCHAR(36), NEWID()), '-', ''), 20), N'Cupón de prueba', 'MontoFijo',
             10, SYSUTCDATETIME(), DATEADD(DAY, 30, SYSUTCDATETIME()), @LimiteUsosTotal, 1);

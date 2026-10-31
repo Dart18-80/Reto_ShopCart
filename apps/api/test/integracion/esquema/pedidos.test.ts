@@ -63,7 +63,7 @@ describe('TR_Pedidos_ValidarTransicion (E1-H04, N-08)', () => {
     await expect(resultado).resolves.toBeDefined();
   });
 
-  it('sin rol en el contexto (por ejemplo, un job) rechaza el cambio de estado', async () => {
+  it('un job (rol Sistema) no tiene transiciones: rechaza el cambio de estado', async () => {
     const idPedido = await crearPedido(await crearUsuario());
 
     await expect(cambiarEstado(idPedido, 'Cancelado')).rejects.toMatchObject({

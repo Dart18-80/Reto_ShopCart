@@ -27,6 +27,7 @@ export interface ConexionSP {
 }
 
 const PARAMETROS_ESTANDAR = ['IDUsuarioActor', 'RolActor', 'RequestId'] as const;
+const ROL_SISTEMA = 'Sistema';
 const DEADLOCK = 1205;
 const REINTENTOS_DEADLOCK = 3;
 const ESPERA_BASE_DEADLOCK_MS = 50;
@@ -105,7 +106,8 @@ function parametrosEstandar(parametros: ParametrosSP): ParametrosSP {
   const contexto = obtenerContexto();
   return {
     IDUsuarioActor: { tipo: sql.Int, valor: contexto?.idUsuario ?? null },
-    RolActor: { tipo: sql.VarChar(20), valor: contexto?.rol ?? null },
+    // A-18: sin petición es un job, que escribe como Sistema; un invitado sí tiene petición y va en NULL.
+    RolActor: { tipo: sql.VarChar(20), valor: contexto === undefined ? ROL_SISTEMA : contexto.rol },
     RequestId: { tipo: sql.UniqueIdentifier, valor: contexto?.requestId ?? null },
   };
 }

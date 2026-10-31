@@ -12,6 +12,9 @@ BEGIN
     SET NOCOUNT ON;
     SET XACT_ABORT ON;
 
+    -- A-18: los triggers de bitácora exigen el contexto (en una prueba sin petición, Rol = 'Sistema').
+    EXEC dbo.SP_Sistema_EstablecerContexto @IDUsuarioActor, @RolActor, @RequestId;
+
     INSERT INTO dbo.Usuario (Correo, HashContrasena, Nombre, Telefono, IDRol)
     SELECT @Correo, 'hash-de-prueba', @Nombre, @Telefono, IDRol
     FROM   dbo.Rol

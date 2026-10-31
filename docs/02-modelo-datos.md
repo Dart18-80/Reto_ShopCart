@@ -45,7 +45,7 @@
 - **Nada se borra físicamente** si tiene historial (N-14). Las entidades desactivables tienen `Activo BIT NOT NULL DEFAULT 1`.
 - La base usa `READ_COMMITTED_SNAPSHOT ON` (A-05).
 - Todo SP que escribe empieza con `SET NOCOUNT ON; SET XACT_ABORT ON;` y usa `BEGIN TRY / BEGIN TRAN … COMMIT / END TRY BEGIN CATCH … ROLLBACK; THROW; END CATCH`.
-- **Contexto del actor (A-18):** todo SP invocado por la API declara `@IDUsuarioActor INT = NULL, @RolActor VARCHAR(20) = NULL, @RequestId UNIQUEIDENTIFIER = NULL`, que `ejecutarSP` envía siempre. Los SPs de recursos propios filtran con `@IDUsuarioActor`. Todo SP que escribe llama primero a `SP_Sistema_EstablecerContexto`, que fija `SESSION_CONTEXT` (`IDUsuario`, `Rol`, `RequestId`) para que los triggers lo lean.
+- **Contexto del actor (A-18):** todo SP invocado por la API declara `@IDUsuarioActor INT = NULL, @RolActor VARCHAR(20) = NULL, @RequestId UNIQUEIDENTIFIER = NULL`, que `ejecutarSP` envía siempre. Los SPs de recursos propios filtran con `@IDUsuarioActor`. Todo SP que escribe llama primero a `SP_Sistema_EstablecerContexto`, que fija `SESSION_CONTEXT` (`IDUsuario`, `Rol`, `RequestId`) para que los triggers lo lean. **Los triggers de bitácora exigen `Rol`:** si `SESSION_CONTEXT(N'Rol')` es `NULL`, fallan con `50004 CONTEXTO_NO_ESTABLECIDO`. Los jobs y el migrador usan `Rol = 'Sistema'` con `IDUsuario = NULL`; una escritura manual en la base también llama antes a `SP_Sistema_EstablecerContexto` (es intencional).
 
 ---
 
@@ -705,7 +705,7 @@ UQ `(IDPedido, IDVariante)`. Índices: `IX_DetallePedido_Variante (IDVariante) I
 | Accion | VARCHAR(20) | CK `IN ('Crear','Modificar','Desactivar','Activar','Eliminar','CambioEstado')` |
 | ValorAnterior | NVARCHAR(MAX) *NULL* | CK `ISJSON = 1` |
 | ValorNuevo | NVARCHAR(MAX) *NULL* | CK `ISJSON = 1` |
-| IDUsuario | INT *NULL* | FK → Usuario (`NULL` = proceso del sistema, por ejemplo un job) |
+| IDUsuario | INT *NULL* | FK → Usuario. `NULL` solo con `Rol = 'Sistema'` (un job o el migrador): sin contexto, el trigger falla con `50004` (A-18) |
 | RequestId | UNIQUEIDENTIFIER *NULL* | |
 | Fecha | DATETIME2(3) | |
 
@@ -816,7 +816,7 @@ Rangos por módulo para `THROW`. El catálogo completo, con su código estable y
 
 | Rango | Módulo | Ejemplos |
 |---|---|---|
-| 50001–50099 | General | 50001 `NO_ENCONTRADO` (404) · 50002 `CONFLICTO_CONCURRENCIA` (409) · 50003 `PARAMETRO_INVALIDO` (400) |
+| 50001–50099 | General | 50001 `NO_ENCONTRADO` (404) · 50002 `CONFLICTO_CONCURRENCIA` (409) · 50003 `PARAMETRO_INVALIDO` (400) · 50004 `CONTEXTO_NO_ESTABLECIDO` (500: error de programación, el cliente ve el mensaje genérico) |
 | 50100–50199 | Auth y usuarios | 50101 `CORREO_EN_USO` (409) · 50102 `REFRESH_REUTILIZADO` (401) · 50103 `USUARIO_INACTIVO` (401) · 50104 `ULTIMO_ADMIN` (409) |
 | 50200–50299 | Catálogo | 50201 `SKU_DUPLICADO` (409) · 50202 `COMBINACION_DUPLICADA` (409) · 50203 `PRODUCTO_CON_HISTORIAL` (409) · 50204 `CATEGORIA_CON_PRODUCTOS` (409) |
 | 50300–50399 | Inventario | 50301 `STOCK_INSUFICIENTE` (409) · 50302 `AJUSTE_DEJA_NEGATIVO` (422) · 50303 `AJUSTE_BAJO_RESERVADO` (422) · 50304 `MOTIVO_REQUERIDO` (400) |

@@ -10,7 +10,8 @@ export type NombreConsulta =
   | 'preparar-base'
   | 'adquirir-bloqueo'
   | 'leer-historial'
-  | 'registrar-script';
+  | 'registrar-script'
+  | 'establecer-contexto-sistema';
 
 const leidas = new Map<NombreConsulta, Promise<string>>();
 

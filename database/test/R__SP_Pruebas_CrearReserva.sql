@@ -16,7 +16,8 @@ BEGIN
         BEGIN TRAN;
 
         DECLARE @Usuario TABLE (IDUsuario INT);
-        INSERT INTO @Usuario EXEC dbo.SP_Pruebas_CrearUsuario;
+        INSERT INTO @Usuario
+        EXEC dbo.SP_Pruebas_CrearUsuario @IDUsuarioActor = @IDUsuarioActor, @RolActor = @RolActor, @RequestId = @RequestId;
         DECLARE @IDUsuario INT = (SELECT IDUsuario FROM @Usuario);
 
         DECLARE @Sesion TABLE (IDSesionCheckout INT);

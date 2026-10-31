@@ -47,7 +47,7 @@ describe('ejecutarSP', () => {
     });
   });
 
-  it('fuera de una petición (jobs) envía los parámetros estándar en NULL', async () => {
+  it('A-18: fuera de una petición (jobs) envía el rol Sistema, sin usuario ni RequestId', async () => {
     const { conexion, ejecutar } = conexionFalsa(() => Promise.resolve([[]]));
     const { ejecutarSP } = crearEjecutorSP({ conexion, logger, esperar: sinEspera });
 
@@ -55,9 +55,21 @@ describe('ejecutarSP', () => {
 
     expect(valores(ejecutar.mock.calls[0]?.[1])).toEqual({
       IDUsuarioActor: null,
-      RolActor: null,
+      RolActor: 'Sistema',
       RequestId: null,
     });
+  });
+
+  it('en una petición sin usuario (invitado) el rol va en NULL, nunca Sistema', async () => {
+    const { conexion, ejecutar } = conexionFalsa(() => Promise.resolve([[]]));
+    const { ejecutarSP } = crearEjecutorSP({ conexion, logger, esperar: sinEspera });
+
+    await ejecutarConContexto(
+      { requestId: '8f1c2e9a-0000-4000-8000-000000000003', idUsuario: null, rol: null },
+      () => ejecutarSP('SP_Pruebas_Leer'),
+    );
+
+    expect(valores(ejecutar.mock.calls[0]?.[1])).toMatchObject({ RolActor: null });
   });
 
   it('RF-01: rechaza que el llamador envíe un parámetro estándar', async () => {

@@ -117,3 +117,33 @@ describe('Bitácora (E1-H04, RF-09)', () => {
     expect(fila.ValorNuevo).not.toContain('HashContrasena');
   });
 });
+
+describe('contexto obligatorio en la bitácora (A-18)', () => {
+  it('una escritura auditada sin contexto falla con CONTEXTO_NO_ESTABLECIDO (500) y no queda nada', async () => {
+    const intento = ejecutarSP('SP_Pruebas_EscribirSinContexto');
+
+    await expect(intento).rejects.toMatchObject({ codigo: 'CONTEXTO_NO_ESTABLECIDO', status: 500 });
+  });
+
+  it('un job (fuera de una petición: rol Sistema) deja la fila con IDUsuario NULL', async () => {
+    const idCupon = await crearCupon(5);
+
+    await modificarCupon(idCupon, 'Cambio de un job', 0);
+
+    expect(await ultimaBitacora('Cupon', idCupon)).toMatchObject({
+      Accion: 'Modificar',
+      IDUsuario: null,
+    });
+  });
+
+  it('un administrador deja su IDUsuario en la fila', async () => {
+    const idCupon = await crearCupon(5);
+    const idAdministrador = await crearUsuario();
+
+    await comoAdministrador(idAdministrador, () =>
+      modificarCupon(idCupon, 'Cambio del administrador', 0),
+    );
+
+    expect(await ultimaBitacora('Cupon', idCupon)).toMatchObject({ IDUsuario: idAdministrador });
+  });
+});
