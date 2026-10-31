@@ -49,6 +49,8 @@ Nombra **todas** las constraints e índices. Nunca dejes que SQL Server genere e
 
 **Prohibidos:** `FLOAT`, `REAL`, `MONEY`, `DATETIME`, `TEXT`, `NTEXT`.
 
+**Montos que devuelve un SP (A-21):** se devuelven como `DECIMAL`, nunca convertidos a texto en la base (la API los convierte con `aMonto`). **Todo agregado de montos (`SUM`, `AVG`) se convierte a `DECIMAL(15,2)`** antes de devolverlo: `CONVERT(DECIMAL(15,2), SUM(p.Total))`. `AVG` de un `DECIMAL(12,2)` devuelve `DECIMAL(38,6)` y una suma puede crecer sin límite; con `DECIMAL(15,2)` un desborde hace fallar al SP en lugar de perder precisión en la API.
+
 ## 4. Parámetros estándar y contexto (A-18)
 
 `ejecutarSP` agrega **siempre** estos tres parámetros, con los valores del token y de la petición. **Todo SP invocado desde la API los declara**, aunque no los use:

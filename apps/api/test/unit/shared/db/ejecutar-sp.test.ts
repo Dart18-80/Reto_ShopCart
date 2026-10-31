@@ -1,3 +1,4 @@
+import { Decimal } from 'decimal.js';
 import sql from 'mssql';
 import { pino } from 'pino';
 import { describe, expect, expectTypeOf, it, vi } from 'vitest';
@@ -302,5 +303,30 @@ describe('ejecutarSP', () => {
     expectTypeOf<'SP_Sistema_Health'>().toExtend<NombreSP>();
     expectTypeOf<'dbo.Pedido'>().not.toExtend<NombreSP>();
     expectTypeOf<'SP_SinProceso'>().not.toExtend<NombreSP>();
+  });
+});
+
+describe('montos como parámetros (A-21)', () => {
+  it('un parámetro Decimal llega al driver como number, en el borde de ejecutarSP', async () => {
+    const { conexion, ejecutar } = conexionFalsa(() => Promise.resolve([[]]));
+    const { ejecutarSP } = crearEjecutorSP({ conexion, logger, esperar: sinEspera });
+
+    await ejecutarSP('SP_Pruebas_Leer', {
+      Monto: { tipo: sql.Decimal(12, 2), valor: new Decimal('149.90') },
+    });
+
+    expect(valores(ejecutar.mock.calls[0]?.[1])).toMatchObject({ Monto: 149.9 });
+  });
+
+  it('un parámetro Decimal fuera de rango falla antes de llamar a la base', async () => {
+    const { conexion, ejecutar } = conexionFalsa(() => Promise.resolve([[]]));
+    const { ejecutarSP } = crearEjecutorSP({ conexion, logger, esperar: sinEspera });
+
+    await expect(
+      ejecutarSP('SP_Pruebas_Leer', {
+        Monto: { tipo: sql.Decimal(15, 2), valor: new Decimal('1e13') },
+      }),
+    ).rejects.toThrow(/A-21/);
+    expect(ejecutar).not.toHaveBeenCalled();
   });
 });

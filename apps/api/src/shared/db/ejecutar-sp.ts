@@ -1,3 +1,4 @@
+import { Decimal } from 'decimal.js';
 import sql from 'mssql';
 import type { Logger } from 'pino';
 import {
@@ -5,6 +6,7 @@ import {
   tieneMensajeEstructuradoInvalido,
   traducirErrorSql,
 } from '../errors/traducir-sql.js';
+import { montoParaSql } from '../dinero/index.js';
 import { obtenerContexto } from '../http/contexto.js';
 
 /** Solo nombres con la nomenclatura del enunciado: la firma no admite texto SQL. */
@@ -13,7 +15,8 @@ export type NombreSP = `SP_${string}_${string}`;
 export interface ParametroSP {
   /** Tipo SQL explícito, idéntico al del parámetro en el SP (NVARCHAR(100) ↔ sql.NVarChar(100)). */
   tipo: sql.ISqlType | (() => sql.ISqlType);
-  valor: string | number | boolean | Date | Buffer | null;
+  /** Un monto va como Decimal; se convierte a number solo en el borde (A-21). */
+  valor: string | number | boolean | Date | Buffer | Decimal | null;
 }
 
 export type ParametrosSP = Record<string, ParametroSP>;
@@ -46,7 +49,7 @@ export function crearEjecutorSP({ conexion, logger, esperar = dormir }: Dependen
     nombre: NombreSP,
     parametros: ParametrosSP = {},
   ): Promise<unknown[][]> {
-    const completos = { ...parametros, ...parametrosEstandar(parametros) };
+    const completos = { ...conMontosParaSql(parametros), ...parametrosEstandar(parametros) };
 
     for (let intento = 0; ; intento++) {
       const inicio = performance.now();
@@ -80,6 +83,15 @@ export function crearEjecutorSP({ conexion, logger, esperar = dormir }: Dependen
   }
 
   return { ejecutarSP, ejecutarSPMultiple };
+}
+
+function conMontosParaSql(parametros: ParametrosSP): ParametrosSP {
+  return Object.fromEntries(
+    Object.entries(parametros).map(([nombre, { tipo, valor }]) => [
+      nombre,
+      { tipo, valor: valor instanceof Decimal ? montoParaSql(valor) : valor },
+    ]),
+  );
 }
 
 // A-18: el actor sale siempre del contexto de la petición, nunca del llamador (RF-01).

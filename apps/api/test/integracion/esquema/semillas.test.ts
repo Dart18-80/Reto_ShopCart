@@ -2,6 +2,7 @@ import type sql from 'mssql';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { conectarBaseDePruebas } from '../base-de-pruebas.js';
 import { unaFila } from '../datos-de-prueba.js';
+import { aMonto } from '../../../src/shared/dinero/index.js';
 
 interface ResumenSemilla {
   Departamentos: number;
@@ -94,7 +95,7 @@ describe('S004 catálogo demo (E1-H06, N-07, N-19)', () => {
   });
 
   it('los precios vigentes van de Q79 a Q899', () => {
-    expect(resumen.PrecioMinimo).toBe(79);
-    expect(resumen.PrecioMaximo).toBe(899);
+    expect(aMonto(resumen.PrecioMinimo).toFixed(2)).toBe('79.00');
+    expect(aMonto(resumen.PrecioMaximo).toFixed(2)).toBe('899.00');
   });
 });

@@ -12,6 +12,7 @@ import {
   crearVariante,
   unaFila,
 } from '../datos-de-prueba.js';
+import { aMonto } from '../../../src/shared/dinero/index.js';
 
 const ERROR_DE_RESTRICCION_UNICA = 2627;
 // SP_Pruebas_CrearSesionCheckout congela Subtotal 100 + envío 35.
@@ -387,7 +388,7 @@ describe('vistas sin prueba hasta ahora', () => {
     const [chino] = await buscar('%pantalon chino%');
     const [edicionLimitada] = await buscar('%edicion limitada%');
 
-    expect(chino?.PrecioMinimo).toBe(299);
+    expect(aMonto(chino?.PrecioMinimo ?? Number.NaN).toFixed(2)).toBe('299.00');
     expect(edicionLimitada?.TieneDisponible).toBe(true);
   });
 

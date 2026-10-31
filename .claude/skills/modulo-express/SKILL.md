@@ -290,19 +290,16 @@ export const erroresDirecciones = {
 - `AppError` recibe un código **que existe en `catalogo.ts`**, y el catálogo define su HTTP. Nunca `throw new Error(...)` para una regla de negocio.
 - Un error inesperado sí es `Error`: el middleware lo registra con su `requestId` y responde `500` sin detalles.
 
-## 10. Dinero
+## 10. Dinero (A-21)
 
 ```ts
-import Decimal from 'decimal.js';
-
-// tedious devuelve DECIMAL como number. Con DECIMAL(12,2) (≤ 12 dígitos) la conversión es exacta,
-// pero nunca se opera con ese number: se convierte a Decimal de inmediato.
-export const aMonto = (valor: number | string): string => new Decimal(valor).toFixed(2);
+import { aMonto, montoParaSql } from '../../shared/dinero/index.js';
 ```
 
-- **En JSON los montos son texto** (`"149.90"`). El esquema compartido es `montoSchema = z.string().regex(/^\d{1,10}(\.\d{1,2})?$/)`.
-- Para enviar un monto a un SP: `{ tipo: sql.Decimal(12, 2), valor: monto.toFixed(2) }`.
-- **Al leer un monto de un SP:** la interfaz `Fila…` lo declara como `number` (así lo entrega el driver), y la función de mapeo del repositorio lo convierte de inmediato con `aMonto` (texto para JSON) o `new Decimal(...)` (para operar). Ninguna capa por encima del repositorio ve ese `number`.
+- **Un único punto de conversión:** `aMonto(valor: number): Decimal` en `shared/dinero`. tedious entrega `DECIMAL` como `number`; con `DECIMAL(12,2)` (12 dígitos) o `DECIMAL(15,2)` (15) un double lo representa sin error, y `aMonto` lo pasa a `Decimal` con `toDecimalPlaces(2)`. **Ese `number` nunca se usa para operar.** Si `|valor| >= 1e13`, `aMonto` lanza un error interno en lugar de redondear.
+- **Al leer un monto de un SP:** la interfaz `Fila…` lo declara como `number` (así lo entrega el driver) y la función de mapeo del repositorio lo convierte de inmediato con `aMonto`. Ninguna capa por encima del repositorio ve ese `number`.
+- **Para enviar un monto a un SP:** `{ tipo: sql.Decimal(12, 2), valor: monto }` con un `Decimal`. `ejecutarSP` lo convierte a `number` en su borde (`montoParaSql`), con la misma salvaguarda. Nunca conviertas a mano en el repositorio.
+- **En JSON los montos son texto** (`"149.90"`): `monto.toFixed(2)`. El esquema compartido es `montoSchema = z.string().regex(/^\d{1,10}(\.\d{1,2})?$/)`.
 - Los cálculos de dinero (descuentos, totales, reembolsos) se hacen en el SP. En TypeScript solo se formatea o se compara, siempre con `Decimal`.
 
 ## 11. Aislamiento entre clientes (RF-01)
