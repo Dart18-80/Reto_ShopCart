@@ -32,6 +32,8 @@ export function registrarApagadoOrdenado({
   let apagando = false;
   let terminado = false;
   let forzarSalida: NodeJS.Timeout | undefined;
+  // El código más grave gana: un error fatal durante un apagado normal termina con 1.
+  let codigoSalida = SALIDA_NORMAL;
 
   const terminar = (codigo: number): void => {
     if (terminado) return;
@@ -41,6 +43,7 @@ export function registrarApagadoOrdenado({
   };
 
   const apagar = (codigo: number): void => {
+    codigoSalida = Math.max(codigoSalida, codigo);
     if (apagando) return;
     apagando = true;
 
@@ -61,7 +64,7 @@ export function registrarApagadoOrdenado({
             }
           }
           logger.info('API detenida');
-          terminar(codigo);
+          terminar(codigoSalida);
         },
       );
     });

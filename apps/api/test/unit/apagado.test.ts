@@ -178,6 +178,20 @@ describe('apagado ordenado (E0-H04)', () => {
     expect(lineas.find((linea) => linea.level === NIVEL_FATAL)?.msg).toBe('Error no capturado');
   });
 
+  it('un error fatal durante un apagado por SIGTERM cambia el código de salida a 1', async () => {
+    const puerto = await iniciarServidor();
+    const { proceso, salida } = preparar();
+    const recibida = peticionRecibida();
+    const enCurso = pedir(puerto);
+    await recibida;
+
+    proceso.emit('SIGTERM', 'SIGTERM');
+    proceso.emit('uncaughtException', new Error('fallo mientras se apagaba'));
+
+    expect(await salida).toBe(1);
+    await enCurso;
+  });
+
   it('una promesa rechazada sin manejar se registra como fatal y apaga con 1', async () => {
     await iniciarServidor();
     const { proceso, salida, lineas } = preparar();
