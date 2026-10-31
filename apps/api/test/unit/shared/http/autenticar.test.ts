@@ -134,6 +134,22 @@ describe('autorizar (E2-H03, RF-01)', () => {
   });
 });
 
+describe('autorizar sin autenticar (ruta mal armada)', () => {
+  it('sin usuario en el contexto responde 401 y no deja pasar', async () => {
+    const app = express();
+    app.use(requestId);
+    app.get('/mal-armada', autorizar('Cliente'), (_req, res) => {
+      res.json({ datos: 'no debería llegar aquí' });
+    });
+    app.use(manejadorErrores(pino({ level: 'silent' })));
+
+    const respuesta = await request(app).get('/mal-armada');
+
+    expect(respuesta.status).toBe(401);
+    expect(leerError(respuesta).codigo).toBe('NO_AUTENTICADO');
+  });
+});
+
 describe('casos borde del access token (E2-H03, A-07)', () => {
   it('un token sin firma (alg none) responde 401', async () => {
     const sinFirma = new UnsecuredJWT({ rol: 'Administrador' })
