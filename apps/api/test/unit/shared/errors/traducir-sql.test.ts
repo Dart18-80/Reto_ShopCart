@@ -100,6 +100,10 @@ describe('traducirErrorSql', () => {
     expect(traducirErrorSql(errorSql(37359, 'Updates are not allowed.'))).toBeUndefined();
   });
 
+  it('un error de negocio que no es instancia de Error usa el mensaje del catálogo', () => {
+    expect(traducirErrorSql({ number: 50003 })?.message).toBe('Un parámetro no es válido.');
+  });
+
   it('no traduce errores de SQL Server que no son de negocio ni errores comunes', () => {
     expect(traducirErrorSql(errorSql(1205, 'Deadlock.'))).toBeUndefined();
     expect(traducirErrorSql(errorSql(229, 'Permiso denegado.'))).toBeUndefined();

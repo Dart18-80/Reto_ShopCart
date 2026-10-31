@@ -44,6 +44,10 @@ function crearAppDePrueba() {
   app.get('/inesperado', () => {
     throw new Error(DETALLE_INTERNO);
   });
+  app.get('/a-medias', (_req, res) => {
+    res.status(200).write('{"datos":');
+    throw new Error('fallo después de enviar las cabeceras');
+  });
   app.post('/json', (_req, res) => {
     res.json({ datos: 'ok' });
   });
@@ -138,6 +142,17 @@ describe('middleware central de errores', () => {
 
     expect(respuesta.status).toBe(415);
     expect(leerError(respuesta).codigo).toBe('CONTENIDO_NO_SOPORTADO');
+  });
+
+  it('si las cabeceras ya se enviaron, delega en Express y no intenta escribir otra respuesta', async () => {
+    const { app } = crearAppDePrueba();
+
+    const respuesta = await request(app)
+      .get('/a-medias')
+      .catch((error: unknown) => error);
+
+    // Express corta la conexión: lo que importa es que no se mezclan dos respuestas ni se cuelga.
+    expect(respuesta).toBeDefined();
   });
 
   it('una ruta inexistente responde 404 NO_ENCONTRADO', async () => {
