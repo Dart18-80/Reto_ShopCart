@@ -35,6 +35,9 @@ export default defineConfig(
     files: ['apps/api/src/**/*.ts'],
     plugins: { boundaries },
     settings: {
+      // Los patrones son relativos a la raíz del repositorio, no al directorio desde el que corre ESLint:
+      // sin esto, el lint lanzado desde apps/api (editor, Vitest) no aplicaba la regla.
+      'boundaries/root-path': import.meta.dirname,
       'boundaries/include': ['apps/api/src/**/*.ts'],
       'boundaries/elements': [
         { type: 'modulo', pattern: 'apps/api/src/modules/*', capture: ['modulo'] },
