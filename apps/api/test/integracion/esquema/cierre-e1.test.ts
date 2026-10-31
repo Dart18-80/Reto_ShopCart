@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import sql from 'mssql';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { ejecutarSP } from '../../../src/shared/db/index.js';
+import { ejecutarSP, type ParametrosSP } from '../../../src/shared/db/index.js';
 import { ejecutarConContexto } from '../../../src/shared/http/index.js';
 import { conectarBaseDePruebas } from '../base-de-pruebas.js';
 import {
@@ -168,16 +168,11 @@ describe('FU_Catalogo_PrecioVigente (R4, N-02)', () => {
 
 describe('CK de Pedido y Cupon (R4, A-13)', () => {
   function probarTotales(idPedido: number, importes: Record<string, string>) {
-    return ejecutarSP(
-      'SP_Pruebas_ProbarTotalesPedido',
-      Object.fromEntries([
-        ['IDPedido', { tipo: sql.Int, valor: idPedido }],
-        ...Object.entries(importes).map(([nombre, valor]) => [
-          nombre,
-          { tipo: sql.Decimal(12, 2), valor },
-        ]),
-      ]),
-    );
+    const parametros: ParametrosSP = { IDPedido: { tipo: sql.Int, valor: idPedido } };
+    for (const [nombre, valor] of Object.entries(importes)) {
+      parametros[nombre] = { tipo: sql.Decimal(12, 2), valor };
+    }
+    return ejecutarSP('SP_Pruebas_ProbarTotalesPedido', parametros);
   }
 
   const CONSISTENTE = {
