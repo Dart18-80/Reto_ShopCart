@@ -13,6 +13,7 @@ export {
   type ConsultaPaginacion,
   type RespuestaPaginada,
 } from './paginacion.js';
+export { idEnRutaSchema, idSchema } from './identificadores.js';
 export { requestId } from './request-id.js';
 export { manejar, type ClienteHttp, type Entrada } from './manejar.js';
 export { leerCookies } from './cookies.js';

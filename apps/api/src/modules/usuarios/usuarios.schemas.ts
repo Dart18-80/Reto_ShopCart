@@ -1,5 +1,9 @@
 import { textoNvarchar } from '@shopcart/shared';
-import { consultaPaginacionSchema, ROLES_DE_USUARIO } from '../../shared/http/index.js';
+import {
+  consultaPaginacionSchema,
+  idEnRutaSchema,
+  ROLES_DE_USUARIO,
+} from '../../shared/http/index.js';
 import { z } from '../../shared/openapi/zod.js';
 import { contrasenaSchema, correoSchema } from '../auth/index.js';
 
@@ -47,7 +51,7 @@ export const actualizarUsuarioSchema = z
   .refine(alMenosUnCampo, 'Indica al menos un campo.')
   .openapi('ActualizarUsuario');
 
-export const paramsIdUsuarioSchema = z.object({ id: z.coerce.number().int().positive() });
+export const paramsIdUsuarioSchema = z.object({ id: idEnRutaSchema });
 
 export const usuarioSchema = z
   .object({

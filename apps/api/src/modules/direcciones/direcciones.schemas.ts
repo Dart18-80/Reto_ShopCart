@@ -1,8 +1,8 @@
 import { textoNvarchar } from '@shopcart/shared';
+import { idEnRutaSchema, idSchema } from '../../shared/http/index.js';
 import { z } from '../../shared/openapi/zod.js';
 
 const telefonoSchema = z.string().regex(/^\d{8}$/, 'El teléfono debe tener 8 dígitos.');
-const idSchema = z.coerce.number().int().positive();
 
 // RF-01: .strict() rechaza un idUsuario colado en el cuerpo; el dueño sale del token.
 export const crearDireccionSchema = z
@@ -10,7 +10,7 @@ export const crearDireccionSchema = z
     alias: textoNvarchar(50).optional(),
     nombreRecibe: textoNvarchar(100),
     telefonoRecibe: telefonoSchema,
-    idMunicipio: z.number().int().positive(),
+    idMunicipio: idSchema,
     direccionLinea: textoNvarchar(200),
     referencia: textoNvarchar(200).optional(),
     esPredeterminada: z.boolean().default(false),
@@ -24,7 +24,7 @@ export const actualizarDireccionSchema = z
     alias: textoNvarchar(50).nullable().optional(),
     nombreRecibe: textoNvarchar(100).optional(),
     telefonoRecibe: telefonoSchema.optional(),
-    idMunicipio: z.number().int().positive().optional(),
+    idMunicipio: idSchema.optional(),
     direccionLinea: textoNvarchar(200).optional(),
     referencia: textoNvarchar(200).nullable().optional(),
     esPredeterminada: z.boolean().optional(),
@@ -33,8 +33,8 @@ export const actualizarDireccionSchema = z
   .refine((cambios) => Object.keys(cambios).length > 0, 'Indica al menos un campo.')
   .openapi('ActualizarDireccion');
 
-export const paramsIdDireccionSchema = z.object({ id: idSchema });
-export const paramsIdDepartamentoSchema = z.object({ id: idSchema });
+export const paramsIdDireccionSchema = z.object({ id: idEnRutaSchema });
+export const paramsIdDepartamentoSchema = z.object({ id: idEnRutaSchema });
 
 const departamentoSchema = z.object({ idDepartamento: z.number().int(), nombre: z.string() });
 const municipioSchema = z.object({ idMunicipio: z.number().int(), nombre: z.string() });
