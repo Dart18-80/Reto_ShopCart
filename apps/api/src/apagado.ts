@@ -10,7 +10,7 @@ export interface DependenciasApagado {
   proceso: Pick<EventEmitter, 'on' | 'once'>;
   servidor: Pick<Server, 'close'>;
   /** Cierres de los recursos abiertos (pool de SQL Server, Redis). */
-  recursos: (() => Promise<unknown>)[];
+  recursos: readonly (() => Promise<unknown>)[];
   logger: Logger;
   salir: (codigo: number) => void;
   esperaMaximaMs: number;
@@ -31,10 +31,12 @@ export function registrarApagadoOrdenado({
 }: DependenciasApagado): void {
   let apagando = false;
   let terminado = false;
+  let forzarSalida: NodeJS.Timeout | undefined;
 
   const terminar = (codigo: number): void => {
     if (terminado) return;
     terminado = true;
+    clearTimeout(forzarSalida);
     salir(codigo);
   };
 
@@ -42,22 +44,26 @@ export function registrarApagadoOrdenado({
     if (apagando) return;
     apagando = true;
 
-    const forzarSalida = setTimeout(() => {
+    forzarSalida = setTimeout(() => {
       logger.error('El apagado tardó demasiado; se fuerza la salida');
       terminar(SALIDA_CON_ERROR);
     }, esperaMaximaMs);
     forzarSalida.unref();
 
     servidor.close(() => {
-      void Promise.allSettled(recursos.map((cerrar) => cerrar())).then((cierres) => {
-        for (const cierre of cierres) {
-          if (cierre.status === 'rejected') {
-            logger.warn({ err: cierre.reason }, 'Un recurso no se cerró limpiamente');
+      // Dentro de then: un cierre que lanza de forma síncrona también queda como rechazo y no deja a
+      // los demás sin cerrar.
+      void Promise.allSettled(recursos.map((cerrar) => Promise.resolve().then(cerrar))).then(
+        (cierres) => {
+          for (const cierre of cierres) {
+            if (cierre.status === 'rejected') {
+              logger.warn({ err: cierre.reason }, 'Un recurso no se cerró limpiamente');
+            }
           }
-        }
-        logger.info('API detenida');
-        terminar(codigo);
-      });
+          logger.info('API detenida');
+          terminar(codigo);
+        },
+      );
     });
   };
 

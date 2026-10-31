@@ -1,4 +1,4 @@
-import { EventEmitter } from 'node:events';
+import { EventEmitter, once } from 'node:events';
 import { createServer, request as peticionHttp, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { Writable } from 'node:stream';
@@ -38,6 +38,12 @@ async function iniciarServidor(): Promise<number> {
   servidor = nuevo;
   await new Promise<void>((listo) => nuevo.listen(0, '127.0.0.1', listo));
   return (nuevo.address() as AddressInfo).port;
+}
+
+/** Espera a que el servidor reciba la petición: sin esto, la señal podría llegar antes que la conexión. */
+async function peticionRecibida(): Promise<void> {
+  if (servidor === undefined) throw new Error('Inicia el servidor antes de pedir');
+  await once(servidor, 'request');
 }
 
 function pedir(puerto: number): Promise<string> {
@@ -80,8 +86,9 @@ describe('apagado ordenado (E0-H04)', () => {
   it('con SIGTERM termina las peticiones en curso, cierra los recursos y sale con 0', async () => {
     const puerto = await iniciarServidor();
     const { proceso, recursos, salida } = preparar();
+    const recibida = peticionRecibida();
     const enCurso = pedir(puerto);
-    await new Promise((listo) => setTimeout(listo, 20));
+    await recibida;
 
     proceso.emit('SIGTERM', 'SIGTERM');
 
@@ -93,8 +100,9 @@ describe('apagado ordenado (E0-H04)', () => {
   it('durante el apagado ya no acepta conexiones nuevas', async () => {
     const puerto = await iniciarServidor();
     const { proceso } = preparar();
+    const recibida = peticionRecibida();
     const enCurso = pedir(puerto);
-    await new Promise((listo) => setTimeout(listo, 20));
+    await recibida;
 
     proceso.emit('SIGTERM', 'SIGTERM');
 
@@ -117,13 +125,31 @@ describe('apagado ordenado (E0-H04)', () => {
   it('si una petición no termina a tiempo fuerza la salida con 1', async () => {
     const puerto = await iniciarServidor();
     const { proceso, salida } = preparar({ esperaMaximaMs: 50 });
+    const recibida = peticionRecibida();
     const enCurso = pedir(puerto).catch(() => undefined);
-    await new Promise((listo) => setTimeout(listo, 20));
+    await recibida;
 
     proceso.emit('SIGTERM', 'SIGTERM');
 
     expect(await salida).toBe(1);
     await enCurso;
+  });
+
+  it('un recurso que lanza al cerrar no impide cerrar los demás ni salir', async () => {
+    await iniciarServidor();
+    const { proceso, recursos, salida } = preparar({
+      cierres: [
+        () => {
+          throw new Error('cierre que lanza de inmediato');
+        },
+        () => Promise.resolve(),
+      ],
+    });
+
+    proceso.emit('SIGTERM', 'SIGTERM');
+
+    expect(await salida).toBe(0);
+    expect(recursos[1]).toHaveBeenCalledTimes(1);
   });
 
   it('una segunda señal no repite el apagado', async () => {
@@ -140,8 +166,9 @@ describe('apagado ordenado (E0-H04)', () => {
   it('un error no capturado se registra como fatal y apaga ordenadamente con 1', async () => {
     const puerto = await iniciarServidor();
     const { proceso, recursos, salida, lineas } = preparar();
+    const recibida = peticionRecibida();
     const enCurso = pedir(puerto);
-    await new Promise((listo) => setTimeout(listo, 20));
+    await recibida;
 
     proceso.emit('uncaughtException', new Error('fallo inesperado'));
 
