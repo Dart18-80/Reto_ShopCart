@@ -9,7 +9,8 @@ try {
   await migrar(leerConfiguracion(), logger);
 } catch (error) {
   if (error instanceof ErrorMigracion) {
-    logger.error(error.message);
+    // La causa (el error de SQL) trae el número, la línea y los errores anteriores del lote.
+    logger.error({ err: error.cause }, error.message);
   } else {
     logger.error({ err: error }, `Error inesperado del migrador: ${mensajeDe(error)}`);
   }
