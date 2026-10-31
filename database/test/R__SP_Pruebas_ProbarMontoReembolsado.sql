@@ -11,6 +11,8 @@ BEGIN
     SET NOCOUNT ON;
     SET XACT_ABORT ON;
 
+    EXEC dbo.SP_Sistema_EstablecerContexto @IDUsuarioActor, @RolActor, @RequestId;
+
     BEGIN TRY
         BEGIN TRAN;
         UPDATE dbo.Pedido SET MontoReembolsado = @MontoReembolsado WHERE IDPedido = @IDPedido;

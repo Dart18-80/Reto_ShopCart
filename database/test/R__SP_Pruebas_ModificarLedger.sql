@@ -13,18 +13,28 @@ BEGIN
     SET NOCOUNT ON;
     SET XACT_ABORT ON;
 
-    DECLARE @Sentencia NVARCHAR(200) = CASE
-        WHEN @Tabla = 'Bitacora'              AND @Operacion = 'Modificar' THEN N'UPDATE dbo.Bitacora SET Modulo = Modulo;'
-        WHEN @Tabla = 'Bitacora'              AND @Operacion = 'Eliminar' THEN N'DELETE FROM dbo.Bitacora;'
-        WHEN @Tabla = 'MovimientoKardex'      AND @Operacion = 'Modificar' THEN N'UPDATE dbo.MovimientoKardex SET Motivo = Motivo;'
-        WHEN @Tabla = 'MovimientoKardex'      AND @Operacion = 'Eliminar' THEN N'DELETE FROM dbo.MovimientoKardex;'
-        WHEN @Tabla = 'HistorialEstadoPedido' AND @Operacion = 'Modificar' THEN N'UPDATE dbo.HistorialEstadoPedido SET Motivo = Motivo;'
-        WHEN @Tabla = 'HistorialEstadoPedido' AND @Operacion = 'Eliminar' THEN N'DELETE FROM dbo.HistorialEstadoPedido;'
-    END;
+    EXEC dbo.SP_Sistema_EstablecerContexto @IDUsuarioActor, @RolActor, @RequestId;
 
-    IF @Sentencia IS NULL
-        THROW 50003, N'Tabla u operación no válida para la prueba.', 1;
+    BEGIN TRY
+        BEGIN TRAN;
+        DECLARE @Sentencia NVARCHAR(200) = CASE
+            WHEN @Tabla = 'Bitacora'              AND @Operacion = 'Modificar' THEN N'UPDATE dbo.Bitacora SET Modulo = Modulo;'
+            WHEN @Tabla = 'Bitacora'              AND @Operacion = 'Eliminar' THEN N'DELETE FROM dbo.Bitacora;'
+            WHEN @Tabla = 'MovimientoKardex'      AND @Operacion = 'Modificar' THEN N'UPDATE dbo.MovimientoKardex SET Motivo = Motivo;'
+            WHEN @Tabla = 'MovimientoKardex'      AND @Operacion = 'Eliminar' THEN N'DELETE FROM dbo.MovimientoKardex;'
+            WHEN @Tabla = 'HistorialEstadoPedido' AND @Operacion = 'Modificar' THEN N'UPDATE dbo.HistorialEstadoPedido SET Motivo = Motivo;'
+            WHEN @Tabla = 'HistorialEstadoPedido' AND @Operacion = 'Eliminar' THEN N'DELETE FROM dbo.HistorialEstadoPedido;'
+        END;
 
-    EXEC sys.sp_executesql @Sentencia;
+        IF @Sentencia IS NULL
+            THROW 50003, N'Tabla u operación no válida para la prueba.', 1;
+
+        EXEC sys.sp_executesql @Sentencia;
+        COMMIT;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK;
+        THROW;
+    END CATCH
 END
 GO

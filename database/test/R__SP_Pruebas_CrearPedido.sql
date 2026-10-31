@@ -10,6 +10,8 @@ BEGIN
     SET NOCOUNT ON;
     SET XACT_ABORT ON;
 
+    EXEC dbo.SP_Sistema_EstablecerContexto @IDUsuarioActor, @RolActor, @RequestId;
+
     BEGIN TRY
         BEGIN TRAN;
 
@@ -37,7 +39,8 @@ BEGIN
                             AND x.IDRol = r.IDRol);
 
         DECLARE @Sesion TABLE (IDSesionCheckout INT);
-        INSERT INTO @Sesion EXEC dbo.SP_Pruebas_CrearSesionCheckout @IDUsuario = @IDUsuario;
+        INSERT INTO @Sesion EXEC dbo.SP_Pruebas_CrearSesionCheckout @IDUsuario = @IDUsuario, @IDUsuarioActor = @IDUsuarioActor,
+                                                  @RolActor = @RolActor, @RequestId = @RequestId;
         DECLARE @IDSesionCheckout INT = (SELECT IDSesionCheckout FROM @Sesion);
 
         INSERT INTO dbo.IntentoPago (IDSesionCheckout, LlaveIdempotencia, HashSolicitud, Monto, Estado,

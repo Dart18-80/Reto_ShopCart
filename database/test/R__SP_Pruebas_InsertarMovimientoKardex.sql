@@ -16,12 +16,22 @@ BEGIN
     SET NOCOUNT ON;
     SET XACT_ABORT ON;
 
-    INSERT INTO dbo.MovimientoKardex
-        (IDVariante, IDTipoMovimiento, Signo, Cantidad, ExistenciaAnterior, ExistenciaResultante, Motivo, IDUsuario)
-    VALUES
-        (@IDVariante, @IDTipoMovimiento, @Signo, @Cantidad, @ExistenciaAnterior, @ExistenciaResultante,
-         N'Movimiento de prueba', @IDUsuario);
+    EXEC dbo.SP_Sistema_EstablecerContexto @IDUsuarioActor, @RolActor, @RequestId;
 
-    SELECT CONVERT(BIGINT, SCOPE_IDENTITY()) AS IDMovimientoKardex;
+    BEGIN TRY
+        BEGIN TRAN;
+        INSERT INTO dbo.MovimientoKardex
+            (IDVariante, IDTipoMovimiento, Signo, Cantidad, ExistenciaAnterior, ExistenciaResultante, Motivo, IDUsuario)
+        VALUES
+            (@IDVariante, @IDTipoMovimiento, @Signo, @Cantidad, @ExistenciaAnterior, @ExistenciaResultante,
+             N'Movimiento de prueba', @IDUsuario);
+
+        SELECT CONVERT(BIGINT, SCOPE_IDENTITY()) AS IDMovimientoKardex;
+        COMMIT;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK;
+        THROW;
+    END CATCH
 END
 GO

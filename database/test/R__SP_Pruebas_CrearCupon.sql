@@ -12,10 +12,18 @@ BEGIN
     -- A-18: los triggers de bitácora exigen el contexto (en una prueba sin petición, Rol = 'Sistema').
     EXEC dbo.SP_Sistema_EstablecerContexto @IDUsuarioActor, @RolActor, @RequestId;
 
-    INSERT INTO dbo.Cupon (Codigo, Descripcion, Tipo, Valor, FechaInicio, FechaFin, LimiteUsosTotal, LimiteUsosPorCliente)
-    VALUES ('PRUEBA' + LEFT(REPLACE(CONVERT(VARCHAR(36), NEWID()), '-', ''), 20), N'Cupón de prueba', 'MontoFijo',
-            10, SYSUTCDATETIME(), DATEADD(DAY, 30, SYSUTCDATETIME()), @LimiteUsosTotal, 1);
+    BEGIN TRY
+        BEGIN TRAN;
+        INSERT INTO dbo.Cupon (Codigo, Descripcion, Tipo, Valor, FechaInicio, FechaFin, LimiteUsosTotal, LimiteUsosPorCliente)
+        VALUES ('PRUEBA' + LEFT(REPLACE(CONVERT(VARCHAR(36), NEWID()), '-', ''), 20), N'Cupón de prueba', 'MontoFijo',
+                10, SYSUTCDATETIME(), DATEADD(DAY, 30, SYSUTCDATETIME()), @LimiteUsosTotal, 1);
 
-    SELECT CONVERT(INT, SCOPE_IDENTITY()) AS IDCupon;
+        SELECT CONVERT(INT, SCOPE_IDENTITY()) AS IDCupon;
+        COMMIT;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK;
+        THROW;
+    END CATCH
 END
 GO

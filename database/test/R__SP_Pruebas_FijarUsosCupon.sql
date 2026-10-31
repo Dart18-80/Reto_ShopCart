@@ -14,6 +14,14 @@ BEGIN
     -- A-18: los triggers de bitácora exigen el contexto (en una prueba sin petición, Rol = 'Sistema').
     EXEC dbo.SP_Sistema_EstablecerContexto @IDUsuarioActor, @RolActor, @RequestId;
 
-    UPDATE dbo.Cupon SET UsosComprometidos = @UsosComprometidos WHERE IDCupon = @IDCupon;
+    BEGIN TRY
+        BEGIN TRAN;
+        UPDATE dbo.Cupon SET UsosComprometidos = @UsosComprometidos WHERE IDCupon = @IDCupon;
+        COMMIT;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK;
+        THROW;
+    END CATCH
 END
 GO

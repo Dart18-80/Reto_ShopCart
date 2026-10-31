@@ -11,8 +11,18 @@ BEGIN
     SET NOCOUNT ON;
     SET XACT_ABORT ON;
 
-    INSERT INTO dbo.Carrito (IDUsuario, HashTokenInvitado, Estado) VALUES (@IDUsuario, @HashTokenInvitado, 'Activo');
+    EXEC dbo.SP_Sistema_EstablecerContexto @IDUsuarioActor, @RolActor, @RequestId;
 
-    SELECT CONVERT(INT, SCOPE_IDENTITY()) AS IDCarrito;
+    BEGIN TRY
+        BEGIN TRAN;
+        INSERT INTO dbo.Carrito (IDUsuario, HashTokenInvitado, Estado) VALUES (@IDUsuario, @HashTokenInvitado, 'Activo');
+
+        SELECT CONVERT(INT, SCOPE_IDENTITY()) AS IDCarrito;
+        COMMIT;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK;
+        THROW;
+    END CATCH
 END
 GO

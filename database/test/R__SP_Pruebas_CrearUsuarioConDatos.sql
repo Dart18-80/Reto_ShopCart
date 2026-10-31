@@ -15,13 +15,21 @@ BEGIN
     -- A-18: los triggers de bitácora exigen el contexto (en una prueba sin petición, Rol = 'Sistema').
     EXEC dbo.SP_Sistema_EstablecerContexto @IDUsuarioActor, @RolActor, @RequestId;
 
-    INSERT INTO dbo.Usuario (Correo, HashContrasena, Nombre, Telefono, IDRol)
-    SELECT @Correo, 'hash-de-prueba', @Nombre, @Telefono, IDRol
-    FROM   dbo.Rol
-    WHERE  Codigo = 'Cliente';
+    BEGIN TRY
+        BEGIN TRAN;
+        INSERT INTO dbo.Usuario (Correo, HashContrasena, Nombre, Telefono, IDRol)
+        SELECT @Correo, 'hash-de-prueba', @Nombre, @Telefono, IDRol
+        FROM   dbo.Rol
+        WHERE  Codigo = 'Cliente';
 
-    SELECT IDUsuario, Correo, CorreoNormalizado, Telefono, Nombre
-    FROM   dbo.Usuario
-    WHERE  IDUsuario = SCOPE_IDENTITY();
+        SELECT IDUsuario, Correo, CorreoNormalizado, Telefono, Nombre
+        FROM   dbo.Usuario
+        WHERE  IDUsuario = SCOPE_IDENTITY();
+        COMMIT;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK;
+        THROW;
+    END CATCH
 END
 GO

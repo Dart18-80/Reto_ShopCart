@@ -11,9 +11,19 @@ BEGIN
     SET NOCOUNT ON;
     SET XACT_ABORT ON;
 
-    INSERT INTO dbo.IntentoPago (IDSesionCheckout, LlaveIdempotencia, HashSolicitud, Monto, Estado)
-    VALUES (@IDSesionCheckout, NEWID(), HASHBYTES('SHA2_256', CONVERT(NVARCHAR(36), NEWID())), 135, @Estado);
+    EXEC dbo.SP_Sistema_EstablecerContexto @IDUsuarioActor, @RolActor, @RequestId;
 
-    SELECT CONVERT(BIGINT, SCOPE_IDENTITY()) AS IDIntentoPago;
+    BEGIN TRY
+        BEGIN TRAN;
+        INSERT INTO dbo.IntentoPago (IDSesionCheckout, LlaveIdempotencia, HashSolicitud, Monto, Estado)
+        VALUES (@IDSesionCheckout, NEWID(), HASHBYTES('SHA2_256', CONVERT(NVARCHAR(36), NEWID())), 135, @Estado);
+
+        SELECT CONVERT(BIGINT, SCOPE_IDENTITY()) AS IDIntentoPago;
+        COMMIT;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK;
+        THROW;
+    END CATCH
 END
 GO

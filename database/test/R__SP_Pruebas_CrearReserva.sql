@@ -12,6 +12,8 @@ BEGIN
     SET NOCOUNT ON;
     SET XACT_ABORT ON;
 
+    EXEC dbo.SP_Sistema_EstablecerContexto @IDUsuarioActor, @RolActor, @RequestId;
+
     BEGIN TRY
         BEGIN TRAN;
 
@@ -21,7 +23,8 @@ BEGIN
         DECLARE @IDUsuario INT = (SELECT IDUsuario FROM @Usuario);
 
         DECLARE @Sesion TABLE (IDSesionCheckout INT);
-        INSERT INTO @Sesion EXEC dbo.SP_Pruebas_CrearSesionCheckout @IDUsuario = @IDUsuario;
+        INSERT INTO @Sesion EXEC dbo.SP_Pruebas_CrearSesionCheckout @IDUsuario = @IDUsuario, @IDUsuarioActor = @IDUsuarioActor,
+                                                  @RolActor = @RolActor, @RequestId = @RequestId;
 
         INSERT INTO dbo.Reserva (IDSesionCheckout, IDVariante, Cantidad, Estado, FechaExpiracion)
         SELECT IDSesionCheckout, @IDVariante, @Cantidad, 'Activa', DATEADD(MINUTE, @MinutosParaVencer, SYSUTCDATETIME())

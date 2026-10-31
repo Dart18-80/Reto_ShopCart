@@ -13,8 +13,16 @@ BEGIN
 
     EXEC dbo.SP_Sistema_EstablecerContexto @IDUsuarioActor, @RolActor, @RequestId;
 
-    UPDATE dbo.Variante
-    SET    ExistenciaFisica = @ExistenciaFisica, FechaActualizacion = SYSUTCDATETIME()
-    WHERE  IDVariante = @IDVariante;
+    BEGIN TRY
+        BEGIN TRAN;
+        UPDATE dbo.Variante
+        SET    ExistenciaFisica = @ExistenciaFisica, FechaActualizacion = SYSUTCDATETIME()
+        WHERE  IDVariante = @IDVariante;
+        COMMIT;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK;
+        THROW;
+    END CATCH
 END
 GO

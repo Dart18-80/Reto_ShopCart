@@ -14,8 +14,16 @@ BEGIN
 
     EXEC dbo.SP_Sistema_EstablecerContexto @IDUsuarioActor, @RolActor, @RequestId;
 
-    UPDATE dbo.Cupon
-    SET    Descripcion = Descripcion + @Sufijo, FechaActualizacion = SYSUTCDATETIME()
-    WHERE  IDCupon IN (@IDCupon1, @IDCupon2);
+    BEGIN TRY
+        BEGIN TRAN;
+        UPDATE dbo.Cupon
+        SET    Descripcion = Descripcion + @Sufijo, FechaActualizacion = SYSUTCDATETIME()
+        WHERE  IDCupon IN (@IDCupon1, @IDCupon2);
+        COMMIT;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK;
+        THROW;
+    END CATCH
 END
 GO

@@ -15,10 +15,18 @@ BEGIN
 
     EXEC dbo.SP_Sistema_EstablecerContexto @IDUsuarioActor, @RolActor, @RequestId;
 
-    UPDATE v
-    SET    ExistenciaFisica = c.Existencia, FechaActualizacion = SYSUTCDATETIME()
-    FROM   dbo.Variante AS v
-    JOIN   (VALUES (@IDVariante1, @Existencia1), (@IDVariante2, @Existencia2)) AS c (IDVariante, Existencia)
-           ON c.IDVariante = v.IDVariante;
+    BEGIN TRY
+        BEGIN TRAN;
+        UPDATE v
+        SET    ExistenciaFisica = c.Existencia, FechaActualizacion = SYSUTCDATETIME()
+        FROM   dbo.Variante AS v
+        JOIN   (VALUES (@IDVariante1, @Existencia1), (@IDVariante2, @Existencia2)) AS c (IDVariante, Existencia)
+               ON c.IDVariante = v.IDVariante;
+        COMMIT;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK;
+        THROW;
+    END CATCH
 END
 GO
