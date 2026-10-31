@@ -2,6 +2,7 @@ import express, { type Express } from 'express';
 import { pino } from 'pino';
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
+import { textoNvarchar } from '@shopcart/shared';
 import { z } from 'zod';
 import { manejadorErrores } from '../../../../src/shared/errors/middleware.js';
 import { manejar } from '../../../../src/shared/http/manejar.js';
@@ -15,7 +16,7 @@ const LARGO_MAXIMO_NOMBRE = 10;
 const lineaSchema = z
   .object({
     cantidad: z.number().int().min(1).max(99),
-    nombre: z.string().trim().min(1).max(LARGO_MAXIMO_NOMBRE),
+    nombre: textoNvarchar(LARGO_MAXIMO_NOMBRE),
   })
   .strict();
 
@@ -127,15 +128,37 @@ describe('entradas inválidas en manejar (A-20)', () => {
     expect(leerDatos(respuesta, lineaRecibidaSchema).nombre).toBe(nombre);
   });
 
-  // Riesgo abierto: Zod cuenta puntos de código y NVARCHAR(n) cuenta unidades UTF-16. Un texto que
-  // pasa .max(n) con emojis puede exceder el parámetro del SP (error 8016 → 500).
-  it('Zod cuenta un emoji como 1 carácter aunque en UTF-16 ocupe 2', async () => {
+  // textoNvarchar mide en unidades UTF-16, igual que NVARCHAR(n): un emoji ocupa 2.
+  it('un emoji cuenta como 2 caracteres: un texto que excedería NVARCHAR(n) responde 400', async () => {
     const nombre = `${'x'.repeat(LARGO_MAXIMO_NOMBRE - 1)}🙂`;
 
     const respuesta = await enviarLinea({ cantidad: 1, nombre });
 
     expect(nombre).toHaveLength(LARGO_MAXIMO_NOMBRE + 1);
-    expect(respuesta.status).toBe(200);
+    expect(respuesta.status).toBe(400);
+  });
+
+  it('diez emojis no caben en un NVARCHAR(10)', async () => {
+    const respuesta = await enviarLinea({ cantidad: 1, nombre: '🙂'.repeat(LARGO_MAXIMO_NOMBRE) });
+
+    expect(respuesta.status).toBe(400);
+  });
+
+  it('normaliza a NFC: una tilde escrita como carácter combinado llega como un solo carácter', async () => {
+    const descompuesto = 'José';
+
+    const respuesta = await enviarLinea({ cantidad: 1, nombre: descompuesto });
+
+    expect(descompuesto).toHaveLength(5);
+    expect(leerDatos(respuesta, lineaRecibidaSchema).nombre).toBe('José');
+  });
+
+  it('el largo se mide después de recortar y normalizar', async () => {
+    const nombre = `  ${'é'.repeat(LARGO_MAXIMO_NOMBRE)}  `;
+
+    const respuesta = await enviarLinea({ cantidad: 1, nombre });
+
+    expect(leerDatos(respuesta, lineaRecibidaSchema).nombre).toBe('é'.repeat(LARGO_MAXIMO_NOMBRE));
   });
 
   it.each(['__proto__', 'constructor', 'prototype'])(

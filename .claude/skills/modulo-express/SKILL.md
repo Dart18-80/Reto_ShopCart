@@ -251,15 +251,16 @@ export function crearDireccionesRouter(controller: DireccionesController): Route
 
 ```ts
 // direcciones.schemas.ts
+import { textoNvarchar } from '@shopcart/shared';
 import { z } from '../../shared/openapi/zod.js';   // z extendido con .openapi()
 
 export const crearDireccionSchema = z
   .object({
-    nombreRecibe: z.string().trim().min(1).max(100),
+    nombreRecibe: textoNvarchar(100),
     telefonoRecibe: z.string().regex(/^\d{8}$/, 'El teléfono debe tener 8 dígitos.'),
     idMunicipio: z.number().int().positive(),
-    direccionLinea: z.string().trim().min(1).max(200),
-    referencia: z.string().trim().max(200).optional(),
+    direccionLinea: textoNvarchar(200),
+    referencia: textoNvarchar(200).optional(),
     esPredeterminada: z.boolean().default(false),
   })
   .strict()                                       // rechaza campos no esperados (p. ej. idUsuario)
@@ -273,6 +274,8 @@ export type ParamsId = z.infer<typeof paramsIdSchema>;
 
 - Los esquemas que también usa el frontend van en `packages/shared`.
 - `.strict()` en los cuerpos: un `idUsuario` colado en el body responde `400` en lugar de ignorarse en silencio.
+- **Texto que va a un `NVARCHAR(n)`** (todo campo de texto salvo contraseñas): `textoNvarchar(n)` de `packages/shared`. Recorta, normaliza a NFC y mide en unidades UTF-16, igual que SQL Server. Nunca `z.string().max(n)`: Zod cuenta puntos de código y un emoji ocupa 2 unidades, así que un texto aceptado podría no caber en el parámetro del SP (error 8016 → 500).
+- **El repositorio declara cada parámetro con el mismo largo que el SP, nunca uno mayor** (`sql.NVarChar(100)` ↔ `@Nombre NVARCHAR(100)`): SQL Server recorta en silencio un valor más largo que el parámetro del SP.
 - Los límites de longitud coinciden con los del SP y la tabla.
 
 ## 9. Errores del módulo
