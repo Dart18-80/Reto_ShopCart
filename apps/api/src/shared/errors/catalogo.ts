@@ -56,6 +56,13 @@ export const CATALOGO = {
     mensaje: 'El sistema debe conservar al menos un administrador activo.',
   },
 
+  // E2-H05: tope de direcciones por cliente (N-17).
+  LIMITE_DIRECCIONES: {
+    http: 422,
+    numeroSql: 50106,
+    mensaje: 'Alcanzaste el máximo de 10 direcciones.',
+  },
+
   // 50200–50299 Catálogo
   SKU_DUPLICADO: { http: 409, numeroSql: 50201, mensaje: 'El SKU ya existe.' },
   COMBINACION_DUPLICADA: {

@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import type { Logger } from 'pino';
 import swaggerUi from 'swagger-ui-express';
 import { crearModuloAuth, crearSesiones, type LimitadoresAuth } from './modules/auth/index.js';
+import { crearModuloDirecciones } from './modules/direcciones/index.js';
 import { crearModuloSistema, type VerificadorRedis } from './modules/sistema/index.js';
 import { crearModuloUsuarios } from './modules/usuarios/index.js';
 import { manejadorErrores, rutaNoEncontrada } from './shared/errors/index.js';
@@ -70,6 +71,7 @@ export function crearApp({
   const autenticar = crearAutenticar({ tokens: tokensAcceso, listaRevocados });
   const sesiones = crearSesiones(tokensAcceso);
   v1.use('/usuarios', crearModuloUsuarios({ autenticar, sesiones, listaRevocados }));
+  v1.use(crearModuloDirecciones({ autenticar }));
   app.use('/api/v1', v1);
 
   // Después de montar todas las rutas, para que el documento las incluya.
