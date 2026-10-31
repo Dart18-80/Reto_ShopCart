@@ -19,6 +19,10 @@ async function iniciar(): Promise<void> {
   const logger = crearLogger({ nivel: config.nivelLog, instancia: config.instancia });
 
   const pool = await conectarPool(config.baseDatos);
+  // mssql reemite en el pool los errores de conexión; sin listener, EventEmitter los lanza y tumban la réplica.
+  pool.on('error', (error: unknown) => {
+    logger.error({ err: error }, 'Error del pool de SQL Server');
+  });
   configurarBaseDatos(conexionMssql(pool), logger);
   const redis = conectarRedis(config.redis, logger);
 
@@ -36,6 +40,11 @@ async function iniciar(): Promise<void> {
       process.exit(1);
     }
     logger.info({ puerto: config.puerto, entorno: config.entorno }, 'API escuchando');
+  });
+
+  // El callback de listen solo cubre el arranque; un error posterior (por ejemplo, EMFILE) se perdería.
+  servidor.on('error', (error) => {
+    logger.error({ err: error }, 'Error del servidor HTTP');
   });
 
   registrarApagadoOrdenado({

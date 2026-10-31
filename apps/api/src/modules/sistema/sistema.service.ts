@@ -1,6 +1,11 @@
 import type { Logger } from 'pino';
 import type { SistemaRepository } from './sistema.repository.js';
-import type { EstadoBaseDatos, EstadoSalud, VerificadorRedis } from './sistema.types.js';
+import type {
+  EstadoBaseDatos,
+  EstadoSalud,
+  ServidorBaseDatos,
+  VerificadorRedis,
+} from './sistema.types.js';
 
 interface Dependencias {
   repositorio: SistemaRepository;
@@ -19,22 +24,24 @@ export function crearSistemaService({
   instancia,
   logger,
 }: Dependencias): SistemaService {
+  // Solo la llamada a la base cuenta como "caída": un bug después de responder llega como 500.
   async function estadoBaseDatos(): Promise<EstadoBaseDatos> {
+    let servidor: ServidorBaseDatos;
     try {
-      const servidor = await repositorio.health();
-      // En debug: el healthcheck de Docker lo llama cada pocos segundos en cada réplica.
-      logger.debug(
-        {
-          versionServidor: servidor.versionServidor,
-          fechaHoraUtc: servidor.fechaHoraUtc.toISOString(),
-        },
-        'SQL Server responde',
-      );
-      return 'ok';
+      servidor = await repositorio.health();
     } catch (error) {
       logger.error({ err: error }, 'La base de datos no responde');
       return 'caida';
     }
+    // En debug: el healthcheck de Docker lo llama cada pocos segundos en cada réplica.
+    logger.debug(
+      {
+        versionServidor: servidor.versionServidor,
+        fechaHoraUtc: servidor.fechaHoraUtc.toISOString(),
+      },
+      'SQL Server responde',
+    );
+    return 'ok';
   }
 
   return {
