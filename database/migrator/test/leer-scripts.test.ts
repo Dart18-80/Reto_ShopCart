@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ErrorMigracion } from '../src/errores.ts';
+import { BASE_PRUEBAS } from '../src/conexion.ts';
 import { carpetasPara, leerScripts } from '../src/scripts.ts';
 
 const CARPETAS = carpetasPara('ShopCart');
@@ -115,6 +116,37 @@ describe('leerScripts', () => {
     await escribir('migrations/V001__uno.sql');
 
     expect(nombres(await leerScripts(directorio, CARPETAS))).toEqual(['V001__uno.sql']);
+  });
+
+  it('falla si falta migrations/: el directorio de scripts apunta a otro lado', async () => {
+    await rm(join(directorio, 'migrations'), { recursive: true });
+
+    await expect(leerScripts(directorio, CARPETAS)).rejects.toThrow(
+      /Falta la carpeta migrations\//,
+    );
+  });
+
+  it('nunca incluye database/test/ (SPs de prueba) al migrar la base real', async () => {
+    await mkdir(join(directorio, 'test'));
+    await escribir('test/R__SP_Pruebas_Saltar.sql');
+    await escribir('migrations/V001__uno.sql');
+
+    expect(nombres(await leerScripts(directorio, carpetasPara('ShopCart')))).toEqual([
+      'V001__uno.sql',
+    ]);
+  });
+
+  it('en shopcart_test incluye database/test/ al final, después de las semillas', async () => {
+    await mkdir(join(directorio, 'test'));
+    await escribir('test/R__SP_Pruebas_Saltar.sql');
+    await escribir('seeds/S001__datos.sql');
+    await escribir('migrations/V001__uno.sql');
+
+    expect(nombres(await leerScripts(directorio, carpetasPara(BASE_PRUEBAS)))).toEqual([
+      'V001__uno.sql',
+      'S001__datos.sql',
+      'R__SP_Pruebas_Saltar.sql',
+    ]);
   });
 
   it('si no existe el directorio de scripts falla en lugar de reportar "nada que aplicar"', async () => {

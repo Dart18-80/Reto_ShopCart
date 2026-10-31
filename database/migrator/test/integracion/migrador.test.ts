@@ -120,6 +120,7 @@ describe('permisos de shopcart_app tras migrar los scripts reales (E0-H03, §10)
   });
 
   it('ejecutar el migrador real por segunda vez no aplica nada', async () => {
+    await migrar(configuracion(undefined, true), registro().logger);
     const segunda = registro();
 
     await migrar(configuracion(undefined, false), segunda.logger);

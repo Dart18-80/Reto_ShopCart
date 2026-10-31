@@ -20,13 +20,20 @@ export interface Carpeta {
   tipo: TipoScript;
   carpeta: string;
   patron: RegExp;
+  /** Sin ella, DB_SCRIPTS_DIR apunta a otro lado: se falla en lugar de reportar "nada que aplicar". */
+  obligatoria: boolean;
 }
 
 // A-09: primero la estructura (V), luego la programabilidad que depende de ella (R) y al final los datos (S).
 const CARPETAS: readonly Carpeta[] = [
-  { tipo: 'V', carpeta: 'migrations', patron: /^V(\d{3})__[A-Za-z0-9_]+\.sql$/ },
-  { tipo: 'R', carpeta: 'programmability', patron: /^R__(?:FU|VW|SP|TR)_[A-Za-z0-9_]+\.sql$/ },
-  { tipo: 'S', carpeta: 'seeds', patron: /^S(\d{3})__[A-Za-z0-9_]+\.sql$/ },
+  { tipo: 'V', carpeta: 'migrations', patron: /^V(\d{3})__[A-Za-z0-9_]+\.sql$/, obligatoria: true },
+  {
+    tipo: 'R',
+    carpeta: 'programmability',
+    patron: /^R__(?:FU|VW|SP|TR)_[A-Za-z0-9_]+\.sql$/,
+    obligatoria: false,
+  },
+  { tipo: 'S', carpeta: 'seeds', patron: /^S(\d{3})__[A-Za-z0-9_]+\.sql$/, obligatoria: false },
 ];
 
 // Solo en shopcart_test y al final: SPs que preparan datos de prueba, para que las pruebas no escriban SQL.
@@ -34,6 +41,7 @@ const CARPETA_PRUEBAS: Carpeta = {
   tipo: 'R',
   carpeta: 'test',
   patron: /^R__SP_Pruebas_[A-Za-z0-9_]+\.sql$/,
+  obligatoria: false,
 };
 
 export function carpetasPara(baseDatos: string): readonly Carpeta[] {
@@ -130,12 +138,14 @@ export async function leerScripts(
 
 async function leerCarpeta(
   directorio: string,
-  { tipo, carpeta, patron }: Carpeta,
+  { tipo, carpeta, patron, obligatoria }: Carpeta,
 ): Promise<Script[]> {
   const ruta = join(directorio, carpeta);
-  const archivos = (await listarArchivos(ruta))
-    .filter((archivo) => archivo.endsWith('.sql'))
-    .sort();
+  const encontrados = await listarArchivos(ruta);
+  if (encontrados === undefined && obligatoria) {
+    throw new ErrorMigracion(`Falta la carpeta ${carpeta}/ en ${directorio} (DB_SCRIPTS_DIR).`);
+  }
+  const archivos = (encontrados ?? []).filter((archivo) => archivo.endsWith('.sql')).sort();
 
   const invalidos = archivos.filter((archivo) => !patron.test(archivo));
   if (invalidos.length > 0) {
@@ -161,18 +171,22 @@ async function leerCarpeta(
 
 // Sin la raíz no hay nada que leer: seguir reportaría "la base ya estaba al día" con la ruta equivocada.
 async function verificarDirectorio(directorio: string): Promise<void> {
-  const info = await stat(directorio).catch(() => undefined);
+  const info = await stat(directorio).catch((error: unknown) => {
+    if (codigoDeError(error) === 'ENOENT') return undefined;
+    throw error;
+  });
   if (info?.isDirectory() !== true) {
     throw new ErrorMigracion(`No existe el directorio de scripts: ${directorio} (DB_SCRIPTS_DIR).`);
   }
 }
 
 // git no versiona carpetas vacías: en un clon limpio, una carpeta sin scripts simplemente no existe.
-async function listarArchivos(ruta: string): Promise<string[]> {
+/** undefined si la carpeta no existe. */
+async function listarArchivos(ruta: string): Promise<string[] | undefined> {
   try {
     return await readdir(ruta);
   } catch (error) {
-    if (codigoDeError(error) === 'ENOENT') return [];
+    if (codigoDeError(error) === 'ENOENT') return undefined;
     throw error;
   }
 }
