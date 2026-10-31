@@ -1,5 +1,5 @@
 import express, { type Express } from 'express';
-import { SignJWT } from 'jose';
+import { SignJWT, UnsecuredJWT } from 'jose';
 import { pino } from 'pino';
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
@@ -129,6 +129,84 @@ describe('autorizar (E2-H03, RF-01)', () => {
     const token = await tokens.emitir({ idUsuario: 3, rol: 'Operador' });
 
     const respuesta = await pedirCon(crearAppDePrueba([], ['Operador', 'Administrador']), token);
+
+    expect(respuesta.status).toBe(200);
+  });
+});
+
+describe('casos borde del access token (E2-H03, A-07)', () => {
+  it('un token sin firma (alg none) responde 401', async () => {
+    const sinFirma = new UnsecuredJWT({ rol: 'Administrador' })
+      .setSubject('7')
+      .setJti('jti-de-prueba')
+      .setExpirationTime('15m')
+      .encode();
+
+    expect((await pedirCon(crearAppDePrueba([], ['Administrador']), sinFirma)).status).toBe(401);
+  });
+
+  it('un token firmado con el mismo secreto pero otro algoritmo (HS512) responde 401', async () => {
+    const otroAlgoritmo = await new SignJWT({ rol: 'Cliente' })
+      .setProtectedHeader({ alg: 'HS512' })
+      .setSubject('7')
+      .setJti('jti-de-prueba')
+      .setExpirationTime('15m')
+      .sign(new TextEncoder().encode(SECRETO));
+
+    expect((await pedirCon(crearAppDePrueba(), otroAlgoritmo)).status).toBe(401);
+  });
+
+  it.each([
+    ['sin rol', {}],
+    ['con un rol desconocido', { rol: 'Root' }],
+    ['con el rol en minúsculas', { rol: 'cliente' }],
+  ])('un token %s responde 401', async (_caso, carga) => {
+    expect((await pedirCon(crearAppDePrueba(), await firmar(carga, '15m'))).status).toBe(401);
+  });
+
+  it.each(['0', '-1', 'abc', '7.5', ''])('un token con sub "%s" responde 401', async (sub) => {
+    const token = await new SignJWT({ rol: 'Cliente' })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setSubject(sub)
+      .setJti('jti-de-prueba')
+      .setExpirationTime('15m')
+      .sign(new TextEncoder().encode(SECRETO));
+
+    expect((await pedirCon(crearAppDePrueba(), token)).status).toBe(401);
+  });
+
+  it('un token sin jti responde 401', async () => {
+    const sinJti = await new SignJWT({ rol: 'Cliente' })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setSubject('7')
+      .setExpirationTime('15m')
+      .sign(new TextEncoder().encode(SECRETO));
+
+    expect((await pedirCon(crearAppDePrueba(), sinJti)).status).toBe(401);
+  });
+
+  it.each([
+    ['sin el esquema Bearer', (token: string) => token],
+    ['con el esquema Basic', (token: string) => `Basic ${token}`],
+    ['con Bearer y nada más', () => 'Bearer '],
+    ['con dos tokens', (token: string) => `Bearer ${token} ${token}`],
+    ['con el token alterado', (token: string) => `Bearer ${token}x`],
+  ])('el header Authorization %s responde 401', async (_caso, cabecera) => {
+    const token = await tokens.emitir({ idUsuario: 7, rol: 'Cliente' });
+
+    const respuesta = await request(crearAppDePrueba())
+      .get('/privado')
+      .set('Authorization', cabecera(token));
+
+    expect(respuesta.status).toBe(401);
+  });
+
+  it('acepta el esquema bearer en minúsculas (RFC 7235: no distingue mayúsculas)', async () => {
+    const token = await tokens.emitir({ idUsuario: 7, rol: 'Cliente' });
+
+    const respuesta = await request(crearAppDePrueba())
+      .get('/privado')
+      .set('Authorization', `bearer ${token}`);
 
     expect(respuesta.status).toBe(200);
   });
