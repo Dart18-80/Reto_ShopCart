@@ -18,12 +18,12 @@ afterAll(async () => {
 
 describe('Tablas ledger (E1-H04, M-01)', () => {
   it.each([
-    ['Bitacora', 'UPDATE'],
-    ['Bitacora', 'DELETE'],
-    ['MovimientoKardex', 'UPDATE'],
-    ['MovimientoKardex', 'DELETE'],
-    ['HistorialEstadoPedido', 'UPDATE'],
-    ['HistorialEstadoPedido', 'DELETE'],
+    ['Bitacora', 'Modificar'],
+    ['Bitacora', 'Eliminar'],
+    ['MovimientoKardex', 'Modificar'],
+    ['MovimientoKardex', 'Eliminar'],
+    ['HistorialEstadoPedido', 'Modificar'],
+    ['HistorialEstadoPedido', 'Eliminar'],
   ])('%s rechaza %s', async (tabla, operacion) => {
     const intento = ejecutarSP('SP_Pruebas_ModificarLedger', {
       Tabla: { tipo: sql.VarChar(30), valor: tabla },
