@@ -4,6 +4,10 @@ SET XACT_ABORT ON;
 
 DECLARE @sql NVARCHAR(MAX);
 
+-- Un identificador (el nombre de la base) no puede ir como parámetro en CREATE/ALTER DATABASE: se arma el
+-- texto con QUOTENAME, que lo delimita y escapa. Además @Base ya llegó validado por config.ts como
+-- identificador simple (letras, números y guion bajo); un nombre con inyección se rechaza antes.
+
 IF DB_ID(@Base) IS NULL
 BEGIN
     SET @sql = N'CREATE DATABASE ' + QUOTENAME(@Base) + N';';
