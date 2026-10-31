@@ -5,7 +5,7 @@ import type { Configuracion } from './config.ts';
 import { conectar, LOGIN_MIGRADOR } from './conexion.ts';
 import { leerConsulta } from './consultas.ts';
 import { ErrorMigracion, mensajeDe } from './errores.ts';
-import { planificar, validarIntegridad, type ScriptAplicado } from './plan.ts';
+import { planificar, validarIntegridad, validarOrden, type ScriptAplicado } from './plan.ts';
 import { prepararServidor } from './preparacion.ts';
 import { carpetasPara, leerScripts, type Script } from './scripts.ts';
 
@@ -41,6 +41,7 @@ async function aplicarPendientes(
 ): Promise<void> {
   const aplicados = await leerHistorial(trabajo);
   validarIntegridad(scripts, aplicados);
+  validarOrden(scripts, aplicados);
 
   const pendientes = planificar(scripts, aplicados);
   for (const script of pendientes) {

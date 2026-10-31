@@ -149,6 +149,12 @@ describe('leerScripts', () => {
     ]);
   });
 
+  it('un GO <n> se reporta con el nombre del script', async () => {
+    await escribir('migrations/V001__repetido.sql', 'SELECT 1;\nGO 3\n');
+
+    await expect(leerScripts(directorio, CARPETAS)).rejects.toThrow(/V001__repetido\.sql.*GO <n>/);
+  });
+
   it('si no existe el directorio de scripts falla en lugar de reportar "nada que aplicar"', async () => {
     const inexistente = join(directorio, 'no-existe');
 

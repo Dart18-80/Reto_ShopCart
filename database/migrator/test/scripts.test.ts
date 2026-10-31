@@ -90,6 +90,37 @@ describe('dividirEnLotes', () => {
     ]);
   });
 
+  it('rechaza GO <n> (repetir el lote n veces): no está soportado', () => {
+    expect(() => dividirEnLotes('INSERT INTO dbo.T DEFAULT VALUES;\nGO 5\n')).toThrow(
+      /GO <n>.*línea 2/,
+    );
+  });
+
+  it('un GO 5 dentro de un comentario de bloque no es un separador', () => {
+    const script = '/* GO\nGO 5\n*/\nSELECT 1;';
+
+    expect(dividirEnLotes(script)).toEqual([script]);
+  });
+
+  it.each([
+    ['un identificador entre corchetes', 'SELECT 1 AS [\nGO\n];'],
+    ['un identificador entre comillas dobles', 'SELECT 1 AS "\nGO\n";'],
+    ['un corchete escapado (]])', 'SELECT 1 AS [a]]\nGO\nb];'],
+  ])('no corta en un GO dentro de %s', (_caso, script) => {
+    expect(dividirEnLotes(script)).toEqual([script]);
+  });
+
+  it('un /* dentro de una cadena no abre un comentario', () => {
+    expect(dividirEnLotes("SELECT '/*';\nGO\nSELECT 2;")).toEqual(["SELECT '/*';", 'SELECT 2;']);
+  });
+
+  it('un /* dentro de un comentario de línea no abre un comentario de bloque', () => {
+    expect(dividirEnLotes('SELECT 1; -- nota /*\nGO\nSELECT 2;')).toEqual([
+      'SELECT 1; -- nota /*',
+      'SELECT 2;',
+    ]);
+  });
+
   it('tilde y Unicode no alteran el corte', () => {
     expect(dividirEnLotes("SELECT N'Camión ñandú 🚚';\nGO\nSELECT N'Sololá';")).toEqual([
       "SELECT N'Camión ñandú 🚚';",

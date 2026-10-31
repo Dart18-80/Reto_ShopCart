@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { planificar, validarIntegridad, type ScriptAplicado } from '../src/plan.ts';
+import { planificar, validarIntegridad, validarOrden, type ScriptAplicado } from '../src/plan.ts';
 import { calcularChecksum, type Script, type TipoScript } from '../src/scripts.ts';
 
 function script(nombre: string, tipo: TipoScript, contenido = `-- ${nombre}`): Script {
@@ -120,5 +120,47 @@ describe('planificar', () => {
     const pendientes = planificar(scripts, historial());
 
     expect(pendientes.map((pendiente) => pendiente.tipo)).toEqual(['V', 'R', 'S']);
+  });
+});
+
+describe('validarOrden (A-09)', () => {
+  it('falla si un V### nuevo tiene un número menor que el último aplicado', () => {
+    const scripts = [
+      script('V001__a.sql', 'V'),
+      script('V002__b.sql', 'V'),
+      script('V003__c.sql', 'V'),
+    ];
+
+    expect(() => {
+      validarOrden(scripts, historial(aplicado('V001__a.sql', 'V'), aplicado('V003__c.sql', 'V')));
+    }).toThrow(/V002__b\.sql.*V003__c\.sql/);
+  });
+
+  it('también lo exige a las semillas S###', () => {
+    const scripts = [script('S001__a.sql', 'S'), script('S002__b.sql', 'S')];
+
+    expect(() => {
+      validarOrden(scripts, historial(aplicado('S002__b.sql', 'S')));
+    }).toThrow(/S001__a\.sql/);
+  });
+
+  it('acepta scripts nuevos con número mayor que el último aplicado', () => {
+    const scripts = [
+      script('V001__a.sql', 'V'),
+      script('V002__b.sql', 'V'),
+      script('S001__s.sql', 'S'),
+    ];
+
+    expect(() => {
+      validarOrden(scripts, historial(aplicado('V001__a.sql', 'V')));
+    }).not.toThrow();
+  });
+
+  it('no compara entre tipos: un S001 nuevo no choca con un V009 aplicado', () => {
+    const scripts = [script('V009__a.sql', 'V'), script('S001__s.sql', 'S')];
+
+    expect(() => {
+      validarOrden(scripts, historial(aplicado('V009__a.sql', 'V')));
+    }).not.toThrow();
   });
 });

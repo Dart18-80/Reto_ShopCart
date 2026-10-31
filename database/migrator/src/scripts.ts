@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { readdir, readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { BASE_PRUEBAS } from './conexion.ts';
-import { ErrorMigracion } from './errores.ts';
+import { ErrorMigracion, mensajeDe } from './errores.ts';
 import { leerDependencias, ordenarProgramables } from './orden.ts';
 
 export type TipoScript = 'V' | 'R' | 'S';
@@ -51,6 +51,8 @@ export function carpetasPara(baseDatos: string): readonly Carpeta[] {
 const BOM = String.fromCharCode(0xfeff);
 
 const SEPARADOR_GO = /^[ \t]*GO[ \t]*(?:--.*)?$/i;
+// GO <n> repite el lote n veces (sqlcmd). No se soporta: se rechaza en lugar de aplicar el lote una vez.
+const GO_CON_REPETICIONES = /^[ \t]*GO[ \t]+\d+[ \t]*(?:--.*)?$/i;
 
 // Se normaliza antes del hash para que un checkout con CRLF o un BOM no cuenten como "script modificado".
 export function normalizar(contenido: string): string {
@@ -67,7 +69,10 @@ export function dividirEnLotes(contenido: string): string[] {
   let lineasDelLote: string[] = [];
   let estado: EstadoLexico = { tipo: 'codigo' };
 
-  for (const linea of normalizar(contenido).split('\n')) {
+  for (const [indice, linea] of normalizar(contenido).split('\n').entries()) {
+    if (estado.tipo === 'codigo' && GO_CON_REPETICIONES.test(linea)) {
+      throw new ErrorMigracion(`GO <n> no está soportado (línea ${String(indice + 1)}).`);
+    }
     // Un GO solo separa si la línea empieza fuera de comentarios de bloque, cadenas e identificadores.
     if (estado.tipo === 'codigo' && SEPARADOR_GO.test(linea)) {
       lotes.push(lineasDelLote.join('\n'));
@@ -162,11 +167,19 @@ async function leerCarpeta(
         nombre,
         tipo,
         checksum: calcularChecksum(contenido),
-        lotes: dividirEnLotes(contenido),
+        lotes: lotesDe(nombre, contenido),
         dependencias: tipo === 'R' ? leerDependencias(normalizar(contenido)) : [],
       };
     }),
   );
+}
+
+function lotesDe(nombre: string, contenido: string): string[] {
+  try {
+    return dividirEnLotes(contenido);
+  } catch (error) {
+    throw new ErrorMigracion(`${nombre}: ${mensajeDe(error)}`, { cause: error });
+  }
 }
 
 // Sin la raíz no hay nada que leer: seguir reportaría "la base ya estaba al día" con la ruta equivocada.

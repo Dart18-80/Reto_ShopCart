@@ -49,3 +49,39 @@ export function planificar(scripts: Script[], aplicados: Map<string, ScriptAplic
 function corto(checksum: Buffer): string {
   return checksum.toString('hex').slice(0, 12);
 }
+
+const VERSION = /^[VS](\d{3})__/;
+
+/**
+ * A-09: un V### o S### nuevo con número menor que el último aplicado de su tipo se aplicaría fuera de
+ * orden (por ejemplo, un V002 creado después de aplicar el V003). Se falla para que se renumere.
+ */
+export function validarOrden(scripts: Script[], aplicados: Map<string, ScriptAplicado>): void {
+  const problemas = (['V', 'S'] as const).flatMap((tipo) => fueraDeOrden(scripts, aplicados, tipo));
+  if (problemas.length === 0) return;
+  throw new ErrorMigracion(
+    [
+      'Scripts versionados nuevos con un número menor que el último aplicado:',
+      ...problemas.map((problema) => `  - ${problema}`),
+      'Renuméralos con un número mayor que el último aplicado.',
+    ].join('\n'),
+  );
+}
+
+function fueraDeOrden(
+  scripts: Script[],
+  aplicados: Map<string, ScriptAplicado>,
+  tipo: 'V' | 'S',
+): string[] {
+  const delTipo = scripts.filter((script) => script.tipo === tipo);
+  const ultimoAplicado = delTipo.filter((script) => aplicados.has(script.nombre)).at(-1);
+  if (ultimoAplicado === undefined) return [];
+  const limite = version(ultimoAplicado.nombre);
+  return delTipo
+    .filter((script) => !aplicados.has(script.nombre) && version(script.nombre) < limite)
+    .map((script) => `${script.nombre} es anterior a ${ultimoAplicado.nombre}, que ya se aplicó.`);
+}
+
+function version(nombre: string): number {
+  return Number(VERSION.exec(nombre)?.[1] ?? Number.NaN);
+}
