@@ -36,6 +36,7 @@ function preparar() {
     crearValorAtributo: vi.fn(() =>
       Promise.resolve({ idValorAtributo: 9, idAtributo: 2, valor: 'M', orden: 1 }),
     ),
+    buscarProductos: vi.fn(() => Promise.resolve({ productos: [], total: 0 })),
     listarProductosAdmin: vi.fn(() => Promise.resolve({ productos: [], total: 0 })),
     obtenerProductoAdmin: vi.fn((): Promise<ProductoAdmin | null> => Promise.resolve(null)),
     obtenerProductoTienda: vi.fn((): Promise<ProductoTienda | null> => Promise.resolve(null)),
@@ -140,5 +141,28 @@ describe('catalogo.service: precios (E3-H04, N-02)', () => {
     await servicio.cambiarPrecio(3, { precio });
 
     expect(repositorio.cambiarPrecio).toHaveBeenCalledWith(3, { precio });
+  });
+});
+
+describe('catalogo.service: búsqueda (E3-H05)', () => {
+  it('pasa los filtros tal como llegaron y responde con la paginación estándar', async () => {
+    const { servicio, repositorio } = preparar();
+    repositorio.buscarProductos.mockResolvedValueOnce({ productos: [], total: 5 });
+    const filtros = {
+      pagina: 1,
+      tamano: 2,
+      texto: 'camion',
+      idCategoria: null,
+      precioMin: null,
+      precioMax: null,
+      disponible: true,
+      orden: 'precio' as const,
+      direccion: 'desc' as const,
+    };
+
+    const respuesta = await servicio.buscarProductos(filtros);
+
+    expect(repositorio.buscarProductos).toHaveBeenCalledWith(filtros);
+    expect(respuesta.paginacion).toEqual({ pagina: 1, tamano: 2, total: 5, totalPaginas: 3 });
   });
 });

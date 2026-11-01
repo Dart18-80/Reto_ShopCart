@@ -1,9 +1,10 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import sql from 'mssql';
 import { pino, type Logger } from 'pino';
 import { describe, expect, it } from 'vitest';
 import { leerConfiguracion, type Configuracion } from '../../src/config.ts';
-import { conectar, LOGIN_APP } from '../../src/conexion.ts';
+import { conectar, LOGIN_APP, LOGIN_MIGRADOR } from '../../src/conexion.ts';
 import { ErrorMigracion } from '../../src/errores.ts';
 import { migrar } from '../../src/migrador.ts';
 
@@ -39,6 +40,9 @@ function configuracion(escenario: string | undefined, recrearBase: boolean): Con
       escenario === undefined ? base.directorioScripts : resolve(ESCENARIOS, escenario),
   };
 }
+
+const consulta = (archivo: string) =>
+  readFile(resolve(import.meta.dirname, 'consultas', archivo), 'utf8');
 
 function aplicadosEn(lineas: LineaLog[]): number | undefined {
   return lineas.find((linea) => linea.aplicados !== undefined)?.aplicados;
@@ -116,6 +120,59 @@ describe('permisos de shopcart_app tras migrar los scripts reales (E0-H03, §10)
       await expect(lectura).rejects.toMatchObject({ number: ERROR_PERMISO_DENEGADO });
     } finally {
       await app.close();
+    }
+  });
+
+  it('A-23: shopcart_app no lee la vista de la tienda, pero la búsqueda funciona llamada por shopcart_app', async () => {
+    const config = configuracion(undefined, true);
+    await migrar(config, registro().logger);
+    const app = await conectar(
+      config,
+      { usuario: LOGIN_APP, contrasena: config.contrasenaApp },
+      config.baseDatos,
+    );
+    try {
+      await expect(
+        app.request().query(await consulta('leer-vista-directo.sql')),
+      ).rejects.toMatchObject({ number: ERROR_PERMISO_DENEGADO });
+      const busqueda = await app
+        .request()
+        .input('Texto', sql.NVarChar(150), null)
+        .input('IDCategoria', sql.Int, null)
+        .input('PrecioMin', sql.Decimal(12, 2), null)
+        .input('PrecioMax', sql.Decimal(12, 2), null)
+        .input('Disponible', sql.Bit, null)
+        .input('Orden', sql.VarChar(20), 'precio')
+        .input('Direccion', sql.VarChar(4), 'asc')
+        .input('Pagina', sql.Int, 1)
+        .input('Tamano', sql.Int, 5)
+        .execute('SP_Catalogo_BuscarProductos');
+
+      expect(busqueda.recordset).toHaveLength(5);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('A-23: shopcart_busqueda lee la vista de la tienda y nada más: ninguna tabla, Usuario incluida', async () => {
+    const config = configuracion(undefined, true);
+    await migrar(config, registro().logger);
+    const migrador = await conectar(
+      config,
+      { usuario: LOGIN_MIGRADOR, contrasena: config.contrasenaMigrador },
+      config.baseDatos,
+    );
+    try {
+      const vista = await migrador.request().query(await consulta('busqueda-lee-vista.sql'));
+
+      expect(vista.recordset).toHaveLength(1);
+      for (const tabla of ['busqueda-lee-usuario.sql', 'busqueda-lee-producto.sql']) {
+        await expect(migrador.request().query(await consulta(tabla))).rejects.toMatchObject({
+          number: ERROR_PERMISO_DENEGADO,
+        });
+      }
+    } finally {
+      await migrador.close();
     }
   });
 

@@ -23,9 +23,11 @@ import type {
   Categoria,
   CategoriaPublica,
   EstadoExistencia,
+  FiltrosBusqueda,
   FiltrosProductos,
   ImagenProducto,
   ProductoAdmin,
+  ProductoBusqueda,
   ProductoResumen,
   ProductoTienda,
   ValorAtributoCreado,
@@ -254,6 +256,17 @@ async function productoAdminEscrito(
   return producto;
 }
 
+interface FilaProductoBusqueda {
+  IDProducto: number;
+  Nombre: string;
+  IDCategoria: number;
+  Categoria: string;
+  PrecioMinimo: number;
+  TieneDisponible: boolean;
+  ImagenPrincipal: string | null;
+  TotalFilas: number;
+}
+
 interface FilaVersionPrecio {
   IDPrecioVariante: number;
   Precio: number;
@@ -346,6 +359,32 @@ export const catalogoRepository = {
       valor: fila.Valor,
       orden: fila.Orden,
     };
+  },
+
+  async buscarProductos(
+    filtros: FiltrosBusqueda,
+  ): Promise<{ productos: ProductoBusqueda[]; total: number }> {
+    const filas = await ejecutarSP<FilaProductoBusqueda>('SP_Catalogo_BuscarProductos', {
+      Texto: { tipo: sql.NVarChar(150), valor: filtros.texto },
+      IDCategoria: { tipo: sql.Int, valor: filtros.idCategoria },
+      PrecioMin: { tipo: sql.Decimal(12, 2), valor: filtros.precioMin },
+      PrecioMax: { tipo: sql.Decimal(12, 2), valor: filtros.precioMax },
+      Disponible: { tipo: sql.Bit, valor: filtros.disponible },
+      Orden: { tipo: sql.VarChar(20), valor: filtros.orden },
+      Direccion: { tipo: sql.VarChar(4), valor: filtros.direccion },
+      Pagina: { tipo: sql.Int, valor: filtros.pagina },
+      Tamano: { tipo: sql.Int, valor: filtros.tamano },
+    });
+    const productos = filas.map((fila): ProductoBusqueda => ({
+      idProducto: fila.IDProducto,
+      nombre: fila.Nombre,
+      idCategoria: fila.IDCategoria,
+      categoria: fila.Categoria,
+      precioMinimo: aMonto(fila.PrecioMinimo),
+      disponible: fila.TieneDisponible,
+      imagenPrincipal: fila.ImagenPrincipal,
+    }));
+    return { productos, total: filas[0]?.TotalFilas ?? 0 };
   },
 
   async listarProductosAdmin(

@@ -5,6 +5,7 @@ import {
   actualizarCategoriaSchema,
   actualizarProductoSchema,
   actualizarVarianteSchema,
+  buscarProductosSchema,
   cambiarPrecioSchema,
   crearAtributoSchema,
   crearCategoriaSchema,
@@ -19,7 +20,12 @@ import {
   paramsIdVarianteSchema,
 } from './catalogo.schemas.js';
 import type { CatalogoService } from './catalogo.service.js';
-import type { ProductoAdmin, ProductoTienda, VersionPrecio } from './catalogo.types.js';
+import type {
+  ProductoAdmin,
+  ProductoBusqueda,
+  ProductoTienda,
+  VersionPrecio,
+} from './catalogo.types.js';
 
 const HTTP_CREADO = 201;
 const HTTP_SIN_CONTENIDO = 204;
@@ -43,6 +49,11 @@ const productoTiendaJson = (producto: ProductoTienda) => ({
   })),
 });
 
+const busquedaJson = (producto: ProductoBusqueda) => ({
+  ...producto,
+  precioMinimo: montoATexto(producto.precioMinimo),
+});
+
 const versionesJson = (versiones: VersionPrecio[]) =>
   versiones.map((version) => ({ ...version, precio: montoATexto(version.precio) }));
 
@@ -56,6 +67,7 @@ export interface CatalogoController {
   listarAtributos: RequestHandler;
   crearAtributo: RequestHandler;
   crearValorAtributo: RequestHandler;
+  buscarProductos: RequestHandler;
   obtenerProductoTienda: RequestHandler;
   listarProductosAdmin: RequestHandler;
   obtenerProductoAdmin: RequestHandler;
@@ -118,6 +130,21 @@ export function crearCatalogoController(servicio: CatalogoService): CatalogoCont
         res.status(HTTP_CREADO).json({ datos: await servicio.crearValorAtributo(params.id, body) });
       },
     ),
+
+    buscarProductos: manejar({ query: buscarProductosSchema }, async ({ query }, res) => {
+      const { datos, paginacion } = await servicio.buscarProductos({
+        pagina: query.pagina,
+        tamano: query.tamano,
+        texto: query.texto ?? null,
+        idCategoria: query.categoria ?? null,
+        precioMin: query.precioMin ?? null,
+        precioMax: query.precioMax ?? null,
+        disponible: query.disponible ?? null,
+        orden: query.orden,
+        direccion: query.direccion,
+      });
+      res.json({ datos: datos.map(busquedaJson), paginacion });
+    }),
 
     obtenerProductoTienda: manejar({ params: paramsIdProductoSchema }, async ({ params }, res) => {
       res.json({ datos: productoTiendaJson(await servicio.obtenerProductoTienda(params.id)) });

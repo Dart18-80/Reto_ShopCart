@@ -8,6 +8,7 @@ import {
   actualizarProductoSchema,
   actualizarVarianteSchema,
   atributoSchema,
+  buscarProductosSchema,
   cambiarPrecioSchema,
   categoriaPublicaSchema,
   categoriaSchema,
@@ -23,6 +24,7 @@ import {
   paramsIdProductoSchema,
   paramsIdVarianteSchema,
   productoAdminSchema,
+  productoBusquedaSchema,
   productoResumenSchema,
   productoTiendaSchema,
   valorAtributoCreadoSchema,
@@ -84,6 +86,26 @@ registroOpenApi.registerPath({
   tags: ['Catálogo'],
   summary: 'Categorías activas de la tienda (público)',
   responses: { 200: datos('Categorías', z.array(categoriaPublicaSchema)) },
+});
+const paginacionSchema = z.object({
+  pagina: z.number().int(),
+  tamano: z.number().int(),
+  total: z.number().int(),
+  totalPaginas: z.number().int(),
+});
+const listado = (descripcion: string, schema: z.ZodType) => ({
+  description: descripcion,
+  ...json(z.object({ datos: z.array(schema), paginacion: paginacionSchema })),
+});
+
+registroOpenApi.registerPath({
+  method: 'get',
+  path: `${V1}/productos`,
+  tags: ['Catálogo'],
+  summary:
+    'Búsqueda de la tienda (público): texto sin tildes ni mayúsculas, categoría, precio, disponibilidad, orden de lista blanca y paginación',
+  request: { query: buscarProductosSchema },
+  responses: { 200: listado('Productos', productoBusquedaSchema), ...respuestasError(400) },
 });
 registroOpenApi.registerPath({
   method: 'get',
@@ -175,23 +197,7 @@ registrarAdmin({
   ruta: '/productos',
   resumen: 'Productos paginados, activos o no, con filtros de categoría, estado y texto',
   query: listarProductosSchema,
-  exito: [
-    200,
-    {
-      description: 'Productos',
-      ...json(
-        z.object({
-          datos: z.array(productoResumenSchema),
-          paginacion: z.object({
-            pagina: z.number().int(),
-            tamano: z.number().int(),
-            total: z.number().int(),
-            totalPaginas: z.number().int(),
-          }),
-        }),
-      ),
-    },
-  ],
+  exito: [200, listado('Productos', productoResumenSchema)],
   errores: [400],
 });
 registrarAdmin({
@@ -332,6 +338,7 @@ export function crearCatalogoRouter(
 
   // Públicas: la tienda muestra categorías y productos a cualquier visitante (RF-02).
   router.get('/categorias', controller.listarCategorias);
+  router.get('/productos', controller.buscarProductos);
   router.get('/productos/:id', controller.obtenerProductoTienda);
 
   router.post('/admin/categorias', ...soloAdmin, controller.crearCategoria);

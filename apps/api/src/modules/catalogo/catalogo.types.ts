@@ -108,6 +108,32 @@ export interface VersionPrecio {
   usuario: { idUsuario: number; nombre: string };
 }
 
+export const ORDENES_BUSQUEDA = ['relevancia', 'precio', 'nombre', 'recientes'] as const;
+export const DIRECCIONES_ORDEN = ['asc', 'desc'] as const;
+
+export interface FiltrosBusqueda {
+  pagina: number;
+  tamano: number;
+  texto: string | null;
+  idCategoria: number | null;
+  precioMin: Decimal | null;
+  precioMax: Decimal | null;
+  disponible: boolean | null;
+  orden: (typeof ORDENES_BUSQUEDA)[number];
+  direccion: (typeof DIRECCIONES_ORDEN)[number];
+}
+
+/** Un producto en los resultados de la tienda: sin existencia, solo si hay disponible (N-06). */
+export interface ProductoBusqueda {
+  idProducto: number;
+  nombre: string;
+  idCategoria: number;
+  categoria: string;
+  precioMinimo: Decimal;
+  disponible: boolean;
+  imagenPrincipal: string | null;
+}
+
 export interface FiltrosProductos {
   pagina: number;
   tamano: number;

@@ -1,6 +1,6 @@
 -- E3-H03: listado paginado de productos para el Admin, activos o no, con filtros opcionales de categoría,
 -- estado y texto (sin mayúsculas ni tildes, A-10). El texto del usuario se busca literal: sus comodines de
--- LIKE (%, _ y [) se escapan y el patrón se aplica con ESCAPE, como parámetro, nunca como SQL.
+-- LIKE se escapan (FU_Catalogo_PatronBusqueda) y el patrón se aplica con ESCAPE, como parámetro.
 CREATE OR ALTER PROCEDURE dbo.SP_Catalogo_ListarProductosAdmin
     @Pagina         INT,
     @Tamano         INT,
@@ -17,8 +17,7 @@ BEGIN
     IF @Pagina < 1 OR @Tamano NOT BETWEEN 1 AND 100
         THROW 50003, N'Los parámetros de paginación no son válidos.', 1;
 
-    DECLARE @Patron NVARCHAR(400) =
-        N'%' + REPLACE(REPLACE(REPLACE(REPLACE(@Texto, N'\', N'\\'), N'%', N'\%'), N'_', N'\_'), N'[', N'\[') + N'%';
+    DECLARE @Patron NVARCHAR(400) = (SELECT f.Contiene FROM dbo.FU_Catalogo_PatronBusqueda(@Texto) AS f);
 
     SELECT p.IDProducto, p.Nombre, p.IDCategoria, c.Nombre AS Categoria, p.Activo,
            (SELECT COUNT(*) FROM dbo.Variante AS v WHERE v.IDProducto = p.IDProducto) AS Variantes,

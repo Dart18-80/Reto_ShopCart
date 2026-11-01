@@ -268,9 +268,12 @@ describe('GET de administración (E3-H03)', () => {
     ]);
   });
 
-  it('un texto con comodines de LIKE se busca literal: "%" no trae todo', async () => {
+  it('un texto con comodines de LIKE se busca literal: "%<marca>" no trae los productos de la marca', async () => {
+    const marca = sufijo();
+    await crearProducto(app, token, await crearCategoria(app, token), { nombre: `Gorra ${marca}` });
+
     const respuesta = await request(app)
-      .get(`${ADMIN}?texto=${encodeURIComponent('%')}`)
+      .get(`${ADMIN}?texto=${encodeURIComponent(`%${marca}`)}`)
       .set(conAdmin());
 
     expect(z.object({ datos: z.array(z.unknown()) }).parse(respuesta.body).datos).toEqual([]);

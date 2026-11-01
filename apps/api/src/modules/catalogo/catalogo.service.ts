@@ -17,8 +17,10 @@ import type {
   Atributo,
   Categoria,
   CategoriaPublica,
+  FiltrosBusqueda,
   FiltrosProductos,
   ProductoAdmin,
+  ProductoBusqueda,
   ProductoResumen,
   ProductoTienda,
   ValorAtributoCreado,
@@ -62,6 +64,12 @@ export function crearCatalogoService({ repositorio }: Dependencias) {
       idAtributo: number,
       datos: CrearValorAtributo,
     ): Promise<ValorAtributoCreado> => repositorio.crearValorAtributo(idAtributo, datos),
+
+    // RF-02, A-10: búsqueda pública; el SP valida el orden contra su lista blanca.
+    async buscarProductos(filtros: FiltrosBusqueda): Promise<RespuestaPaginada<ProductoBusqueda>> {
+      const { productos, total } = await repositorio.buscarProductos(filtros);
+      return paginar(productos, total, filtros);
+    },
 
     async listarProductosAdmin(
       filtros: FiltrosProductos,

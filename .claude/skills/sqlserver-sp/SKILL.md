@@ -422,6 +422,21 @@ EXEC sys.sp_executesql @Sql,
      @Orden = @Orden, @Direccion = @Direccion, @Pagina = @Pagina, @Tamano = @Tamano;
 ```
 
+**Permisos del SQL dinámico (A-23):** `sp_executesql` corre con los permisos de quien llama, y
+`shopcart_app` tiene `DENY SELECT`. El SP se declara `WITH EXECUTE AS '<usuario>'` con un usuario
+`WITHOUT LOGIN` creado en una migración `V###`, cuyo único permiso es `SELECT` sobre la vista que lee el SQL
+dinámico (otorgado al final del `R__` de esa vista). El SQL dinámico solo lee esa vista: lo que necesite una
+función se calcula antes, fuera de él, y entra como parámetro. Nunca `EXECUTE AS OWNER`, `TRUSTWORTHY` ni
+permisos sobre tablas.
+
+```sql
+CREATE OR ALTER PROCEDURE dbo.SP_Catalogo_BuscarProductos
+    @Texto NVARCHAR(150), /* … */
+    @IDUsuarioActor INT = NULL, @RolActor VARCHAR(20) = NULL, @RequestId UNIQUEIDENTIFIER = NULL
+WITH EXECUTE AS 'shopcart_busqueda'
+AS
+```
+
 **Prohibido:** `EXEC(@Sql)`, `EXEC (N'...' + @Valor)` y cualquier `+ @Parametro +` fuera de un literal que solo referencia al parámetro.
 
 **Única excepción documentada:** `CREATE LOGIN ... WITH PASSWORD` no acepta parámetros. Solo en el script de arranque del migrador (`preparar-servidor.sql`), la contraseña que viene de `.env` se concatena con `QUOTENAME(@Contrasena, '''')` validando antes que no supere 128 caracteres. Esta excepción **nunca** se usa en SPs ni en ningún otro script.

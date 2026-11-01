@@ -2,13 +2,15 @@ import { montoSchema, textoNvarchar } from '@shopcart/shared';
 import { Decimal } from 'decimal.js';
 import { consultaPaginacionSchema, idEnRutaSchema, idSchema } from '../../shared/http/index.js';
 import { z } from '../../shared/openapi/zod.js';
-import { ESTADOS_EXISTENCIA } from './catalogo.types.js';
+import { DIRECCIONES_ORDEN, ESTADOS_EXISTENCIA, ORDENES_BUSQUEDA } from './catalogo.types.js';
 
 const alMenosUnCampo = (cambios: object) => Object.keys(cambios).length > 0;
 const MENSAJE_SIN_CAMPOS = 'Indica al menos un campo.';
 
 // Orden de despliegue: SMALLINT en la tabla. Sin orden, el SP lo pone después del último.
 const ordenSchema = z.number().int().min(0).max(32_767);
+
+const booleanoConsultaSchema = z.enum(['true', 'false']).transform((valor) => valor === 'true');
 
 // --- Categorías (E3-H01). Largos de la tabla y los SPs: Nombre NVARCHAR(80), Descripcion NVARCHAR(300).
 
@@ -97,10 +99,7 @@ export const paramsIdProductoSchema = z.object({ id: idEnRutaSchema });
 
 export const listarProductosSchema = consultaPaginacionSchema.extend({
   idCategoria: idEnRutaSchema.optional(),
-  activo: z
-    .enum(['true', 'false'])
-    .transform((valor) => valor === 'true')
-    .optional(),
+  activo: booleanoConsultaSchema.optional(),
   texto: textoNvarchar(150).optional(),
 });
 
@@ -164,6 +163,48 @@ export const actualizarVarianteSchema = z
   .openapi('ActualizarVariante');
 
 export const paramsIdVarianteSchema = z.object({ id: idEnRutaSchema });
+
+// --- Búsqueda (E3-H05). El orden sale de una lista blanca; el SP la vuelve a validar.
+
+const montoFiltroSchema = montoSchema.transform((monto) => new Decimal(monto));
+export const buscarProductosSchema = consultaPaginacionSchema
+  .extend({
+    texto: textoNvarchar(150).optional(),
+    categoria: idEnRutaSchema.optional(),
+    precioMin: montoFiltroSchema.optional(),
+    precioMax: montoFiltroSchema.optional(),
+    disponible: booleanoConsultaSchema.optional(),
+    orden: z
+      .enum(ORDENES_BUSQUEDA)
+      .default('relevancia')
+      .openapi({
+        description:
+          'relevancia (por defecto): primero lo que empieza con el texto; sin texto equivale a nombre ' +
+          'ascendente. precio: el menor precio vigente entre las variantes activas. nombre. recientes. ' +
+          'Todo orden termina con idProducto, así la paginación no repite ni pierde productos.',
+      }),
+    direccion: z
+      .enum(DIRECCIONES_ORDEN)
+      .default('asc')
+      .openapi({ description: 'asc (por defecto) o desc; no aplica a relevancia.' }),
+  })
+  .refine(
+    ({ precioMin, precioMax }) =>
+      precioMin === undefined || precioMax === undefined || precioMin.lte(precioMax),
+    { message: 'El precio mínimo no puede ser mayor que el máximo.', path: ['precioMin'] },
+  );
+
+export const productoBusquedaSchema = z
+  .object({
+    idProducto: z.number().int(),
+    nombre: z.string(),
+    idCategoria: z.number().int(),
+    categoria: z.string(),
+    precioMinimo: montoSchema,
+    disponible: z.boolean(),
+    imagenPrincipal: z.string().nullable(),
+  })
+  .openapi('ProductoBusqueda');
 
 // --- Precios (E3-H04).
 
