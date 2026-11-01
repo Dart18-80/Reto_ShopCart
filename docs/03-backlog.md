@@ -627,7 +627,7 @@ Se detalla en historias al cerrar la Fase 1.
 | E3-H03 | Productos, imágenes y variantes | Must | 1.0 | En revisión |
 | E3-H04 | Precios versionados | Must | 0.5 | En revisión |
 | E3-H05 | Búsqueda y filtros del catálogo | Must | 0.75 | En revisión |
-| E3-H06 | Inventario y kardex | Must | 0.75 | Lista |
+| E3-H06 | Inventario y kardex | Must | 0.75 | En revisión |
 | E4-H01 | Carrito de invitado y de cliente | Must | 0.75 | Propuesta |
 | E4-H02 | Garantía de precio de 3 días | Must | 0.5 | Propuesta |
 | E4-H03 | Fusión del carrito al iniciar sesión o registrarse | Must | 0.25 | Propuesta |

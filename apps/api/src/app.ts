@@ -6,6 +6,7 @@ import swaggerUi from 'swagger-ui-express';
 import { crearModuloAuth, crearSesiones, type LimitadoresAuth } from './modules/auth/index.js';
 import { crearModuloCatalogo } from './modules/catalogo/index.js';
 import { crearModuloDirecciones } from './modules/direcciones/index.js';
+import { crearModuloInventario } from './modules/inventario/index.js';
 import { crearModuloSistema, type VerificadorRedis } from './modules/sistema/index.js';
 import { crearModuloUsuarios } from './modules/usuarios/index.js';
 import { manejadorErrores, rutaNoEncontrada } from './shared/errors/index.js';
@@ -88,6 +89,7 @@ export function crearApp({
   );
   v1.use(crearModuloDirecciones({ autenticar }));
   v1.use(crearModuloCatalogo({ autenticar }));
+  v1.use('/inventario', crearModuloInventario({ autenticar }));
   app.use('/api/v1', v1);
 
   // Después de montar todas las rutas, para que el documento las incluya.
