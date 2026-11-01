@@ -39,19 +39,20 @@ BEGIN
     SELECT @Contiene = f.Contiene, @EmpiezaCon = f.EmpiezaCon
     FROM   dbo.FU_Catalogo_PatronBusqueda(@Texto) AS f;
 
-    DECLARE @Sql NVARCHAR(MAX) = N'
-SELECT p.IDProducto, p.Nombre, p.IDCategoria, p.Categoria, p.PrecioMinimo, p.TieneDisponible,
-       p.ImagenPrincipal, COUNT(*) OVER () AS TotalFilas
+    DECLARE @Filtro NVARCHAR(MAX) = N'
 FROM   dbo.VW_Catalogo_ProductosTienda AS p
 WHERE  1 = 1';
 
-    IF @Texto       IS NOT NULL SET @Sql += N' AND p.NombreBusqueda LIKE @Contiene ESCAPE N''\''';
-    IF @IDCategoria IS NOT NULL SET @Sql += N' AND p.IDCategoria = @IDCategoria';
-    IF @PrecioMin   IS NOT NULL SET @Sql += N' AND p.PrecioMinimo >= @PrecioMin';
-    IF @PrecioMax   IS NOT NULL SET @Sql += N' AND p.PrecioMinimo <= @PrecioMax';
-    IF @Disponible  IS NOT NULL SET @Sql += N' AND p.TieneDisponible = @Disponible';
+    IF @Texto       IS NOT NULL SET @Filtro += N' AND p.NombreBusqueda LIKE @Contiene ESCAPE N''\''';
+    IF @IDCategoria IS NOT NULL SET @Filtro += N' AND p.IDCategoria = @IDCategoria';
+    IF @PrecioMin   IS NOT NULL SET @Filtro += N' AND p.PrecioMinimo >= @PrecioMin';
+    IF @PrecioMax   IS NOT NULL SET @Filtro += N' AND p.PrecioMinimo <= @PrecioMax';
+    IF @Disponible  IS NOT NULL SET @Filtro += N' AND p.TieneDisponible = @Disponible';
 
-    SET @Sql += N'
+    -- sqlserver-sp §5: dos conjuntos, la página y el total del filtro (real aunque la página esté vacía).
+    DECLARE @Sql NVARCHAR(MAX) = N'
+SELECT p.IDProducto, p.Nombre, p.IDCategoria, p.Categoria, p.PrecioMinimo, p.TieneDisponible,
+       p.ImagenPrincipal' + @Filtro + N'
 ORDER BY
     CASE WHEN @Orden = ''relevancia'' AND @EmpiezaCon IS NOT NULL
          THEN CASE WHEN p.NombreBusqueda LIKE @EmpiezaCon ESCAPE N''\'' THEN 0 ELSE 1 END END,
@@ -62,7 +63,8 @@ ORDER BY
     CASE WHEN @Orden = ''nombre''    AND @Direccion = ''desc'' THEN p.Nombre END DESC,
     p.Nombre,
     p.IDProducto
-OFFSET (@Pagina - 1) * @Tamano ROWS FETCH NEXT @Tamano ROWS ONLY;';
+OFFSET (@Pagina - 1) * @Tamano ROWS FETCH NEXT @Tamano ROWS ONLY;
+SELECT COUNT(*) AS Total' + @Filtro + N';';
 
     EXEC sys.sp_executesql @Sql,
          N'@Contiene NVARCHAR(400), @EmpiezaCon NVARCHAR(400), @IDCategoria INT, @PrecioMin DECIMAL(12,2),

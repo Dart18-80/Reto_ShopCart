@@ -86,21 +86,31 @@ BEGIN
     IF @Pagina < 1 OR @Tamano NOT BETWEEN 1 AND 100
         THROW 50003, N'Los parámetros de paginación no son válidos.', 1;
 
+    -- Conjunto 1: la página.
     SELECT  p.IDPedido,
             p.NumeroPedido,
             e.Codigo        AS Estado,
             p.Total,
-            p.FechaPago,
-            COUNT(*) OVER () AS TotalFilas        -- total del filtro, antes de paginar
+            p.FechaPago
     FROM    dbo.Pedido       AS p
     JOIN    dbo.EstadoPedido AS e ON e.IDEstadoPedido = p.IDEstadoPedido
     WHERE   p.IDUsuario = @IDUsuarioActor        -- RF-01: solo lo propio
     ORDER BY p.FechaPago DESC, p.IDPedido DESC   -- siempre un desempate único
     OFFSET (@Pagina - 1) * @Tamano ROWS
     FETCH NEXT @Tamano ROWS ONLY;
+
+    -- Conjunto 2: el total del filtro, con los mismos filtros.
+    SELECT COUNT(*) AS Total
+    FROM   dbo.Pedido AS p
+    WHERE  p.IDUsuario = @IDUsuarioActor;
 END
 GO
 ```
+
+- **El total va en su propio conjunto**, nunca como `COUNT(*) OVER ()` en la página: si la página pedida
+  queda vacía (una página posterior a la última), `COUNT(*) OVER ()` no devuelve filas y el total se
+  perdería. En la API, `ejecutarSPPaginado` lee los dos conjuntos.
+- En SQL dinámico, el `FROM` y el `WHERE` se arman una vez y los usan las dos consultas.
 
 - Nunca `SELECT *`: lista las columnas.
 - **Nunca `WITH (NOLOCK)`**: la base usa `READ_COMMITTED_SNAPSHOT`, así que las lecturas no se bloquean y no hace falta leer datos sin confirmar.
@@ -397,7 +407,7 @@ IF @Orden NOT IN (N'relevancia', N'precio', N'nombre', N'recientes')
 SET @Texto = REPLACE(REPLACE(REPLACE(@Texto, N'[', N'[[]'), N'%', N'[%]'), N'_', N'[_]');
 
 DECLARE @Sql NVARCHAR(MAX) = N'
-SELECT p.IDProducto, p.Nombre, p.PrecioMinimo, COUNT(*) OVER () AS TotalFilas
+SELECT p.IDProducto, p.Nombre, p.PrecioMinimo
 FROM   dbo.VW_Catalogo_ProductosTienda AS p
 WHERE  1 = 1';
 

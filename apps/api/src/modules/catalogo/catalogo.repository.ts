@@ -2,6 +2,7 @@ import sql from 'mssql';
 import {
   ejecutarSP,
   ejecutarSPConjuntos,
+  ejecutarSPPaginado,
   type NombreSP,
   type ParametrosSP,
 } from '../../shared/db/index.js';
@@ -171,7 +172,6 @@ interface FilaProductoResumen {
   Activo: boolean;
   Variantes: number;
   VariantesActivas: number;
-  TotalFilas: number;
 }
 
 const aImagen = (fila: FilaImagen): ImagenProducto => ({
@@ -271,7 +271,6 @@ interface FilaProductoBusqueda {
   PrecioMinimo: number;
   TieneDisponible: boolean;
   ImagenPrincipal: string | null;
-  TotalFilas: number;
 }
 
 interface FilaVersionPrecio {
@@ -371,17 +370,20 @@ export const catalogoRepository = {
   async buscarProductos(
     filtros: FiltrosBusqueda,
   ): Promise<{ productos: ProductoBusqueda[]; total: number }> {
-    const filas = await ejecutarSP<FilaProductoBusqueda>('SP_Catalogo_BuscarProductos', {
-      Texto: { tipo: sql.NVarChar(150), valor: filtros.texto },
-      IDCategoria: { tipo: sql.Int, valor: filtros.idCategoria },
-      PrecioMin: { tipo: sql.Decimal(12, 2), valor: filtros.precioMin },
-      PrecioMax: { tipo: sql.Decimal(12, 2), valor: filtros.precioMax },
-      Disponible: { tipo: sql.Bit, valor: filtros.disponible },
-      Orden: { tipo: sql.VarChar(20), valor: filtros.orden },
-      Direccion: { tipo: sql.VarChar(4), valor: filtros.direccion },
-      Pagina: { tipo: sql.Int, valor: filtros.pagina },
-      Tamano: { tipo: sql.Int, valor: filtros.tamano },
-    });
+    const { filas, total } = await ejecutarSPPaginado<FilaProductoBusqueda>(
+      'SP_Catalogo_BuscarProductos',
+      {
+        Texto: { tipo: sql.NVarChar(150), valor: filtros.texto },
+        IDCategoria: { tipo: sql.Int, valor: filtros.idCategoria },
+        PrecioMin: { tipo: sql.Decimal(12, 2), valor: filtros.precioMin },
+        PrecioMax: { tipo: sql.Decimal(12, 2), valor: filtros.precioMax },
+        Disponible: { tipo: sql.Bit, valor: filtros.disponible },
+        Orden: { tipo: sql.VarChar(20), valor: filtros.orden },
+        Direccion: { tipo: sql.VarChar(4), valor: filtros.direccion },
+        Pagina: { tipo: sql.Int, valor: filtros.pagina },
+        Tamano: { tipo: sql.Int, valor: filtros.tamano },
+      },
+    );
     const productos = filas.map((fila): ProductoBusqueda => ({
       idProducto: fila.IDProducto,
       nombre: fila.Nombre,
@@ -391,19 +393,22 @@ export const catalogoRepository = {
       disponible: fila.TieneDisponible,
       imagenPrincipal: fila.ImagenPrincipal,
     }));
-    return { productos, total: filas[0]?.TotalFilas ?? 0 };
+    return { productos, total };
   },
 
   async listarProductosAdmin(
     filtros: FiltrosProductos,
   ): Promise<{ productos: ProductoResumen[]; total: number }> {
-    const filas = await ejecutarSP<FilaProductoResumen>('SP_Catalogo_ListarProductosAdmin', {
-      Pagina: { tipo: sql.Int, valor: filtros.pagina },
-      Tamano: { tipo: sql.Int, valor: filtros.tamano },
-      IDCategoria: { tipo: sql.Int, valor: filtros.idCategoria },
-      Activo: { tipo: sql.Bit, valor: filtros.activo },
-      Texto: { tipo: sql.NVarChar(150), valor: filtros.texto },
-    });
+    const { filas, total } = await ejecutarSPPaginado<FilaProductoResumen>(
+      'SP_Catalogo_ListarProductosAdmin',
+      {
+        Pagina: { tipo: sql.Int, valor: filtros.pagina },
+        Tamano: { tipo: sql.Int, valor: filtros.tamano },
+        IDCategoria: { tipo: sql.Int, valor: filtros.idCategoria },
+        Activo: { tipo: sql.Bit, valor: filtros.activo },
+        Texto: { tipo: sql.NVarChar(150), valor: filtros.texto },
+      },
+    );
     const productos = filas.map((fila): ProductoResumen => ({
       idProducto: fila.IDProducto,
       nombre: fila.Nombre,
@@ -413,7 +418,7 @@ export const catalogoRepository = {
       variantes: fila.Variantes,
       variantesActivas: fila.VariantesActivas,
     }));
-    return { productos, total: filas[0]?.TotalFilas ?? 0 };
+    return { productos, total };
   },
 
   obtenerProductoAdmin: (id: number): Promise<ProductoAdmin | null> =>

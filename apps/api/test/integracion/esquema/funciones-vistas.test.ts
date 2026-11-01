@@ -1,6 +1,6 @@
 import sql from 'mssql';
 import { describe, expect, it } from 'vitest';
-import { ejecutarSP, ejecutarSPMultiple } from '../../../src/shared/db/index.js';
+import { ejecutarSP, ejecutarSPConjuntos } from '../../../src/shared/db/index.js';
 import { usarBaseDePruebas } from '../base-de-pruebas.js';
 import { crearVariante, fijarExistencia, type VarianteDePrueba } from '../datos-de-prueba.js';
 
@@ -34,17 +34,19 @@ function registrarEntrada(variante: VarianteDePrueba, cantidad: number) {
 
 // Sin valores por defecto: si el SP dejara de devolver un conjunto, "conciliación vacía" pasaría sin probar nada.
 async function leerInventario(idVariante: number) {
-  const conjuntos = await ejecutarSPMultiple('SP_Pruebas_LeerInventario', {
-    IDVariante: { tipo: sql.Int, valor: idVariante },
-  });
+  const conjuntos = await ejecutarSPConjuntos<[Disponible[], unknown[]]>(
+    'SP_Pruebas_LeerInventario',
+    {
+      IDVariante: { tipo: sql.Int, valor: idVariante },
+    },
+  );
   const [disponible, conciliacion] = conjuntos;
   if (conjuntos.length !== 2 || disponible === undefined || conciliacion === undefined) {
     throw new Error(
       `SP_Pruebas_LeerInventario devolvió ${String(conjuntos.length)} conjuntos; se esperaban 2`,
     );
   }
-  // El SP define la forma de la fila; Disponible la declara.
-  return { disponible: disponible[0] as Disponible | undefined, conciliacion };
+  return { disponible: disponible[0], conciliacion };
 }
 
 describe('FU_Inventario_Disponible (E1-H05, N-06)', () => {

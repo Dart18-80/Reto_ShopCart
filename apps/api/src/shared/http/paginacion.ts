@@ -16,7 +16,7 @@ export interface RespuestaPaginada<T> {
   paginacion: { pagina: number; tamano: number; total: number; totalPaginas: number };
 }
 
-/** Formato estándar de listados. `total` viene del `COUNT(*) OVER ()` del SP (columna TotalFilas). */
+/** Formato estándar de listados. `total` viene del segundo conjunto del SP (ejecutarSPPaginado). */
 export function paginar<T>(
   datos: T[],
   total: number,

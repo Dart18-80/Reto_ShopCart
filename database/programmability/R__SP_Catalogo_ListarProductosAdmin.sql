@@ -19,11 +19,12 @@ BEGIN
 
     DECLARE @Patron NVARCHAR(400) = (SELECT f.Contiene FROM dbo.FU_Catalogo_PatronBusqueda(@Texto) AS f);
 
+    -- sqlserver-sp §5: dos conjuntos, la página y el total del filtro. El total sale de su propia consulta,
+    -- así es real aunque la página pedida esté vacía.
     SELECT p.IDProducto, p.Nombre, p.IDCategoria, c.Nombre AS Categoria, p.Activo,
            (SELECT COUNT(*) FROM dbo.Variante AS v WHERE v.IDProducto = p.IDProducto) AS Variantes,
            (SELECT COUNT(*) FROM dbo.Variante AS v
-            WHERE v.IDProducto = p.IDProducto AND v.Activo = 1)                  AS VariantesActivas,
-           COUNT(*) OVER () AS TotalFilas
+            WHERE v.IDProducto = p.IDProducto AND v.Activo = 1)                  AS VariantesActivas
     FROM   dbo.Producto  AS p
     JOIN   dbo.Categoria AS c ON c.IDCategoria = p.IDCategoria
     WHERE  (@IDCategoria IS NULL OR p.IDCategoria = @IDCategoria)
@@ -32,6 +33,13 @@ BEGIN
     ORDER BY p.Nombre, p.IDProducto
     OFFSET (@Pagina - 1) * @Tamano ROWS FETCH NEXT @Tamano ROWS ONLY
     -- Filtros opcionales: cada combinación merece su propio plan.
+    OPTION (RECOMPILE);
+
+    SELECT COUNT(*) AS Total
+    FROM   dbo.Producto AS p
+    WHERE  (@IDCategoria IS NULL OR p.IDCategoria = @IDCategoria)
+      AND  (@Activo IS NULL OR p.Activo = @Activo)
+      AND  (@Texto IS NULL OR p.NombreBusqueda LIKE @Patron ESCAPE N'\')
     OPTION (RECOMPILE);
 END
 GO

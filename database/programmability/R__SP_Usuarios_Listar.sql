@@ -15,13 +15,20 @@ BEGIN
     IF @Pagina < 1 OR @Tamano NOT BETWEEN 1 AND 100
         THROW 50003, N'La página o el tamaño no son válidos.', 1;
 
-    SELECT u.IDUsuario, u.Correo, u.Nombre, u.Telefono, r.Codigo AS Rol, u.Activo,
-           COUNT(*) OVER () AS TotalFilas
+    -- sqlserver-sp §5: dos conjuntos, la página y el total del filtro. El total sale de su propia consulta,
+    -- así es real aunque la página pedida esté vacía.
+    SELECT u.IDUsuario, u.Correo, u.Nombre, u.Telefono, r.Codigo AS Rol, u.Activo
     FROM   dbo.Usuario AS u
     JOIN   dbo.Rol     AS r ON r.IDRol = u.IDRol
     WHERE  (@Rol IS NULL OR r.Codigo = @Rol)
       AND  (@Activo IS NULL OR u.Activo = @Activo)
     ORDER BY u.IDUsuario
     OFFSET (@Pagina - 1) * @Tamano ROWS FETCH NEXT @Tamano ROWS ONLY;
+
+    SELECT COUNT(*) AS Total
+    FROM   dbo.Usuario AS u
+    JOIN   dbo.Rol     AS r ON r.IDRol = u.IDRol
+    WHERE  (@Rol IS NULL OR r.Codigo = @Rol)
+      AND  (@Activo IS NULL OR u.Activo = @Activo);
 END
 GO

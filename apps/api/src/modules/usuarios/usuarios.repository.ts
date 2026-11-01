@@ -1,5 +1,5 @@
 import sql from 'mssql';
-import { ejecutarSP } from '../../shared/db/index.js';
+import { ejecutarSP, ejecutarSPPaginado } from '../../shared/db/index.js';
 import { aRolDeUsuario, type RolDeUsuario } from '../../shared/http/index.js';
 import type { ActualizarPerfil } from './usuarios.schemas.js';
 import type {
@@ -24,10 +24,6 @@ interface FilaPerfil extends FilaUsuario {
 
 interface FilaConVersion extends FilaUsuario {
   VersionSesion: number;
-}
-
-interface FilaListado extends FilaUsuario {
-  TotalFilas: number;
 }
 
 export interface DatosNuevoInterno {
@@ -86,13 +82,13 @@ export const usuariosRepository = {
   },
 
   async listar(filtros: FiltrosUsuarios): Promise<{ usuarios: Usuario[]; total: number }> {
-    const filas = await ejecutarSP<FilaListado>('SP_Usuarios_Listar', {
+    const { filas, total } = await ejecutarSPPaginado<FilaUsuario>('SP_Usuarios_Listar', {
       Pagina: { tipo: sql.Int, valor: filtros.pagina },
       Tamano: { tipo: sql.Int, valor: filtros.tamano },
       Rol: { tipo: sql.VarChar(20), valor: filtros.rol },
       Activo: { tipo: sql.Bit, valor: filtros.activo },
     });
-    return { usuarios: filas.map(aUsuario), total: filas[0]?.TotalFilas ?? 0 };
+    return { usuarios: filas.map(aUsuario), total };
   },
 
   async crearInterno(datos: DatosNuevoInterno): Promise<Usuario> {

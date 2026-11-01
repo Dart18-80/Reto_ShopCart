@@ -1,5 +1,5 @@
 import sql from 'mssql';
-import { ejecutarSP } from '../../shared/db/index.js';
+import { bigintANumero, ejecutarSP, ejecutarSPPaginado } from '../../shared/db/index.js';
 import type { RegistrarAjuste, RegistrarEntrada } from './inventario.schemas.js';
 import type {
   Descuadre,
@@ -56,12 +56,8 @@ interface FilaBodega {
   ExistenciaBodega: number;
 }
 
-interface ConTotal {
-  TotalFilas: number;
-}
-
 const aMovimiento = (fila: FilaMovimiento): Movimiento => ({
-  idMovimientoKardex: Number(fila.IDMovimientoKardex),
+  idMovimientoKardex: bigintANumero(fila.IDMovimientoKardex, 'IDMovimientoKardex'),
   idVariante: fila.IDVariante,
   tipo: fila.Tipo,
   signo: fila.Signo,
@@ -117,21 +113,27 @@ export const inventarioRepository = {
     idVariante: number,
     pagina: Pagina,
   ): Promise<{ movimientos: Movimiento[]; total: number }> {
-    const filas = await ejecutarSP<FilaMovimiento & ConTotal>('SP_Inventario_ObtenerKardex', {
-      IDVariante: { tipo: sql.Int, valor: idVariante },
-      ...paginacion(pagina),
-    });
-    return { movimientos: filas.map(aMovimiento), total: filas[0]?.TotalFilas ?? 0 };
+    const { filas, total } = await ejecutarSPPaginado<FilaMovimiento>(
+      'SP_Inventario_ObtenerKardex',
+      {
+        IDVariante: { tipo: sql.Int, valor: idVariante },
+        ...paginacion(pagina),
+      },
+    );
+    return { movimientos: filas.map(aMovimiento), total };
   },
 
   async listarExistencias(
     idVariante: number | null,
     pagina: Pagina,
   ): Promise<{ existencias: Existencia[]; total: number }> {
-    const filas = await ejecutarSP<FilaExistencia & ConTotal>('SP_Inventario_ListarExistencias', {
-      IDVariante: { tipo: sql.Int, valor: idVariante },
-      ...paginacion(pagina),
-    });
+    const { filas, total } = await ejecutarSPPaginado<FilaExistencia>(
+      'SP_Inventario_ListarExistencias',
+      {
+        IDVariante: { tipo: sql.Int, valor: idVariante },
+        ...paginacion(pagina),
+      },
+    );
     const existencias = filas.map((fila): Existencia => ({
       idVariante: fila.IDVariante,
       sku: fila.SKU,
@@ -143,7 +145,7 @@ export const inventarioRepository = {
       reservado: fila.Reservado,
       disponible: fila.Disponible,
     }));
-    return { existencias, total: filas[0]?.TotalFilas ?? 0 };
+    return { existencias, total };
   },
 
   async conciliar(): Promise<Descuadre[]> {
@@ -161,10 +163,13 @@ export const inventarioRepository = {
     idVariante: number | null,
     pagina: Pagina,
   ): Promise<{ existencias: ExistenciaBodega[]; total: number }> {
-    const filas = await ejecutarSP<FilaBodega & ConTotal>('SP_Inventario_ListarExistenciaBodega', {
-      IDVariante: { tipo: sql.Int, valor: idVariante },
-      ...paginacion(pagina),
-    });
+    const { filas, total } = await ejecutarSPPaginado<FilaBodega>(
+      'SP_Inventario_ListarExistenciaBodega',
+      {
+        IDVariante: { tipo: sql.Int, valor: idVariante },
+        ...paginacion(pagina),
+      },
+    );
     const existencias = filas.map((fila): ExistenciaBodega => ({
       idVariante: fila.IDVariante,
       sku: fila.SKU,
@@ -172,7 +177,7 @@ export const inventarioRepository = {
       unidadesPorDespachar: fila.UnidadesPorDespachar,
       existenciaBodega: fila.ExistenciaBodega,
     }));
-    return { existencias, total: filas[0]?.TotalFilas ?? 0 };
+    return { existencias, total };
   },
 };
 
