@@ -10,7 +10,7 @@ const PREFIJO = 'revocado:';
  * lo que se puede perder (RNF-2): los refresh tokens ya quedaron revocados en SQL Server.
  */
 export function crearListaRevocadosRedis(
-  cliente: Pick<Redis, 'exists' | 'set'>,
+  cliente: Pick<Redis, 'del' | 'exists' | 'set'>,
   logger: Logger,
 ): ListaRevocados {
   return {
@@ -31,6 +31,17 @@ export function crearListaRevocadosRedis(
         logger.warn(
           { err: error, idUsuario },
           'No se pudo agregar el usuario a la lista de revocados: su access token vence en 15 min',
+        );
+      }
+    },
+
+    async restaurar(idUsuario) {
+      try {
+        await cliente.del(`${PREFIJO}${String(idUsuario)}`);
+      } catch (error) {
+        logger.warn(
+          { err: error, idUsuario },
+          'No se pudo sacar al usuario de la lista de revocados: recupera el acceso en 15 min',
         );
       }
     },

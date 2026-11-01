@@ -41,7 +41,10 @@ export function crearTokensAcceso(secreto: string): TokensAcceso {
 
     async verificar(token) {
       try {
-        const { payload } = await jwtVerify(token, clave, { algorithms: [ALGORITMO] });
+        const { payload } = await jwtVerify(token, clave, {
+          algorithms: [ALGORITMO],
+          requiredClaims: ['exp', 'iat', 'jti', 'sub'],
+        });
         const carga = cargaSchema.safeParse(payload);
         return carga.success ? { idUsuario: Number(carga.data.sub), rol: carga.data.rol } : null;
       } catch {

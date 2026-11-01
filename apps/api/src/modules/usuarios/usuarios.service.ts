@@ -91,7 +91,12 @@ export function crearUsuariosService({ repositorio, sesiones, listaRevocados }: 
       return usuario;
     },
 
-    activar: (idUsuario: number): Promise<Usuario> => repositorio.cambiarEstado(idUsuario, true),
+    // N-15: sin esto, un usuario reactivado seguiría con 401 hasta que venciera su clave en Redis.
+    async activar(idUsuario: number): Promise<Usuario> {
+      const usuario = await repositorio.cambiarEstado(idUsuario, true);
+      await listaRevocados.restaurar(idUsuario);
+      return usuario;
+    },
   };
 }
 

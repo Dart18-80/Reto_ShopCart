@@ -7,6 +7,8 @@ import type { TokensAcceso } from './token-acceso.js';
 export interface ListaRevocados {
   estaRevocado(idUsuario: number): Promise<boolean>;
   revocar(idUsuario: number): Promise<void>;
+  /** Al reactivar al usuario: sale de la lista antes de que venza su clave. */
+  restaurar(idUsuario: number): Promise<void>;
 }
 
 interface DependenciasAutenticar {

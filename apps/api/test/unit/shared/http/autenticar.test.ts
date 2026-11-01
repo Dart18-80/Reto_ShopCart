@@ -23,6 +23,7 @@ function listaRevocados(revocados: number[] = []): ListaRevocados {
   return {
     estaRevocado: (idUsuario) => Promise.resolve(revocados.includes(idUsuario)),
     revocar: () => Promise.resolve(),
+    restaurar: () => Promise.resolve(),
   };
 }
 
@@ -52,6 +53,7 @@ function firmar(carga: Record<string, unknown>, expiracion: string | number, sec
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject('7')
     .setJti('jti-de-prueba')
+    .setIssuedAt()
     .setExpirationTime(expiracion)
     .sign(new TextEncoder().encode(secreto));
 }
@@ -166,6 +168,7 @@ describe('casos borde del access token (E2-H03, A-07)', () => {
       .setProtectedHeader({ alg: 'HS512' })
       .setSubject('7')
       .setJti('jti-de-prueba')
+      .setIssuedAt()
       .setExpirationTime('15m')
       .sign(new TextEncoder().encode(SECRETO));
 
@@ -185,16 +188,29 @@ describe('casos borde del access token (E2-H03, A-07)', () => {
       .setProtectedHeader({ alg: 'HS256' })
       .setSubject(sub)
       .setJti('jti-de-prueba')
+      .setIssuedAt()
       .setExpirationTime('15m')
       .sign(new TextEncoder().encode(SECRETO));
 
     expect((await pedirCon(crearAppDePrueba(), token)).status).toBe(401);
   });
 
+  it('un token sin vencimiento (exp) responde 401', async () => {
+    const sinExp = await new SignJWT({ rol: 'Cliente' })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setSubject('7')
+      .setJti('jti-de-prueba')
+      .setIssuedAt()
+      .sign(new TextEncoder().encode(SECRETO));
+
+    expect((await pedirCon(crearAppDePrueba(), sinExp)).status).toBe(401);
+  });
+
   it('un token sin jti responde 401', async () => {
     const sinJti = await new SignJWT({ rol: 'Cliente' })
       .setProtectedHeader({ alg: 'HS256' })
       .setSubject('7')
+      .setIssuedAt()
       .setExpirationTime('15m')
       .sign(new TextEncoder().encode(SECRETO));
 

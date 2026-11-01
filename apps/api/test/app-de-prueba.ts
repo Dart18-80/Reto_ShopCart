@@ -22,6 +22,10 @@ export function listaRevocadosEnMemoria(): ListaRevocados {
       revocados.add(idUsuario);
       return Promise.resolve();
     },
+    restaurar: (idUsuario) => {
+      revocados.delete(idUsuario);
+      return Promise.resolve();
+    },
   };
 }
 

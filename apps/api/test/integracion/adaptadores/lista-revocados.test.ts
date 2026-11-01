@@ -31,17 +31,28 @@ describe('ListaRevocadosRedis (E2-H03, N-15)', () => {
     expect(ttl).toBeLessThanOrEqual(15 * 60);
   });
 
+  it('restaurar saca al usuario de la lista', async () => {
+    const lista = crearListaRevocadosRedis(redis, logger);
+    const idUsuario = idUnico();
+    await lista.revocar(idUsuario);
+
+    await lista.restaurar(idUsuario);
+
+    expect(await lista.estaRevocado(idUsuario)).toBe(false);
+  });
+
   it('un usuario no revocado no está en la lista', async () => {
     expect(await crearListaRevocadosRedis(redis, logger).estaRevocado(idUnico())).toBe(false);
   });
 
-  it('con Redis caído deja pasar (riesgo acotado a 15 min) y revocar no lanza', async () => {
+  it('con Redis caído deja pasar (riesgo acotado a 15 min) y revocar o restaurar no lanzan', async () => {
     const caido = crearClienteRedis({ ...cargarConfiguracion(process.env).redis, puerto: 1 });
     caido.on('error', () => undefined);
     const lista = crearListaRevocadosRedis(caido, logger);
 
     await expect(lista.estaRevocado(idUnico())).resolves.toBe(false);
     await expect(lista.revocar(idUnico())).resolves.toBeUndefined();
+    await expect(lista.restaurar(idUnico())).resolves.toBeUndefined();
     caido.disconnect();
   });
 });

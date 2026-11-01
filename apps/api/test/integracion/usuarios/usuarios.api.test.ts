@@ -275,7 +275,11 @@ describe('administración de usuarios (E2-H04, N-15)', () => {
       .set(conToken(token));
 
     expect(respuesta.status).toBe(200);
-    expect((await iniciarSesion(app, correo)).status).toBe(200);
+    const sesion = leerSesion(await iniciarSesion(app, correo));
+    // N-15: la lista de revocados ya no lo bloquea; antes respondía 401 hasta que vencía la clave (15 min).
+    expect(
+      (await request(app).get('/api/v1/usuarios/me').set(conToken(sesion.accessToken))).status,
+    ).toBe(200);
   });
 
   it('PATCH /usuarios/:id cambia el rol y un usuario inexistente responde 404', async () => {

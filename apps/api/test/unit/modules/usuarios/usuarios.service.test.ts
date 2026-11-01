@@ -38,6 +38,7 @@ async function preparar() {
   const listaRevocados = {
     estaRevocado: vi.fn<ListaRevocados['estaRevocado']>(() => Promise.resolve(false)),
     revocar: vi.fn<ListaRevocados['revocar']>(() => Promise.resolve()),
+    restaurar: vi.fn<ListaRevocados['restaurar']>(() => Promise.resolve()),
   };
   const servicio = crearUsuariosService({ repositorio, sesiones, listaRevocados });
   return { servicio, repositorio, sesiones, listaRevocados };
@@ -108,11 +109,24 @@ describe('usuarios.service (E2-H04, N-15)', () => {
     expect(listaRevocados.revocar).not.toHaveBeenCalled();
   });
 
-  it('activar no toca la lista de revocados', async () => {
-    const { servicio, listaRevocados } = await preparar();
+  it('activar saca al usuario de la lista de revocados después de que la base lo activó', async () => {
+    const { servicio, repositorio, listaRevocados } = await preparar();
 
     await servicio.activar(7);
 
+    expect(listaRevocados.restaurar).toHaveBeenCalledWith(7);
     expect(listaRevocados.revocar).not.toHaveBeenCalled();
+    expect(repositorio.cambiarEstado.mock.invocationCallOrder[0]).toBeLessThan(
+      listaRevocados.restaurar.mock.invocationCallOrder[0] ?? 0,
+    );
+  });
+
+  it('si la base rechaza la activación, no toca la lista de revocados', async () => {
+    const { servicio, repositorio, listaRevocados } = await preparar();
+    repositorio.cambiarEstado.mockRejectedValueOnce(new Error('NO_ENCONTRADO'));
+
+    await expect(servicio.activar(7)).rejects.toThrow();
+
+    expect(listaRevocados.restaurar).not.toHaveBeenCalled();
   });
 });
