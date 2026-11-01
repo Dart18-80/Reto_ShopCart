@@ -317,7 +317,33 @@ WHERE  IDDireccion = @IDDireccion AND IDUsuario = @IDUsuarioActor;   -- RF-01: e
 
 Referencias: `SP_Usuarios_ActualizarPerfil`, `SP_Direcciones_Actualizar`, `SP_Usuarios_Actualizar`.
 
-### 9.6 Tareas periódicas con `sp_getapplock` (A-04)
+### 9.6 Listas hacia un SP: JSON con `OPENJSON ... WITH` (A-22)
+
+Una lista llega en un parámetro `NVARCHAR(MAX)` con JSON. Nunca TVP ni texto separado por comas.
+
+```sql
+IF ISJSON(@Valores) <> 1
+    THROW 50003, N'La lista de valores no es válida.', 1;
+
+DECLARE @Lista TABLE (IDValorAtributo INT NOT NULL PRIMARY KEY);
+INSERT INTO @Lista (IDValorAtributo)
+SELECT DISTINCT j.IDValorAtributo
+FROM   OPENJSON(@Valores) WITH (IDValorAtributo INT '$') AS j;      -- WITH tipado: nada se concatena
+
+IF (SELECT COUNT(*) FROM OPENJSON(@Valores)) <> (SELECT COUNT(*) FROM @Lista)
+    THROW 50003, N'La lista tiene valores repetidos.', 1;     -- DISTINCT los habría ocultado
+IF EXISTS (SELECT 1 FROM @Lista AS l
+           LEFT JOIN dbo.ValorAtributo AS v ON v.IDValorAtributo = l.IDValorAtributo
+           WHERE v.IDValorAtributo IS NULL)
+    THROW 50003, N'Un valor no existe.', 1;                          -- pertenencia: el SP la valida
+```
+
+- El SP valida él mismo los duplicados, la existencia y la pertenencia; la constraint de la base sigue
+  siendo la última defensa.
+- En la API, Zod limita antes el tamaño del arreglo (`.max(n)`) y el repositorio envía
+  `JSON.stringify(lista)` como `sql.NVarChar(sql.MAX)`.
+
+### 9.7 Tareas periódicas con `sp_getapplock` (A-04)
 
 ```sql
 BEGIN TRY

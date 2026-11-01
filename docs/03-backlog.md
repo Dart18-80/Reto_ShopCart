@@ -323,14 +323,17 @@
 - Admin: crear, editar, activar, desactivar y borrar productos; guardar sus imágenes (orden y principal).
 - Admin: crear, editar, activar, desactivar y borrar variantes con SKU y combinación de atributos; el SP calcula `FirmaAtributos` y `DescripcionAtributos`.
 - `GET /productos/:id` público con sus variantes activas, precio vigente y etiqueta de existencia ("Disponible", "Últimas X unidades", "Agotado").
+- Admin: `GET /admin/productos` (paginado, con inactivos y filtros) y `GET /admin/productos/:id` (con inactivos y existencia exacta), con `SP_Catalogo_ListarProductosAdmin`.
+- El `POST` de variante recibe el precio inicial: el SP inserta la primera versión de `PrecioVariante` en la misma transacción que la variante (E3-H04 solo cambia precios después). La variante nace con existencia 0 y sin kardex.
 
 **CA**
 - [ ] Una segunda variante con la misma combinación de atributos responde `409 COMBINACION_DUPLICADA`; un SKU repetido, `409 SKU_DUPLICADO`.
 - [ ] Un producto o variante con ventas, kardex o reservas **no se borra**: responde `409 PRODUCTO_CON_HISTORIAL` y solo se puede desactivar.
 - [ ] Un producto desactivado, o sin variantes activas, no aparece en la tienda.
-- [ ] Al cliente nunca se le muestra la cifra exacta de existencia.
+- [ ] Al cliente nunca se le muestra la existencia por encima del umbral; la respuesta pública no trae la existencia física ni la reservada (N-06). Cada variante lleva `estadoExistencia` (`Disponible` | `UltimasUnidades` | `Agotado`) y `unidadesRestantes` solo cuando el estado es `UltimasUnidades`.
+- [ ] Un producto activo siempre tiene su categoría activa: crearlo activo en una categoría inactiva, activarlo o moverlo a una inactiva responde `409 CATEGORIA_INACTIVA` (N-14).
 
-**Referencias:** RF-02, N-06, N-14, N-19.
+**Referencias:** RF-02, N-06, N-14, N-19, A-22.
 
 ### E3-H04 · Precios versionados — `Must` · 0.5 h
 **Alcance:** `PUT /admin/variantes/:id/precio` (cierra la versión vigente e inserta la nueva en una transacción) y `GET /admin/variantes/:id/precios` (historial). Funciones de precio en uso desde `FU_Catalogo_PrecioVigente`.
