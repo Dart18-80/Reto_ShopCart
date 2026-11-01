@@ -3,10 +3,12 @@ import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { crearApp } from '../../../src/app.js';
+import { direccionesRepository } from '../../../src/modules/direcciones/direcciones.repository.js';
 import { leerDatos, leerError } from '../../unit/respuestas.js';
 import { dependenciasDePrueba } from '../../app-de-prueba.js';
 import { usarBaseDePruebas } from '../base-de-pruebas.js';
 import { iniciarSesion, leerSesion, registrar } from '../auth/apoyo-auth.js';
+import { comoActor } from '../datos-de-prueba.js';
 
 // Los reintentos por deadlock de ejecutarSP ocultarían una carrera: las pruebas de concurrencia exigen cero.
 const avisosDeDeadlock: string[] = [];
@@ -117,6 +119,36 @@ describe('direcciones propias (E2-H05, RF-01, N-17)', () => {
     expect(
       leerDatos(await request(app).get('/api/v1/direcciones').set(con(deBeto)), listaSchema),
     ).toEqual([]);
+  });
+
+  it('A-02: el SP rechaza editar o borrar una dirección ajena aunque el servicio no la haya filtrado', async () => {
+    const deAna = await tokenDeCliente();
+    const beto = leerSesion(await registrar(app)).usuario;
+    const original = leerDatos(await crear(deAna), direccionSchema);
+    const { idDireccion } = original;
+    const municipio = await idMunicipio();
+    const comoBeto = <T>(accion: () => Promise<T>) => comoActor(beto.idUsuario, 'Cliente', accion);
+
+    const editar = comoBeto(() =>
+      direccionesRepository.actualizar(idDireccion, {
+        alias: null,
+        nombreRecibe: 'Intruso',
+        telefonoRecibe: '55554444',
+        idMunicipio: municipio,
+        direccionLinea: 'Otra',
+        referencia: null,
+        esPredeterminada: true,
+      }),
+    );
+    await expect(editar).rejects.toMatchObject({ codigo: 'NO_ENCONTRADO', status: 404 });
+    await expect(comoBeto(() => direccionesRepository.eliminar(idDireccion))).rejects.toMatchObject(
+      { codigo: 'NO_ENCONTRADO', status: 404 },
+    );
+
+    const ruta = `/api/v1/direcciones/${String(idDireccion)}`;
+    expect(leerDatos(await request(app).get(ruta).set(con(deAna)), direccionSchema)).toEqual(
+      original,
+    );
   });
 
   it('marcar una dirección como predeterminada desmarca la anterior', async () => {
