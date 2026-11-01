@@ -14,10 +14,20 @@ BEGIN
 
     BEGIN TRY
         BEGIN TRAN;
-        DELETE FROM dbo.Direccion WHERE IDDireccion = @IDDireccion AND IDUsuario = @IDUsuarioActor;
 
-        IF @@ROWCOUNT = 0
+        -- Mismo orden de bloqueo que SP_Direcciones_Crear y SP_Direcciones_Actualizar: primero todas las
+        -- direcciones del cliente (por IX_Direccion_IDUsuario) y después la fila. Borrar directo por la PK
+        -- bloqueaba al revés (fila y después índice) y se cruzaba en un deadlock con un cambio de la
+        -- predeterminada.
+        DECLARE @EsPropia INT;
+        SELECT @EsPropia = MAX(CASE WHEN IDDireccion = @IDDireccion THEN 1 ELSE 0 END)
+        FROM   dbo.Direccion WITH (UPDLOCK, HOLDLOCK)
+        WHERE  IDUsuario = @IDUsuarioActor;
+
+        IF ISNULL(@EsPropia, 0) = 0
             THROW 50001, N'La dirección no existe.', 1;
+
+        DELETE FROM dbo.Direccion WHERE IDDireccion = @IDDireccion AND IDUsuario = @IDUsuarioActor;
         COMMIT;
     END TRY
     BEGIN CATCH
