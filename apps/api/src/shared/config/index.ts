@@ -12,6 +12,8 @@ const MARCA_EJEMPLO = 'EJEMPLO';
 const SECRETOS = ['DB_CONTRASENA', 'REDIS_CONTRASENA', 'JWT_SECRETO'] as const;
 // HS256 (A-07): un secreto de al menos 256 bits.
 const LARGO_MINIMO_SECRETO_JWT = 32;
+// Redis trae 16 bases lógicas (0 a 15) por defecto.
+const ULTIMA_BASE_REDIS = 15;
 
 const puerto = (porDefecto: number) =>
   z.coerce.number().int().min(1).max(65535).default(porDefecto);
@@ -46,6 +48,8 @@ const esquema = z.object({
   REDIS_HOST: z.string().min(1).default('localhost'),
   REDIS_PORT: puerto(6379),
   REDIS_CONTRASENA: z.string().min(8),
+  // Las pruebas de integración usan otra base lógica: sus claves no tocan las del entorno levantado.
+  REDIS_BASE_DATOS: z.coerce.number().int().min(0).max(ULTIMA_BASE_REDIS).default(0),
 
   JWT_SECRETO: z.string().min(LARGO_MINIMO_SECRETO_JWT),
 
@@ -76,6 +80,7 @@ export interface ConfiguracionRedis {
   servidor: string;
   puerto: number;
   contrasena: string;
+  baseDatos: number;
 }
 
 export interface Configuracion {
@@ -120,6 +125,7 @@ export function cargarConfiguracion(entorno: NodeJS.ProcessEnv): Configuracion {
       servidor: variables.REDIS_HOST,
       puerto: variables.REDIS_PORT,
       contrasena: variables.REDIS_CONTRASENA,
+      baseDatos: variables.REDIS_BASE_DATOS,
     },
     origenesCors: variables.CORS_ORIGINS,
     secretoJwt: variables.JWT_SECRETO,

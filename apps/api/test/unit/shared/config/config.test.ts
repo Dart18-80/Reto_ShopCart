@@ -25,6 +25,7 @@ describe('cargarConfiguracion', () => {
       servidor: 'localhost',
       puerto: 6379,
       contrasena: 'EJEMPLO_Cambiar_Redis_2026',
+      baseDatos: 0,
     });
     expect(config.origenesCors).toEqual(['http://localhost:5173', 'http://localhost:8080']);
   });
@@ -51,6 +52,18 @@ describe('cargarConfiguracion', () => {
       expect(() => cargarConfiguracion(incompleto)).toThrow(new RegExp(variable));
     },
   );
+
+  it('toma la base lógica de Redis de REDIS_BASE_DATOS (las pruebas usan una propia)', () => {
+    const config = cargarConfiguracion({ ...ENTORNO_VALIDO, REDIS_BASE_DATOS: '1' });
+
+    expect(config.redis.baseDatos).toBe(1);
+  });
+
+  it.each(['-1', '16', '1.5', 'una'])('rechaza REDIS_BASE_DATOS=%s', (valor) => {
+    expect(() => cargarConfiguracion({ ...ENTORNO_VALIDO, REDIS_BASE_DATOS: valor })).toThrow(
+      /REDIS_BASE_DATOS/,
+    );
+  });
 
   it('rechaza un puerto que no es un número', () => {
     expect(() => cargarConfiguracion({ ...ENTORNO_VALIDO, REDIS_PORT: 'seis' })).toThrow(

@@ -42,7 +42,12 @@ beforeEach(async () => {
   });
   await new Promise<void>((resolver) => servidor.listen(0, '127.0.0.1', resolver));
   const { port } = servidor.address() as AddressInfo;
-  cliente = crearClienteRedis({ servidor: '127.0.0.1', puerto: port, contrasena: 'x' });
+  cliente = crearClienteRedis({
+    servidor: '127.0.0.1',
+    puerto: port,
+    contrasena: 'x',
+    baseDatos: 0,
+  });
   await cliente.connect();
 });
 

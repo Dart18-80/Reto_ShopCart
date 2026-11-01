@@ -18,6 +18,7 @@ export function crearClienteRedis(config: ConfiguracionRedis): Redis {
     host: config.servidor,
     port: config.puerto,
     password: config.contrasena,
+    db: config.baseDatos,
     lazyConnect: true,
     enableOfflineQueue: false,
     maxRetriesPerRequest: 1,
