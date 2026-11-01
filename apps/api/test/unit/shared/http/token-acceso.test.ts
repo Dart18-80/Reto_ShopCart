@@ -1,8 +1,12 @@
 import { Writable } from 'node:stream';
 import { SignJWT } from 'jose';
 import { pino } from 'pino';
-import { describe, expect, it } from 'vitest';
-import { crearTokensAcceso } from '../../../../src/shared/http/index.js';
+import { describe, expect, expectTypeOf, it } from 'vitest';
+import {
+  aRolDeUsuario,
+  crearTokensAcceso,
+  type ActorDelToken,
+} from '../../../../src/shared/http/index.js';
 
 const SECRETO = 'secreto-de-prueba-de-al-menos-32-caracteres';
 const OTRO_SECRETO = 'otro-secreto-de-otra-replica-de-32-caracteres';
@@ -96,5 +100,17 @@ describe('verificar registra el motivo del rechazo, nunca el token (A-07)', () =
     expect(await tokens.verificar(await tokens.emitir(ACTOR))).toEqual(ACTOR);
 
     expect(lineas).toEqual([]);
+  });
+});
+
+describe('ningún token puede traer el rol Sistema (A-18)', () => {
+  it('el tipo del rol del token solo admite roles de usuario', () => {
+    expectTypeOf<'Sistema'>().not.toExtend<ActorDelToken['rol']>();
+    expectTypeOf<'Cliente' | 'Operador' | 'Administrador'>().toExtend<ActorDelToken['rol']>();
+  });
+
+  it('un rol Sistema leído de la base es un error de datos, no un rol', () => {
+    expect(() => aRolDeUsuario('Sistema')).toThrow(/Rol inesperado/);
+    expect(aRolDeUsuario('Operador')).toBe('Operador');
   });
 });

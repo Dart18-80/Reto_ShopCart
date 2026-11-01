@@ -73,6 +73,16 @@ describe('POST /auth/registro (E2-H01, N-15)', () => {
     expect(respuesta.status).toBe(400);
   });
 
+  it('dos registros simultáneos con el mismo correo (otras mayúsculas): uno crea y el otro 409, nunca 500', async () => {
+    const correo = correoUnico();
+
+    const estados = (
+      await Promise.all([registrar(app, correo), registrar(app, correo.toUpperCase())])
+    ).map((respuesta) => respuesta.status);
+
+    expect(estados.sort()).toEqual([201, 409]);
+  });
+
   it('N-15: no se puede registrar con otro rol (campo extra rechazado)', async () => {
     const respuesta = await request(app).post('/api/v1/auth/registro').send({
       correo: correoUnico(),

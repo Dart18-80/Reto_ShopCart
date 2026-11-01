@@ -8,6 +8,7 @@ import { dependenciasDePrueba } from '../../app-de-prueba.js';
 import { usarBaseDePruebas } from '../base-de-pruebas.js';
 import {
   cookieRefresh,
+  iniciarSesion,
   leerRefreshTokens,
   leerSesion,
   registrar,
@@ -41,12 +42,28 @@ describe('POST /auth/refresh (E2-H02, A-07)', () => {
     const { token } = await sesionNueva();
 
     const rotacion = await refrescar(token);
+    const conElNuevo = await refrescar(valorRefresh(rotacion));
     const reintento = await refrescar(token);
 
     expect(rotacion.status).toBe(200);
     expect(leerSesion(rotacion).accessToken).toBeTruthy();
     expect(valorRefresh(rotacion)).not.toBe(token);
+    expect(conElNuevo.status).toBe(200);
     expect(reintento.status).toBe(401);
+  });
+
+  it('el reúso solo revoca su familia: otra sesión del mismo usuario sigue rotando', async () => {
+    const respuesta = await registrar(app);
+    const { correo } = leerSesion(respuesta).usuario;
+    const primeroA = valorRefresh(respuesta);
+    const sesionB = valorRefresh(await iniciarSesion(app, correo));
+    const segundoA = valorRefresh(await refrescar(primeroA));
+    const terceroA = valorRefresh(await refrescar(segundoA));
+
+    expect((await refrescar(primeroA)).status).toBe(401);
+
+    expect((await refrescar(terceroA)).status).toBe(401);
+    expect((await refrescar(sesionB)).status).toBe(200);
   });
 
   it('reusar un token ya rotado revoca toda la familia: el más reciente también deja de servir', async () => {

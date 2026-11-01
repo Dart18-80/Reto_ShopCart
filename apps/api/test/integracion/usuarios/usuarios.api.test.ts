@@ -148,6 +148,22 @@ describe('perfil propio (E2-H04, RF-01)', () => {
     }
   });
 
+  it('un usuario inactivo que aún tiene token no puede cambiar su contraseña (USUARIO_INACTIVO)', async () => {
+    const cliente = await sesionDeCliente();
+    await request(app)
+      .post(`/api/v1/usuarios/${String(cliente.idUsuario)}/desactivar`)
+      .set(conToken(await tokenDeAdmin()));
+
+    // N-15: con Redis caído su token seguiría vigente unos minutos; el SP es la autoridad.
+    const intento = comoActor(cliente.idUsuario, 'Cliente', () =>
+      ejecutarSP('SP_Usuarios_CambiarContrasena', {
+        HashContrasena: { tipo: sql.VarChar(255), valor: 'hash-de-prueba' },
+      }),
+    );
+
+    await expect(intento).rejects.toMatchObject({ codigo: 'USUARIO_INACTIVO' });
+  });
+
   it('el SP rechaza enviar un teléfono y quitarlo a la vez', async () => {
     const cliente = await sesionDeCliente();
 
@@ -371,6 +387,20 @@ describe('administración de usuarios (E2-H04, N-15)', () => {
     const perfil = (token: string) => request(app).get('/api/v1/usuarios/me').set(conToken(token));
     expect((await perfil(sesion.accessToken)).status).toBe(200);
     expect((await perfil(anterior.accessToken)).status).toBe(401);
+  });
+
+  it('un Admin no puede cambiar su propio rol (409 ACCION_SOBRE_SI_MISMO) y el rol queda igual', async () => {
+    const admin = await crearAdmin(await tokenDeAdmin());
+
+    const respuesta = await request(app)
+      .patch(`/api/v1/usuarios/${String(admin.idUsuario)}`)
+      .set(conToken(admin.token))
+      .send({ rol: 'Operador' });
+
+    expect(respuesta.status).toBe(409);
+    expect(leerError(respuesta).codigo).toBe('ACCION_SOBRE_SI_MISMO');
+    const perfil = await request(app).get('/api/v1/usuarios/me').set(conToken(admin.token));
+    expect(leerDatos(perfil, perfilSchema).rol).toBe('Administrador');
   });
 
   it('A-07: un Admin al que le quitan el rol pierde los permisos de inmediato con su token anterior', async () => {
