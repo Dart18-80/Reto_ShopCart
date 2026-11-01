@@ -2,7 +2,10 @@ import type { RequestHandler } from 'express';
 import { manejar } from '../../shared/http/index.js';
 import {
   actualizarCategoriaSchema,
+  crearAtributoSchema,
   crearCategoriaSchema,
+  crearValorAtributoSchema,
+  paramsIdAtributoSchema,
   paramsIdCategoriaSchema,
 } from './catalogo.schemas.js';
 import type { CatalogoService } from './catalogo.service.js';
@@ -17,6 +20,9 @@ export interface CatalogoController {
   activarCategoria: RequestHandler;
   desactivarCategoria: RequestHandler;
   eliminarCategoria: RequestHandler;
+  listarAtributos: RequestHandler;
+  crearAtributo: RequestHandler;
+  crearValorAtributo: RequestHandler;
 }
 
 export function crearCatalogoController(servicio: CatalogoService): CatalogoController {
@@ -48,5 +54,20 @@ export function crearCatalogoController(servicio: CatalogoService): CatalogoCont
       await servicio.eliminarCategoria(params.id);
       res.status(HTTP_SIN_CONTENIDO).end();
     }),
+
+    listarAtributos: manejar({}, async (_entrada, res) => {
+      res.json({ datos: await servicio.listarAtributos() });
+    }),
+
+    crearAtributo: manejar({ body: crearAtributoSchema }, async ({ body }, res) => {
+      res.status(HTTP_CREADO).json({ datos: await servicio.crearAtributo(body) });
+    }),
+
+    crearValorAtributo: manejar(
+      { params: paramsIdAtributoSchema, body: crearValorAtributoSchema },
+      async ({ params, body }, res) => {
+        res.status(HTTP_CREADO).json({ datos: await servicio.crearValorAtributo(params.id, body) });
+      },
+    ),
   };
 }

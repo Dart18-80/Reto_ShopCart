@@ -28,5 +28,41 @@ export const categoriaSchema = categoriaPublicaSchema
   .extend({ activo: z.boolean() })
   .openapi('Categoria');
 
+// Orden de despliegue: SMALLINT en la tabla. Sin orden, el SP lo pone después del último.
+const ordenSchema = z.number().int().min(0).max(32_767);
+
+export const crearAtributoSchema = z
+  .object({ nombre: textoNvarchar(50), orden: ordenSchema.optional() })
+  .strict()
+  .openapi('CrearAtributo');
+
+export const crearValorAtributoSchema = z
+  .object({ valor: textoNvarchar(50), orden: ordenSchema.optional() })
+  .strict()
+  .openapi('CrearValorAtributo');
+
+export const paramsIdAtributoSchema = z.object({ id: idEnRutaSchema });
+
+const valorAtributoSchema = z.object({
+  idValorAtributo: z.number().int(),
+  valor: z.string(),
+  orden: z.number().int(),
+});
+
+export const valorAtributoCreadoSchema = valorAtributoSchema
+  .extend({ idAtributo: z.number().int() })
+  .openapi('ValorAtributo');
+
+export const atributoSchema = z
+  .object({
+    idAtributo: z.number().int(),
+    nombre: z.string(),
+    orden: z.number().int(),
+    valores: z.array(valorAtributoSchema),
+  })
+  .openapi('Atributo');
+
 export type CrearCategoria = z.infer<typeof crearCategoriaSchema>;
 export type ActualizarCategoria = z.infer<typeof actualizarCategoriaSchema>;
+export type CrearAtributo = z.infer<typeof crearAtributoSchema>;
+export type CrearValorAtributo = z.infer<typeof crearValorAtributoSchema>;

@@ -5,14 +5,20 @@ import { z } from '../../shared/openapi/zod.js';
 import type { CatalogoController } from './catalogo.controller.js';
 import {
   actualizarCategoriaSchema,
+  atributoSchema,
   categoriaPublicaSchema,
   categoriaSchema,
+  crearAtributoSchema,
   crearCategoriaSchema,
+  crearValorAtributoSchema,
+  paramsIdAtributoSchema,
   paramsIdCategoriaSchema,
+  valorAtributoCreadoSchema,
 } from './catalogo.schemas.js';
 
 const RUTA_CATEGORIAS = '/api/v1/categorias';
 const RUTA_ADMIN_CATEGORIAS = '/api/v1/admin/categorias';
+const RUTA_ADMIN_ATRIBUTOS = '/api/v1/admin/atributos';
 const seguridad = [{ bearer: [] }];
 const json = (schema: z.ZodType) => ({ content: { 'application/json': { schema } } });
 const respuestaCategoria = (descripcion: string) => ({
@@ -93,6 +99,43 @@ registroOpenApi.registerPath({
   },
 });
 
+registroOpenApi.registerPath({
+  method: 'get',
+  path: RUTA_ADMIN_ATRIBUTOS,
+  tags: ['Catálogo'],
+  summary: 'Atributos con sus valores, en orden (Admin)',
+  security: seguridad,
+  responses: {
+    200: { description: 'Atributos', ...json(z.object({ datos: z.array(atributoSchema) })) },
+    ...respuestasError(401, 403),
+  },
+});
+registroOpenApi.registerPath({
+  method: 'post',
+  path: RUTA_ADMIN_ATRIBUTOS,
+  tags: ['Catálogo'],
+  summary: 'Crea un atributo (Admin; nombre único; sin orden va al final)',
+  security: seguridad,
+  request: { body: json(crearAtributoSchema) },
+  responses: {
+    201: { description: 'Atributo creado', ...json(z.object({ datos: atributoSchema })) },
+    ...respuestasError(400, 401, 403, 409),
+  },
+});
+registroOpenApi.registerPath({
+  method: 'post',
+  path: `${RUTA_ADMIN_ATRIBUTOS}/{id}/valores`,
+  tags: ['Catálogo'],
+  summary:
+    'Agrega un valor a un atributo (Admin; único dentro del atributo; sin orden va al final)',
+  security: seguridad,
+  request: { params: paramsIdAtributoSchema, body: json(crearValorAtributoSchema) },
+  responses: {
+    201: { description: 'Valor creado', ...json(z.object({ datos: valorAtributoCreadoSchema })) },
+    ...respuestasError(400, 401, 403, 404, 409),
+  },
+});
+
 export function crearCatalogoRouter(
   controller: CatalogoController,
   autenticar: RequestHandler,
@@ -108,5 +151,9 @@ export function crearCatalogoRouter(
   router.post('/admin/categorias/:id/activar', ...soloAdmin, controller.activarCategoria);
   router.post('/admin/categorias/:id/desactivar', ...soloAdmin, controller.desactivarCategoria);
   router.delete('/admin/categorias/:id', ...soloAdmin, controller.eliminarCategoria);
+
+  router.get('/admin/atributos', ...soloAdmin, controller.listarAtributos);
+  router.post('/admin/atributos', ...soloAdmin, controller.crearAtributo);
+  router.post('/admin/atributos/:id/valores', ...soloAdmin, controller.crearValorAtributo);
   return router;
 }

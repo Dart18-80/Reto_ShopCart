@@ -8,7 +8,7 @@ interface DependenciasCatalogo {
   autenticar: RequestHandler;
 }
 
-/** Monta /categorias (público) y /admin/categorias (Admin). */
+/** Monta /categorias (público), /admin/categorias y /admin/atributos (Admin). */
 export function crearModuloCatalogo({ autenticar }: DependenciasCatalogo): Router {
   const servicio = crearCatalogoService({ repositorio: catalogoRepository });
   return crearCatalogoRouter(crearCatalogoController(servicio), autenticar);

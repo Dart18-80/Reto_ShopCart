@@ -1,13 +1,24 @@
 import type { CatalogoRepository } from './catalogo.repository.js';
-import type { ActualizarCategoria, CrearCategoria } from './catalogo.schemas.js';
-import type { Categoria, CategoriaPublica } from './catalogo.types.js';
+import type {
+  ActualizarCategoria,
+  CrearAtributo,
+  CrearCategoria,
+  CrearValorAtributo,
+} from './catalogo.schemas.js';
+import type {
+  Atributo,
+  Categoria,
+  CategoriaPublica,
+  ValorAtributoCreado,
+} from './catalogo.types.js';
 
 interface Dependencias {
   repositorio: CatalogoRepository;
 }
 
 // N-14: las reglas de categorías (nombre único, sin productos activos al desactivar, sin productos al
-// borrar) las garantiza el SP bajo bloqueo; el servicio solo orquesta.
+// borrar) y de atributos (nombre único, valor único dentro del atributo) las garantiza el SP bajo
+// bloqueo; el servicio solo orquesta.
 export function crearCatalogoService({ repositorio }: Dependencias) {
   return {
     listarCategorias: (): Promise<CategoriaPublica[]> => repositorio.listarCategorias(),
@@ -25,6 +36,15 @@ export function crearCatalogoService({ repositorio }: Dependencias) {
       repositorio.cambiarEstadoCategoria(id, false),
 
     eliminarCategoria: (id: number): Promise<void> => repositorio.eliminarCategoria(id),
+
+    listarAtributos: (): Promise<Atributo[]> => repositorio.listarAtributos(),
+
+    crearAtributo: (datos: CrearAtributo): Promise<Atributo> => repositorio.crearAtributo(datos),
+
+    crearValorAtributo: (
+      idAtributo: number,
+      datos: CrearValorAtributo,
+    ): Promise<ValorAtributoCreado> => repositorio.crearValorAtributo(idAtributo, datos),
   };
 }
 
