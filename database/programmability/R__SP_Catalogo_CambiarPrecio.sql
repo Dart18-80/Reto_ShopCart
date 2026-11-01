@@ -3,7 +3,7 @@
 -- se serializan en la fila de la variante y UX_PrecioVariante_Vigente garantiza un solo precio vigente.
 -- Los pedidos guardan su IDPrecioVariante: un cambio nunca altera el monto de pedidos ya realizados.
 -- TR_Catalogo_PrecioVarianteBitacora registra la nueva versión con el precio anterior (R5).
--- Devuelve el historial de la variante.
+-- Un precio igual al vigente no crea versión ni fila de bitácora (PUT idempotente). Devuelve el historial.
 CREATE OR ALTER PROCEDURE dbo.SP_Catalogo_CambiarPrecio
     @IDVariante     INT,
     @Precio         DECIMAL(12,2),
@@ -26,10 +26,18 @@ BEGIN
         IF NOT EXISTS (SELECT 1 FROM dbo.Variante WITH (UPDLOCK, ROWLOCK) WHERE IDVariante = @IDVariante)
             THROW 50001, N'La variante no existe.', 1;
 
-        DECLARE @IDVigente INT, @VigenteDesde DATETIME2(3), @Ahora DATETIME2(3) = SYSUTCDATETIME();
-        SELECT @IDVigente = pv.IDPrecioVariante, @VigenteDesde = pv.VigenteDesde
+        DECLARE @IDVigente INT, @PrecioVigente DECIMAL(12,2), @VigenteDesde DATETIME2(3),
+                @Ahora DATETIME2(3) = SYSUTCDATETIME();
+        SELECT @IDVigente = pv.IDPrecioVariante, @PrecioVigente = pv.Precio, @VigenteDesde = pv.VigenteDesde
         FROM   dbo.PrecioVariante AS pv WITH (UPDLOCK, ROWLOCK)
         WHERE  pv.IDVariante = @IDVariante AND pv.VigenteHasta IS NULL;
+
+        IF @PrecioVigente = @Precio
+        BEGIN
+            COMMIT;
+            EXEC dbo.SP_Catalogo_HistorialPrecios @IDVariante = @IDVariante;
+            RETURN;
+        END
 
         -- CK_PrecioVariante_Vigencia exige VigenteHasta > VigenteDesde: dos cambios en el mismo milisegundo
         -- corren el nuevo un milisegundo para que las versiones no se encimen.

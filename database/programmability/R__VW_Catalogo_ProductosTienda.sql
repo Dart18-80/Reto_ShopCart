@@ -11,6 +11,7 @@ SELECT  p.IDProducto,
         p.Nombre,
         p.NombreBusqueda,
         p.Descripcion,
+        p.FechaCreacion,
         i.Url AS ImagenPrincipal,
         MIN(pv.Precio) AS PrecioMinimo,
         CONVERT(BIT, MAX(CASE WHEN d.Disponible > 0 THEN 1 ELSE 0 END)) AS TieneDisponible
@@ -21,7 +22,8 @@ CROSS APPLY dbo.FU_Catalogo_PrecioVigente(v.IDVariante) AS pv
 CROSS APPLY dbo.FU_Inventario_Disponible(v.IDVariante)  AS d
 LEFT JOIN dbo.ImagenProducto AS i ON i.IDProducto = p.IDProducto AND i.EsPrincipal = 1
 WHERE   p.Activo = 1
-GROUP BY p.IDProducto, p.IDCategoria, c.Nombre, p.Nombre, p.NombreBusqueda, p.Descripcion, i.Url;
+GROUP BY p.IDProducto, p.IDCategoria, c.Nombre, p.Nombre, p.NombreBusqueda, p.Descripcion, p.FechaCreacion,
+         i.Url;
 GO
 
 -- A-23: el único permiso de shopcart_busqueda. Idempotente; CREATE OR ALTER conserva el permiso.

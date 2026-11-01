@@ -1,6 +1,7 @@
 -- N-07: único punto que modifica Variante.ExistenciaFisica y escribe el kardex, en el mismo paso.
 -- Interno: lo llaman otros SPs (entradas, ajustes, pedidos, cancelaciones, devoluciones) y la semilla,
 -- siempre dentro de su transacción. El actor y el RequestId salen de SESSION_CONTEXT (A-18).
+-- @IDMovimientoKardex devuelve el movimiento registrado, para que el llamador no tenga que buscarlo.
 CREATE OR ALTER PROCEDURE dbo.SP_Inventario_RegistrarMovimiento
     @IDVariante   INT,
     @CodigoTipo   VARCHAR(30),
@@ -8,7 +9,8 @@ CREATE OR ALTER PROCEDURE dbo.SP_Inventario_RegistrarMovimiento
     @Motivo       NVARCHAR(250),
     @Referencia   NVARCHAR(100),
     @IDPedido     INT,
-    @IDDevolucion INT
+    @IDDevolucion INT,
+    @IDMovimientoKardex BIGINT = NULL OUTPUT
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -23,8 +25,13 @@ BEGIN
 
     IF @IDUsuario IS NULL
         THROW 50003, N'Todo movimiento de inventario necesita un usuario responsable.', 1;
+    -- Tope técnico por movimiento (el mismo que CANTIDAD_MAXIMA en Zod): lejos del desborde de INT.
+    DECLARE @CantidadMaxima INT = 1000000;
+
     IF @Cantidad IS NULL OR @Cantidad <= 0
         THROW 50003, N'La cantidad del movimiento debe ser mayor que cero.', 1;
+    IF @Cantidad > @CantidadMaxima
+        THROW 50003, N'La cantidad del movimiento supera el máximo de 1 000 000.', 1;
 
     DECLARE @IDTipoMovimiento INT, @Signo SMALLINT;
     SELECT @IDTipoMovimiento = t.IDTipoMovimiento, @Signo = t.Signo
@@ -59,5 +66,6 @@ BEGIN
     VALUES (@IDVariante, @IDTipoMovimiento, @Signo, @Cantidad, @ExistenciaAnterior,
             @ExistenciaResultante, @Motivo, @Referencia, @IDPedido, @IDDevolucion,
             @IDUsuario, @RequestId);
+    SET @IDMovimientoKardex = SCOPE_IDENTITY();
 END
 GO

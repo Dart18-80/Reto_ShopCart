@@ -181,13 +181,14 @@ export const buscarProductosSchema = consultaPaginacionSchema
       .openapi({
         description:
           'relevancia (por defecto): primero lo que empieza con el texto; sin texto equivale a nombre ' +
-          'ascendente. precio: el menor precio vigente entre las variantes activas. nombre. recientes. ' +
+          'ascendente. precio: el menor precio vigente entre las variantes activas. nombre. recientes: ' +
+          'FechaCreacion descendente. ' +
           'Todo orden termina con idProducto, así la paginación no repite ni pierde productos.',
       }),
     direccion: z
       .enum(DIRECCIONES_ORDEN)
       .default('asc')
-      .openapi({ description: 'asc (por defecto) o desc; no aplica a relevancia.' }),
+      .openapi({ description: 'asc (por defecto) o desc; no aplica a relevancia ni a recientes.' }),
   })
   .refine(
     ({ precioMin, precioMax }) =>

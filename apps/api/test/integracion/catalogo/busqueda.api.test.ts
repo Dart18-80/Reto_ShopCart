@@ -135,7 +135,8 @@ describe('búsqueda del catálogo (E3-H05, A-10)', () => {
       `C ${marca}`,
       `B ${marca}`,
     ]);
-    expect(await nombres({ categoria, orden: 'recientes', direccion: 'desc' })).toEqual([
+    // recientes ordena siempre por FechaCreacion descendente; la dirección no aplica.
+    expect(await nombres({ categoria, orden: 'recientes', direccion: 'asc' })).toEqual([
       `${marca} A`,
       `C ${marca}`,
       `B ${marca}`,

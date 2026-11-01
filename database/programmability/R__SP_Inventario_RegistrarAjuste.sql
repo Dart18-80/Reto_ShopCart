@@ -54,11 +54,8 @@ BEGIN
 
         EXEC dbo.SP_Inventario_RegistrarMovimiento
              @IDVariante = @IDVariante, @CodigoTipo = @Tipo, @Cantidad = @Absoluta,
-             @Motivo = @Motivo, @Referencia = NULL, @IDPedido = NULL, @IDDevolucion = NULL;
-
-        -- Con la variante aún bloqueada, el último movimiento de la variante es el que se acaba de escribir.
-        SET @IDMovimiento = (SELECT MAX(IDMovimientoKardex) FROM dbo.MovimientoKardex
-                             WHERE IDVariante = @IDVariante);
+             @Motivo = @Motivo, @Referencia = NULL, @IDPedido = NULL, @IDDevolucion = NULL,
+             @IDMovimientoKardex = @IDMovimiento OUTPUT;
 
         COMMIT;
     END TRY

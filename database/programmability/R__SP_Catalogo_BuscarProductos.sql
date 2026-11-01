@@ -3,8 +3,8 @@
 -- los comodines del usuario escapados por FU_Catalogo_PatronBusqueda), categoría, rango de precio y
 -- disponibilidad; orden de una lista blanca resuelto con CASE; paginación.
 -- Orden: relevancia (por defecto; primero lo que empieza con el texto y sin texto equivale a nombre
--- ascendente), precio (el menor precio vigente entre las variantes activas), nombre o recientes; dirección
--- asc (por defecto) o desc. Todo orden termina con IDProducto, así OFFSET no repite ni pierde productos.
+-- ascendente), precio (el menor precio vigente entre las variantes activas), nombre o recientes
+-- (FechaCreacion descendente; no usa la dirección); dirección asc (por defecto) o desc. Todo orden termina con IDProducto, así OFFSET no repite ni pierde productos.
 -- SQL dinámico (sqlserver-sp §11): solo se concatenan fragmentos constantes; todo valor viaja como
 -- parámetro de sp_executesql. A-23: corre como shopcart_busqueda, que solo puede leer la vista; por eso
 -- el SQL dinámico no llama funciones ni lee tablas (los patrones se calculan antes, fuera de él).
@@ -57,8 +57,8 @@ ORDER BY
          THEN CASE WHEN p.NombreBusqueda LIKE @EmpiezaCon ESCAPE N''\'' THEN 0 ELSE 1 END END,
     CASE WHEN @Orden = ''precio''    AND @Direccion = ''asc''  THEN p.PrecioMinimo END ASC,
     CASE WHEN @Orden = ''precio''    AND @Direccion = ''desc'' THEN p.PrecioMinimo END DESC,
-    CASE WHEN @Orden = ''recientes'' AND @Direccion = ''asc''  THEN p.IDProducto END ASC,
-    CASE WHEN @Orden = ''recientes'' AND @Direccion = ''desc'' THEN p.IDProducto END DESC,
+    CASE WHEN @Orden = ''recientes'' THEN p.FechaCreacion END DESC,
+    CASE WHEN @Orden = ''recientes'' THEN p.IDProducto END DESC,
     CASE WHEN @Orden = ''nombre''    AND @Direccion = ''desc'' THEN p.Nombre END DESC,
     p.Nombre,
     p.IDProducto

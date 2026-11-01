@@ -116,6 +116,21 @@ describe('precios versionados (E3-H04, N-02)', () => {
     });
   });
 
+  it('un PUT con el precio vigente es idempotente: no crea versión ni fila de bitácora y responde la vigente', async () => {
+    const { idVariante } = await varianteNueva('100.00');
+    const [vigente] = await historial(idVariante);
+    const bitacoraAntes = await leerBitacora('PrecioVariante', vigente?.idPrecioVariante ?? 0);
+
+    const respuesta = await cambiarPrecio(idVariante, '100.00');
+
+    expect(respuesta.status).toBe(200);
+    expect(leerDatos(respuesta, historialSchema)).toEqual([vigente]);
+    expect(await historial(idVariante)).toHaveLength(1);
+    expect(await leerBitacora('PrecioVariante', vigente?.idPrecioVariante ?? 0)).toEqual(
+      bitacoraAntes,
+    );
+  });
+
   it('un precio de cero o mal formado responde 400 y una variante inexistente 404', async () => {
     const { idVariante } = await varianteNueva();
 
