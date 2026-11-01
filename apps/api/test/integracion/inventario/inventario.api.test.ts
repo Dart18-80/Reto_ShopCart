@@ -180,6 +180,65 @@ describe('entradas y ajustes (E3-H06, N-07, N-16)', () => {
   });
 });
 
+describe('ajustes simultáneos contra los límites (E3-H06, N-07)', () => {
+  const reservar = (idVariante: number, cantidad: number, minutosParaVencer = 15) =>
+    ejecutarSP('SP_Pruebas_CrearReserva', {
+      IDVariante: { tipo: sql.Int, valor: idVariante },
+      Cantidad: { tipo: sql.Int, valor: cantidad },
+      MinutosParaVencer: { tipo: sql.Int, valor: minutosParaVencer },
+    });
+
+  it('dos ajustes negativos a la vez que juntos bajan de lo reservado: uno pasa y el otro 422 con el máximo restante', async () => {
+    const idVariante = await nuevaVariante();
+    await entrada(idVariante, { cantidad: 10 });
+    await reservar(idVariante, 7);
+
+    const respuestas = await Promise.all([ajuste(idVariante, -2), ajuste(idVariante, -2)]);
+
+    expect(respuestas.map((r) => r.status).sort()).toEqual([201, 422]);
+    const rechazo = respuestas.find((r) => r.status === 422);
+    expect(rechazo && leerError(rechazo)).toMatchObject({
+      codigo: 'AJUSTE_BAJO_RESERVADO',
+      detalles: { maximoAjustable: 1 },
+    });
+    expect(await existencia(idVariante)).toMatchObject({ existenciaFisica: 8 });
+  });
+
+  it('dos ajustes negativos a la vez que juntos bajan de cero: uno pasa y el otro 422 AJUSTE_DEJA_NEGATIVO', async () => {
+    const idVariante = await nuevaVariante();
+    await entrada(idVariante, { cantidad: 3 });
+
+    const respuestas = await Promise.all([ajuste(idVariante, -2), ajuste(idVariante, -2)]);
+
+    expect(respuestas.map((r) => r.status).sort()).toEqual([201, 422]);
+    const rechazo = respuestas.find((r) => r.status === 422);
+    expect(rechazo && leerError(rechazo).codigo).toBe('AJUSTE_DEJA_NEGATIVO');
+    expect(await existencia(idVariante)).toMatchObject({ existenciaFisica: 1 });
+  });
+
+  it('una reserva vencida no cuenta como reservada para el ajuste', async () => {
+    const idVariante = await nuevaVariante();
+    await entrada(idVariante, { cantidad: 10 });
+    await reservar(idVariante, 7, -1);
+
+    const respuesta = await ajuste(idVariante, -8);
+
+    expect(respuesta.status).toBe(201);
+    expect(await existencia(idVariante)).toMatchObject({ existenciaFisica: 2, reservado: 0 });
+  });
+
+  it('con la física igual a lo reservado, el máximo ajustable es 0', async () => {
+    const idVariante = await nuevaVariante();
+    await entrada(idVariante, { cantidad: 4 });
+    await reservar(idVariante, 4);
+
+    expect(leerError(await ajuste(idVariante, -1))).toMatchObject({
+      codigo: 'AJUSTE_BAJO_RESERVADO',
+      detalles: { maximoAjustable: 0 },
+    });
+  });
+});
+
 describe('consultas de inventario (E3-H06)', () => {
   it('el kardex de una variante va paginado, del movimiento más reciente al más antiguo', async () => {
     const idVariante = await nuevaVariante();
