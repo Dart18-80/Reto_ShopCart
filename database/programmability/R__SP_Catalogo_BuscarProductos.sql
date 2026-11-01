@@ -26,9 +26,11 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    IF @Orden NOT IN ('relevancia', 'precio', 'nombre', 'recientes') OR @Direccion NOT IN ('asc', 'desc')
+    -- Solo lectura: sin transacción ni contexto de actor (A-18 solo lo exige a los SPs que escriben).
+    IF @Orden IS NULL OR @Orden NOT IN ('relevancia', 'precio', 'nombre', 'recientes')
+       OR @Direccion IS NULL OR @Direccion NOT IN ('asc', 'desc')
         THROW 50003, N'El ordenamiento no es válido.', 1;
-    IF @Pagina < 1 OR @Tamano NOT BETWEEN 1 AND 100
+    IF @Pagina IS NULL OR @Tamano IS NULL OR @Pagina < 1 OR @Tamano NOT BETWEEN 1 AND 100
         THROW 50003, N'Los parámetros de paginación no son válidos.', 1;
     IF @PrecioMin > @PrecioMax
         THROW 50003, N'El precio mínimo no puede ser mayor que el máximo.', 1;

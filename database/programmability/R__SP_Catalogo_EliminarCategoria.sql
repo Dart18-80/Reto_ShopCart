@@ -1,6 +1,7 @@
--- N-14: borrado físico de una categoría sin productos (activos o no). Mismo orden de bloqueo que
+-- N-14: borrado físico de una categoría sin productos (activos o no) y que ningún cupón ni pedido usa
+-- (50209: los pedidos copian la categoría y los cupones la filtran). Mismo orden de bloqueo que
 -- SP_Catalogo_CambiarEstadoCategoria: la categoría y después el rango de sus productos, así nadie crea
--- un producto en ella mientras se borra. La FK de Producto es la última defensa.
+-- un producto en ella mientras se borra. Las FKs son la última defensa y se traducen por su nombre.
 CREATE OR ALTER PROCEDURE dbo.SP_Catalogo_EliminarCategoria
     @IDCategoria    INT,
     @IDUsuarioActor INT              = NULL,
@@ -21,6 +22,9 @@ BEGIN
 
         IF EXISTS (SELECT 1 FROM dbo.Producto WITH (UPDLOCK, HOLDLOCK) WHERE IDCategoria = @IDCategoria)
             THROW 50204, N'La categoría tiene productos: solo se puede desactivar.', 1;
+        IF EXISTS (SELECT 1 FROM dbo.Cupon WHERE IDCategoria = @IDCategoria)
+           OR EXISTS (SELECT 1 FROM dbo.DetallePedido WHERE IDCategoria = @IDCategoria)
+            THROW 50209, N'La categoría está en cupones o en pedidos: solo se puede desactivar.', 1;
 
         DELETE FROM dbo.Categoria WHERE IDCategoria = @IDCategoria;
 
@@ -28,6 +32,11 @@ BEGIN
     END TRY
     BEGIN CATCH
         IF @@TRANCOUNT > 0 ROLLBACK;
+        IF ERROR_NUMBER() = 547 AND ERROR_MESSAGE() LIKE N'%FK_Producto_Categoria%'
+            THROW 50204, N'La categoría tiene productos: solo se puede desactivar.', 1;
+        IF ERROR_NUMBER() = 547 AND (ERROR_MESSAGE() LIKE N'%FK_Cupon_Categoria%'
+                                     OR ERROR_MESSAGE() LIKE N'%FK_DetallePedido_Categoria%')
+            THROW 50209, N'La categoría está en cupones o en pedidos: solo se puede desactivar.', 1;
         THROW;
     END CATCH
 END

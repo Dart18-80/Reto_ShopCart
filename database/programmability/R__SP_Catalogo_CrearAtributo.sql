@@ -38,7 +38,7 @@ BEGIN
     BEGIN CATCH
         IF @@TRANCOUNT > 0 ROLLBACK;
         -- El UNIQUE de Nombre es la autoridad si dos altas llegan a la vez.
-        IF ERROR_NUMBER() IN (2601, 2627)
+        IF ERROR_NUMBER() IN (2601, 2627) AND ERROR_MESSAGE() LIKE N'%UQ_Atributo_Nombre%'
             THROW 50205, N'Ya existe un atributo con ese nombre.', 1;
         THROW;
     END CATCH

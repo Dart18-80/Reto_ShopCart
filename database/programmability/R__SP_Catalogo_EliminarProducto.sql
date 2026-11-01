@@ -56,8 +56,13 @@ BEGIN
     END TRY
     BEGIN CATCH
         IF @@TRANCOUNT > 0 ROLLBACK;
-        -- Las FKs de DetallePedido, MovimientoKardex, Reserva y LineaSesionCheckout son la autoridad.
+        -- Las FKs de historial son la autoridad: pedidos y checkout (hacia la variante o su precio), kardex y
+        -- reservas. Otro 547 (una FK o un CHECK distintos) es un error real y se relanza tal cual.
         IF ERROR_NUMBER() = 547
+           AND (ERROR_MESSAGE() LIKE N'%FK_DetallePedido_%'
+                OR ERROR_MESSAGE() LIKE N'%FK_MovimientoKardex_Variante%'
+                OR ERROR_MESSAGE() LIKE N'%FK_Reserva_Variante%'
+                OR ERROR_MESSAGE() LIKE N'%FK_LineaSesionCheckout_%')
             THROW 50203, N'El producto tiene ventas, movimientos o reservas: solo se puede desactivar.', 1;
         THROW;
     END CATCH

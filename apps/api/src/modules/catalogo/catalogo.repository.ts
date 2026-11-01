@@ -208,10 +208,17 @@ async function conjuntosProducto<P, V>(
   nombre: NombreSP,
   parametros: ParametrosSP,
 ): Promise<ConjuntosProducto<P, V>> {
-  const [productos = [], imagenes = [], variantes = [], valores = []] = await ejecutarSPConjuntos<
+  const [productos = [], imagenes, variantes, valores] = await ejecutarSPConjuntos<
     [P[], FilaImagen[], V[], FilaValorDeVariante[]]
   >(nombre, parametros);
-  return { producto: productos[0], imagenes, variantes, valores };
+  const producto = productos[0];
+  // Sin producto el SP no devuelve conjuntos (404). Con producto, faltar uno es un error del SP, no una
+  // lista vacía.
+  if (producto === undefined) return { producto, imagenes: [], variantes: [], valores: [] };
+  if (imagenes === undefined || variantes === undefined || valores === undefined) {
+    throw new Error(`${nombre} no devolvió los cuatro conjuntos del producto`);
+  }
+  return { producto, imagenes, variantes, valores };
 }
 
 async function productoAdmin(

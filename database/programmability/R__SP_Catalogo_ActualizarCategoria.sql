@@ -41,7 +41,7 @@ BEGIN
     END TRY
     BEGIN CATCH
         IF @@TRANCOUNT > 0 ROLLBACK;
-        IF ERROR_NUMBER() IN (2601, 2627)
+        IF ERROR_NUMBER() IN (2601, 2627) AND ERROR_MESSAGE() LIKE N'%UQ_Categoria_Nombre%'
             THROW 50205, N'Ya existe una categoría con ese nombre.', 1;
         THROW;
     END CATCH

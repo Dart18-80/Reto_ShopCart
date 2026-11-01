@@ -94,6 +94,12 @@ export const CATALOGO = {
     numeroSql: 50207,
     mensaje: 'La variante debe usar los mismos atributos que las demás del producto.',
   },
+  // N-14: una categoría que usan cupones o pedidos no se borra, solo se desactiva.
+  CATEGORIA_EN_USO: {
+    http: 409,
+    numeroSql: 50209,
+    mensaje: 'La categoría está en cupones o en pedidos.',
+  },
   // N-14: la combinación de una variante con historial no se cambia.
   VARIANTE_CON_HISTORIAL: {
     http: 409,

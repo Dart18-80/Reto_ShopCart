@@ -1,10 +1,12 @@
+import sql from 'mssql';
 import request from 'supertest';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { crearApp } from '../../../src/app.js';
-import { leerDatos } from '../../unit/respuestas.js';
+import { ejecutarSP } from '../../../src/shared/db/index.js';
+import { leerDatos, leerError } from '../../unit/respuestas.js';
 import { dependenciasDePrueba } from '../../app-de-prueba.js';
 import { usarBaseDePruebas } from '../base-de-pruebas.js';
-import { leerBitacora } from '../datos-de-prueba.js';
+import { crearPedido, crearUsuario, leerBitacora } from '../datos-de-prueba.js';
 import {
   conToken,
   crearAtributo,
@@ -102,6 +104,31 @@ describe('casos borde del catálogo: entradas', () => {
 });
 
 describe('casos borde del catálogo: base de datos', () => {
+  it('una categoría sin productos pero con pedidos vendidos no se borra: 409 CATEGORIA_EN_USO, nunca 500', async () => {
+    const [vendida, destino] = [await crearCategoria(app, token), await crearCategoria(app, token)];
+    const producto = await crearProducto(app, token, vendida);
+    const detalle = leerDatos(
+      await crearVariante(app, token, producto.idProducto, []),
+      productoAdminSchema,
+    );
+    await ejecutarSP('SP_Pruebas_CrearDetallePedido', {
+      IDPedido: { tipo: sql.Int, valor: await crearPedido(await crearUsuario()) },
+      IDVariante: { tipo: sql.Int, valor: detalle.variantes[0]?.idVariante ?? 0 },
+      Cantidad: { tipo: sql.Int, valor: 1 },
+    });
+    await request(app)
+      .patch(`/api/v1/admin/productos/${String(producto.idProducto)}`)
+      .set(conToken(token))
+      .send({ idCategoria: destino });
+
+    const respuesta = await request(app)
+      .delete(`/api/v1/admin/categorias/${String(vendida)}`)
+      .set(conToken(token));
+
+    expect(respuesta.status).toBe(409);
+    expect(leerError(respuesta).codigo).toBe('CATEGORIA_EN_USO');
+  });
+
   it('borrar un producto con varias variantes registra en la bitácora la eliminación de cada una', async () => {
     const talla = await crearAtributo(app, token, ['S', 'M', 'L']);
     const idProducto = await productoNuevo();
