@@ -21,9 +21,11 @@ const cargaSchema = z.object({
   versionSesion: z.number().int().min(0),
 });
 
+export type RolDeUsuario = (typeof ROLES_DE_USUARIO)[number];
+
 export interface ActorDelToken {
   idUsuario: number;
-  rol: Rol;
+  rol: RolDeUsuario;
   versionSesion: number;
 }
 
@@ -87,6 +89,10 @@ export function crearTokensAcceso(secreto: string, logger: Logger): TokensAcceso
   };
 }
 
-export function esRolDeUsuario(valor: string): valor is (typeof ROLES_DE_USUARIO)[number] {
-  return (ROLES_DE_USUARIO as readonly string[]).includes(valor);
+/** Rol leído de la base: un rol que no es de usuario (por ejemplo, Sistema) es un error de datos. */
+export function aRolDeUsuario(rol: string): RolDeUsuario {
+  if (!(ROLES_DE_USUARIO as readonly string[]).includes(rol)) {
+    throw new Error(`Rol inesperado desde la base: ${rol}`);
+  }
+  return rol as RolDeUsuario;
 }

@@ -1,6 +1,6 @@
 import sql from 'mssql';
 import { ejecutarSP } from '../../shared/db/index.js';
-import { esRolDeUsuario, type Rol } from '../../shared/http/index.js';
+import { aRolDeUsuario, type RolDeUsuario } from '../../shared/http/index.js';
 import type { ActualizarPerfil } from './usuarios.schemas.js';
 import type {
   FiltrosUsuarios,
@@ -35,12 +35,7 @@ export interface DatosNuevoInterno {
   hashContrasena: string;
   nombre: string;
   telefono: string | null;
-  rol: Rol;
-}
-
-function aRol(rol: string): Rol {
-  if (!esRolDeUsuario(rol)) throw new Error(`Rol inesperado desde la base: ${rol}`);
-  return rol;
+  rol: RolDeUsuario;
 }
 
 const aUsuario = (fila: FilaUsuario): Usuario => ({
@@ -48,7 +43,7 @@ const aUsuario = (fila: FilaUsuario): Usuario => ({
   correo: fila.Correo,
   nombre: fila.Nombre,
   telefono: fila.Telefono,
-  rol: aRol(fila.Rol),
+  rol: aRolDeUsuario(fila.Rol),
   activo: fila.Activo,
 });
 
@@ -115,7 +110,7 @@ export const usuariosRepository = {
   async actualizar(
     idUsuario: number,
     nombre: string | null,
-    rol: Rol | null,
+    rol: RolDeUsuario | null,
   ): Promise<UsuarioConVersion> {
     const filas = await ejecutarSP<FilaConVersion>('SP_Usuarios_Actualizar', {
       IDUsuario: { tipo: sql.Int, valor: idUsuario },

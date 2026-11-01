@@ -1,10 +1,10 @@
-import type { Rol } from '../../shared/http/index.js';
+import type { RolDeUsuario } from '../../shared/http/index.js';
 
 export interface UsuarioSesion {
   idUsuario: number;
   correo: string;
   nombre: string;
-  rol: Rol;
+  rol: RolDeUsuario;
 }
 
 /** A-07: la versión de sesión va en el access token, nunca en la respuesta. */

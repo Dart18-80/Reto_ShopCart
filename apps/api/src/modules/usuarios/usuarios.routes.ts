@@ -4,6 +4,7 @@ import {
   consultaPaginacionSchema,
   limitarIntentos,
   obtenerContexto,
+  ROLES_DE_USUARIO,
   type LimitadorIntentos,
 } from '../../shared/http/index.js';
 import { registroOpenApi, respuestasError } from '../../shared/openapi/index.js';
@@ -64,7 +65,7 @@ registroOpenApi.registerPath({
   security: seguridad,
   request: {
     query: consultaPaginacionSchema.extend({
-      rol: z.string().optional(),
+      rol: z.enum(ROLES_DE_USUARIO).optional(),
       activo: z.enum(['true', 'false']).optional(),
     }),
   },

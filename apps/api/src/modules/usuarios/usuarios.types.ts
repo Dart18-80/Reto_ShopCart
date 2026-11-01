@@ -1,11 +1,11 @@
-import type { Rol } from '../../shared/http/index.js';
+import type { RolDeUsuario } from '../../shared/http/index.js';
 
 export interface Usuario {
   idUsuario: number;
   correo: string;
   nombre: string;
   telefono: string | null;
-  rol: Rol;
+  rol: RolDeUsuario;
   activo: boolean;
 }
 
@@ -23,6 +23,6 @@ export interface PerfilConHash extends Usuario {
 export interface FiltrosUsuarios {
   pagina: number;
   tamano: number;
-  rol: Rol | null;
+  rol: RolDeUsuario | null;
   activo: boolean | null;
 }

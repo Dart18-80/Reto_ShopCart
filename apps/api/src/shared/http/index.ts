@@ -20,10 +20,11 @@ export { leerCookies } from './cookies.js';
 export { autorizar, crearAutenticar, type VersionesSesion } from './autenticar.js';
 export { limitarIntentos, type LimitadorIntentos } from './limitar-intentos.js';
 export {
+  aRolDeUsuario,
   crearTokensAcceso,
-  esRolDeUsuario,
   ROLES_DE_USUARIO,
   VIGENCIA_ACCESO_SEG,
   type ActorDelToken,
+  type RolDeUsuario,
   type TokensAcceso,
 } from './token-acceso.js';

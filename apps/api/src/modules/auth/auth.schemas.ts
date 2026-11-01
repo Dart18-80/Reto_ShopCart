@@ -1,4 +1,4 @@
-import { textoNvarchar } from '@shopcart/shared';
+import { telefonoSchema, textoNvarchar } from '@shopcart/shared';
 import { ROLES_DE_USUARIO } from '../../shared/http/index.js';
 import { z } from '../../shared/openapi/zod.js';
 
@@ -19,10 +19,7 @@ export const registroSchema = z
     correo: correoSchema,
     contrasena: contrasenaSchema,
     nombre: textoNvarchar(100),
-    telefono: z
-      .string()
-      .regex(/^\d{8}$/, 'El teléfono debe tener 8 dígitos.')
-      .optional(),
+    telefono: telefonoSchema.optional(),
   })
   .strict()
   .openapi('Registro');

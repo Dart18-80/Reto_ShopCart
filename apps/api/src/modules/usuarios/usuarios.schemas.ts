@@ -1,4 +1,4 @@
-import { textoNvarchar } from '@shopcart/shared';
+import { telefonoSchema, textoNvarchar } from '@shopcart/shared';
 import {
   consultaPaginacionSchema,
   idEnRutaSchema,
@@ -6,8 +6,6 @@ import {
 } from '../../shared/http/index.js';
 import { z } from '../../shared/openapi/zod.js';
 import { contrasenaSchema, correoSchema } from '../auth/index.js';
-
-const telefonoSchema = z.string().regex(/^\d{8}$/, 'El teléfono debe tener 8 dígitos.');
 
 // N-15: los internos que crea el Admin; los Clientes solo se registran.
 const ROLES_INTERNOS = ['Operador', 'Administrador'] as const;

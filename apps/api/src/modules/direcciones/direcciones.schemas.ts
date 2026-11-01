@@ -1,8 +1,6 @@
-import { textoNvarchar } from '@shopcart/shared';
+import { telefonoSchema, textoNvarchar } from '@shopcart/shared';
 import { idEnRutaSchema, idSchema } from '../../shared/http/index.js';
 import { z } from '../../shared/openapi/zod.js';
-
-const telefonoSchema = z.string().regex(/^\d{8}$/, 'El teléfono debe tener 8 dígitos.');
 
 // RF-01: .strict() rechaza un idUsuario colado en el cuerpo; el dueño sale del token.
 export const crearDireccionSchema = z

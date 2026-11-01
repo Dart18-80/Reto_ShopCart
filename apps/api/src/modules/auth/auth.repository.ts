@@ -1,6 +1,6 @@
 import sql from 'mssql';
 import { ejecutarSP } from '../../shared/db/index.js';
-import { esRolDeUsuario, type Rol } from '../../shared/http/index.js';
+import { aRolDeUsuario } from '../../shared/http/index.js';
 import type { Credenciales, IdentidadSesion } from './auth.types.js';
 
 interface FilaUsuario {
@@ -32,16 +32,11 @@ export interface DatosRefresh {
   userAgent: string | null;
 }
 
-function aRol(rol: string): Rol {
-  if (!esRolDeUsuario(rol)) throw new Error(`Rol inesperado desde la base: ${rol}`);
-  return rol;
-}
-
 const aIdentidad = (fila: FilaUsuario): IdentidadSesion => ({
   idUsuario: fila.IDUsuario,
   correo: fila.Correo,
   nombre: fila.Nombre,
-  rol: aRol(fila.Rol),
+  rol: aRolDeUsuario(fila.Rol),
   versionSesion: fila.VersionSesion,
 });
 
