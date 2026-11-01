@@ -79,6 +79,17 @@ async function crearAdmin(tokenAdmin: string) {
 }
 
 describe('perfil propio (E2-H04, RF-01)', () => {
+  it.each([
+    ['Operador', 'operador@shopcart.gt', 'Operador2026!'],
+    ['Administrador', 'admin@shopcart.gt', 'Admin2026!'],
+  ])('N-15: un %s también ve su perfil en /usuarios/me', async (rol, correo, contrasena) => {
+    const { accessToken } = leerSesion(await iniciarSesion(app, correo, contrasena));
+
+    const respuesta = await request(app).get('/api/v1/usuarios/me').set(conToken(accessToken));
+
+    expect(leerDatos(respuesta, perfilSchema)).toMatchObject({ correo, rol });
+  });
+
   it('GET /usuarios/me devuelve el perfil del dueño del token, sin el hash', async () => {
     const cliente = await sesionDeCliente();
 
