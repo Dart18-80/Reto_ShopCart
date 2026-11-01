@@ -12,6 +12,7 @@ import {
   crearAutenticar,
   encabezadoInstancia,
   requestId,
+  type LimitadorIntentos,
   type TokensAcceso,
   type VersionesSesion,
 } from './shared/http/index.js';
@@ -21,13 +22,18 @@ import { generarDocumentoOpenApi } from './shared/openapi/index.js';
 const LIMITE_CUERPO_JSON = '100kb';
 const SALTOS_DE_PROXY_CONFIABLES = 1;
 
+export interface Limitadores extends LimitadoresAuth {
+  /** A-07: 5 intentos por minuto por usuario. */
+  cambioContrasena: LimitadorIntentos;
+}
+
 export interface DependenciasApp {
   logger: Logger;
   instancia: string;
   origenesCors: string[];
   verificadorRedis: VerificadorRedis;
   tokensAcceso: TokensAcceso;
-  limitadores: LimitadoresAuth;
+  limitadores: Limitadores;
   versionesSesion: VersionesSesion;
 }
 
@@ -70,7 +76,15 @@ export function crearApp({
 
   const autenticar = crearAutenticar({ tokens: tokensAcceso, versiones: versionesSesion });
   const sesiones = crearSesiones(tokensAcceso);
-  v1.use('/usuarios', crearModuloUsuarios({ autenticar, sesiones, versiones: versionesSesion }));
+  v1.use(
+    '/usuarios',
+    crearModuloUsuarios({
+      autenticar,
+      sesiones,
+      versiones: versionesSesion,
+      limitadorContrasena: limitadores.cambioContrasena,
+    }),
+  );
   v1.use(crearModuloDirecciones({ autenticar }));
   app.use('/api/v1', v1);
 

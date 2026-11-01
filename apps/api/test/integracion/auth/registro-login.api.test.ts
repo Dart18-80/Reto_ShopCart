@@ -135,6 +135,7 @@ describe('rate limiting con Redis (E2-H01, A-07)', () => {
   const appConLimites = crearApp(
     dependenciasDePrueba({
       limitadores: {
+        ...dependenciasDePrueba().limitadores,
         login: crearLimitadorRedis(redis, {
           prefijo: `${prefijo}:login`,
           intentos: 5,

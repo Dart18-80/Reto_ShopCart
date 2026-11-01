@@ -33,7 +33,7 @@ export function dependenciasDePrueba(cambios: Partial<DependenciasApp> = {}): De
     origenesCors: ['http://localhost:5173'],
     verificadorRedis: { ping: () => Promise.resolve(true) },
     tokensAcceso: crearTokensAcceso(SECRETO_JWT_DE_PRUEBA),
-    limitadores: { login: SIN_LIMITE, registro: SIN_LIMITE },
+    limitadores: { login: SIN_LIMITE, registro: SIN_LIMITE, cambioContrasena: SIN_LIMITE },
     versionesSesion: versionesSesionEnMemoria(),
     ...cambios,
   };

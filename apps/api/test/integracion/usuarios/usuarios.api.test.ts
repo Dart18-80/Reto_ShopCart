@@ -1,9 +1,11 @@
+import { randomUUID } from 'node:crypto';
 import type { Express } from 'express';
 import sql from 'mssql';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { crearApp } from '../../../src/app.js';
+import { crearLimitadorRedis } from '../../../src/shared/adapters/limitador-redis.js';
 import { crearClienteRedis } from '../../../src/shared/adapters/redis.js';
 import { crearVersionesSesionRedis } from '../../../src/shared/adapters/versiones-sesion-redis.js';
 import { cargarConfiguracion } from '../../../src/shared/config/index.js';
@@ -392,5 +394,39 @@ describe('administración de usuarios (E2-H04, N-15)', () => {
 
     expect(leerDatos(cambio, perfilSchema).rol).toBe('Operador');
     expect(inexistente.status).toBe(404);
+  });
+});
+
+describe('límite de intentos del cambio de contraseña (A-07)', () => {
+  const appConLimite = crearApp(
+    dependenciasDePrueba({
+      limitadores: {
+        ...dependenciasDePrueba().limitadores,
+        cambioContrasena: crearLimitadorRedis(redis, {
+          prefijo: `prueba:${randomUUID()}:contrasena`,
+          intentos: 5,
+          ventanaSeg: 60,
+        }),
+      },
+    }),
+  );
+  const intentar = (token: string) =>
+    request(appConLimite)
+      .post('/api/v1/usuarios/me/contrasena')
+      .set(conToken(token))
+      .send({ contrasenaActual: 'NoEsLaMia2026', contrasenaNueva: 'NuevaClave2027' });
+
+  it('el sexto intento en un minuto responde 429 con Retry-After, y el límite es por usuario', async () => {
+    const [ana, beto] = [await sesionDeCliente(), await sesionDeCliente()];
+
+    const estados: number[] = [];
+    for (let intento = 0; intento < 5; intento++) estados.push((await intentar(ana.token)).status);
+    const sexto = await intentar(ana.token);
+
+    expect(estados).toEqual([400, 400, 400, 400, 400]);
+    expect(sexto.status).toBe(429);
+    expect(Number(sexto.headers['retry-after'])).toBeGreaterThan(0);
+    expect(leerError(sexto).codigo).toBe('DEMASIADAS_PETICIONES');
+    expect((await intentar(beto.token)).status).toBe(400);
   });
 });

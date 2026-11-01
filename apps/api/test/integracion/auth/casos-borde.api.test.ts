@@ -99,6 +99,7 @@ describe('casos borde del rate limiting del login (E2-H01, A-07)', () => {
   const appConLimites = crearApp(
     dependenciasDePrueba({
       limitadores: {
+        ...dependenciasDePrueba().limitadores,
         login: crearLimitadorRedis(redis, {
           prefijo: `prueba:${randomUUID()}:login`,
           intentos: 5,

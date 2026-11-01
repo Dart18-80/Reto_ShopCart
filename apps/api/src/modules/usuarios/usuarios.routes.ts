@@ -1,5 +1,11 @@
 import { Router, type RequestHandler } from 'express';
-import { autorizar, consultaPaginacionSchema } from '../../shared/http/index.js';
+import {
+  autorizar,
+  consultaPaginacionSchema,
+  limitarIntentos,
+  obtenerContexto,
+  type LimitadorIntentos,
+} from '../../shared/http/index.js';
 import { registroOpenApi, respuestasError } from '../../shared/openapi/index.js';
 import { z } from '../../shared/openapi/zod.js';
 import type { UsuariosController } from './usuarios.controller.js';
@@ -41,12 +47,13 @@ registroOpenApi.registerPath({
   method: 'post',
   path: `${RUTA}/me/contrasena`,
   tags: ['Usuarios'],
-  summary: 'Cambia la contraseña: revoca todas las sesiones y abre una nueva en este dispositivo',
+  summary:
+    'Cambia la contraseña: corta las otras sesiones y renueva esta (5 intentos por minuto por usuario)',
   security: seguridad,
   request: cuerpo(cambiarContrasenaSchema),
   responses: {
     200: { description: 'Sesión nueva; el refresh token llega en la cookie "refresh"' },
-    ...respuestasError(400, 401),
+    ...respuestasError(400, 401, 429),
   },
 });
 registroOpenApi.registerPath({
@@ -117,9 +124,13 @@ for (const accion of ['desactivar', 'activar'] as const) {
   });
 }
 
+// Va después de autenticar: el usuario ya está en el contexto.
+const porUsuario = (): string => String(obtenerContexto()?.idUsuario);
+
 export function crearUsuariosRouter(
   controller: UsuariosController,
   autenticar: RequestHandler,
+  limitadorContrasena: LimitadorIntentos,
 ): Router {
   const router = Router();
   const cualquierUsuario = [autenticar, autorizar('Cliente', 'Operador', 'Administrador')];
@@ -127,7 +138,13 @@ export function crearUsuariosRouter(
 
   router.get('/me', ...cualquierUsuario, controller.obtenerPerfil);
   router.patch('/me', ...cualquierUsuario, controller.actualizarPerfil);
-  router.post('/me/contrasena', ...cualquierUsuario, controller.cambiarContrasena);
+  // A-07: con un access token robado no se puede adivinar la contraseña actual sin límite.
+  router.post(
+    '/me/contrasena',
+    ...cualquierUsuario,
+    limitarIntentos(limitadorContrasena, porUsuario),
+    controller.cambiarContrasena,
+  );
 
   router.get('/', ...soloAdmin, controller.listar);
   router.post('/', ...soloAdmin, controller.crearInterno);
