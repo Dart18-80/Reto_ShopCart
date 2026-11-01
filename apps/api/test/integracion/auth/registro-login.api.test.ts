@@ -209,4 +209,68 @@ describe('los logs nunca llevan contraseñas, tokens ni cookies', () => {
       expect(log).not.toContain(secreto);
     }
   });
+
+  it('refresh, logout, perfil, cambio de contraseña y alta por Admin no dejan el Bearer, la cookie ni las contraseñas', async () => {
+    const lineas: string[] = [];
+    const destino = new Writable({
+      write(fragmento: Buffer, _codificacion, listo) {
+        lineas.push(fragmento.toString());
+        listo();
+      },
+    });
+    const appConLog = crearApp(
+      dependenciasDePrueba({ logger: crearLogger({ nivel: 'debug', destino }) }),
+    );
+    const contrasenaNueva = 'NuevaClave2027';
+    const contrasenaInterna = 'Interna2027x';
+    const registro = await registrar(appConLog);
+    const bearer = { Authorization: `Bearer ${leerSesion(registro).accessToken}` };
+    const refresco = await request(appConLog)
+      .post('/api/v1/auth/refresh')
+      .set('Cookie', `refresh=${encodeURIComponent(valorRefresh(registro))}`);
+    const tokenAdmin = leerSesion(
+      await iniciarSesion(appConLog, 'admin@shopcart.gt', 'Admin2026!'),
+    ).accessToken;
+
+    await request(appConLog).get('/api/v1/usuarios/me').set(bearer);
+    await request(appConLog)
+      .post('/api/v1/usuarios/me/contrasena')
+      .set(bearer)
+      .send({ contrasenaActual: 'NoEsLaMia2026', contrasenaNueva });
+    const cambio = await request(appConLog)
+      .post('/api/v1/usuarios/me/contrasena')
+      .set(bearer)
+      .send({ contrasenaActual: CONTRASENA, contrasenaNueva });
+    await request(appConLog)
+      .post('/api/v1/usuarios')
+      .set({ Authorization: `Bearer ${tokenAdmin}` })
+      .send({
+        correo: correoUnico(),
+        contrasena: contrasenaInterna,
+        nombre: 'Op',
+        rol: 'Operador',
+      });
+    await request(appConLog)
+      .post('/api/v1/auth/logout')
+      .set('Cookie', `refresh=${encodeURIComponent(valorRefresh(cambio))}`);
+
+    const log = lineas.join('');
+    expect(log).not.toBe('');
+    for (const secreto of [
+      CONTRASENA,
+      'NoEsLaMia2026',
+      contrasenaNueva,
+      contrasenaInterna,
+      'Admin2026!',
+      leerSesion(registro).accessToken,
+      leerSesion(refresco).accessToken,
+      leerSesion(cambio).accessToken,
+      tokenAdmin,
+      valorRefresh(registro),
+      valorRefresh(refresco),
+      valorRefresh(cambio),
+    ]) {
+      expect(log).not.toContain(secreto);
+    }
+  });
 });
