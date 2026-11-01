@@ -20,15 +20,21 @@ BEGIN
     BEGIN TRY
         BEGIN TRAN;
 
-        -- UPDLOCK + HOLDLOCK sobre los Admins activos ANTES que la fila objetivo, igual que
-        -- SP_Usuarios_Actualizar: dos Admins que se desactivan a la vez no pueden dejar el sistema sin
-        -- ninguno, y como todos piden los bloqueos en el mismo orden no se cruzan en un deadlock.
-        DECLARE @AdminsActivos INT;
+        -- Toda operación que puede reducir los Admins activos toma primero el UPDLOCK de la fila del rol
+        -- Administrador y después la fila objetivo, igual que SP_Usuarios_Actualizar: se serializan entre
+        -- sí (dos Admins que se desactivan a la vez no dejan el sistema sin ninguno) y, con el mismo orden
+        -- de bloqueo, no se cruzan en un deadlock. Un UPDLOCK no bloquea lecturas ni validaciones de FK.
+        DECLARE @AdminsActivos INT, @IDRolAdmin INT;
         IF @Activo = 0
+        BEGIN
+            SELECT @IDRolAdmin = r.IDRol
+            FROM   dbo.Rol AS r WITH (UPDLOCK, ROWLOCK)
+            WHERE  r.Codigo = 'Administrador';
+
             SELECT @AdminsActivos = COUNT(*)
-            FROM   dbo.Usuario AS u WITH (UPDLOCK, HOLDLOCK)
-            JOIN   dbo.Rol     AS r ON r.IDRol = u.IDRol
-            WHERE  r.Codigo = 'Administrador' AND u.Activo = 1;
+            FROM   dbo.Usuario AS u
+            WHERE  u.IDRol = @IDRolAdmin AND u.Activo = 1;
+        END
 
         DECLARE @RolActual VARCHAR(20), @ActivoActual BIT;
         SELECT @RolActual = r.Codigo, @ActivoActual = u.Activo

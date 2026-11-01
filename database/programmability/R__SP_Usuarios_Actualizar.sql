@@ -22,14 +22,19 @@ BEGIN
     BEGIN TRY
         BEGIN TRAN;
 
-        -- Admins activos bloqueados ANTES que la fila objetivo, en el mismo orden que
-        -- SP_Usuarios_CambiarEstado: así quitar el rol y desactivar a la vez no se cruzan en un deadlock.
-        DECLARE @AdminsActivos INT;
+        -- Fila del rol Administrador bloqueada ANTES que la fila objetivo, en el mismo orden que
+        -- SP_Usuarios_CambiarEstado: quitar el rol y desactivar se serializan y no se cruzan en un deadlock.
+        DECLARE @AdminsActivos INT, @IDRolAdmin INT;
         IF @Rol IS NOT NULL
+        BEGIN
+            SELECT @IDRolAdmin = r.IDRol
+            FROM   dbo.Rol AS r WITH (UPDLOCK, ROWLOCK)
+            WHERE  r.Codigo = 'Administrador';
+
             SELECT @AdminsActivos = COUNT(*)
-            FROM   dbo.Usuario AS u WITH (UPDLOCK, HOLDLOCK)
-            JOIN   dbo.Rol     AS r ON r.IDRol = u.IDRol
-            WHERE  r.Codigo = 'Administrador' AND u.Activo = 1;
+            FROM   dbo.Usuario AS u
+            WHERE  u.IDRol = @IDRolAdmin AND u.Activo = 1;
+        END
 
         DECLARE @RolActual VARCHAR(20), @ActivoActual BIT;
         SELECT @RolActual = r.Codigo, @ActivoActual = u.Activo
