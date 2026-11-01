@@ -31,7 +31,8 @@ BEGIN
             @IDUsuario, @RequestId
     FROM    inserted AS i
     FULL OUTER JOIN deleted AS d ON d.IDUsuario = i.IDUsuario
-    -- Solo rol y activación: los cambios de perfil o de contraseña no se registran aquí.
+    -- Solo rol y activación: los cambios de perfil, de contraseña o de VersionSesion (A-07) no se
+    -- registran aquí.
     WHERE   i.IDUsuario IS NULL OR d.IDUsuario IS NULL
        OR   EXISTS (SELECT i.IDRol, i.Activo EXCEPT SELECT d.IDRol, d.Activo);
 END

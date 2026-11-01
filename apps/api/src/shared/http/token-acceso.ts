@@ -14,11 +14,14 @@ const cargaSchema = z.object({
   sub: z.string().regex(/^[1-9]\d*$/),
   rol: z.enum(ROLES_DE_USUARIO),
   jti: z.string().min(1),
+  // A-07: autenticar rechaza el token si la versión de sesión del usuario ya subió.
+  versionSesion: z.number().int().min(0),
 });
 
 export interface ActorDelToken {
   idUsuario: number;
   rol: Rol;
+  versionSesion: number;
 }
 
 export interface TokensAcceso {
@@ -30,8 +33,8 @@ export interface TokensAcceso {
 export function crearTokensAcceso(secreto: string): TokensAcceso {
   const clave = new TextEncoder().encode(secreto);
   return {
-    emitir: ({ idUsuario, rol }) =>
-      new SignJWT({ rol })
+    emitir: ({ idUsuario, rol, versionSesion }) =>
+      new SignJWT({ rol, versionSesion })
         .setProtectedHeader({ alg: ALGORITMO })
         .setSubject(String(idUsuario))
         .setJti(randomUUID())
@@ -46,7 +49,9 @@ export function crearTokensAcceso(secreto: string): TokensAcceso {
           requiredClaims: ['exp', 'iat', 'jti', 'sub'],
         });
         const carga = cargaSchema.safeParse(payload);
-        return carga.success ? { idUsuario: Number(carga.data.sub), rol: carga.data.rol } : null;
+        if (!carga.success) return null;
+        const { sub, rol, versionSesion } = carga.data;
+        return { idUsuario: Number(sub), rol, versionSesion };
       } catch {
         // Firma inválida, token vencido o mal formado: todos son "no autenticado" para quien llama.
         return null;

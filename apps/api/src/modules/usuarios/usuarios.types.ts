@@ -9,6 +9,12 @@ export interface Usuario {
   activo: boolean;
 }
 
+/** Resultado de un cambio que puede subir la versión de sesión (A-07): la API la publica en Redis. */
+export interface UsuarioConVersion {
+  usuario: Usuario;
+  versionSesion: number;
+}
+
 /** El perfil propio con el hash, solo para verificar la contraseña actual. Nunca sale del servicio. */
 export interface PerfilConHash extends Usuario {
   hashContrasena: string;

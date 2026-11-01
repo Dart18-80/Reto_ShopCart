@@ -1,19 +1,21 @@
 import type { Request, RequestHandler } from 'express';
 import { AppError } from '../errors/app-error.js';
 import { establecerUsuario, obtenerContexto, type Rol } from './contexto.js';
-import type { TokensAcceso } from './token-acceso.js';
+import type { ActorDelToken, TokensAcceso } from './token-acceso.js';
 
-/** N-15: usuarios desactivados cuyo access token todavía no vence. Adaptador: ListaRevocadosRedis. */
-export interface ListaRevocados {
-  estaRevocado(idUsuario: number): Promise<boolean>;
-  revocar(idUsuario: number): Promise<void>;
-  /** Al reactivar al usuario: sale de la lista antes de que venza su clave. */
-  restaurar(idUsuario: number): Promise<void>;
+/**
+ * A-07, N-15: versión de sesión vigente de cada usuario, publicada después de desactivarlo, cambiarle el
+ * rol o cambiar su contraseña. Adaptador: VersionesSesionRedis.
+ */
+export interface VersionesSesion {
+  /** null si no cambió hace poco o si Redis no responde: rige la ventana del access token (N-15). */
+  vigente(idUsuario: number): Promise<number | null>;
+  publicar(idUsuario: number, versionSesion: number): Promise<void>;
 }
 
 interface DependenciasAutenticar {
   tokens: TokensAcceso;
-  listaRevocados: ListaRevocados;
+  versiones: Pick<VersionesSesion, 'vigente'>;
 }
 
 const BEARER = /^Bearer\s+(\S+)$/i;
@@ -23,17 +25,19 @@ function tokenDe(req: Request): string | undefined {
 }
 
 /**
- * A-07: verifica el access token (firma, vencimiento y forma) y la lista de revocados, y deja al usuario
- * en el contexto de la petición. Cualquier falla responde 401 NO_AUTENTICADO.
+ * A-07: verifica el access token (firma, vencimiento, forma y versión de sesión) y deja al usuario en el
+ * contexto de la petición. Cualquier falla responde 401 NO_AUTENTICADO.
  */
-export function crearAutenticar({
-  tokens,
-  listaRevocados,
-}: DependenciasAutenticar): RequestHandler {
+export function crearAutenticar({ tokens, versiones }: DependenciasAutenticar): RequestHandler {
+  async function esDeUnaVersionAnterior({ idUsuario, versionSesion }: ActorDelToken) {
+    const vigente = await versiones.vigente(idUsuario);
+    return vigente !== null && versionSesion < vigente;
+  }
+
   return async (req, _res, next) => {
     const token = tokenDe(req);
     const actor = token === undefined ? null : await tokens.verificar(token);
-    if (actor === null || (await listaRevocados.estaRevocado(actor.idUsuario))) {
+    if (actor === null || (await esDeUnaVersionAnterior(actor))) {
       next(new AppError('NO_AUTENTICADO'));
       return;
     }

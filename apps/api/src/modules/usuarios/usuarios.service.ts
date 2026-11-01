@@ -2,8 +2,8 @@ import { AppError } from '../../shared/errors/index.js';
 import {
   paginar,
   type ClienteHttp,
-  type ListaRevocados,
   type RespuestaPaginada,
+  type VersionesSesion,
 } from '../../shared/http/index.js';
 import {
   hashearContrasena,
@@ -23,10 +23,10 @@ import type { FiltrosUsuarios, PerfilConHash, Usuario } from './usuarios.types.j
 interface Dependencias {
   repositorio: UsuariosRepository;
   sesiones: Sesiones;
-  listaRevocados: ListaRevocados;
+  versiones: Pick<VersionesSesion, 'publicar'>;
 }
 
-export function crearUsuariosService({ repositorio, sesiones, listaRevocados }: Dependencias) {
+export function crearUsuariosService({ repositorio, sesiones, versiones }: Dependencias) {
   async function perfilConHash(): Promise<PerfilConHash> {
     const perfil = await repositorio.obtenerPerfil();
     if (perfil === null) throw new AppError('NO_ENCONTRADO');
@@ -49,9 +49,9 @@ export function crearUsuariosService({ repositorio, sesiones, listaRevocados }: 
     },
 
     /**
-     * N-15: verifica la contraseña actual, guarda la nueva y revoca todas las sesiones (lo hace el SP).
-     * La cookie de refresh no llega a esta ruta, así que no se distingue la sesión actual: se abre una
-     * nueva para este dispositivo.
+     * N-15, A-07: verifica la contraseña actual; el SP guarda la nueva, revoca todos los refresh tokens y
+     * sube la versión de sesión. Publicarla corta los access tokens de las otras sesiones, y este
+     * dispositivo recibe una sesión nueva con la versión nueva.
      */
     async cambiarContrasena(datos: CambiarContrasena, cliente: ClienteHttp): Promise<Sesion> {
       const perfil = await perfilConHash();
@@ -60,9 +60,12 @@ export function crearUsuariosService({ repositorio, sesiones, listaRevocados }: 
           mensaje: 'La contraseña actual no es correcta.',
         });
       }
-      await repositorio.cambiarContrasena(await hashearContrasena(datos.contrasenaNueva));
+      const versionSesion = await repositorio.cambiarContrasena(
+        await hashearContrasena(datos.contrasenaNueva),
+      );
       const { idUsuario, correo, nombre, rol } = perfil;
-      return sesiones.abrir({ idUsuario, correo, nombre, rol }, cliente);
+      await versiones.publicar(idUsuario, versionSesion);
+      return sesiones.abrir({ idUsuario, correo, nombre, rol, versionSesion }, cliente);
     },
 
     async listar(filtros: FiltrosUsuarios): Promise<RespuestaPaginada<Usuario>> {
@@ -80,22 +83,29 @@ export function crearUsuariosService({ repositorio, sesiones, listaRevocados }: 
       });
     },
 
-    actualizar: (idUsuario: number, cambios: ActualizarUsuario): Promise<Usuario> =>
-      repositorio.actualizar(idUsuario, cambios.nombre ?? null, cambios.rol ?? null),
-
-    // N-15: el SP revoca los refresh tokens; aquí se agrega a la lista de revocados para que su access
-    // token deje de servir de inmediato y no a los 15 minutos.
-    async desactivar(idUsuario: number): Promise<Usuario> {
-      const usuario = await repositorio.cambiarEstado(idUsuario, false);
-      await listaRevocados.revocar(idUsuario);
+    // A-07: con otro rol, el SP sube la versión de sesión y su access token deja de servir de inmediato.
+    async actualizar(idUsuario: number, cambios: ActualizarUsuario): Promise<Usuario> {
+      const { usuario, versionSesion } = await repositorio.actualizar(
+        idUsuario,
+        cambios.nombre ?? null,
+        cambios.rol ?? null,
+      );
+      if (cambios.rol !== undefined) await versiones.publicar(idUsuario, versionSesion);
       return usuario;
     },
 
-    // N-15: sin esto, un usuario reactivado seguiría con 401 hasta que venciera su clave en Redis.
-    async activar(idUsuario: number): Promise<Usuario> {
-      const usuario = await repositorio.cambiarEstado(idUsuario, true);
-      await listaRevocados.restaurar(idUsuario);
+    // N-15, A-07: el SP revoca los refresh tokens y sube la versión de sesión; publicarla corta su access
+    // token de inmediato y no a los 15 minutos.
+    async desactivar(idUsuario: number): Promise<Usuario> {
+      const { usuario, versionSesion } = await repositorio.cambiarEstado(idUsuario, false);
+      await versiones.publicar(idUsuario, versionSesion);
       return usuario;
+    },
+
+    // A-07: reactivar no toca la versión, así que los access tokens previos a la desactivación siguen
+    // rechazados; el usuario inicia sesión de nuevo.
+    async activar(idUsuario: number): Promise<Usuario> {
+      return (await repositorio.cambiarEstado(idUsuario, true)).usuario;
     },
   };
 }

@@ -277,6 +277,7 @@ Notación: **PK** llave primaria · **FK** llave foránea · **UQ** único · **
 | IDRol | INT | FK → Rol |
 | Activo | BIT | DF 1 |
 | FechaDesactivacion | DATETIME2(3) *NULL* | CK: `Activo = 1` ⇔ `FechaDesactivacion IS NULL` |
+| VersionSesion | INT | DF 0; CK `>= 0`. Sube al desactivar, cambiar el rol o cambiar la contraseña (A-07); la bitácora no registra los cambios que solo la tocan |
 
 **`RefreshToken`**
 

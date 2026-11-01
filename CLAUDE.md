@@ -30,7 +30,7 @@ Eres el **desarrollador** de ShopCart. Diego es el Product Owner y el arquitecto
   - **En el SP o en un constraint**, si la regla se puede romper con dos peticiones simultáneas o con una escritura directa a la base: stock, reservas, límites de cupón, transiciones de estado, devoluciones, atomicidad, idempotencia.
   - **En el servicio**, si depende de algo fuera de la base (pasarela, Redis, tokens, cookies) o decide el flujo del caso de uso.
   - El servicio puede prevalidar para dar un mensaje claro, pero **el SP es la autoridad**: siempre vuelve a validar bajo bloqueo.
-- **Todo lo externo pasa por un puerto** (`PasarelaPago`, `Cache`, `ListaRevocados`, `Reloj`). Los adaptadores se inyectan en `app.ts`.
+- **Todo lo externo pasa por un puerto** (`PasarelaPago`, `Cache`, `VersionesSesion`, `Reloj`). Los adaptadores se inyectan en `app.ts`.
 - **La API es stateless** (RNF-2): nada de estado en memoria que deba compartirse entre réplicas. Redis solo guarda lo que se puede perder; lo crítico vive en SQL Server.
 - **Aislamiento entre clientes (RF-01):** los endpoints del cliente **nunca reciben su `IDUsuario`**: sale del token. Los SPs de recursos propios filtran con `@IDUsuarioActor`. Un recurso ajeno responde `404`, igual que uno inexistente. El carrito no expone su ID.
 
@@ -102,7 +102,7 @@ Con `/kit:init typescript` (kit de Diego, `Dart18-80/claude-kit`): el agente `ty
 - **L · Sustitución de Liskov:** todo adaptador cumple el contrato completo de su puerto (mismas
   entradas, salidas y errores); el adaptador simulado, uno real y los falsos de las pruebas son
   intercambiables sin cambiar el servicio.
-- **I · Segregación de interfaces:** puertos pequeños y específicos (Cache, ListaRevocados, Reloj),
+- **I · Segregación de interfaces:** puertos pequeños y específicos (Cache, VersionesSesion, Reloj),
   nunca un "RedisService" que lo haga todo; cada servicio depende solo de lo que usa.
 - **D · Inversión de dependencias:** los servicios dependen de puertos y tipos propios, nunca de
   mssql, ioredis ni Express; todo se compone en app.ts.

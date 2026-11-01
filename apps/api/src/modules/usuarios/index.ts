@@ -1,5 +1,5 @@
 import type { RequestHandler, Router } from 'express';
-import type { ListaRevocados } from '../../shared/http/index.js';
+import type { VersionesSesion } from '../../shared/http/index.js';
 import type { Sesiones } from '../auth/index.js';
 import { crearUsuariosController } from './usuarios.controller.js';
 import { usuariosRepository } from './usuarios.repository.js';
@@ -9,18 +9,18 @@ import { crearUsuariosService } from './usuarios.service.js';
 interface DependenciasUsuarios {
   autenticar: RequestHandler;
   sesiones: Sesiones;
-  listaRevocados: ListaRevocados;
+  versiones: Pick<VersionesSesion, 'publicar'>;
 }
 
 export function crearModuloUsuarios({
   autenticar,
   sesiones,
-  listaRevocados,
+  versiones,
 }: DependenciasUsuarios): Router {
   const servicio = crearUsuariosService({
     repositorio: usuariosRepository,
     sesiones,
-    listaRevocados,
+    versiones,
   });
   return crearUsuariosRouter(crearUsuariosController(servicio), autenticar);
 }

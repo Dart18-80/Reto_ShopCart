@@ -1,5 +1,6 @@
 -- N-15: el Admin edita el nombre y el rol de un usuario (NULL = sin cambio). Un Admin no cambia su
--- propio rol y el sistema nunca se queda sin Admins activos. Devuelve el usuario.
+-- propio rol y el sistema nunca se queda sin Admins activos. Cambiar el rol incrementa la versión de sesión
+-- (A-07). Devuelve el usuario y su versión.
 CREATE OR ALTER PROCEDURE dbo.SP_Usuarios_Actualizar
     @IDUsuario      INT,
     @Nombre         NVARCHAR(100),
@@ -51,6 +52,8 @@ BEGIN
         UPDATE dbo.Usuario
         SET    Nombre = COALESCE(@Nombre, Nombre),
                IDRol = COALESCE(@IDRolNuevo, IDRol),
+               -- A-07: con otro rol, sus access tokens dejan de servir de inmediato.
+               VersionSesion = VersionSesion + CASE WHEN @IDRolNuevo <> IDRol THEN 1 ELSE 0 END,
                FechaActualizacion = SYSUTCDATETIME()
         WHERE  IDUsuario = @IDUsuario;
 
@@ -61,7 +64,7 @@ BEGIN
         THROW;
     END CATCH
 
-    SELECT u.IDUsuario, u.Correo, u.Nombre, u.Telefono, r.Codigo AS Rol, u.Activo
+    SELECT u.IDUsuario, u.Correo, u.Nombre, u.Telefono, r.Codigo AS Rol, u.Activo, u.VersionSesion
     FROM   dbo.Usuario AS u
     JOIN   dbo.Rol     AS r ON r.IDRol = u.IDRol
     WHERE  u.IDUsuario = @IDUsuario;

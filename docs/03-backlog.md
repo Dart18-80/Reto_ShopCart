@@ -274,7 +274,7 @@
 **Referencias:** A-07.
 
 ### E2-H03 · Autenticación, autorización y revocación — `Must` · 0.5 h
-**Alcance:** middlewares `autenticar` (verifica el JWT y la lista de revocados en Redis) y `autorizar(...roles)`; `ListaRevocados` como puerto con adaptador Redis.
+**Alcance:** middlewares `autenticar` (verifica el JWT y la lista de revocados en Redis) y `autorizar(...roles)`; `ListaRevocados` como puerto con adaptador Redis (reemplazado por `VersionesSesion`, A-07).
 - **El esquema Zod del token solo admite los roles de usuario `Cliente`, `Operador` y `Administrador`.** `Sistema` es el rol con el que escriben los jobs y el migrador (A-18): ningún token puede traerlo.
 
 **CA**
@@ -288,7 +288,7 @@
 
 **CA**
 - [ ] Un Admin no puede desactivarse a sí mismo; no se puede desactivar al último Admin activo (`409 ULTIMO_ADMIN`).
-- [ ] Desactivar revoca los refresh tokens y agrega al usuario a la lista de revocados.
+- [ ] Desactivar revoca los refresh tokens y agrega al usuario a la lista de revocados (hoy: sube su versión de sesión, A-07).
 - [ ] La bitácora registra la desactivación sin incluir el hash de la contraseña.
 
 **Referencias:** RF-01, N-15.

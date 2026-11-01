@@ -4,8 +4,8 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { crearApp } from '../../../src/app.js';
-import { crearListaRevocadosRedis } from '../../../src/shared/adapters/lista-revocados-redis.js';
 import { crearClienteRedis } from '../../../src/shared/adapters/redis.js';
+import { crearVersionesSesionRedis } from '../../../src/shared/adapters/versiones-sesion-redis.js';
 import { cargarConfiguracion } from '../../../src/shared/config/index.js';
 import { ejecutarSP } from '../../../src/shared/db/index.js';
 import { crearLogger } from '../../../src/shared/observability/index.js';
@@ -28,7 +28,7 @@ usarBaseDePruebas();
 const redis = crearClienteRedis(cargarConfiguracion(process.env).redis);
 const logger = crearLogger({ nivel: 'silent' });
 const app: Express = crearApp(
-  dependenciasDePrueba({ listaRevocados: crearListaRevocadosRedis(redis, logger) }),
+  dependenciasDePrueba({ versionesSesion: crearVersionesSesionRedis(redis, logger) }),
 );
 
 beforeAll(async () => {
@@ -146,6 +146,26 @@ describe('perfil propio (E2-H04, RF-01)', () => {
 });
 
 describe('POST /usuarios/me/contrasena (E2-H04, N-15)', () => {
+  it('A-07: cambiar la contraseña conserva la sesión actual con tokens nuevos y corta las otras', async () => {
+    const cliente = await sesionDeCliente();
+    const otraSesion = leerSesion(await iniciarSesion(app, cliente.correo));
+
+    const respuesta = await request(app)
+      .post('/api/v1/usuarios/me/contrasena')
+      .set(conToken(cliente.token))
+      .send({ contrasenaActual: CONTRASENA, contrasenaNueva: 'NuevaClave2027' });
+
+    const actual = leerSesion(respuesta);
+    const perfil = (token: string) => request(app).get('/api/v1/usuarios/me').set(conToken(token));
+    expect((await perfil(actual.accessToken)).status).toBe(200);
+    const refrescoActual = await request(app)
+      .post('/api/v1/auth/refresh')
+      .set('Cookie', `refresh=${encodeURIComponent(valorRefresh(respuesta))}`);
+    expect(refrescoActual.status).toBe(200);
+    expect((await perfil(otraSesion.accessToken)).status).toBe(401);
+    expect((await perfil(cliente.token)).status).toBe(401);
+  });
+
   it('con la contraseña actual correcta la cambia, revoca las otras sesiones y abre una nueva', async () => {
     const cliente = await sesionDeCliente();
 
@@ -348,9 +368,10 @@ describe('administración de usuarios (E2-H04, N-15)', () => {
     expect(`${fila?.ValorAnterior ?? ''}${fila?.ValorNuevo ?? ''}`).not.toMatch(/hash|argon2/i);
   });
 
-  it('activar devuelve el acceso al usuario', async () => {
+  it('A-07: activar devuelve el acceso con un login nuevo, pero no revive el token anterior', async () => {
     const correo = correoUnico();
-    const { idUsuario } = leerSesion(await registrar(app, correo)).usuario;
+    const anterior = leerSesion(await registrar(app, correo));
+    const { idUsuario } = anterior.usuario;
     const token = await tokenDeAdmin();
     await request(app)
       .post(`/api/v1/usuarios/${String(idUsuario)}/desactivar`)
@@ -362,10 +383,43 @@ describe('administración de usuarios (E2-H04, N-15)', () => {
 
     expect(respuesta.status).toBe(200);
     const sesion = leerSesion(await iniciarSesion(app, correo));
-    // N-15: la lista de revocados ya no lo bloquea; antes respondía 401 hasta que vencía la clave (15 min).
-    expect(
-      (await request(app).get('/api/v1/usuarios/me').set(conToken(sesion.accessToken))).status,
-    ).toBe(200);
+    const perfil = (token: string) => request(app).get('/api/v1/usuarios/me').set(conToken(token));
+    expect((await perfil(sesion.accessToken)).status).toBe(200);
+    expect((await perfil(anterior.accessToken)).status).toBe(401);
+  });
+
+  it('A-07: un Admin al que le quitan el rol pierde los permisos de inmediato con su token anterior', async () => {
+    const tokenSemilla = await tokenDeAdmin();
+    const degradado = await crearAdmin(tokenSemilla);
+    const listar = () => request(app).get('/api/v1/usuarios').set(conToken(degradado.token));
+    expect((await listar()).status).toBe(200);
+
+    await request(app)
+      .patch(`/api/v1/usuarios/${String(degradado.idUsuario)}`)
+      .set(conToken(tokenSemilla))
+      .send({ rol: 'Operador' });
+
+    expect((await listar()).status).toBe(401);
+  });
+
+  it('A-07: dos réplicas ven la misma versión: lo que cambia en una corta el token en la otra', async () => {
+    const redisReplica = crearClienteRedis(cargarConfiguracion(process.env).redis);
+    redisReplica.on('error', () => undefined);
+    await redisReplica.connect();
+    const replica = crearApp(
+      dependenciasDePrueba({ versionesSesion: crearVersionesSesionRedis(redisReplica, logger) }),
+    );
+    const cliente = await sesionDeCliente();
+    const perfilEnReplica = () =>
+      request(replica).get('/api/v1/usuarios/me').set(conToken(cliente.token));
+    expect((await perfilEnReplica()).status).toBe(200);
+
+    await request(app)
+      .post(`/api/v1/usuarios/${String(cliente.idUsuario)}/desactivar`)
+      .set(conToken(await tokenDeAdmin()));
+
+    expect((await perfilEnReplica()).status).toBe(401);
+    redisReplica.disconnect();
   });
 
   it('PATCH /usuarios/:id cambia el rol y un usuario inexistente responde 404', async () => {

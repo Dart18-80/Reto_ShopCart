@@ -12,8 +12,8 @@ import {
   crearAutenticar,
   encabezadoInstancia,
   requestId,
-  type ListaRevocados,
   type TokensAcceso,
+  type VersionesSesion,
 } from './shared/http/index.js';
 import { registrarPeticiones } from './shared/observability/index.js';
 import { generarDocumentoOpenApi } from './shared/openapi/index.js';
@@ -28,7 +28,7 @@ export interface DependenciasApp {
   verificadorRedis: VerificadorRedis;
   tokensAcceso: TokensAcceso;
   limitadores: LimitadoresAuth;
-  listaRevocados: ListaRevocados;
+  versionesSesion: VersionesSesion;
 }
 
 /** Composición: middlewares, rutas e inyección de adaptadores (01-arquitectura.md §4.3). */
@@ -39,7 +39,7 @@ export function crearApp({
   verificadorRedis,
   tokensAcceso,
   limitadores,
-  listaRevocados,
+  versionesSesion,
 }: DependenciasApp): Express {
   const app = express();
   app.disable('x-powered-by');
@@ -68,9 +68,9 @@ export function crearApp({
   v1.use(crearModuloSistema({ redis: verificadorRedis, instancia, logger }));
   v1.use('/auth', crearModuloAuth({ tokens: tokensAcceso, limitadores }));
 
-  const autenticar = crearAutenticar({ tokens: tokensAcceso, listaRevocados });
+  const autenticar = crearAutenticar({ tokens: tokensAcceso, versiones: versionesSesion });
   const sesiones = crearSesiones(tokensAcceso);
-  v1.use('/usuarios', crearModuloUsuarios({ autenticar, sesiones, listaRevocados }));
+  v1.use('/usuarios', crearModuloUsuarios({ autenticar, sesiones, versiones: versionesSesion }));
   v1.use(crearModuloDirecciones({ autenticar }));
   app.use('/api/v1', v1);
 

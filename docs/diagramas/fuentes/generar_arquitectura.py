@@ -136,7 +136,7 @@ text(mx,816,"(regla verificada con lint)",11.5,400,MUTED)
 yb=845
 rect(730,yb,270,160,fill="#FDF2F8",stroke="#E9B8D3")
 text(744,yb+24,"Puertos → Adaptadores",13,700,"#8A2E5D")
-for i,s in enumerate(["PasarelaPago → PasarelaSimulada","Cache → Redis","ListaRevocados → Redis","Reloj → sistema"]):
+for i,s in enumerate(["PasarelaPago → PasarelaSimulada","Cache → Redis","VersionesSesion → Redis","Reloj → sistema"]):
     text(744,yb+50+i*24,s,12.5)
 rect(1020,yb,260,160,fill="#FFF7E6",stroke="#EBC98A")
 text(1034,yb+24,"Tareas periódicas",13,700,"#7A4E00")
@@ -166,7 +166,7 @@ card(1420,190,300,268,"sqlserver","#B9412E",sub="SQL Server 2022",lines=[
 card(1420,540,300,190,"redis","#B7791F",sub="7",lines=[
   ("Estado compartido entre réplicas",INK,700),
   ("Rate limiting",INK,400),
-  ("Lista de usuarios revocados",INK,400),
+  ("Versión de sesión por usuario",INK,400),
   ("Caché de reportes (por versión)",INK,400),
   ("Solo datos que se pueden perder",MUTED,400)],gap=24)
 arrow(1320,300,1420,300,"mssql\nsolo EXEC SP",ly=268)

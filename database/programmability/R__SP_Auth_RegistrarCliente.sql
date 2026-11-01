@@ -40,7 +40,7 @@ BEGIN
         THROW;
     END CATCH
 
-    SELECT u.IDUsuario, u.Correo, u.Nombre, u.Telefono, r.Codigo AS Rol
+    SELECT u.IDUsuario, u.Correo, u.Nombre, u.Telefono, r.Codigo AS Rol, u.VersionSesion
     FROM   dbo.Usuario AS u
     JOIN   dbo.Rol     AS r ON r.IDRol = u.IDRol
     WHERE  u.IDUsuario = @IDUsuario;

@@ -1,6 +1,6 @@
 -- N-15: activa o desactiva un usuario. Un Admin no puede desactivarse a sí mismo y el sistema nunca queda
--- sin Admins activos. Desactivar revoca todos sus refresh tokens en la misma transacción; la API agrega
--- después al usuario a la lista de revocados de Redis. Devuelve el usuario.
+-- sin Admins activos. Desactivar revoca todos sus refresh tokens e incrementa su versión de sesión en la
+-- misma transacción; la API publica después la versión en Redis (A-07). Devuelve el usuario y su versión.
 CREATE OR ALTER PROCEDURE dbo.SP_Usuarios_CambiarEstado
     @IDUsuario      INT,
     @Activo         BIT,
@@ -47,6 +47,8 @@ BEGIN
             UPDATE dbo.Usuario
             SET    Activo = @Activo,
                    FechaDesactivacion = CASE WHEN @Activo = 0 THEN SYSUTCDATETIME() END,
+                   -- A-07: desactivar invalida sus access tokens; reactivar no los revive (la versión no baja).
+                   VersionSesion = VersionSesion + CASE WHEN @Activo = 0 THEN 1 ELSE 0 END,
                    FechaActualizacion = SYSUTCDATETIME()
             WHERE  IDUsuario = @IDUsuario;
 
@@ -63,7 +65,7 @@ BEGIN
         THROW;
     END CATCH
 
-    SELECT u.IDUsuario, u.Correo, u.Nombre, u.Telefono, r.Codigo AS Rol, u.Activo
+    SELECT u.IDUsuario, u.Correo, u.Nombre, u.Telefono, r.Codigo AS Rol, u.Activo, u.VersionSesion
     FROM   dbo.Usuario AS u
     JOIN   dbo.Rol     AS r ON r.IDRol = u.IDRol
     WHERE  u.IDUsuario = @IDUsuario;

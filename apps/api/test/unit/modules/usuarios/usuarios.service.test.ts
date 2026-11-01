@@ -3,10 +3,11 @@ import { hashearContrasena, type Sesiones } from '../../../../src/modules/auth/i
 import type { UsuariosRepository } from '../../../../src/modules/usuarios/usuarios.repository.js';
 import { crearUsuariosService } from '../../../../src/modules/usuarios/usuarios.service.js';
 import type { PerfilConHash, Usuario } from '../../../../src/modules/usuarios/usuarios.types.js';
-import type { ListaRevocados } from '../../../../src/shared/http/index.js';
+import type { VersionesSesion } from '../../../../src/shared/http/index.js';
 
 const CONTRASENA = 'Actual2026';
 const CLIENTE = { ip: '203.0.113.7', userAgent: 'pruebas' };
+const VERSION_NUEVA = 4;
 
 const USUARIO: Usuario = {
   idUsuario: 7,
@@ -24,24 +25,22 @@ async function preparar() {
     actualizarPerfil: vi.fn((nombre: string, telefono: string | null) =>
       Promise.resolve({ ...USUARIO, nombre, telefono }),
     ),
-    cambiarContrasena: vi.fn((_hash: string) => Promise.resolve()),
+    cambiarContrasena: vi.fn((_hash: string) => Promise.resolve(VERSION_NUEVA)),
     listar: vi.fn(() => Promise.resolve({ usuarios: [USUARIO], total: 1 })),
     crearInterno: vi.fn(() => Promise.resolve(USUARIO)),
-    actualizar: vi.fn(() => Promise.resolve(USUARIO)),
-    cambiarEstado: vi.fn((_id: number, activo: boolean) => Promise.resolve({ ...USUARIO, activo })),
+    actualizar: vi.fn(() => Promise.resolve({ usuario: USUARIO, versionSesion: VERSION_NUEVA })),
+    cambiarEstado: vi.fn((_id: number, activo: boolean) =>
+      Promise.resolve({ usuario: { ...USUARIO, activo }, versionSesion: VERSION_NUEVA }),
+    ),
   } satisfies UsuariosRepository;
   const sesiones = {
     abrir: vi.fn<Sesiones['abrir']>((usuario) =>
       Promise.resolve({ accessToken: 'a', expiraEn: 900, refreshToken: 'r', usuario }),
     ),
   };
-  const listaRevocados = {
-    estaRevocado: vi.fn<ListaRevocados['estaRevocado']>(() => Promise.resolve(false)),
-    revocar: vi.fn<ListaRevocados['revocar']>(() => Promise.resolve()),
-    restaurar: vi.fn<ListaRevocados['restaurar']>(() => Promise.resolve()),
-  };
-  const servicio = crearUsuariosService({ repositorio, sesiones, listaRevocados });
-  return { servicio, repositorio, sesiones, listaRevocados };
+  const versiones = { publicar: vi.fn<VersionesSesion['publicar']>(() => Promise.resolve()) };
+  const servicio = crearUsuariosService({ repositorio, sesiones, versiones });
+  return { servicio, repositorio, sesiones, versiones };
 }
 
 describe('usuarios.service (E2-H04, N-15)', () => {
@@ -77,8 +76,8 @@ describe('usuarios.service (E2-H04, N-15)', () => {
     expect(sesiones.abrir).not.toHaveBeenCalled();
   });
 
-  it('con la contraseña actual correcta guarda un hash nuevo y abre una sesión nueva', async () => {
-    const { servicio, repositorio, sesiones } = await preparar();
+  it('A-07: con la contraseña correcta publica la versión nueva y abre esta sesión con ella', async () => {
+    const { servicio, repositorio, sesiones, versiones } = await preparar();
 
     await servicio.cambiarContrasena(
       { contrasenaActual: CONTRASENA, contrasenaNueva: 'Nueva2027' },
@@ -86,47 +85,51 @@ describe('usuarios.service (E2-H04, N-15)', () => {
     );
 
     expect(repositorio.cambiarContrasena.mock.calls[0]?.[0]).toMatch(/^\$argon2id\$/);
+    expect(versiones.publicar).toHaveBeenCalledWith(7, VERSION_NUEVA);
     expect(sesiones.abrir).toHaveBeenCalledWith(
-      { idUsuario: 7, correo: 'ana@x.gt', nombre: 'Ana', rol: 'Cliente' },
+      {
+        idUsuario: 7,
+        correo: 'ana@x.gt',
+        nombre: 'Ana',
+        rol: 'Cliente',
+        versionSesion: VERSION_NUEVA,
+      },
       CLIENTE,
     );
   });
 
-  it('desactivar agrega al usuario a la lista de revocados después de que la base lo desactivó', async () => {
-    const { servicio, repositorio, listaRevocados } = await preparar();
+  it('A-07: desactivar publica la versión que subió la base', async () => {
+    const { servicio, repositorio, versiones } = await preparar();
 
     await servicio.desactivar(7);
 
     expect(repositorio.cambiarEstado).toHaveBeenCalledWith(7, false);
-    expect(listaRevocados.revocar).toHaveBeenCalledWith(7);
+    expect(versiones.publicar).toHaveBeenCalledWith(7, VERSION_NUEVA);
   });
 
-  it('si la base rechaza la desactivación (por ejemplo, ULTIMO_ADMIN), no toca la lista de revocados', async () => {
-    const { servicio, repositorio, listaRevocados } = await preparar();
+  it('si la base rechaza la desactivación (por ejemplo, ULTIMO_ADMIN), no publica nada', async () => {
+    const { servicio, repositorio, versiones } = await preparar();
     repositorio.cambiarEstado.mockRejectedValueOnce(new Error('ULTIMO_ADMIN'));
 
     await expect(servicio.desactivar(7)).rejects.toThrow();
-    expect(listaRevocados.revocar).not.toHaveBeenCalled();
+    expect(versiones.publicar).not.toHaveBeenCalled();
   });
 
-  it('activar saca al usuario de la lista de revocados después de que la base lo activó', async () => {
-    const { servicio, repositorio, listaRevocados } = await preparar();
+  it('A-07: activar no publica nada: la versión no baja y los tokens viejos siguen rechazados', async () => {
+    const { servicio, versiones } = await preparar();
 
     await servicio.activar(7);
 
-    expect(listaRevocados.restaurar).toHaveBeenCalledWith(7);
-    expect(listaRevocados.revocar).not.toHaveBeenCalled();
-    expect(repositorio.cambiarEstado.mock.invocationCallOrder[0]).toBeLessThan(
-      listaRevocados.restaurar.mock.invocationCallOrder[0] ?? 0,
-    );
+    expect(versiones.publicar).not.toHaveBeenCalled();
   });
 
-  it('si la base rechaza la activación, no toca la lista de revocados', async () => {
-    const { servicio, repositorio, listaRevocados } = await preparar();
-    repositorio.cambiarEstado.mockRejectedValueOnce(new Error('NO_ENCONTRADO'));
+  it('A-07: cambiar el rol publica la versión; cambiar solo el nombre no', async () => {
+    const { servicio, versiones } = await preparar();
 
-    await expect(servicio.activar(7)).rejects.toThrow();
+    await servicio.actualizar(7, { nombre: 'Ana María' });
+    await servicio.actualizar(7, { rol: 'Operador' });
 
-    expect(listaRevocados.restaurar).not.toHaveBeenCalled();
+    expect(versiones.publicar).toHaveBeenCalledOnce();
+    expect(versiones.publicar).toHaveBeenCalledWith(7, VERSION_NUEVA);
   });
 });

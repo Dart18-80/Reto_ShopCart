@@ -18,6 +18,7 @@ async function credenciales(cambios: Partial<Credenciales> = {}): Promise<Creden
     rol: 'Cliente',
     hashContrasena: await hashearContrasena(CONTRASENA),
     activo: true,
+    versionSesion: 2,
     ...cambios,
   };
 }
@@ -28,11 +29,23 @@ function repositorioFalso(guardadas: Credenciales | null) {
       Promise.resolve(guardadas),
     ),
     registrarCliente: vi.fn<AuthRepository['registrarCliente']>((datos) =>
-      Promise.resolve({ idUsuario: 9, correo: datos.correo, nombre: datos.nombre, rol: 'Cliente' }),
+      Promise.resolve({
+        idUsuario: 9,
+        correo: datos.correo,
+        nombre: datos.nombre,
+        rol: 'Cliente',
+        versionSesion: 0,
+      }),
     ),
     registrarRefresh: vi.fn<AuthRepository['registrarRefresh']>(() => Promise.resolve()),
     rotarRefresh: vi.fn<AuthRepository['rotarRefresh']>(() =>
-      Promise.resolve({ idUsuario: 7, correo: 'ana@x.gt', nombre: 'Ana', rol: 'Cliente' as const }),
+      Promise.resolve({
+        idUsuario: 7,
+        correo: 'ana@x.gt',
+        nombre: 'Ana',
+        rol: 'Cliente' as const,
+        versionSesion: 3,
+      }),
     ),
     revocarSesion: vi.fn<AuthRepository['revocarSesion']>(() => Promise.resolve()),
   };
@@ -76,7 +89,12 @@ describe('iniciarSesion (E2-H01, N-15)', () => {
       CLIENTE,
     );
 
-    expect(await tokens.verificar(sesion.accessToken)).toEqual({ idUsuario: 7, rol: 'Operador' });
+    expect(await tokens.verificar(sesion.accessToken)).toEqual({
+      idUsuario: 7,
+      rol: 'Operador',
+      versionSesion: 2,
+    });
+    expect(sesion.usuario).not.toHaveProperty('versionSesion');
     expect(sesion.expiraEn).toBe(15 * 60);
   });
 
@@ -123,7 +141,11 @@ describe('registrar (E2-H01, N-15)', () => {
     );
 
     expect(sesion.usuario).toMatchObject({ idUsuario: 9, rol: 'Cliente' });
-    expect(await tokens.verificar(sesion.accessToken)).toEqual({ idUsuario: 9, rol: 'Cliente' });
+    expect(await tokens.verificar(sesion.accessToken)).toEqual({
+      idUsuario: 9,
+      rol: 'Cliente',
+      versionSesion: 0,
+    });
   });
 });
 
@@ -155,7 +177,12 @@ describe('refrescar (E2-H02, A-07)', () => {
     expect(rotacion?.hashActual).toEqual(createHash('sha256').update('token-actual').digest());
     expect(rotacion?.hashNuevo).toEqual(createHash('sha256').update(sesion.refreshToken).digest());
     expect(sesion.refreshToken).not.toBe('token-actual');
-    expect(await tokens.verificar(sesion.accessToken)).toEqual({ idUsuario: 7, rol: 'Cliente' });
+    expect(await tokens.verificar(sesion.accessToken)).toEqual({
+      idUsuario: 7,
+      rol: 'Cliente',
+      versionSesion: 3,
+    });
+    expect(sesion.usuario).not.toHaveProperty('versionSesion');
   });
 });
 

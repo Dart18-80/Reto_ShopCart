@@ -9,7 +9,7 @@ import { hashearContrasena, verificarContrasena } from './auth.contrasenas.js';
 import { DIAS_VIGENCIA_REFRESH, generarRefresh, hashearRefresh } from './auth.refresh.js';
 import type { AuthRepository } from './auth.repository.js';
 import type { DatosLogin, DatosRegistro } from './auth.schemas.js';
-import type { Sesion, UsuarioSesion } from './auth.types.js';
+import type { IdentidadSesion, Sesion } from './auth.types.js';
 
 interface Dependencias {
   repositorio: Pick<
@@ -24,23 +24,31 @@ interface Dependencias {
 }
 
 export function crearAuthService({ repositorio, tokens }: Dependencias) {
-  /** A-07: access token de 15 min y un refresh token nuevo de la familia (una familia por sesión). */
-  async function abrirSesion(
-    usuario: UsuarioSesion,
-    cliente: ClienteHttp,
-    idFamilia: string = randomUUID(),
+  // A-07: la versión de sesión viaja en el access token; la respuesta solo lleva la identidad pública.
+  async function armarSesion(
+    { versionSesion, ...usuario }: IdentidadSesion,
+    refreshToken: string,
   ): Promise<Sesion> {
+    const accessToken = await tokens.emitir({
+      idUsuario: usuario.idUsuario,
+      rol: usuario.rol,
+      versionSesion,
+    });
+    return { accessToken, expiraEn: VIGENCIA_ACCESO_SEG, refreshToken, usuario };
+  }
+
+  /** A-07: access token de 15 min y un refresh token nuevo de la familia (una familia por sesión). */
+  async function abrirSesion(identidad: IdentidadSesion, cliente: ClienteHttp): Promise<Sesion> {
     const refresh = generarRefresh();
     await repositorio.registrarRefresh({
-      idUsuario: usuario.idUsuario,
-      idFamilia,
+      idUsuario: identidad.idUsuario,
+      idFamilia: randomUUID(),
       hash: refresh.hash,
       diasVigencia: DIAS_VIGENCIA_REFRESH,
       ip: cliente.ip,
       userAgent: cliente.userAgent,
     });
-    const accessToken = await tokens.emitir({ idUsuario: usuario.idUsuario, rol: usuario.rol });
-    return { accessToken, expiraEn: VIGENCIA_ACCESO_SEG, refreshToken: refresh.token, usuario };
+    return armarSesion(identidad, refresh.token);
   }
 
   return {
@@ -65,8 +73,11 @@ export function crearAuthService({ repositorio, tokens }: Dependencias) {
       // Solo se revela que está inactivo a quien ya demostró conocer la contraseña.
       if (!credenciales.activo) throw new AppError('USUARIO_INACTIVO');
 
-      const { idUsuario, correo: correoGuardado, nombre, rol } = credenciales;
-      return abrirSesion({ idUsuario, correo: correoGuardado, nombre, rol }, cliente);
+      const { idUsuario, correo: correoGuardado, nombre, rol, versionSesion } = credenciales;
+      return abrirSesion(
+        { idUsuario, correo: correoGuardado, nombre, rol, versionSesion },
+        cliente,
+      );
     },
 
     // A-07: rotación por familia. El SP marca el token como usado y guarda el nuevo bajo bloqueo; un
@@ -74,16 +85,15 @@ export function crearAuthService({ repositorio, tokens }: Dependencias) {
     async refrescar(token: string | undefined, cliente: ClienteHttp): Promise<Sesion> {
       if (token === undefined) throw new AppError('NO_AUTENTICADO');
       const nuevo = generarRefresh();
-      const usuario = await repositorio.rotarRefresh({
+      const identidad = await repositorio.rotarRefresh({
         hashActual: hashearRefresh(token),
         hashNuevo: nuevo.hash,
         diasVigencia: DIAS_VIGENCIA_REFRESH,
         ip: cliente.ip,
         userAgent: cliente.userAgent,
       });
-      if (usuario === null) throw new AppError('NO_AUTENTICADO');
-      const accessToken = await tokens.emitir({ idUsuario: usuario.idUsuario, rol: usuario.rol });
-      return { accessToken, expiraEn: VIGENCIA_ACCESO_SEG, refreshToken: nuevo.token, usuario };
+      if (identidad === null) throw new AppError('NO_AUTENTICADO');
+      return armarSesion(identidad, nuevo.token);
     },
 
     async cerrarSesion(token: string | undefined): Promise<void> {

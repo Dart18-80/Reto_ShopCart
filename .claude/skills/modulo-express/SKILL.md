@@ -154,7 +154,7 @@ export function crearDireccionesService({ repositorio }: Dependencias) {
 export type DireccionesService = ReturnType<typeof crearDireccionesService>;
 ```
 
-- **Las dependencias se inyectan** (repositorio y puertos: `PasarelaPago`, `Cache`, `ListaRevocados`, `Reloj`). Así el servicio se prueba sin base ni Redis.
+- **Las dependencias se inyectan** (repositorio y puertos: `PasarelaPago`, `Cache`, `VersionesSesion`, `Reloj`). Así el servicio se prueba sin base ni Redis.
 - **El servicio no conoce Express**: no recibe `req` ni `res`.
 - **Prevalidación (A-02):** el servicio puede validar antes para dar un mensaje claro, pero el SP vuelve a validar bajo bloqueo y es la autoridad. Usa los mismos códigos del catálogo.
 - **Coordinación con sistemas externos** (pasarela, caché): aquí, en el orden de `01-arquitectura.md` §6. Una llamada externa **nunca** va dentro de una transacción de la base.

@@ -9,7 +9,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    SELECT u.IDUsuario, u.Correo, u.Nombre, u.HashContrasena, u.Activo, r.Codigo AS Rol
+    SELECT u.IDUsuario, u.Correo, u.Nombre, u.HashContrasena, u.Activo, r.Codigo AS Rol, u.VersionSesion
     FROM   dbo.Usuario AS u
     JOIN   dbo.Rol     AS r ON r.IDRol = u.IDRol
     WHERE  u.CorreoNormalizado = LOWER(@Correo);

@@ -4,8 +4,8 @@ import type { Redis } from 'ioredis';
 import { pino } from 'pino';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { crearLimitadorRedis } from '../../../../src/shared/adapters/limitador-redis.js';
-import { crearListaRevocadosRedis } from '../../../../src/shared/adapters/lista-revocados-redis.js';
 import { crearClienteRedis } from '../../../../src/shared/adapters/redis.js';
+import { crearVersionesSesionRedis } from '../../../../src/shared/adapters/versiones-sesion-redis.js';
 
 const ESPERA_MAXIMA_MS = 1500;
 const COMANDO_RESP = /\*\d+\r\n\$\d+\r\n([A-Za-z]+)\r\n/g;
@@ -58,11 +58,11 @@ afterEach(async () => {
 });
 
 describe('Redis colgado con la conexión abierta (RNF-2, N-15)', () => {
-  it('la lista de revocados responde a tiempo en lugar de colgar cada petición autenticada', async () => {
-    const lista = crearListaRevocadosRedis(cliente, pino({ level: 'silent' }));
+  it('la versión de sesión responde a tiempo en lugar de colgar cada petición autenticada', async () => {
+    const versiones = crearVersionesSesionRedis(cliente, pino({ level: 'silent' }));
     const inicio = Date.now();
 
-    await expect(lista.estaRevocado(7)).resolves.toBe(false);
+    await expect(versiones.vigente(7)).resolves.toBeNull();
 
     expect(Date.now() - inicio).toBeLessThan(ESPERA_MAXIMA_MS);
   });

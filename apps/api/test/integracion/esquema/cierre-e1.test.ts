@@ -92,6 +92,16 @@ describe('triggers de bitácora sin prueba hasta ahora (R4)', () => {
     ]);
   });
 
+  it('Usuario: un cambio que solo incrementa VersionSesion no deja fila en la bitácora (A-07)', async () => {
+    const idUsuario = await crearUsuario();
+
+    await cambiarUsuario(idUsuario, 'SubirVersionSesion');
+
+    expect((await leerBitacora('Usuario', idUsuario)).map((fila) => fila.Accion)).toEqual([
+      'Crear',
+    ]);
+  });
+
   it('Usuario: un cambio de rol queda como Modificar con el rol anterior y el nuevo', async () => {
     const idUsuario = await crearUsuario();
 

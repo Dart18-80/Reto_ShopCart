@@ -51,6 +51,38 @@ export function crearVerificadorRedis(cliente: Pick<Redis, 'ping'>): { ping(): P
   };
 }
 
+export interface RegistroPorCambioDeEstado {
+  fallo(error: unknown): void;
+  exito(): void;
+}
+
+/**
+ * RNF-2: una operación de Redis que degrada en lugar de fallar (versiones de sesión, limitador) registra
+ * solo sus cambios de estado: la primera falla y la recuperación. Cubre lo que el evento 'error' del
+ * cliente no ve: respuestas de error con la conexión abierta (ACL, OOM) y tiempos límite por comando.
+ */
+export function crearRegistroPorCambioDeEstado(
+  logger: Logger,
+  operacion: string,
+): RegistroPorCambioDeEstado {
+  let fallando = false;
+  return {
+    fallo(error) {
+      if (fallando) return;
+      fallando = true;
+      logger.warn(
+        { err: error, operacion },
+        'Redis falla en esta operación: sigue en modo degradado',
+      );
+    },
+    exito() {
+      if (!fallando) return;
+      fallando = false;
+      logger.info({ operacion }, 'Redis vuelve a responder en esta operación');
+    },
+  };
+}
+
 /**
  * RNF-2: con Redis caído, ioredis reintenta y emite 'error' en cada intento. Solo se registran los
  * cambios de estado (una vez cuando cae, una vez cuando vuelve) para no llenar el log.

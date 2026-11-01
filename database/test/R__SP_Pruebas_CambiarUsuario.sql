@@ -1,5 +1,6 @@
 -- Solo existe en shopcart_test: aplica a un usuario un cambio de una lista blanca ('Desactivar',
--- 'CambiarContrasena', 'CambiarRol'), para comprobar qué registra la bitácora de usuarios (RF-09).
+-- 'CambiarContrasena', 'CambiarRol', 'SubirVersionSesion'), para comprobar qué registra la bitácora
+-- de usuarios (RF-09).
 CREATE OR ALTER PROCEDURE dbo.SP_Pruebas_CambiarUsuario
     @IDUsuario      INT,
     @Cambio         VARCHAR(20),
@@ -13,7 +14,7 @@ BEGIN
 
     EXEC dbo.SP_Sistema_EstablecerContexto @IDUsuarioActor, @RolActor, @RequestId;
 
-    IF @Cambio NOT IN ('Desactivar', 'CambiarContrasena', 'CambiarRol')
+    IF @Cambio NOT IN ('Desactivar', 'CambiarContrasena', 'CambiarRol', 'SubirVersionSesion')
         THROW 50003, N'Cambio no válido para la prueba.', 1;
 
     BEGIN TRY
@@ -24,6 +25,7 @@ BEGIN
                HashContrasena     = CASE WHEN @Cambio = 'CambiarContrasena' THEN 'otro-hash-de-prueba' ELSE HashContrasena END,
                IDRol              = CASE WHEN @Cambio = 'CambiarRol'
                                          THEN (SELECT IDRol FROM dbo.Rol WHERE Codigo = 'Operador') ELSE IDRol END,
+               VersionSesion      = VersionSesion + CASE WHEN @Cambio = 'SubirVersionSesion' THEN 1 ELSE 0 END,
                FechaActualizacion = SYSUTCDATETIME()
         WHERE  IDUsuario = @IDUsuario;
         COMMIT;

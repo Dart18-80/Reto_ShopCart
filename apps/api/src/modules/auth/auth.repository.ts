@@ -1,13 +1,14 @@
 import sql from 'mssql';
 import { ejecutarSP } from '../../shared/db/index.js';
 import { esRolDeUsuario, type Rol } from '../../shared/http/index.js';
-import type { Credenciales, UsuarioSesion } from './auth.types.js';
+import type { Credenciales, IdentidadSesion } from './auth.types.js';
 
 interface FilaUsuario {
   IDUsuario: number;
   Correo: string;
   Nombre: string;
   Rol: string;
+  VersionSesion: number;
 }
 
 interface FilaCredenciales extends FilaUsuario {
@@ -36,11 +37,12 @@ function aRol(rol: string): Rol {
   return rol;
 }
 
-const aUsuario = (fila: FilaUsuario): UsuarioSesion => ({
+const aIdentidad = (fila: FilaUsuario): IdentidadSesion => ({
   idUsuario: fila.IDUsuario,
   correo: fila.Correo,
   nombre: fila.Nombre,
   rol: aRol(fila.Rol),
+  versionSesion: fila.VersionSesion,
 });
 
 export interface DatosRotacion {
@@ -54,7 +56,7 @@ export interface DatosRotacion {
 export type MotivoRevocacion = 'Logout' | 'Reuso' | 'Desactivacion' | 'CambioContrasena';
 
 export const authRepository = {
-  async registrarCliente(datos: DatosNuevoCliente): Promise<UsuarioSesion> {
+  async registrarCliente(datos: DatosNuevoCliente): Promise<IdentidadSesion> {
     const [fila] = await ejecutarSP<FilaUsuario>('SP_Auth_RegistrarCliente', {
       Correo: { tipo: sql.NVarChar(254), valor: datos.correo },
       HashContrasena: { tipo: sql.VarChar(255), valor: datos.hashContrasena },
@@ -62,7 +64,7 @@ export const authRepository = {
       Telefono: { tipo: sql.VarChar(8), valor: datos.telefono },
     });
     if (fila === undefined) throw new Error('SP_Auth_RegistrarCliente no devolvió el usuario');
-    return aUsuario(fila);
+    return aIdentidad(fila);
   },
 
   async obtenerCredenciales(correo: string): Promise<Credenciales | null> {
@@ -70,7 +72,7 @@ export const authRepository = {
       Correo: { tipo: sql.NVarChar(254), valor: correo },
     });
     if (fila === undefined) return null;
-    return { ...aUsuario(fila), hashContrasena: fila.HashContrasena, activo: fila.Activo };
+    return { ...aIdentidad(fila), hashContrasena: fila.HashContrasena, activo: fila.Activo };
   },
 
   async registrarRefresh(datos: DatosRefresh): Promise<void> {
@@ -86,7 +88,7 @@ export const authRepository = {
   },
 
   /** null si la base no rotó el token (desconocido, vencido, revocado o usuario inactivo). */
-  async rotarRefresh(datos: DatosRotacion): Promise<UsuarioSesion | null> {
+  async rotarRefresh(datos: DatosRotacion): Promise<IdentidadSesion | null> {
     // El reúso llega como AppError REFRESH_REUTILIZADO (THROW 50102) desde el SP.
     const [fila] = await ejecutarSP<FilaUsuario>('SP_Auth_RotarRefreshToken', {
       HashToken: { tipo: sql.Binary, valor: datos.hashActual },
@@ -95,7 +97,7 @@ export const authRepository = {
       IP: { tipo: sql.VarChar(45), valor: datos.ip },
       UserAgent: { tipo: sql.NVarChar(300), valor: datos.userAgent },
     });
-    return fila === undefined ? null : aUsuario(fila);
+    return fila === undefined ? null : aIdentidad(fila);
   },
 
   async revocarSesion(hash: Buffer, motivo: MotivoRevocacion): Promise<void> {

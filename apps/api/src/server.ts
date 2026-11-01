@@ -12,7 +12,7 @@ import {
   type ConfiguracionRedis,
 } from './shared/config/index.js';
 import { crearLimitadorRedis } from './shared/adapters/limitador-redis.js';
-import { crearListaRevocadosRedis } from './shared/adapters/lista-revocados-redis.js';
+import { crearVersionesSesionRedis } from './shared/adapters/versiones-sesion-redis.js';
 import { conectarPool, conexionMssql, configurarBaseDatos } from './shared/db/index.js';
 import { crearTokensAcceso } from './shared/http/index.js';
 import { crearLogger } from './shared/observability/index.js';
@@ -46,7 +46,7 @@ async function iniciar(): Promise<void> {
       login: crearLimitadorRedis(redis, { prefijo: 'limite:login', ...LIMITE_LOGIN }),
       registro: crearLimitadorRedis(redis, { prefijo: 'limite:registro', ...LIMITE_REGISTRO }),
     },
-    listaRevocados: crearListaRevocadosRedis(redis, logger),
+    versionesSesion: crearVersionesSesionRedis(redis, logger),
   });
 
   // Express 5 también llama a este callback si listen falla (por ejemplo, puerto ocupado).

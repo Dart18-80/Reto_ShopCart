@@ -66,7 +66,7 @@ Versión en texto:
 |---|---|---|---|---|
 | `sqlserver` | `mcr.microsoft.com/mssql/server:2022-latest` | Fuente de verdad | `sqlcmd -Q "SELECT 1"` | — |
 | `db-migrator` | Propia (Node + scripts) | Ejecuta los scripts numerados y termina | — (one-shot) | `sqlserver` saludable |
-| `redis` | `redis:7-alpine` | Rate limiting, lista de revocados y caché de reportes | `redis-cli ping` | — |
+| `redis` | `redis:7-alpine` | Rate limiting, versión de sesión por usuario y caché de reportes | `redis-cli ping` | — |
 | `api-1`, `api-2` | Propia (`apps/api`) | API REST; misma imagen y misma configuración salvo `INSTANCIA_ID` | `GET /api/v1/health` | Migrador completado, `redis` saludable |
 | `web` | Propia (nginx + build de `apps/web`) | **Balanceador de carga** (`upstream` round-robin hacia `api-1` y `api-2`, con `max_fails=3 fail_timeout=10s`) y servidor de la SPA y `/static` | `GET /` | `api-1`, `api-2` |
 | `otel-lgtm` | `grafana/otel-lgtm` | Logs, trazas y métricas | — | Perfil `observability` |
@@ -129,7 +129,7 @@ src/modules/<modulo>/
 
 - `routes → controller → service → repository`. Nunca al revés.
 - Un módulo **solo** usa a otro a través de su `index.ts` (su servicio público), nunca su repositorio. Un lint (`eslint-plugin-boundaries` o `no-restricted-imports`) lo hace cumplir.
-- Los servicios dependen de **puertos** (interfaces) para todo lo externo: `PasarelaPago`, `Cache`, `ListaRevocados` y `Reloj`. Los adaptadores se inyectan en `app.ts`. Esto permite probar los servicios sin infraestructura.
+- Los servicios dependen de **puertos** (interfaces) para todo lo externo: `PasarelaPago`, `Cache`, `VersionesSesion` y `Reloj`. Los adaptadores se inyectan en `app.ts`. Esto permite probar los servicios sin infraestructura.
 
 ### 4.4 Infraestructura compartida (`src/shared`)
 
@@ -141,7 +141,7 @@ src/modules/<modulo>/
 | `http/` | Middlewares: `requestId`, `autenticar`, `autorizar(roles)`, `rateLimit`, `idempotencia`; envoltorio tipado `manejar(esquemas, handler)` que valida la entrada con Zod en el controlador (A-20); formato estándar de respuesta y paginación |
 | `observability/` | SDK de OpenTelemetry (http, express, tedious, ioredis), logger pino con `traceId`/`spanId` y **redacción** de datos sensibles |
 | `jobs/` | Planificador interno de tareas periódicas (sección 8) |
-| `adapters/` | `PasarelaSimulada`, `CacheRedis`, `ListaRevocadosRedis` |
+| `adapters/` | `PasarelaSimulada`, `CacheRedis`, `VersionesSesionRedis` |
 
 ### 4.5 Dónde vive la lógica de negocio (A-02)
 
@@ -234,10 +234,14 @@ POST /auth/refresh:
   token válido y no usado  ──► se marca como usado, se emite uno nuevo de la misma familia (rotación)
   token ya usado (reúso)   ──► se REVOCA TODA LA FAMILIA → 401 (posible robo del token)
   usuario inactivo         ──► 401
+
+Cada petición autenticada:
+  versión del token < versión vigente en Redis ──► 401 (desactivado, otro rol u otra contraseña)
 ```
 
-- El access token se firma con `HS256` y un secreto del `.env`, y lleva `sub` (IDUsuario), `rol` y `jti`.
-- **Lista de revocados (N-15):** al desactivar un usuario, su ID entra en Redis con TTL de 15 min, y `autenticar` lo consulta en cada petición.
+- El access token se firma con `HS256` y un secreto del `.env`, y lleva `sub` (IDUsuario), `rol`, `jti` y `versionSesion`.
+- **Versión de sesión (N-15):** `Usuario.VersionSesion` sube en la misma transacción que desactiva al usuario, le cambia el rol o le cambia la contraseña; el SP la devuelve. El login y el refresh la leen de la base y la ponen en el token. Después del commit, el servicio publica en Redis la versión vigente con un TTL de 15 min + 1 min de margen (solo puede subir), y `autenticar` rechaza con `401` todo token con una versión menor. Sin clave en Redis rige la ventana del access token: o no hubo cambios recientes, o Redis no responde (N-15). Reactivar no baja la versión.
+- **Cambio de contraseña:** la sesión que lo pide recibe un access token y un refresh nuevos con la versión nueva; las demás pierden sus refresh tokens (revocados en el SP) y sus access tokens (versión anterior).
 - **Rate limiting** (`rate-limiter-flexible` sobre Redis, compartido entre réplicas): login con 5 intentos por minuto por IP + correo, registro con 3 por minuto por IP y creación de carritos de invitado con 20 por minuto por IP. Si Redis no está disponible, se cae a un limitador en memoria por réplica y la API no se bloquea.
 
 ---
@@ -460,7 +464,7 @@ Estado: 🟡 Propuesta · 🔍 En análisis · ✅ Confirmada · ✏️ Modifica
 | A-04 | Jobs dentro de las réplicas con `sp_getapplock` | Worker dedicado: más servicios. Lock en Redis: depende de algo que se puede perder | ✅ |
 | A-05 | `READ_COMMITTED_SNAPSHOT ON` + `UPDLOCK` explícito en escrituras críticas | `SERIALIZABLE` global: bloqueos y deadlocks innecesarios | ✅ |
 | A-06 | Errores de negocio con `THROW 5xxxx` por rango de módulo, mapeados a HTTP con un catálogo | Códigos de retorno o `RAISERROR`: menos claros y fáciles de ignorar | ✅ |
-| A-07 | Access JWT de 15 min en memoria + refresh opaco en cookie, rotación por familia y detección de reúso; revocados en Redis | Refresh JWT: no se puede revocar. Token en localStorage: expuesto a XSS | ✅ |
+| A-07 | Access JWT de 15 min en memoria + refresh opaco en cookie, rotación por familia y detección de reúso; versión de sesión por usuario publicada en Redis | Refresh JWT: no se puede revocar. Token en localStorage: expuesto a XSS | ✅ |
 | A-08 | Zod para validar entradas y generar OpenAPI; esquemas compartidos con el frontend | class-validator: duplica tipos. OpenAPI escrito a mano: se desalinea | ✅ |
 | A-09 | Migrador propio con versionado `V###` + `R__`, checksum y tabla de historial | Flyway: agrega Java a la imagen. Scripts sin control: no reproducible | ✅ |
 | A-10 | Búsqueda con `LIKE` sobre una columna calculada que no distingue mayúsculas ni tildes (`COLLATE Latin1_General_CI_AI`): "camion" encuentra "Camión". El `LIKE '%texto%'` recorre solo la tabla `Producto` (cientos de filas, no los pedidos), y los filtros de categoría, precio y disponibilidad sí usan índices | Full-Text Search: no viene en la imagen oficial de Docker. Queda como mejora documentada | ✅ |

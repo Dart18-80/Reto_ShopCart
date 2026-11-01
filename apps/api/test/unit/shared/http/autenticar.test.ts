@@ -10,7 +10,7 @@ import {
   crearTokensAcceso,
   obtenerContexto,
   requestId,
-  type ListaRevocados,
+  type VersionesSesion,
   type Rol,
 } from '../../../../src/shared/http/index.js';
 import { leerDatos, leerError } from '../../respuestas.js';
@@ -19,20 +19,20 @@ import { z } from 'zod';
 const SECRETO = 'secreto-de-prueba-de-al-menos-32-caracteres';
 const tokens = crearTokensAcceso(SECRETO);
 
-function listaRevocados(revocados: number[] = []): ListaRevocados {
-  return {
-    estaRevocado: (idUsuario) => Promise.resolve(revocados.includes(idUsuario)),
-    revocar: () => Promise.resolve(),
-    restaurar: () => Promise.resolve(),
-  };
+/** Versiones vigentes por usuario; un usuario sin entrada es como una clave que Redis no tiene. */
+function versiones(vigentes: Record<number, number> = {}): Pick<VersionesSesion, 'vigente'> {
+  return { vigente: (idUsuario) => Promise.resolve(vigentes[idUsuario] ?? null) };
 }
 
-function crearAppDePrueba(revocados: number[] = [], roles: Rol[] = ['Cliente']): Express {
+function crearAppDePrueba(
+  vigentes: Record<number, number> = {},
+  roles: Rol[] = ['Cliente'],
+): Express {
   const app = express();
   app.use(requestId);
   app.get(
     '/privado',
-    crearAutenticar({ tokens, listaRevocados: listaRevocados(revocados) }),
+    crearAutenticar({ tokens, versiones: versiones(vigentes) }),
     autorizar(...roles),
     (_req, res) => {
       res.json({ datos: obtenerContexto() });
@@ -49,7 +49,7 @@ function pedirCon(app: Express, token?: string) {
 
 /** Firma un token a mano para casos que tokens.emitir no produce (vencido, otro rol, otra firma). */
 function firmar(carga: Record<string, unknown>, expiracion: string | number, secreto = SECRETO) {
-  return new SignJWT(carga)
+  return new SignJWT({ versionSesion: 0, ...carga })
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject('7')
     .setJti('jti-de-prueba')
@@ -60,7 +60,7 @@ function firmar(carga: Record<string, unknown>, expiracion: string | number, sec
 
 describe('autenticar (E2-H03, A-07)', () => {
   it('con un token válido deja al usuario y su rol en el contexto de la petición', async () => {
-    const token = await tokens.emitir({ idUsuario: 7, rol: 'Cliente' });
+    const token = await tokens.emitir({ idUsuario: 7, rol: 'Cliente', versionSesion: 0 });
 
     const respuesta = await pedirCon(crearAppDePrueba(), token);
 
@@ -103,34 +103,58 @@ describe('autenticar (E2-H03, A-07)', () => {
     const sistema = await firmar({ rol: 'Sistema' }, '15m');
 
     expect(
-      (await pedirCon(crearAppDePrueba([], ['Cliente', 'Administrador']), sistema)).status,
+      (await pedirCon(crearAppDePrueba({}, ['Cliente', 'Administrador']), sistema)).status,
     ).toBe(401);
   });
 
-  it('N-15: un usuario en la lista de revocados queda fuera aunque su token siga vigente', async () => {
-    const token = await tokens.emitir({ idUsuario: 7, rol: 'Cliente' });
+  it('A-07: un token con una versión de sesión anterior a la vigente responde 401', async () => {
+    const token = await tokens.emitir({ idUsuario: 7, rol: 'Cliente', versionSesion: 0 });
 
-    const respuesta = await pedirCon(crearAppDePrueba([7]), token);
+    const respuesta = await pedirCon(crearAppDePrueba({ 7: 1 }), token);
 
     expect(respuesta.status).toBe(401);
     expect(leerError(respuesta).codigo).toBe('NO_AUTENTICADO');
+  });
+
+  it('A-07: un token con la versión vigente pasa', async () => {
+    const token = await tokens.emitir({ idUsuario: 7, rol: 'Cliente', versionSesion: 2 });
+
+    expect((await pedirCon(crearAppDePrueba({ 7: 2 }), token)).status).toBe(200);
+  });
+
+  it('N-15: si Redis no conoce la versión del usuario, rige la ventana del access token', async () => {
+    const token = await tokens.emitir({ idUsuario: 7, rol: 'Cliente', versionSesion: 0 });
+
+    expect((await pedirCon(crearAppDePrueba({ 8: 5 }), token)).status).toBe(200);
+  });
+
+  it('un token sin versionSesion responde 401', async () => {
+    const sinVersion = await new SignJWT({ rol: 'Cliente' })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setSubject('7')
+      .setJti('jti-de-prueba')
+      .setIssuedAt()
+      .setExpirationTime('15m')
+      .sign(new TextEncoder().encode(SECRETO));
+
+    expect((await pedirCon(crearAppDePrueba(), sinVersion)).status).toBe(401);
   });
 });
 
 describe('autorizar (E2-H03, RF-01)', () => {
   it('un token válido con un rol no permitido responde 403 SIN_PERMISO', async () => {
-    const token = await tokens.emitir({ idUsuario: 7, rol: 'Cliente' });
+    const token = await tokens.emitir({ idUsuario: 7, rol: 'Cliente', versionSesion: 0 });
 
-    const respuesta = await pedirCon(crearAppDePrueba([], ['Administrador']), token);
+    const respuesta = await pedirCon(crearAppDePrueba({}, ['Administrador']), token);
 
     expect(respuesta.status).toBe(403);
     expect(leerError(respuesta).codigo).toBe('SIN_PERMISO');
   });
 
   it('acepta cualquiera de los roles indicados', async () => {
-    const token = await tokens.emitir({ idUsuario: 3, rol: 'Operador' });
+    const token = await tokens.emitir({ idUsuario: 3, rol: 'Operador', versionSesion: 0 });
 
-    const respuesta = await pedirCon(crearAppDePrueba([], ['Operador', 'Administrador']), token);
+    const respuesta = await pedirCon(crearAppDePrueba({}, ['Operador', 'Administrador']), token);
 
     expect(respuesta.status).toBe(200);
   });
@@ -160,7 +184,7 @@ describe('casos borde del access token (E2-H03, A-07)', () => {
       .setExpirationTime('15m')
       .encode();
 
-    expect((await pedirCon(crearAppDePrueba([], ['Administrador']), sinFirma)).status).toBe(401);
+    expect((await pedirCon(crearAppDePrueba({}, ['Administrador']), sinFirma)).status).toBe(401);
   });
 
   it('un token firmado con el mismo secreto pero otro algoritmo (HS512) responde 401', async () => {
@@ -224,7 +248,7 @@ describe('casos borde del access token (E2-H03, A-07)', () => {
     ['con dos tokens', (token: string) => `Bearer ${token} ${token}`],
     ['con el token alterado', (token: string) => `Bearer ${token}x`],
   ])('el header Authorization %s responde 401', async (_caso, cabecera) => {
-    const token = await tokens.emitir({ idUsuario: 7, rol: 'Cliente' });
+    const token = await tokens.emitir({ idUsuario: 7, rol: 'Cliente', versionSesion: 0 });
 
     const respuesta = await request(crearAppDePrueba())
       .get('/privado')
@@ -234,7 +258,7 @@ describe('casos borde del access token (E2-H03, A-07)', () => {
   });
 
   it('acepta el esquema bearer en minúsculas (RFC 7235: no distingue mayúsculas)', async () => {
-    const token = await tokens.emitir({ idUsuario: 7, rol: 'Cliente' });
+    const token = await tokens.emitir({ idUsuario: 7, rol: 'Cliente', versionSesion: 0 });
 
     const respuesta = await request(crearAppDePrueba())
       .get('/privado')

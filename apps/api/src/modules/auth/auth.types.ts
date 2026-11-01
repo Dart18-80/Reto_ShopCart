@@ -7,7 +7,12 @@ export interface UsuarioSesion {
   rol: Rol;
 }
 
-export interface Credenciales extends UsuarioSesion {
+/** A-07: la versión de sesión va en el access token, nunca en la respuesta. */
+export interface IdentidadSesion extends UsuarioSesion {
+  versionSesion: number;
+}
+
+export interface Credenciales extends IdentidadSesion {
   hashContrasena: string;
   activo: boolean;
 }

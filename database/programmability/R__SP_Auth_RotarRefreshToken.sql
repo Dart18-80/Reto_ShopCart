@@ -62,7 +62,7 @@ BEGIN
         THROW 50102, N'La sesión ya no es válida. Inicia sesión de nuevo.', 1;
 
     IF @Vigente = 1
-        SELECT u.IDUsuario, u.Correo, u.Nombre, r.Codigo AS Rol
+        SELECT u.IDUsuario, u.Correo, u.Nombre, r.Codigo AS Rol, u.VersionSesion
         FROM   dbo.Usuario AS u
         JOIN   dbo.Rol     AS r ON r.IDRol = u.IDRol
         WHERE  u.IDUsuario = @IDUsuario;
