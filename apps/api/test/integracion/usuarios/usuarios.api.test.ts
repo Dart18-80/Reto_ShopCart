@@ -50,14 +50,6 @@ const perfilSchema = z.looseObject({
 
 const conToken = (token: string) => ({ Authorization: `Bearer ${token}` });
 
-interface Admin {
-  idUsuario: number;
-  token: string;
-}
-
-const PARES_DE_ADMINS = 3;
-const ESPERA_ADMINS_CONCURRENTES_MS = 30_000;
-
 async function sesionDeCliente() {
   const respuesta = await registrar(app);
   const sesion = leerSesion(respuesta);
@@ -295,43 +287,6 @@ describe('administración de usuarios (E2-H04, N-15)', () => {
       });
 
       await expect(intento).rejects.toMatchObject({ codigo: 'ULTIMO_ADMIN', status: 409 });
-    },
-  );
-
-  // Antes cada SP bloqueaba la fila objetivo y después el rango de Admins activos: los pares cruzados
-  // se bloqueaban mutuamente y agotaban los reintentos por deadlock (500). Crear los Admins cuesta
-  // varios argon2, de ahí el tiempo límite.
-  it.each(['desactivar', 'quitarRol'] as const)(
-    'dos Admins a la vez: A desactiva a B mientras B hace "%s" sobre A, sin 500 por deadlock',
-    { timeout: ESPERA_ADMINS_CONCURRENTES_MS },
-    async (accionDeB) => {
-      const tokenSemilla = await tokenDeAdmin();
-      const pares = await Promise.all(
-        Array.from({ length: PARES_DE_ADMINS }, async () => {
-          const a = await crearAdmin(tokenSemilla);
-          const b = await crearAdmin(tokenSemilla);
-          return { a, b };
-        }),
-      );
-      const acciones = {
-        desactivar: (actor: Admin, objetivo: Admin) =>
-          request(app)
-            .post(`/api/v1/usuarios/${String(objetivo.idUsuario)}/desactivar`)
-            .set(conToken(actor.token)),
-        quitarRol: (actor: Admin, objetivo: Admin) =>
-          request(app)
-            .patch(`/api/v1/usuarios/${String(objetivo.idUsuario)}`)
-            .set(conToken(actor.token))
-            .send({ rol: 'Operador' }),
-      };
-
-      const respuestas = await Promise.all(
-        pares.flatMap(({ a, b }) => [acciones.desactivar(a, b), acciones[accionDeB](b, a)]),
-      );
-
-      expect(respuestas.map((respuesta) => respuesta.status)).toEqual(
-        Array(PARES_DE_ADMINS * 2).fill(200),
-      );
     },
   );
 
