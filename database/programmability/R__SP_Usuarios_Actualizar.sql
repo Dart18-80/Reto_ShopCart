@@ -21,6 +21,15 @@ BEGIN
     BEGIN TRY
         BEGIN TRAN;
 
+        -- Admins activos bloqueados ANTES que la fila objetivo, en el mismo orden que
+        -- SP_Usuarios_CambiarEstado: así quitar el rol y desactivar a la vez no se cruzan en un deadlock.
+        DECLARE @AdminsActivos INT;
+        IF @Rol IS NOT NULL
+            SELECT @AdminsActivos = COUNT(*)
+            FROM   dbo.Usuario AS u WITH (UPDLOCK, HOLDLOCK)
+            JOIN   dbo.Rol     AS r ON r.IDRol = u.IDRol
+            WHERE  r.Codigo = 'Administrador' AND u.Activo = 1;
+
         DECLARE @RolActual VARCHAR(20), @ActivoActual BIT;
         SELECT @RolActual = r.Codigo, @ActivoActual = u.Activo
         FROM   dbo.Usuario AS u WITH (UPDLOCK, ROWLOCK)
@@ -35,11 +44,7 @@ BEGIN
             IF @IDUsuario = @IDUsuarioActor
                 THROW 50105, N'No puedes cambiar tu propio rol.', 1;
 
-            IF @RolActual = 'Administrador' AND @ActivoActual = 1
-               AND (SELECT COUNT(*)
-                    FROM   dbo.Usuario AS u WITH (UPDLOCK, HOLDLOCK)
-                    JOIN   dbo.Rol     AS r ON r.IDRol = u.IDRol
-                    WHERE  r.Codigo = 'Administrador' AND u.Activo = 1) <= 1
+            IF @RolActual = 'Administrador' AND @ActivoActual = 1 AND @AdminsActivos <= 1
                 THROW 50104, N'El sistema debe conservar al menos un administrador activo.', 1;
         END
 

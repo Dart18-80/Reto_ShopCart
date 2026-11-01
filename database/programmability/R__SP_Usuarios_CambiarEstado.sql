@@ -20,6 +20,16 @@ BEGIN
     BEGIN TRY
         BEGIN TRAN;
 
+        -- UPDLOCK + HOLDLOCK sobre los Admins activos ANTES que la fila objetivo, igual que
+        -- SP_Usuarios_Actualizar: dos Admins que se desactivan a la vez no pueden dejar el sistema sin
+        -- ninguno, y como todos piden los bloqueos en el mismo orden no se cruzan en un deadlock.
+        DECLARE @AdminsActivos INT;
+        IF @Activo = 0
+            SELECT @AdminsActivos = COUNT(*)
+            FROM   dbo.Usuario AS u WITH (UPDLOCK, HOLDLOCK)
+            JOIN   dbo.Rol     AS r ON r.IDRol = u.IDRol
+            WHERE  r.Codigo = 'Administrador' AND u.Activo = 1;
+
         DECLARE @RolActual VARCHAR(20), @ActivoActual BIT;
         SELECT @RolActual = r.Codigo, @ActivoActual = u.Activo
         FROM   dbo.Usuario AS u WITH (UPDLOCK, ROWLOCK)
@@ -29,13 +39,7 @@ BEGIN
         IF @RolActual IS NULL
             THROW 50001, N'El usuario no existe.', 1;
 
-        -- UPDLOCK + HOLDLOCK sobre los Admins activos: dos Admins que se desactivan a la vez no pueden
-        -- dejar el sistema sin ninguno.
-        IF @Activo = 0 AND @ActivoActual = 1 AND @RolActual = 'Administrador'
-           AND (SELECT COUNT(*)
-                FROM   dbo.Usuario AS u WITH (UPDLOCK, HOLDLOCK)
-                JOIN   dbo.Rol     AS r ON r.IDRol = u.IDRol
-                WHERE  r.Codigo = 'Administrador' AND u.Activo = 1) <= 1
+        IF @Activo = 0 AND @ActivoActual = 1 AND @RolActual = 'Administrador' AND @AdminsActivos <= 1
             THROW 50104, N'El sistema debe conservar al menos un administrador activo.', 1;
 
         IF @ActivoActual <> @Activo
