@@ -39,14 +39,9 @@ export function crearUsuariosService({ repositorio, sesiones, versiones }: Depen
       return { idUsuario, correo, nombre, telefono, rol, activo };
     },
 
-    // PATCH: lo que no llega se conserva; telefono en null lo quita.
-    async actualizarPerfil(cambios: ActualizarPerfil): Promise<Usuario> {
-      const actual = await perfilConHash();
-      return repositorio.actualizarPerfil(
-        cambios.nombre ?? actual.nombre,
-        cambios.telefono === undefined ? actual.telefono : cambios.telefono,
-      );
-    },
+    // PATCH: el SP mezcla los cambios con lo guardado bajo bloqueo; telefono en null lo quita.
+    actualizarPerfil: (cambios: ActualizarPerfil): Promise<Usuario> =>
+      repositorio.actualizarPerfil(cambios),
 
     /**
      * N-15, A-07: verifica la contraseña actual; el SP guarda la nueva, revoca todos los refresh tokens y

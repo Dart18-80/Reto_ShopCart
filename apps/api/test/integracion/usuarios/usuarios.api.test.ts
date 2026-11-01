@@ -14,7 +14,7 @@ import { crearLogger } from '../../../src/shared/observability/index.js';
 import { leerDatos, leerError } from '../../unit/respuestas.js';
 import { dependenciasDePrueba } from '../../app-de-prueba.js';
 import { usarBaseDePruebas } from '../base-de-pruebas.js';
-import { leerBitacora } from '../datos-de-prueba.js';
+import { comoActor, leerBitacora } from '../datos-de-prueba.js';
 import {
   CONTRASENA,
   correoUnico,
@@ -132,6 +132,34 @@ describe('perfil propio (E2-H04, RF-01)', () => {
 
     expect(leerDatos(await editar('55554444'), perfilSchema).telefono).toBe('55554444');
     expect(leerDatos(await editar(null), perfilSchema).telefono).toBeNull();
+  });
+
+  it('dos PATCH simultáneos, uno del nombre y otro del teléfono, conservan ambos cambios', async () => {
+    const cliente = await sesionDeCliente();
+    const editar = (cambio: Record<string, string>) =>
+      request(app).patch('/api/v1/usuarios/me').set(conToken(cliente.token)).send(cambio);
+
+    for (let ronda = 0; ronda < 5; ronda++) {
+      const [nombre, telefono] = [`Ana ${String(ronda)}`, `5555000${String(ronda)}`];
+      await Promise.all([editar({ nombre }), editar({ telefono })]);
+
+      const perfil = await request(app).get('/api/v1/usuarios/me').set(conToken(cliente.token));
+      expect(leerDatos(perfil, perfilSchema)).toMatchObject({ nombre, telefono });
+    }
+  });
+
+  it('el SP rechaza enviar un teléfono y quitarlo a la vez', async () => {
+    const cliente = await sesionDeCliente();
+
+    const intento = comoActor(cliente.idUsuario, 'Cliente', () =>
+      ejecutarSP('SP_Usuarios_ActualizarPerfil', {
+        Nombre: { tipo: sql.NVarChar(100), valor: null },
+        Telefono: { tipo: sql.VarChar(8), valor: '55554444' },
+        QuitarTelefono: { tipo: sql.Bit, valor: true },
+      }),
+    );
+
+    await expect(intento).rejects.toMatchObject({ codigo: 'PARAMETRO_INVALIDO' });
   });
 
   it('sin token responde 401', async () => {

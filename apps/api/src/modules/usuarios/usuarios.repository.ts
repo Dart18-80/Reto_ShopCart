@@ -1,6 +1,7 @@
 import sql from 'mssql';
 import { ejecutarSP } from '../../shared/db/index.js';
 import { esRolDeUsuario, type Rol } from '../../shared/http/index.js';
+import type { ActualizarPerfil } from './usuarios.schemas.js';
 import type {
   FiltrosUsuarios,
   PerfilConHash,
@@ -70,10 +71,12 @@ export const usuariosRepository = {
     return fila === undefined ? null : { ...aUsuario(fila), hashContrasena: fila.HashContrasena };
   },
 
-  async actualizarPerfil(nombre: string, telefono: string | null): Promise<Usuario> {
+  // PATCH: un campo ausente va en NULL (sin cambio) y telefono en null lo quita; el SP mezcla bajo bloqueo.
+  async actualizarPerfil(cambios: ActualizarPerfil): Promise<Usuario> {
     const filas = await ejecutarSP<FilaUsuario>('SP_Usuarios_ActualizarPerfil', {
-      Nombre: { tipo: sql.NVarChar(100), valor: nombre },
-      Telefono: { tipo: sql.VarChar(8), valor: telefono },
+      Nombre: { tipo: sql.NVarChar(100), valor: cambios.nombre ?? null },
+      Telefono: { tipo: sql.VarChar(8), valor: cambios.telefono ?? null },
+      QuitarTelefono: { tipo: sql.Bit, valor: cambios.telefono === null },
     });
     return unico(filas, 'SP_Usuarios_ActualizarPerfil');
   },

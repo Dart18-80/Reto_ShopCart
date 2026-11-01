@@ -273,6 +273,62 @@ describe('direcciones propias (E2-H05, RF-01, N-17)', () => {
     });
   });
 
+  it('PATCH simultáneos que tocan campos distintos conservan todos los cambios (la mezcla es del SP)', async () => {
+    const token = await tokenDeCliente();
+    const { idDireccion } = leerDatos(await crear(token, { alias: 'Casa' }), direccionSchema);
+    const municipio = await idMunicipio('Guatemala', 'Villa Nueva');
+    const cambios = [
+      { alias: 'Oficina' },
+      { nombreRecibe: 'Beto Gómez' },
+      { telefonoRecibe: '44443333' },
+      { idMunicipio: municipio },
+      { direccionLinea: '6a calle 1-10, zona 4' },
+      { referencia: 'Portón negro' },
+    ];
+    const ruta = `/api/v1/direcciones/${String(idDireccion)}`;
+
+    await Promise.all(
+      cambios.map((cambio) => request(app).patch(ruta).set(con(token)).send(cambio)),
+    );
+
+    expect(leerDatos(await request(app).get(ruta).set(con(token)), direccionSchema)).toMatchObject({
+      alias: 'Oficina',
+      nombreRecibe: 'Beto Gómez',
+      telefonoRecibe: '44443333',
+      municipio: { idMunicipio: municipio },
+      direccionLinea: '6a calle 1-10, zona 4',
+      referencia: 'Portón negro',
+    });
+  });
+
+  it('N-17: un PATCH que no incluye la predeterminada nunca la cambia, aunque otra la tome a la vez', async () => {
+    const token = await tokenDeCliente();
+    const primera = leerDatos(await crear(token, { esPredeterminada: true }), direccionSchema);
+    const segunda = leerDatos(await crear(token), direccionSchema);
+    const ruta = (id: number) => `/api/v1/direcciones/${String(id)}`;
+
+    await Promise.all([
+      ...Array.from({ length: 5 }, (_, i) =>
+        request(app)
+          .patch(ruta(primera.idDireccion))
+          .set(con(token))
+          .send({ alias: `Casa ${String(i)}` }),
+      ),
+      request(app)
+        .patch(ruta(segunda.idDireccion))
+        .set(con(token))
+        .send({ esPredeterminada: true }),
+    ]);
+
+    const lista = leerDatos(
+      await request(app).get('/api/v1/direcciones').set(con(token)),
+      listaSchema,
+    );
+    expect(lista.filter((d) => d.esPredeterminada).map((d) => d.idDireccion)).toEqual([
+      segunda.idDireccion,
+    ]);
+  });
+
   it('la undécima dirección responde 422 LIMITE_DIRECCIONES', async () => {
     const token = await tokenDeCliente();
     for (let i = 0; i < 10; i++) expect((await crear(token)).status).toBe(201);

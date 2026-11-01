@@ -1,5 +1,6 @@
 import sql from 'mssql';
 import { ejecutarSP, type ParametrosSP } from '../../shared/db/index.js';
+import type { ActualizarDireccion } from './direcciones.schemas.js';
 import type { DatosDireccion, Departamento, Direccion, Municipio } from './direcciones.types.js';
 
 interface FilaDireccion {
@@ -44,6 +45,22 @@ function parametrosDireccion(datos: DatosDireccion): ParametrosSP {
   };
 }
 
+// PATCH: un campo ausente va en NULL (sin cambio) y null en alias o referencia los quita; el SP mezcla
+// con lo guardado bajo bloqueo.
+function parametrosCambios(cambios: ActualizarDireccion): ParametrosSP {
+  return {
+    Alias: { tipo: sql.NVarChar(50), valor: cambios.alias ?? null },
+    QuitarAlias: { tipo: sql.Bit, valor: cambios.alias === null },
+    NombreRecibe: { tipo: sql.NVarChar(100), valor: cambios.nombreRecibe ?? null },
+    TelefonoRecibe: { tipo: sql.VarChar(8), valor: cambios.telefonoRecibe ?? null },
+    IDMunicipio: { tipo: sql.Int, valor: cambios.idMunicipio ?? null },
+    DireccionLinea: { tipo: sql.NVarChar(200), valor: cambios.direccionLinea ?? null },
+    Referencia: { tipo: sql.NVarChar(200), valor: cambios.referencia ?? null },
+    QuitarReferencia: { tipo: sql.Bit, valor: cambios.referencia === null },
+    EsPredeterminada: { tipo: sql.Bit, valor: cambios.esPredeterminada ?? null },
+  };
+}
+
 function unica(filas: FilaDireccion[], sp: string): Direccion {
   const [fila] = filas;
   if (fila === undefined) throw new Error(`${sp} no devolvió la dirección`);
@@ -72,10 +89,10 @@ export const direccionesRepository = {
     return unica(filas, 'SP_Direcciones_Crear');
   },
 
-  async actualizar(idDireccion: number, datos: DatosDireccion): Promise<Direccion> {
+  async actualizar(idDireccion: number, cambios: ActualizarDireccion): Promise<Direccion> {
     const filas = await ejecutarSP<FilaDireccion>('SP_Direcciones_Actualizar', {
       IDDireccion: { tipo: sql.Int, valor: idDireccion },
-      ...parametrosDireccion(datos),
+      ...parametrosCambios(cambios),
     });
     return unica(filas, 'SP_Direcciones_Actualizar');
   },

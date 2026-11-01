@@ -22,9 +22,7 @@ async function preparar() {
   const perfil: PerfilConHash = { ...USUARIO, hashContrasena: await hashearContrasena(CONTRASENA) };
   const repositorio = {
     obtenerPerfil: vi.fn(() => Promise.resolve(perfil)),
-    actualizarPerfil: vi.fn((nombre: string, telefono: string | null) =>
-      Promise.resolve({ ...USUARIO, nombre, telefono }),
-    ),
+    actualizarPerfil: vi.fn(() => Promise.resolve(USUARIO)),
     cambiarContrasena: vi.fn((_hash: string) => Promise.resolve(VERSION_NUEVA)),
     listar: vi.fn(() => Promise.resolve({ usuarios: [USUARIO], total: 1 })),
     crearInterno: vi.fn(() => Promise.resolve(USUARIO)),
@@ -53,14 +51,13 @@ describe('usuarios.service (E2-H04, N-15)', () => {
     expect(perfil).not.toHaveProperty('hashContrasena');
   });
 
-  it('PATCH del perfil conserva lo que no llega y quita el teléfono con null', async () => {
+  it('PATCH del perfil pasa al SP solo lo que llegó, sin leer antes: la mezcla es del SP', async () => {
     const { servicio, repositorio } = await preparar();
 
-    await servicio.actualizarPerfil({ nombre: 'Ana María' });
     await servicio.actualizarPerfil({ telefono: null });
 
-    expect(repositorio.actualizarPerfil).toHaveBeenNthCalledWith(1, 'Ana María', '55554444');
-    expect(repositorio.actualizarPerfil).toHaveBeenNthCalledWith(2, 'Ana', null);
+    expect(repositorio.actualizarPerfil).toHaveBeenCalledWith({ telefono: null });
+    expect(repositorio.obtenerPerfil).not.toHaveBeenCalled();
   });
 
   it('con la contraseña actual incorrecta no cambia nada ni abre sesión', async () => {

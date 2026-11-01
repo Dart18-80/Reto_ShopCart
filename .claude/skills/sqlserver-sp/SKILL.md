@@ -290,7 +290,34 @@ IF @@ROWCOUNT = 0
     THROW 50002, N'El pedido cambió de estado. Recarga para ver el estado actual.', 1;
 ```
 
-### 9.5 Tareas periódicas con `sp_getapplock` (A-04)
+### 9.5 PATCH: la mezcla se hace en el SP, bajo bloqueo
+
+Un PATCH nunca lee en la API y escribe los valores finales: dos PATCH simultáneos que tocan campos
+distintos se pisarían (gana el último). El SP recibe solo lo que llegó y mezcla en el mismo `UPDATE`, que
+corre con la fila bloqueada:
+
+- **Campo obligatorio:** `NULL` significa "sin cambio" → `Col = COALESCE(@Col, Col)`.
+- **Campo opcional que se puede vaciar:** un parámetro explícito `@Quitar<Col> BIT = 0` →
+  `Col = CASE WHEN @QuitarCol = 1 THEN NULL ELSE COALESCE(@Col, Col) END`. Enviar el valor y `@Quitar = 1`
+  a la vez es un error `50003`.
+- **Banderas con efectos** (por ejemplo, la dirección predeterminada): `NULL` no las toca; el efecto
+  (desmarcar la anterior) solo corre si el PATCH las incluye.
+- Las validaciones de un campo (existencia de una FK, formato) solo corren si el campo llegó.
+- En la API, el repositorio traduce el cuerpo del PATCH: un campo ausente va en `NULL` y un `null` explícito
+  en un campo opcional enciende su `@Quitar…`. El servicio no lee antes de escribir.
+
+```sql
+UPDATE dbo.Direccion
+SET    Alias          = CASE WHEN @QuitarAlias = 1 THEN NULL ELSE COALESCE(@Alias, Alias) END,
+       NombreRecibe   = COALESCE(@NombreRecibe, NombreRecibe),
+       EsPredeterminada = COALESCE(@EsPredeterminada, EsPredeterminada),
+       FechaActualizacion = SYSUTCDATETIME()
+WHERE  IDDireccion = @IDDireccion AND IDUsuario = @IDUsuarioActor;   -- RF-01: el dueño, en el mismo UPDATE
+```
+
+Referencias: `SP_Usuarios_ActualizarPerfil`, `SP_Direcciones_Actualizar`, `SP_Usuarios_Actualizar`.
+
+### 9.6 Tareas periódicas con `sp_getapplock` (A-04)
 
 ```sql
 BEGIN TRY

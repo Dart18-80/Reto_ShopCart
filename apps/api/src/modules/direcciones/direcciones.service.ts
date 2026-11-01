@@ -32,19 +32,10 @@ export function crearDireccionesService({ repositorio }: Dependencias) {
         esPredeterminada: datos.esPredeterminada,
       }),
 
-    // PATCH: lo que no llega se conserva. El SP vuelve a comprobar que la dirección es del cliente.
-    async actualizar(idDireccion: number, cambios: ActualizarDireccion): Promise<Direccion> {
-      const actual = await obtener(idDireccion);
-      return repositorio.actualizar(idDireccion, {
-        alias: cambios.alias === undefined ? actual.alias : cambios.alias,
-        nombreRecibe: cambios.nombreRecibe ?? actual.nombreRecibe,
-        telefonoRecibe: cambios.telefonoRecibe ?? actual.telefonoRecibe,
-        idMunicipio: cambios.idMunicipio ?? actual.municipio.idMunicipio,
-        direccionLinea: cambios.direccionLinea ?? actual.direccionLinea,
-        referencia: cambios.referencia === undefined ? actual.referencia : cambios.referencia,
-        esPredeterminada: cambios.esPredeterminada ?? actual.esPredeterminada,
-      });
-    },
+    // PATCH: el SP mezcla los cambios con lo guardado bajo bloqueo y comprueba que la dirección es del
+    // cliente (una ajena responde 404, RF-01).
+    actualizar: (idDireccion: number, cambios: ActualizarDireccion): Promise<Direccion> =>
+      repositorio.actualizar(idDireccion, cambios),
 
     eliminar: (idDireccion: number): Promise<void> => repositorio.eliminar(idDireccion),
 
