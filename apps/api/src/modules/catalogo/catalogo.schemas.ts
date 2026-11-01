@@ -97,8 +97,9 @@ export const actualizarProductoSchema = z
 
 export const paramsIdProductoSchema = z.object({ id: idEnRutaSchema });
 
+// "categoria", igual que en la búsqueda pública.
 export const listarProductosSchema = consultaPaginacionSchema.extend({
-  idCategoria: idEnRutaSchema.optional(),
+  categoria: idEnRutaSchema.optional(),
   activo: booleanoConsultaSchema.optional(),
   texto: textoNvarchar(150).optional(),
 });

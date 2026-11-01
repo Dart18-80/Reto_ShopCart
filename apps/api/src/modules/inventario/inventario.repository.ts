@@ -7,13 +7,14 @@ import type {
   ExistenciaBodega,
   Movimiento,
   Pagina,
+  TipoMovimiento,
 } from './inventario.types.js';
 
 interface FilaMovimiento {
   // BIGINT: el driver lo entrega como texto.
   IDMovimientoKardex: string;
   IDVariante: number;
-  Tipo: string;
+  Tipo: TipoMovimiento;
   Signo: number;
   Cantidad: number;
   ExistenciaAnterior: number;

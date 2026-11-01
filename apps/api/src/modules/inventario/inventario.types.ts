@@ -1,7 +1,18 @@
+// N-07: los tipos de movimiento del kardex (S001).
+export const TIPOS_MOVIMIENTO = [
+  'EntradaCompra',
+  'SalidaVenta',
+  'AjustePositivo',
+  'AjusteNegativo',
+  'ReingresoCancelacion',
+  'ReingresoDevolucion',
+] as const;
+export type TipoMovimiento = (typeof TIPOS_MOVIMIENTO)[number];
+
 export interface Movimiento {
   idMovimientoKardex: number;
   idVariante: number;
-  tipo: string;
+  tipo: TipoMovimiento;
   signo: number;
   cantidad: number;
   existenciaAnterior: number;

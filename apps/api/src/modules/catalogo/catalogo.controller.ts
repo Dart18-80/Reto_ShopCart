@@ -155,7 +155,7 @@ export function crearCatalogoController(servicio: CatalogoService): CatalogoCont
         await servicio.listarProductosAdmin({
           pagina: query.pagina,
           tamano: query.tamano,
-          idCategoria: query.idCategoria ?? null,
+          idCategoria: query.categoria ?? null,
           activo: query.activo ?? null,
           texto: query.texto ?? null,
         }),

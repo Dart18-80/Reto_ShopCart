@@ -1,6 +1,7 @@
 import { textoNvarchar } from '@shopcart/shared';
 import { consultaPaginacionSchema, idEnRutaSchema, idSchema } from '../../shared/http/index.js';
 import { z } from '../../shared/openapi/zod.js';
+import { TIPOS_MOVIMIENTO } from './inventario.types.js';
 
 // Tope técnico de un movimiento: mantiene lejos el desborde de INT al sumar a la existencia.
 const CANTIDAD_MAXIMA = 1_000_000;
@@ -42,7 +43,7 @@ export const movimientoSchema = z
   .object({
     idMovimientoKardex: z.number().int(),
     idVariante: z.number().int(),
-    tipo: z.string(),
+    tipo: z.enum(TIPOS_MOVIMIENTO),
     signo: z.number().int(),
     cantidad: z.number().int(),
     existenciaAnterior: z.number().int(),

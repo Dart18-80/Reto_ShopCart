@@ -31,7 +31,7 @@ interface Dependencias {
   repositorio: CatalogoRepository;
 }
 
-function existente<T>(producto: T | null): T {
+function productoExistente<T extends ProductoAdmin | ProductoTienda>(producto: T | null): T {
   if (producto === null) throw new AppError('NO_ENCONTRADO', { mensaje: 'El producto no existe.' });
   return producto;
 }
@@ -79,11 +79,11 @@ export function crearCatalogoService({ repositorio }: Dependencias) {
     },
 
     obtenerProductoAdmin: async (id: number): Promise<ProductoAdmin> =>
-      existente(await repositorio.obtenerProductoAdmin(id)),
+      productoExistente(await repositorio.obtenerProductoAdmin(id)),
 
     // N-06: un producto inactivo o sin variantes activas no existe para la tienda (404).
     obtenerProductoTienda: async (id: number): Promise<ProductoTienda> =>
-      existente(await repositorio.obtenerProductoTienda(id)),
+      productoExistente(await repositorio.obtenerProductoTienda(id)),
 
     crearProducto: (datos: CrearProducto): Promise<ProductoAdmin> =>
       repositorio.crearProducto(datos),
