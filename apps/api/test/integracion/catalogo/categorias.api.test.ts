@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import sql from 'mssql';
 import request from 'supertest';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { z } from 'zod';
@@ -8,7 +7,7 @@ import { leerDatos, leerError } from '../../unit/respuestas.js';
 import { dependenciasDePrueba } from '../../app-de-prueba.js';
 import { iniciarSesion, leerSesion, registrar } from '../auth/apoyo-auth.js';
 import { usarBaseDePruebas } from '../base-de-pruebas.js';
-import { leerBitacora, unaFila } from '../datos-de-prueba.js';
+import { leerBitacora } from '../datos-de-prueba.js';
 
 usarBaseDePruebas();
 
@@ -44,10 +43,10 @@ async function crearCategoria(cambios: Record<string, unknown> = {}) {
 }
 
 function crearProducto(idCategoria: number, activo: boolean) {
-  return unaFila<{ IDProducto: number }>('SP_Pruebas_CrearProducto', {
-    IDCategoria: { tipo: sql.Int, valor: idCategoria },
-    Activo: { tipo: sql.Bit, valor: activo },
-  });
+  return request(app)
+    .post('/api/v1/admin/productos')
+    .set(conAdmin())
+    .send({ idCategoria, nombre: `Producto ${randomUUID().slice(0, 8)}`, activo });
 }
 
 const ruta = (idCategoria: number, accion?: string) =>
