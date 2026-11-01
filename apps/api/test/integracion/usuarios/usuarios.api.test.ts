@@ -170,6 +170,39 @@ describe('administración de usuarios (E2-H04, N-15)', () => {
     }
   });
 
+  it('RF-01: un Cliente o un Operador recibe 403 en cada ruta Admin que escribe y nada cambia', async () => {
+    const objetivo = await sesionDeCliente();
+    const cliente = await sesionDeCliente();
+    const operador = leerSesion(await iniciarSesion(app, 'operador@shopcart.gt', 'Operador2026!'));
+    const correoNuevo = correoUnico();
+    const ruta = `/api/v1/usuarios/${String(objetivo.idUsuario)}`;
+    const intentos = (token: string) => [
+      request(app)
+        .post('/api/v1/usuarios')
+        .set(conToken(token))
+        .send({
+          correo: correoNuevo,
+          contrasena: CONTRASENA,
+          nombre: 'Intruso',
+          rol: 'Administrador',
+        }),
+      request(app).patch(ruta).set(conToken(token)).send({ rol: 'Administrador' }),
+      request(app).post(`${ruta}/desactivar`).set(conToken(token)),
+      request(app).post(`${ruta}/activar`).set(conToken(token)),
+    ];
+
+    for (const token of [cliente.token, operador.accessToken]) {
+      for (const respuesta of await Promise.all(intentos(token))) {
+        expect(respuesta.status).toBe(403);
+        expect(leerError(respuesta).codigo).toBe('SIN_PERMISO');
+      }
+    }
+
+    const perfil = await request(app).get('/api/v1/usuarios/me').set(conToken(objetivo.token));
+    expect(leerDatos(perfil, perfilSchema).rol).toBe('Cliente');
+    expect((await iniciarSesion(app, correoNuevo)).status).toBe(401);
+  });
+
   it('el Admin lista con paginación del servidor y filtra por rol y estado', async () => {
     const token = await tokenDeAdmin();
 
