@@ -45,9 +45,12 @@ async function iniciar(): Promise<void> {
     verificadorRedis: crearVerificadorRedis(redis),
     tokensAcceso: crearTokensAcceso(config.secretoJwt),
     limitadores: {
-      login: crearLimitadorRedis(redis, { prefijo: 'limite:login', ...LIMITE_LOGIN }),
-      registro: crearLimitadorRedis(redis, { prefijo: 'limite:registro', ...LIMITE_REGISTRO }),
-      cambioContrasena: crearLimitadorRedis(redis, {
+      login: crearLimitadorRedis(redis, logger, { prefijo: 'limite:login', ...LIMITE_LOGIN }),
+      registro: crearLimitadorRedis(redis, logger, {
+        prefijo: 'limite:registro',
+        ...LIMITE_REGISTRO,
+      }),
+      cambioContrasena: crearLimitadorRedis(redis, logger, {
         prefijo: 'limite:contrasena',
         ...LIMITE_CAMBIO_CONTRASENA,
       }),

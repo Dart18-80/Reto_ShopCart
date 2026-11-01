@@ -430,7 +430,7 @@ describe('límite de intentos del cambio de contraseña (A-07)', () => {
     dependenciasDePrueba({
       limitadores: {
         ...dependenciasDePrueba().limitadores,
-        cambioContrasena: crearLimitadorRedis(redis, {
+        cambioContrasena: crearLimitadorRedis(redis, logger, {
           prefijo: `prueba:${randomUUID()}:contrasena`,
           intentos: 5,
           ventanaSeg: 60,

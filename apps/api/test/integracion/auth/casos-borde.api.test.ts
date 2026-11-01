@@ -1,3 +1,4 @@
+import { pino } from 'pino';
 import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -100,12 +101,12 @@ describe('casos borde del rate limiting del login (E2-H01, A-07)', () => {
     dependenciasDePrueba({
       limitadores: {
         ...dependenciasDePrueba().limitadores,
-        login: crearLimitadorRedis(redis, {
+        login: crearLimitadorRedis(redis, pino({ level: 'silent' }), {
           prefijo: `prueba:${randomUUID()}:login`,
           intentos: 5,
           ventanaSeg: 60,
         }),
-        registro: crearLimitadorRedis(redis, {
+        registro: crearLimitadorRedis(redis, pino({ level: 'silent' }), {
           prefijo: `prueba:${randomUUID()}:registro`,
           intentos: 3,
           ventanaSeg: 60,

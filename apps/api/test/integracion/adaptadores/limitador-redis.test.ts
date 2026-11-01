@@ -1,3 +1,4 @@
+import { pino } from 'pino';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { crearLimitadorRedis } from '../../../src/shared/adapters/limitador-redis.js';
@@ -26,8 +27,8 @@ afterAll(() => {
 describe('LimitadorRedis (E2-H01, A-07)', () => {
   it('el contador vive en Redis: dos réplicas comparten los intentos', async () => {
     const comunes = opciones();
-    const replica1 = crearLimitadorRedis(redis, comunes);
-    const replica2 = crearLimitadorRedis(redis, comunes);
+    const replica1 = crearLimitadorRedis(redis, pino({ level: 'silent' }), comunes);
+    const replica2 = crearLimitadorRedis(redis, pino({ level: 'silent' }), comunes);
 
     await consumirVeces(replica1, 2);
     const permitidos = await consumirVeces(replica2, 2);
@@ -36,7 +37,7 @@ describe('LimitadorRedis (E2-H01, A-07)', () => {
   });
 
   it('al agotar los intentos indica cuántos segundos esperar, dentro de la ventana', async () => {
-    const limitador = crearLimitadorRedis(redis, opciones());
+    const limitador = crearLimitadorRedis(redis, pino({ level: 'silent' }), opciones());
     await consumirVeces(limitador, 3);
 
     const { permitido, segundosParaReintentar } = await limitador.consumir('clave');
@@ -49,7 +50,7 @@ describe('LimitadorRedis (E2-H01, A-07)', () => {
   it('con Redis caído cae al contador en memoria: no lanza y sigue limitando', async () => {
     const caido = crearClienteRedis({ ...config, puerto: 1 });
     caido.on('error', () => undefined);
-    const limitador = crearLimitadorRedis(caido, opciones());
+    const limitador = crearLimitadorRedis(caido, pino({ level: 'silent' }), opciones());
 
     const permitidos = await consumirVeces(limitador, 4);
 

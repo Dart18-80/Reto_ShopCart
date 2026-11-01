@@ -1,5 +1,6 @@
 import { createServer, type Server, type Socket } from 'node:net';
 import type { AddressInfo } from 'node:net';
+import { Writable } from 'node:stream';
 import type { Redis } from 'ioredis';
 import { pino } from 'pino';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -68,7 +69,7 @@ describe('Redis colgado con la conexión abierta (RNF-2, N-15)', () => {
   });
 
   it('el limitador cae al contador en memoria a tiempo en lugar de colgar el login', async () => {
-    const limitador = crearLimitadorRedis(cliente, {
+    const limitador = crearLimitadorRedis(cliente, pino({ level: 'silent' }), {
       prefijo: 'prueba-colgado',
       intentos: 5,
       ventanaSeg: 60,
@@ -78,5 +79,27 @@ describe('Redis colgado con la conexión abierta (RNF-2, N-15)', () => {
     await expect(limitador.consumir('clave')).resolves.toMatchObject({ permitido: true });
 
     expect(Date.now() - inicio).toBeLessThan(ESPERA_MAXIMA_MS);
+  });
+
+  it('el limitador registra la falla de Redis una sola vez aunque la conexión siga abierta', async () => {
+    const lineas: string[] = [];
+    const destino = new Writable({
+      write(fragmento: Buffer, _codificacion, listo) {
+        lineas.push(fragmento.toString());
+        listo();
+      },
+    });
+    const limitador = crearLimitadorRedis(cliente, pino({ level: 'info' }, destino), {
+      prefijo: 'prueba-colgado',
+      intentos: 5,
+      ventanaSeg: 60,
+    });
+
+    await limitador.consumir('clave');
+    await limitador.consumir('clave');
+
+    const avisos = lineas.filter((linea) => linea.includes('Redis falla en esta operación'));
+    expect(avisos).toHaveLength(1);
+    expect(avisos[0]).toContain('limitador');
   });
 });

@@ -1,3 +1,4 @@
+import { pino } from 'pino';
 import { createHash, randomUUID } from 'node:crypto';
 import { Writable } from 'node:stream';
 import sql from 'mssql';
@@ -136,12 +137,12 @@ describe('rate limiting con Redis (E2-H01, A-07)', () => {
     dependenciasDePrueba({
       limitadores: {
         ...dependenciasDePrueba().limitadores,
-        login: crearLimitadorRedis(redis, {
+        login: crearLimitadorRedis(redis, pino({ level: 'silent' }), {
           prefijo: `${prefijo}:login`,
           intentos: 5,
           ventanaSeg: 60,
         }),
-        registro: crearLimitadorRedis(redis, {
+        registro: crearLimitadorRedis(redis, pino({ level: 'silent' }), {
           prefijo: `${prefijo}:registro`,
           intentos: 3,
           ventanaSeg: 60,
