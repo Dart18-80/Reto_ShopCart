@@ -4,12 +4,14 @@ import type { Logger } from 'pino';
 import type { ConfiguracionRedis } from '../config/index.js';
 
 const ESPERA_PING_MS = 500;
+const ESPERA_COMANDO_MS = 500;
 const ESPERA_REINTENTO_MS = 200;
 const ESPERA_MAXIMA_REINTENTO_MS = 2000;
 
 /**
  * RNF-2: Redis solo guarda lo que se puede perder. Sin cola fuera de línea y con un solo intento por
- * comando, una caída de Redis falla rápido en lugar de dejar peticiones esperando.
+ * comando, una caída de Redis falla rápido en lugar de dejar peticiones esperando. El tiempo límite por
+ * comando cubre el caso que la cola no ve: un Redis bloqueado con la conexión todavía abierta.
  */
 export function crearClienteRedis(config: ConfiguracionRedis): Redis {
   return new Redis({
@@ -19,6 +21,7 @@ export function crearClienteRedis(config: ConfiguracionRedis): Redis {
     lazyConnect: true,
     enableOfflineQueue: false,
     maxRetriesPerRequest: 1,
+    commandTimeout: ESPERA_COMANDO_MS,
     retryStrategy: (intentos) =>
       Math.min(intentos * ESPERA_REINTENTO_MS, ESPERA_MAXIMA_REINTENTO_MS),
   });
