@@ -214,6 +214,10 @@ THROW 50301, @Error, 1;
 
 ## 9. Patrones de concurrencia
 
+### 9.0 Orden global de bloqueo en el catálogo (01 §6.6)
+
+**Categoría → producto → variantes en orden de `IDVariante`**, siempre con `UPDLOCK`. Un SP que toca un producto bloquea antes la fila de su categoría aunque no la modifique; un SP que crea o edita una variante bloquea antes la fila del producto. Saltarse un nivel o invertirlo produce deadlocks con los SPs de los otros niveles.
+
 ### 9.1 Bloquear varias variantes siempre en el mismo orden
 
 Evita deadlocks entre dos carritos que comparten variantes. Un ciclo explícito garantiza el orden, cosa que un `SELECT ... ORDER BY` no promete.

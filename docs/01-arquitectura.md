@@ -342,6 +342,10 @@ aviso          = garantiaActiva y precioVigente > precioGarantizado → "Precio 
 
 Al vencer la garantía, la línea se re-ancla a la versión de precio vigente.
 
+### 6.6 Orden global de bloqueo en el catálogo (N-14)
+
+Todo SP de catálogo bloquea en este orden: **categoría → producto → variantes en orden de `IDVariante`**. Desactivar una categoría y activar uno de sus productos se serializan en la fila de la categoría (un producto activo siempre tiene su categoría activa), y el alta de una variante bloquea la fila del producto antes de leer su conjunto de atributos, así dos altas simultáneas nunca fijan dos conjuntos.
+
 ---
 
 ## 7. Concurrencia y consistencia

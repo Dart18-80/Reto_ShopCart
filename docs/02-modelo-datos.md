@@ -347,7 +347,7 @@ Notación: **PK** llave primaria · **FK** llave foránea · **UQ** único · **
 |---|---|---|
 | IDVariante | INT IDENTITY | PK |
 | IDProducto | INT | FK → Producto |
-| SKU | VARCHAR(40) | **UQ** global; no editable con movimientos (lo valida el SP) |
+| SKU | VARCHAR(40) | **UQ** global; editable (`DetallePedido` guarda su copia) |
 | FirmaAtributos | VARCHAR(200) | IDs de `ValorAtributo` ordenados por `IDAtributo` (p. ej. `3\|17`); la calcula el SP |
 | DescripcionAtributos | NVARCHAR(200) | Texto legible ("M / Azul"), calculado junto con la firma |
 | ExistenciaFisica | INT | DF 0. **CK ≥ 0**. Solo la modifica `SP_Inventario_RegistrarMovimiento` |
@@ -819,7 +819,7 @@ Rangos por módulo para `THROW`. El catálogo completo, con su código estable y
 |---|---|---|
 | 50001–50099 | General | 50001 `NO_ENCONTRADO` (404) · 50002 `CONFLICTO_CONCURRENCIA` (409) · 50003 `PARAMETRO_INVALIDO` (400) · 50004 `CONTEXTO_NO_ESTABLECIDO` (500: error de programación, el cliente ve el mensaje genérico) |
 | 50100–50199 | Auth y usuarios | 50101 `CORREO_EN_USO` (409) · 50102 `REFRESH_REUTILIZADO` (401) · 50103 `USUARIO_INACTIVO` (401) · 50104 `ULTIMO_ADMIN` (409) · 50105 `ACCION_SOBRE_SI_MISMO` (409: un Admin no se desactiva ni cambia su propio rol) · 50106 `LIMITE_DIRECCIONES` (422: máximo 10 direcciones por cliente) |
-| 50200–50299 | Catálogo | 50201 `SKU_DUPLICADO` (409) · 50202 `COMBINACION_DUPLICADA` (409) · 50203 `PRODUCTO_CON_HISTORIAL` (409) · 50204 `CATEGORIA_CON_PRODUCTOS` (409) · 50205 `NOMBRE_DUPLICADO` (409: nombre de categoría o de atributo, o valor repetido dentro de un atributo) · 50206 `CATEGORIA_INACTIVA` (409: un producto activo en una categoría inactiva) |
+| 50200–50299 | Catálogo | 50201 `SKU_DUPLICADO` (409) · 50202 `COMBINACION_DUPLICADA` (409) · 50203 `PRODUCTO_CON_HISTORIAL` (409) · 50204 `CATEGORIA_CON_PRODUCTOS` (409) · 50205 `NOMBRE_DUPLICADO` (409: nombre de categoría o de atributo, o valor repetido dentro de un atributo) · 50206 `CATEGORIA_INACTIVA` (409: un producto activo en una categoría inactiva) · 50207 `ATRIBUTOS_NO_COINCIDEN` (422: la variante no usa el conjunto de atributos del producto; los esperados van en `detalles`) · 50208 `VARIANTE_CON_HISTORIAL` (409: la combinación de una variante con historial no se cambia) |
 | 50300–50399 | Inventario | 50301 `STOCK_INSUFICIENTE` (409) · 50302 `AJUSTE_DEJA_NEGATIVO` (422) · 50303 `AJUSTE_BAJO_RESERVADO` (422) · 50304 `MOTIVO_REQUERIDO` (400) |
 | 50400–50499 | Carrito | 50401 `LIMITE_LINEAS` (422) · 50402 `LINEAS_NO_DISPONIBLES` (409) · 50403 `CARRITO_VACIO` (422) |
 | 50500–50599 | Cupones | 50501 `CUPON_NO_EXISTE` · 50502 `CUPON_INACTIVO` · 50503 `CUPON_NO_VIGENTE_AUN` · 50504 `CUPON_VENCIDO` · 50505 `CUPON_AGOTADO` · 50506 `CUPON_LIMITE_CLIENTE` · 50507 `CUPON_MINIMO_NO_ALCANZADO` · 50508 `CUPON_SIN_PRODUCTOS_CATEGORIA` (todos 422) · 50509 `CUPON_USADO_NO_EDITABLE` (409) |
