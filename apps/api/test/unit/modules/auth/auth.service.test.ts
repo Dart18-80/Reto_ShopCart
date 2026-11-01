@@ -1,3 +1,4 @@
+import { pino } from 'pino';
 import { createHash } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import { hashearContrasena } from '../../../../src/modules/auth/auth.contrasenas.js';
@@ -6,7 +7,10 @@ import { crearAuthService } from '../../../../src/modules/auth/auth.service.js';
 import type { Credenciales } from '../../../../src/modules/auth/auth.types.js';
 import { crearTokensAcceso } from '../../../../src/shared/http/index.js';
 
-const tokens = crearTokensAcceso('secreto-de-prueba-de-al-menos-32-caracteres');
+const tokens = crearTokensAcceso(
+  'secreto-de-prueba-de-al-menos-32-caracteres',
+  pino({ level: 'silent' }),
+);
 const CLIENTE = { ip: '203.0.113.7', userAgent: 'pruebas' };
 const CONTRASENA = 'Correcta2026';
 

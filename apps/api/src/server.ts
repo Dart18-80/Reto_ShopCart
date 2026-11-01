@@ -43,7 +43,7 @@ async function iniciar(): Promise<void> {
     instancia: config.instancia,
     origenesCors: config.origenesCors,
     verificadorRedis: crearVerificadorRedis(redis),
-    tokensAcceso: crearTokensAcceso(config.secretoJwt),
+    tokensAcceso: crearTokensAcceso(config.secretoJwt, logger),
     limitadores: {
       login: crearLimitadorRedis(redis, logger, { prefijo: 'limite:login', ...LIMITE_LOGIN }),
       registro: crearLimitadorRedis(redis, logger, {

@@ -17,7 +17,7 @@ import { leerDatos, leerError } from '../../respuestas.js';
 import { z } from 'zod';
 
 const SECRETO = 'secreto-de-prueba-de-al-menos-32-caracteres';
-const tokens = crearTokensAcceso(SECRETO);
+const tokens = crearTokensAcceso(SECRETO, pino({ level: 'silent' }));
 
 /** Versiones vigentes por usuario; un usuario sin entrada es como una clave que Redis no tiene. */
 function versiones(vigentes: Record<number, number> = {}): Pick<VersionesSesion, 'vigente'> {
