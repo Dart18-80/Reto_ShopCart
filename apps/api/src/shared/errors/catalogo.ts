@@ -80,6 +80,12 @@ export const CATALOGO = {
     numeroSql: 50204,
     mensaje: 'La categoría tiene productos asociados.',
   },
+  // E3-H01, E3-H02: nombre de categoría o de atributo, o valor dentro de un atributo, ya usado.
+  NOMBRE_DUPLICADO: {
+    http: 409,
+    numeroSql: 50205,
+    mensaje: 'Ya existe un registro con ese nombre.',
+  },
 
   // 50300–50399 Inventario
   STOCK_INSUFICIENTE: { http: 409, numeroSql: 50301, mensaje: 'No hay existencia suficiente.' },

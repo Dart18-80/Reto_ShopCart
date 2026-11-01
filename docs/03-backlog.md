@@ -619,7 +619,7 @@ Se detalla en historias al cerrar la Fase 1.
 | E2-H03 | Autenticación, autorización y revocación | Must | 0.5 | Hecha |
 | E2-H04 | Gestión de usuarios y perfil | Should | 0.5 | Hecha |
 | E2-H05 | Direcciones y catálogo geográfico | Must | 0.25 | Hecha |
-| E3-H01 | Categorías | Must | 0.25 | Lista |
+| E3-H01 | Categorías | Must | 0.25 | En revisión |
 | E3-H02 | Atributos y valores | Must | 0.25 | Lista |
 | E3-H03 | Productos, imágenes y variantes | Must | 1.0 | Lista |
 | E3-H04 | Precios versionados | Must | 0.5 | Lista |

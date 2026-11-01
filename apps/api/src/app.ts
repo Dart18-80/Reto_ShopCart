@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import type { Logger } from 'pino';
 import swaggerUi from 'swagger-ui-express';
 import { crearModuloAuth, crearSesiones, type LimitadoresAuth } from './modules/auth/index.js';
+import { crearModuloCatalogo } from './modules/catalogo/index.js';
 import { crearModuloDirecciones } from './modules/direcciones/index.js';
 import { crearModuloSistema, type VerificadorRedis } from './modules/sistema/index.js';
 import { crearModuloUsuarios } from './modules/usuarios/index.js';
@@ -86,6 +87,7 @@ export function crearApp({
     }),
   );
   v1.use(crearModuloDirecciones({ autenticar }));
+  v1.use(crearModuloCatalogo({ autenticar }));
   app.use('/api/v1', v1);
 
   // Después de montar todas las rutas, para que el documento las incluya.
