@@ -165,6 +165,23 @@ export const actualizarVarianteSchema = z
 
 export const paramsIdVarianteSchema = z.object({ id: idEnRutaSchema });
 
+// --- Precios (E3-H04).
+
+export const cambiarPrecioSchema = z
+  .object({ precio: precioSchema })
+  .strict()
+  .openapi('CambiarPrecio');
+
+export const versionPrecioSchema = z
+  .object({
+    idPrecioVariante: z.number().int(),
+    precio: montoSchema,
+    vigenteDesde: z.iso.datetime(),
+    vigenteHasta: z.iso.datetime().nullable(),
+    usuario: z.object({ idUsuario: z.number().int(), nombre: z.string() }),
+  })
+  .openapi('VersionPrecio');
+
 // --- Respuestas (OpenAPI). Los montos viajan como texto (A-21).
 
 const imagenRespuestaSchema = z.object({
@@ -251,3 +268,4 @@ export type ActualizarProducto = z.infer<typeof actualizarProductoSchema>;
 export type GuardarImagenes = z.infer<typeof guardarImagenesSchema>;
 export type CrearVariante = z.infer<typeof crearVarianteSchema>;
 export type ActualizarVariante = z.infer<typeof actualizarVarianteSchema>;
+export type CambiarPrecio = z.infer<typeof cambiarPrecioSchema>;

@@ -625,7 +625,7 @@ Se detalla en historias al cerrar la Fase 1.
 | E3-H01 | Categorías | Must | 0.25 | En revisión |
 | E3-H02 | Atributos y valores | Must | 0.25 | En revisión |
 | E3-H03 | Productos, imágenes y variantes | Must | 1.0 | En revisión |
-| E3-H04 | Precios versionados | Must | 0.5 | Lista |
+| E3-H04 | Precios versionados | Must | 0.5 | En revisión |
 | E3-H05 | Búsqueda y filtros del catálogo | Must | 0.75 | Lista |
 | E3-H06 | Inventario y kardex | Must | 0.75 | Lista |
 | E4-H01 | Carrito de invitado y de cliente | Must | 0.75 | Propuesta |

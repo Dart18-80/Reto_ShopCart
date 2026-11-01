@@ -8,6 +8,7 @@ import {
   actualizarProductoSchema,
   actualizarVarianteSchema,
   atributoSchema,
+  cambiarPrecioSchema,
   categoriaPublicaSchema,
   categoriaSchema,
   crearAtributoSchema,
@@ -25,6 +26,7 @@ import {
   productoResumenSchema,
   productoTiendaSchema,
   valorAtributoCreadoSchema,
+  versionPrecioSchema,
 } from './catalogo.schemas.js';
 
 const V1 = '/api/v1';
@@ -295,6 +297,32 @@ registrarAdmin({
   errores: [400, 404, 409],
 });
 
+// --- Precios (E3-H04)
+
+const historial = (descripcion: string) =>
+  datos(
+    `${descripcion}: de la versión más reciente a la más antigua`,
+    z.array(versionPrecioSchema),
+  );
+registrarAdmin({
+  metodo: 'get',
+  ruta: '/variantes/{id}/precios',
+  resumen: 'Historial de precios de una variante',
+  params: paramsIdVarianteSchema,
+  exito: [200, historial('Historial')],
+  errores: [400, 404],
+});
+registrarAdmin({
+  metodo: 'put',
+  ruta: '/variantes/{id}/precio',
+  resumen:
+    'Cambia el precio: cierra la versión vigente e inserta la nueva en una transacción (N-02)',
+  params: paramsIdVarianteSchema,
+  cuerpo: cambiarPrecioSchema,
+  exito: [200, historial('Historial con la versión nueva')],
+  errores: [400, 404],
+});
+
 export function crearCatalogoRouter(
   controller: CatalogoController,
   autenticar: RequestHandler,
@@ -330,5 +358,7 @@ export function crearCatalogoRouter(
   router.post('/admin/variantes/:id/activar', ...soloAdmin, controller.activarVariante);
   router.post('/admin/variantes/:id/desactivar', ...soloAdmin, controller.desactivarVariante);
   router.delete('/admin/variantes/:id', ...soloAdmin, controller.eliminarVariante);
+  router.get('/admin/variantes/:id/precios', ...soloAdmin, controller.historialPrecios);
+  router.put('/admin/variantes/:id/precio', ...soloAdmin, controller.cambiarPrecio);
   return router;
 }

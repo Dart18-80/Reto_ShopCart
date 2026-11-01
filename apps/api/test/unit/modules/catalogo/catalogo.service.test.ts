@@ -1,3 +1,4 @@
+import { Decimal } from 'decimal.js';
 import { describe, expect, it, vi } from 'vitest';
 import type { CatalogoRepository } from '../../../../src/modules/catalogo/catalogo.repository.js';
 import { crearCatalogoService } from '../../../../src/modules/catalogo/catalogo.service.js';
@@ -47,6 +48,8 @@ function preparar() {
     actualizarVariante: vi.fn(() => Promise.resolve(PRODUCTO)),
     cambiarEstadoVariante: vi.fn((_id: number, _activo: boolean) => Promise.resolve(PRODUCTO)),
     eliminarVariante: vi.fn(() => Promise.resolve()),
+    historialPrecios: vi.fn(() => Promise.resolve([])),
+    cambiarPrecio: vi.fn(() => Promise.resolve([])),
   } satisfies CatalogoRepository;
   return { servicio: crearCatalogoService({ repositorio }), repositorio };
 }
@@ -126,5 +129,16 @@ describe('catalogo.service: productos y variantes (E3-H03, N-06, N-14)', () => {
     });
 
     expect(respuesta.paginacion).toEqual({ pagina: 2, tamano: 20, total: 41, totalPaginas: 3 });
+  });
+});
+
+describe('catalogo.service: precios (E3-H04, N-02)', () => {
+  it('el cambio de precio llega al SP de la variante de la ruta con el monto como Decimal', async () => {
+    const { servicio, repositorio } = preparar();
+    const precio = new Decimal('89.50');
+
+    await servicio.cambiarPrecio(3, { precio });
+
+    expect(repositorio.cambiarPrecio).toHaveBeenCalledWith(3, { precio });
   });
 });

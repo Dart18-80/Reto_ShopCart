@@ -5,6 +5,7 @@ import {
   actualizarCategoriaSchema,
   actualizarProductoSchema,
   actualizarVarianteSchema,
+  cambiarPrecioSchema,
   crearAtributoSchema,
   crearCategoriaSchema,
   crearProductoSchema,
@@ -18,7 +19,7 @@ import {
   paramsIdVarianteSchema,
 } from './catalogo.schemas.js';
 import type { CatalogoService } from './catalogo.service.js';
-import type { ProductoAdmin, ProductoTienda } from './catalogo.types.js';
+import type { ProductoAdmin, ProductoTienda, VersionPrecio } from './catalogo.types.js';
 
 const HTTP_CREADO = 201;
 const HTTP_SIN_CONTENIDO = 204;
@@ -41,6 +42,9 @@ const productoTiendaJson = (producto: ProductoTienda) => ({
     ...(unidadesRestantes === null ? {} : { unidadesRestantes }),
   })),
 });
+
+const versionesJson = (versiones: VersionPrecio[]) =>
+  versiones.map((version) => ({ ...version, precio: montoATexto(version.precio) }));
 
 export interface CatalogoController {
   listarCategorias: RequestHandler;
@@ -66,6 +70,8 @@ export interface CatalogoController {
   activarVariante: RequestHandler;
   desactivarVariante: RequestHandler;
   eliminarVariante: RequestHandler;
+  historialPrecios: RequestHandler;
+  cambiarPrecio: RequestHandler;
 }
 
 export function crearCatalogoController(servicio: CatalogoService): CatalogoController {
@@ -193,5 +199,16 @@ export function crearCatalogoController(servicio: CatalogoService): CatalogoCont
       await servicio.eliminarVariante(params.id);
       res.status(HTTP_SIN_CONTENIDO).end();
     }),
+
+    historialPrecios: manejar({ params: paramsIdVarianteSchema }, async ({ params }, res) => {
+      res.json({ datos: versionesJson(await servicio.historialPrecios(params.id)) });
+    }),
+
+    cambiarPrecio: manejar(
+      { params: paramsIdVarianteSchema, body: cambiarPrecioSchema },
+      async ({ params, body }, res) => {
+        res.json({ datos: versionesJson(await servicio.cambiarPrecio(params.id, body)) });
+      },
+    ),
   };
 }

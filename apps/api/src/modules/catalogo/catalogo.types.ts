@@ -100,6 +100,14 @@ export interface ProductoResumen {
   variantesActivas: number;
 }
 
+export interface VersionPrecio {
+  idPrecioVariante: number;
+  precio: Decimal;
+  vigenteDesde: Date;
+  vigenteHasta: Date | null;
+  usuario: { idUsuario: number; nombre: string };
+}
+
 export interface FiltrosProductos {
   pagina: number;
   tamano: number;

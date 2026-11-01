@@ -5,6 +5,7 @@ import type {
   ActualizarCategoria,
   ActualizarProducto,
   ActualizarVariante,
+  CambiarPrecio,
   CrearAtributo,
   CrearCategoria,
   CrearProducto,
@@ -21,6 +22,7 @@ import type {
   ProductoResumen,
   ProductoTienda,
   ValorAtributoCreado,
+  VersionPrecio,
 } from './catalogo.types.js';
 
 interface Dependencias {
@@ -105,6 +107,13 @@ export function crearCatalogoService({ repositorio }: Dependencias) {
       repositorio.cambiarEstadoVariante(id, false),
 
     eliminarVariante: (id: number): Promise<void> => repositorio.eliminarVariante(id),
+
+    historialPrecios: (idVariante: number): Promise<VersionPrecio[]> =>
+      repositorio.historialPrecios(idVariante),
+
+    // N-02: el SP cierra la versión vigente e inserta la nueva en una transacción.
+    cambiarPrecio: (idVariante: number, datos: CambiarPrecio): Promise<VersionPrecio[]> =>
+      repositorio.cambiarPrecio(idVariante, datos),
   };
 }
 

@@ -10,6 +10,7 @@ import type {
   ActualizarCategoria,
   ActualizarProducto,
   ActualizarVariante,
+  CambiarPrecio,
   CrearAtributo,
   CrearCategoria,
   CrearProducto,
@@ -31,6 +32,7 @@ import type {
   ValorDeVariante,
   VarianteAdmin,
   VarianteTienda,
+  VersionPrecio,
 } from './catalogo.types.js';
 
 // --- Categorías
@@ -252,6 +254,23 @@ async function productoAdminEscrito(
   return producto;
 }
 
+interface FilaVersionPrecio {
+  IDPrecioVariante: number;
+  Precio: number;
+  VigenteDesde: Date;
+  VigenteHasta: Date | null;
+  IDUsuario: number;
+  Usuario: string;
+}
+
+const aVersionPrecio = (fila: FilaVersionPrecio): VersionPrecio => ({
+  idPrecioVariante: fila.IDPrecioVariante,
+  precio: aMonto(fila.Precio),
+  vigenteDesde: fila.VigenteDesde,
+  vigenteHasta: fila.VigenteHasta,
+  usuario: { idUsuario: fila.IDUsuario, nombre: fila.Usuario },
+});
+
 const idProducto = (id: number) => ({ IDProducto: { tipo: sql.Int, valor: id } });
 const idVariante = (id: number) => ({ IDVariante: { tipo: sql.Int, valor: id } });
 // A-22: las listas viajan al SP como JSON.
@@ -442,6 +461,22 @@ export const catalogoRepository = {
 
   async eliminarVariante(id: number): Promise<void> {
     await ejecutarSP('SP_Catalogo_EliminarVariante', idVariante(id));
+  },
+
+  async historialPrecios(id: number): Promise<VersionPrecio[]> {
+    const filas = await ejecutarSP<FilaVersionPrecio>(
+      'SP_Catalogo_HistorialPrecios',
+      idVariante(id),
+    );
+    return filas.map(aVersionPrecio);
+  },
+
+  async cambiarPrecio(id: number, datos: CambiarPrecio): Promise<VersionPrecio[]> {
+    const filas = await ejecutarSP<FilaVersionPrecio>('SP_Catalogo_CambiarPrecio', {
+      ...idVariante(id),
+      Precio: { tipo: sql.Decimal(12, 2), valor: datos.precio },
+    });
+    return filas.map(aVersionPrecio);
   },
 };
 
