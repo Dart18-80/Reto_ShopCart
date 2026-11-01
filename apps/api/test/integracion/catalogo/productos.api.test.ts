@@ -1,7 +1,9 @@
+import sql from 'mssql';
 import request from 'supertest';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { crearApp } from '../../../src/app.js';
+import { ejecutarSP } from '../../../src/shared/db/index.js';
 import { leerDatos, leerError } from '../../unit/respuestas.js';
 import { dependenciasDePrueba } from '../../app-de-prueba.js';
 import { iniciarSesion, leerSesion, registrar } from '../auth/apoyo-auth.js';
@@ -137,6 +139,45 @@ describe('productos y el invariante de categoría (E3-H03, N-14)', () => {
     }
   });
 
+  it('crear o mover productos activos mientras se desactiva la categoría nunca deja un producto activo en ella', async () => {
+    const casos = await Promise.all(
+      Array.from({ length: 5 }, async () => {
+        const idCategoria = await crearCategoria(app, token);
+        const otra = await crearProducto(app, token, await crearCategoria(app, token));
+        return { idCategoria, idProductoAMover: otra.idProducto };
+      }),
+    );
+
+    const respuestas = await Promise.all(
+      casos.flatMap(({ idCategoria, idProductoAMover }) => [
+        desactivarCategoria(idCategoria),
+        request(app)
+          .post(ADMIN)
+          .set(conAdmin())
+          .send({ idCategoria, nombre: `Nuevo ${sufijo()}` }),
+        request(app).patch(ruta(idProductoAMover)).set(conAdmin()).send({ idCategoria }),
+      ]),
+    );
+
+    expect(respuestas.every((r) => r.status !== 500)).toBe(true);
+    const activas = new Set(
+      leerDatos(
+        await request(app).get('/api/v1/categorias'),
+        z.array(z.object({ idCategoria: z.number() })),
+      ).map((c) => c.idCategoria),
+    );
+    for (const { idCategoria } of casos) {
+      const productos = z.object({ datos: z.array(z.looseObject({ activo: z.boolean() })) }).parse(
+        (
+          await request(app)
+            .get(`${ADMIN}?categoria=${String(idCategoria)}&activo=true`)
+            .set(conAdmin())
+        ).body,
+      ).datos;
+      expect(productos.length > 0 && !activas.has(idCategoria)).toBe(false);
+    }
+  });
+
   it('PATCH cambia el nombre, quita la descripción con null y uno inexistente responde 404', async () => {
     const producto = await crearProducto(app, token, await crearCategoria(app, token), {
       descripcion: 'Antes',
@@ -250,7 +291,7 @@ describe('GET de administración (E3-H03)', () => {
     await crearProducto(app, token, idCategoria, { nombre: `Bota ${marca}`, activo: false });
 
     const respuesta = await request(app)
-      .get(`${ADMIN}?idCategoria=${String(idCategoria)}&activo=false&tamano=10`)
+      .get(`${ADMIN}?categoria=${String(idCategoria)}&activo=false&tamano=10`)
       .set(conAdmin());
     const porTexto = await request(app)
       .get(`${ADMIN}?texto=${encodeURIComponent(`CAMION ${marca}`)}`)
@@ -305,6 +346,13 @@ describe('GET /productos/:id público (E3-H03, N-06)', () => {
     return { idProducto: producto.idProducto, idVariante };
   }
 
+  const reservar = (idVariante: number, cantidad: number) =>
+    ejecutarSP('SP_Pruebas_CrearReserva', {
+      IDVariante: { tipo: sql.Int, valor: idVariante },
+      Cantidad: { tipo: sql.Int, valor: cantidad },
+      MinutosParaVencer: { tipo: sql.Int, valor: 15 },
+    });
+
   const tienda = (idProducto: number) =>
     request(app).get(`/api/v1/productos/${String(idProducto)}`);
 
@@ -322,12 +370,44 @@ describe('GET /productos/:id público (E3-H03, N-06)', () => {
   it('en el umbral: UltimasUnidades con las unidades restantes reales (N-06)', async () => {
     const { idProducto } = await productoConVariante(UMBRAL);
 
-    const [variante] = leerDatos(await tienda(idProducto), tiendaSchema).variantes;
+    const respuesta = await tienda(idProducto);
 
+    const [variante] = leerDatos(respuesta, tiendaSchema).variantes;
     expect(variante).toMatchObject({
       estadoExistencia: 'UltimasUnidades',
       unidadesRestantes: UMBRAL,
     });
+    expect(respuesta.text).not.toMatch(CAMPOS_PROHIBIDOS);
+  });
+
+  it('un disponible de umbral + 1 es Disponible y uno de 1 es UltimasUnidades', async () => {
+    const encima = await productoConVariante(UMBRAL + 1);
+    const una = await productoConVariante(1);
+
+    const [disponible] = leerDatos(await tienda(encima.idProducto), tiendaSchema).variantes;
+    const [ultima] = leerDatos(await tienda(una.idProducto), tiendaSchema).variantes;
+
+    expect(disponible).toMatchObject({ estadoExistencia: 'Disponible' });
+    expect(ultima).toMatchObject({ estadoExistencia: 'UltimasUnidades', unidadesRestantes: 1 });
+  });
+
+  it('con reservas, el estado y las unidades salen del disponible, nunca de la existencia física', async () => {
+    const conReserva = await productoConVariante(UMBRAL + 3);
+    const todoReservado = await productoConVariante(3);
+    await reservar(conReserva.idVariante, 4);
+    await reservar(todoReservado.idVariante, 3);
+
+    const respuesta = await tienda(conReserva.idProducto);
+    const [parcial] = leerDatos(respuesta, tiendaSchema).variantes;
+    const [agotada] = leerDatos(await tienda(todoReservado.idProducto), tiendaSchema).variantes;
+
+    expect(parcial).toMatchObject({
+      estadoExistencia: 'UltimasUnidades',
+      unidadesRestantes: UMBRAL - 1,
+    });
+    expect(agotada).toMatchObject({ estadoExistencia: 'Agotado' });
+    expect(agotada).not.toHaveProperty('unidadesRestantes');
+    expect(respuesta.text).not.toMatch(CAMPOS_PROHIBIDOS);
   });
 
   it('sin existencia: Agotado, sin cifra', async () => {

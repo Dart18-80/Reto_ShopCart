@@ -117,6 +117,14 @@ describe('alta de variantes (E3-H03, N-14)', () => {
 
     expect(porCombinacion.map((r) => r.status).sort()).toEqual([201, 409]);
     expect(porSku.map((r) => r.status).sort()).toEqual([201, 409]);
+    const codigo = (respuestas: typeof porSku) =>
+      leerError(respuestas.find((r) => r.status === 409) ?? respuestas[0]).codigo;
+    expect(codigo(porCombinacion)).toBe('COMBINACION_DUPLICADA');
+    expect(codigo(porSku)).toBe('SKU_DUPLICADO');
+    const detalle = await request(app)
+      .get(`/api/v1/admin/productos/${String(idProducto)}`)
+      .set(conToken(token));
+    expect(leerDatos(detalle, productoAdminSchema).variantes).toHaveLength(1);
   });
 
   it('un valor inexistente, dos valores del mismo atributo o un valor repetido responden 400', async () => {
@@ -180,6 +188,22 @@ describe('conjunto de atributos del producto (N-14)', () => {
     ]);
 
     expect(respuestas.map((r) => r.status).sort()).toEqual([201, 422]);
+    const rechazo = respuestas.find((r) => r.status === 422) ?? respuestas[0];
+    expect(leerError(rechazo).codigo).toBe('ATRIBUTOS_NO_COINCIDEN');
+  });
+
+  it('la única variante del producto sí puede cambiar a otro conjunto de atributos', async () => {
+    const idProducto = await productoNuevo();
+    const unica = await varianteNueva(idProducto, [id(talla.valores, 'S')]);
+
+    const respuesta = await request(app)
+      .patch(rutaVariante(unica.idVariante))
+      .set(conToken(token))
+      .send({ valores: [id(color.valores, 'Azul')] });
+
+    expect(leerDatos(respuesta, productoAdminSchema).variantes[0]?.descripcionAtributos).toBe(
+      'Azul',
+    );
   });
 
   it('un producto admite una sola variante sin atributos ("Única"); una segunda responde 409', async () => {

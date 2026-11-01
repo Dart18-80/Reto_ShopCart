@@ -117,7 +117,7 @@ export function crearVariante(
     .send({ sku: `SKU-${sufijo()}`, valores, precio: '149.90', ...cambios });
 }
 
-/** Entrada de inventario directa (E3-H06 aún no existe): pasa por SP_Inventario_RegistrarMovimiento. */
+/** Entrada de inventario directa, sin pasar por la API: usa SP_Inventario_RegistrarMovimiento. */
 export async function registrarEntrada(idVariante: number, cantidad: number) {
   // Todo movimiento necesita un usuario responsable.
   return comoActor(await crearUsuario(), 'Operador', () =>

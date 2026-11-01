@@ -91,7 +91,9 @@ describe('búsqueda del catálogo (E3-H05, A-10)', () => {
     expect(await nombres({ texto: `${marca} 50%` })).toEqual([`${marca} 50% off`]);
     expect(await nombres({ texto: `${marca} a_b` })).toEqual([`${marca} a_b`]);
     expect(await nombres({ texto: `${marca} [x` })).toEqual([`${marca} [x]`]);
-    // Sin escape, "%<marca>" traería los seis productos de la marca.
+    await productoEnTienda(idCategoria, `${marca} C:\\temp`);
+    expect(await nombres({ texto: `${marca} C:\\` })).toEqual([`${marca} C:\\temp`]);
+    // Sin escape, "%<marca>" traería los productos de la marca.
     expect((await buscar({ texto: `%${marca}` })).datos).toEqual([]);
   });
 
@@ -162,6 +164,23 @@ describe('búsqueda del catálogo (E3-H05, A-10)', () => {
     }
 
     expect(vistos).toEqual([...ids].sort((a, b) => a - b));
+    for (const consulta of [
+      { orden: 'precio', direccion: 'desc' },
+      { orden: 'nombre', direccion: 'desc' },
+    ]) {
+      const paginas: number[] = [];
+      for (const pagina of ['1', '2', '3']) {
+        const resultado = await buscar({
+          categoria: String(idCategoria),
+          tamano: '2',
+          pagina,
+          ...consulta,
+        });
+        paginas.push(...resultado.datos.map((producto) => producto.idProducto));
+        expect(resultado.paginacion).toMatchObject({ total: 5, totalPaginas: 3 });
+      }
+      expect(paginas).toEqual([...ids].sort((a, b) => a - b));
+    }
   });
 
   it('relevancia sin texto (el orden por defecto) equivale a nombre ascendente', async () => {
@@ -176,6 +195,36 @@ describe('búsqueda del catálogo (E3-H05, A-10)', () => {
       `Beta ${marca}`,
       `Gamma ${marca}`,
     ]);
+  });
+
+  it('N-06: los resultados nunca traen la existencia, y disponible=true excluye lo que está todo reservado', async () => {
+    const idCategoria = await crearCategoria(app, token);
+    const marca = sufijo();
+    await productoEnTienda(idCategoria, `${marca} libre`, { existencia: 5 });
+    const reservado = await productoEnTienda(idCategoria, `${marca} reservado`, { existencia: 2 });
+    const variante = z
+      .object({ datos: z.object({ variantes: z.array(z.object({ idVariante: z.number() })) }) })
+      .parse(
+        (
+          await request(app)
+            .get(`/api/v1/admin/productos/${String(reservado)}`)
+            .set(conToken(token))
+        ).body,
+      ).datos.variantes[0];
+    await ejecutarSP('SP_Pruebas_CrearReserva', {
+      IDVariante: { tipo: sql.Int, valor: variante?.idVariante ?? 0 },
+      Cantidad: { tipo: sql.Int, valor: 2 },
+      MinutosParaVencer: { tipo: sql.Int, valor: 15 },
+    });
+
+    const respuesta = await request(app)
+      .get('/api/v1/productos')
+      .query({ categoria: String(idCategoria), disponible: 'true' });
+
+    expect(resultadoSchema.parse(respuesta.body).datos.map((p) => p.nombre)).toEqual([
+      `${marca} libre`,
+    ]);
+    expect(respuesta.text).not.toMatch(/"(existenciaFisica|reservado|unidadesRestantes)":/);
   });
 
   it('no muestra productos desactivados ni sin variantes activas', async () => {
