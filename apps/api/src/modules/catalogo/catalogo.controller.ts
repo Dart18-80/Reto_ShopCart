@@ -1,17 +1,46 @@
 import type { RequestHandler } from 'express';
+import { montoATexto } from '../../shared/dinero/index.js';
 import { manejar } from '../../shared/http/index.js';
 import {
   actualizarCategoriaSchema,
+  actualizarProductoSchema,
+  actualizarVarianteSchema,
   crearAtributoSchema,
   crearCategoriaSchema,
+  crearProductoSchema,
   crearValorAtributoSchema,
+  crearVarianteSchema,
+  guardarImagenesSchema,
+  listarProductosSchema,
   paramsIdAtributoSchema,
   paramsIdCategoriaSchema,
+  paramsIdProductoSchema,
+  paramsIdVarianteSchema,
 } from './catalogo.schemas.js';
 import type { CatalogoService } from './catalogo.service.js';
+import type { ProductoAdmin, ProductoTienda } from './catalogo.types.js';
 
 const HTTP_CREADO = 201;
 const HTTP_SIN_CONTENIDO = 204;
+
+// A-21: los montos salen como texto con dos decimales.
+const productoAdminJson = (producto: ProductoAdmin) => ({
+  ...producto,
+  variantes: producto.variantes.map((variante) => ({
+    ...variante,
+    precio: variante.precio === null ? null : montoATexto(variante.precio),
+  })),
+});
+
+// N-06: unidadesRestantes solo aparece con UltimasUnidades; por encima del umbral no hay ninguna cifra.
+const productoTiendaJson = (producto: ProductoTienda) => ({
+  ...producto,
+  variantes: producto.variantes.map(({ unidadesRestantes, precio, ...variante }) => ({
+    ...variante,
+    precio: montoATexto(precio),
+    ...(unidadesRestantes === null ? {} : { unidadesRestantes }),
+  })),
+});
 
 export interface CatalogoController {
   listarCategorias: RequestHandler;
@@ -23,6 +52,20 @@ export interface CatalogoController {
   listarAtributos: RequestHandler;
   crearAtributo: RequestHandler;
   crearValorAtributo: RequestHandler;
+  obtenerProductoTienda: RequestHandler;
+  listarProductosAdmin: RequestHandler;
+  obtenerProductoAdmin: RequestHandler;
+  crearProducto: RequestHandler;
+  actualizarProducto: RequestHandler;
+  activarProducto: RequestHandler;
+  desactivarProducto: RequestHandler;
+  eliminarProducto: RequestHandler;
+  guardarImagenes: RequestHandler;
+  crearVariante: RequestHandler;
+  actualizarVariante: RequestHandler;
+  activarVariante: RequestHandler;
+  desactivarVariante: RequestHandler;
+  eliminarVariante: RequestHandler;
 }
 
 export function crearCatalogoController(servicio: CatalogoService): CatalogoController {
@@ -69,5 +112,86 @@ export function crearCatalogoController(servicio: CatalogoService): CatalogoCont
         res.status(HTTP_CREADO).json({ datos: await servicio.crearValorAtributo(params.id, body) });
       },
     ),
+
+    obtenerProductoTienda: manejar({ params: paramsIdProductoSchema }, async ({ params }, res) => {
+      res.json({ datos: productoTiendaJson(await servicio.obtenerProductoTienda(params.id)) });
+    }),
+
+    listarProductosAdmin: manejar({ query: listarProductosSchema }, async ({ query }, res) => {
+      res.json(
+        await servicio.listarProductosAdmin({
+          pagina: query.pagina,
+          tamano: query.tamano,
+          idCategoria: query.idCategoria ?? null,
+          activo: query.activo ?? null,
+          texto: query.texto ?? null,
+        }),
+      );
+    }),
+
+    obtenerProductoAdmin: manejar({ params: paramsIdProductoSchema }, async ({ params }, res) => {
+      res.json({ datos: productoAdminJson(await servicio.obtenerProductoAdmin(params.id)) });
+    }),
+
+    crearProducto: manejar({ body: crearProductoSchema }, async ({ body }, res) => {
+      res
+        .status(HTTP_CREADO)
+        .json({ datos: productoAdminJson(await servicio.crearProducto(body)) });
+    }),
+
+    actualizarProducto: manejar(
+      { params: paramsIdProductoSchema, body: actualizarProductoSchema },
+      async ({ params, body }, res) => {
+        res.json({ datos: productoAdminJson(await servicio.actualizarProducto(params.id, body)) });
+      },
+    ),
+
+    activarProducto: manejar({ params: paramsIdProductoSchema }, async ({ params }, res) => {
+      res.json({ datos: productoAdminJson(await servicio.activarProducto(params.id)) });
+    }),
+
+    desactivarProducto: manejar({ params: paramsIdProductoSchema }, async ({ params }, res) => {
+      res.json({ datos: productoAdminJson(await servicio.desactivarProducto(params.id)) });
+    }),
+
+    eliminarProducto: manejar({ params: paramsIdProductoSchema }, async ({ params }, res) => {
+      await servicio.eliminarProducto(params.id);
+      res.status(HTTP_SIN_CONTENIDO).end();
+    }),
+
+    guardarImagenes: manejar(
+      { params: paramsIdProductoSchema, body: guardarImagenesSchema },
+      async ({ params, body }, res) => {
+        res.json({ datos: productoAdminJson(await servicio.guardarImagenes(params.id, body)) });
+      },
+    ),
+
+    crearVariante: manejar(
+      { params: paramsIdProductoSchema, body: crearVarianteSchema },
+      async ({ params, body }, res) => {
+        const producto = await servicio.crearVariante(params.id, body);
+        res.status(HTTP_CREADO).json({ datos: productoAdminJson(producto) });
+      },
+    ),
+
+    actualizarVariante: manejar(
+      { params: paramsIdVarianteSchema, body: actualizarVarianteSchema },
+      async ({ params, body }, res) => {
+        res.json({ datos: productoAdminJson(await servicio.actualizarVariante(params.id, body)) });
+      },
+    ),
+
+    activarVariante: manejar({ params: paramsIdVarianteSchema }, async ({ params }, res) => {
+      res.json({ datos: productoAdminJson(await servicio.activarVariante(params.id)) });
+    }),
+
+    desactivarVariante: manejar({ params: paramsIdVarianteSchema }, async ({ params }, res) => {
+      res.json({ datos: productoAdminJson(await servicio.desactivarVariante(params.id)) });
+    }),
+
+    eliminarVariante: manejar({ params: paramsIdVarianteSchema }, async ({ params }, res) => {
+      await servicio.eliminarVariante(params.id);
+      res.status(HTTP_SIN_CONTENIDO).end();
+    }),
   };
 }

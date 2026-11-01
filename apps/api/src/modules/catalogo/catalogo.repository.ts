@@ -1,17 +1,39 @@
 import sql from 'mssql';
-import { ejecutarSP } from '../../shared/db/index.js';
+import {
+  ejecutarSP,
+  ejecutarSPConjuntos,
+  type NombreSP,
+  type ParametrosSP,
+} from '../../shared/db/index.js';
+import { aMonto } from '../../shared/dinero/index.js';
 import type {
   ActualizarCategoria,
+  ActualizarProducto,
+  ActualizarVariante,
   CrearAtributo,
   CrearCategoria,
+  CrearProducto,
   CrearValorAtributo,
+  CrearVariante,
+  GuardarImagenes,
 } from './catalogo.schemas.js';
 import type {
   Atributo,
   Categoria,
   CategoriaPublica,
+  EstadoExistencia,
+  FiltrosProductos,
+  ImagenProducto,
+  ProductoAdmin,
+  ProductoResumen,
+  ProductoTienda,
   ValorAtributoCreado,
+  ValorDeVariante,
+  VarianteAdmin,
+  VarianteTienda,
 } from './catalogo.types.js';
+
+// --- Categorías
 
 interface FilaCategoriaPublica {
   IDCategoria: number;
@@ -39,6 +61,10 @@ function unica(filas: FilaCategoria[], sp: string): Categoria {
   if (fila === undefined) throw new Error(`${sp} no devolvió la categoría`);
   return aCategoria(fila);
 }
+
+const idCategoria = (id: number) => ({ IDCategoria: { tipo: sql.Int, valor: id } });
+
+// --- Atributos
 
 interface FilaAtributo {
   IDAtributo: number;
@@ -83,7 +109,156 @@ function agruparAtributos(filas: FilaAtributoConValor[]): Atributo[] {
   return [...porId.values()];
 }
 
-const idCategoria = (id: number) => ({ IDCategoria: { tipo: sql.Int, valor: id } });
+// --- Productos: los SPs de detalle devuelven cuatro conjuntos (producto, imágenes, variantes, valores).
+
+interface FilaProducto {
+  IDProducto: number;
+  IDCategoria: number;
+  Categoria: string;
+  Nombre: string;
+  Descripcion: string | null;
+}
+
+interface FilaProductoAdmin extends FilaProducto {
+  Activo: boolean;
+}
+
+interface FilaImagen {
+  IDImagenProducto: number;
+  Url: string;
+  TextoAlternativo: string;
+  Orden: number;
+  EsPrincipal: boolean;
+}
+
+interface FilaVariante {
+  IDVariante: number;
+  SKU: string;
+  DescripcionAtributos: string;
+}
+
+interface FilaVarianteAdmin extends FilaVariante {
+  Activo: boolean;
+  Precio: number | null;
+  ExistenciaFisica: number;
+  Reservado: number;
+  Disponible: number;
+}
+
+interface FilaVarianteTienda extends FilaVariante {
+  Precio: number;
+  EstadoExistencia: EstadoExistencia;
+  UnidadesRestantes: number | null;
+}
+
+interface FilaValorDeVariante {
+  IDVariante: number;
+  IDAtributo: number;
+  Atributo: string;
+  IDValorAtributo: number;
+  Valor: string;
+}
+
+interface FilaProductoResumen {
+  IDProducto: number;
+  Nombre: string;
+  IDCategoria: number;
+  Categoria: string;
+  Activo: boolean;
+  Variantes: number;
+  VariantesActivas: number;
+  TotalFilas: number;
+}
+
+const aImagen = (fila: FilaImagen): ImagenProducto => ({
+  idImagenProducto: fila.IDImagenProducto,
+  url: fila.Url,
+  textoAlternativo: fila.TextoAlternativo,
+  orden: fila.Orden,
+  esPrincipal: fila.EsPrincipal,
+});
+
+function valoresPorVariante(filas: FilaValorDeVariante[]): Map<number, ValorDeVariante[]> {
+  const porVariante = new Map<number, ValorDeVariante[]>();
+  for (const fila of filas) {
+    const valores = porVariante.get(fila.IDVariante) ?? [];
+    valores.push({
+      idAtributo: fila.IDAtributo,
+      atributo: fila.Atributo,
+      idValorAtributo: fila.IDValorAtributo,
+      valor: fila.Valor,
+    });
+    porVariante.set(fila.IDVariante, valores);
+  }
+  return porVariante;
+}
+
+interface ConjuntosProducto<P, V> {
+  producto: P | undefined;
+  imagenes: FilaImagen[];
+  variantes: V[];
+  valores: FilaValorDeVariante[];
+}
+
+async function conjuntosProducto<P, V>(
+  nombre: NombreSP,
+  parametros: ParametrosSP,
+): Promise<ConjuntosProducto<P, V>> {
+  const [productos = [], imagenes = [], variantes = [], valores = []] = await ejecutarSPConjuntos<
+    [P[], FilaImagen[], V[], FilaValorDeVariante[]]
+  >(nombre, parametros);
+  return { producto: productos[0], imagenes, variantes, valores };
+}
+
+async function productoAdmin(
+  nombre: NombreSP,
+  parametros: ParametrosSP,
+): Promise<ProductoAdmin | null> {
+  const conjuntos = await conjuntosProducto<FilaProductoAdmin, FilaVarianteAdmin>(
+    nombre,
+    parametros,
+  );
+  const { producto } = conjuntos;
+  if (producto === undefined) return null;
+  const valores = valoresPorVariante(conjuntos.valores);
+  return {
+    idProducto: producto.IDProducto,
+    idCategoria: producto.IDCategoria,
+    categoria: producto.Categoria,
+    nombre: producto.Nombre,
+    descripcion: producto.Descripcion,
+    activo: producto.Activo,
+    imagenes: conjuntos.imagenes.map(aImagen),
+    variantes: conjuntos.variantes.map((fila): VarianteAdmin => ({
+      idVariante: fila.IDVariante,
+      sku: fila.SKU,
+      descripcionAtributos: fila.DescripcionAtributos,
+      activo: fila.Activo,
+      precio: fila.Precio === null ? null : aMonto(fila.Precio),
+      existenciaFisica: fila.ExistenciaFisica,
+      reservado: fila.Reservado,
+      disponible: fila.Disponible,
+      valores: valores.get(fila.IDVariante) ?? [],
+    })),
+  };
+}
+
+async function productoAdminEscrito(
+  nombre: NombreSP,
+  parametros: ParametrosSP,
+): Promise<ProductoAdmin> {
+  const producto = await productoAdmin(nombre, parametros);
+  if (producto === null) throw new Error(`${nombre} no devolvió el producto`);
+  return producto;
+}
+
+const idProducto = (id: number) => ({ IDProducto: { tipo: sql.Int, valor: id } });
+const idVariante = (id: number) => ({ IDVariante: { tipo: sql.Int, valor: id } });
+// A-22: las listas viajan al SP como JSON.
+const comoJson = (lista: unknown[]) => ({
+  tipo: sql.NVarChar(sql.MAX),
+  valor: JSON.stringify(lista),
+});
 
 export const catalogoRepository = {
   async listarCategorias(): Promise<CategoriaPublica[]> {
@@ -152,6 +327,121 @@ export const catalogoRepository = {
       valor: fila.Valor,
       orden: fila.Orden,
     };
+  },
+
+  async listarProductosAdmin(
+    filtros: FiltrosProductos,
+  ): Promise<{ productos: ProductoResumen[]; total: number }> {
+    const filas = await ejecutarSP<FilaProductoResumen>('SP_Catalogo_ListarProductosAdmin', {
+      Pagina: { tipo: sql.Int, valor: filtros.pagina },
+      Tamano: { tipo: sql.Int, valor: filtros.tamano },
+      IDCategoria: { tipo: sql.Int, valor: filtros.idCategoria },
+      Activo: { tipo: sql.Bit, valor: filtros.activo },
+      Texto: { tipo: sql.NVarChar(150), valor: filtros.texto },
+    });
+    const productos = filas.map((fila): ProductoResumen => ({
+      idProducto: fila.IDProducto,
+      nombre: fila.Nombre,
+      idCategoria: fila.IDCategoria,
+      categoria: fila.Categoria,
+      activo: fila.Activo,
+      variantes: fila.Variantes,
+      variantesActivas: fila.VariantesActivas,
+    }));
+    return { productos, total: filas[0]?.TotalFilas ?? 0 };
+  },
+
+  obtenerProductoAdmin: (id: number): Promise<ProductoAdmin | null> =>
+    productoAdmin('SP_Catalogo_ObtenerProductoAdmin', idProducto(id)),
+
+  async obtenerProductoTienda(id: number): Promise<ProductoTienda | null> {
+    const conjuntos = await conjuntosProducto<FilaProducto, FilaVarianteTienda>(
+      'SP_Catalogo_ObtenerProducto',
+      idProducto(id),
+    );
+    const { producto } = conjuntos;
+    if (producto === undefined) return null;
+    const valores = valoresPorVariante(conjuntos.valores);
+    return {
+      idProducto: producto.IDProducto,
+      idCategoria: producto.IDCategoria,
+      categoria: producto.Categoria,
+      nombre: producto.Nombre,
+      descripcion: producto.Descripcion,
+      imagenes: conjuntos.imagenes.map(aImagen),
+      variantes: conjuntos.variantes.map((fila): VarianteTienda => ({
+        idVariante: fila.IDVariante,
+        sku: fila.SKU,
+        descripcionAtributos: fila.DescripcionAtributos,
+        precio: aMonto(fila.Precio),
+        estadoExistencia: fila.EstadoExistencia,
+        unidadesRestantes: fila.UnidadesRestantes,
+        valores: valores.get(fila.IDVariante) ?? [],
+      })),
+    };
+  },
+
+  crearProducto: (datos: CrearProducto): Promise<ProductoAdmin> =>
+    productoAdminEscrito('SP_Catalogo_CrearProducto', {
+      IDCategoria: { tipo: sql.Int, valor: datos.idCategoria },
+      Nombre: { tipo: sql.NVarChar(150), valor: datos.nombre },
+      Descripcion: { tipo: sql.NVarChar(2000), valor: datos.descripcion ?? null },
+      Activo: { tipo: sql.Bit, valor: datos.activo },
+    }),
+
+  // PATCH: un campo ausente va en NULL (sin cambio) y descripcion en null la quita.
+  actualizarProducto: (id: number, cambios: ActualizarProducto): Promise<ProductoAdmin> =>
+    productoAdminEscrito('SP_Catalogo_ActualizarProducto', {
+      ...idProducto(id),
+      IDCategoria: { tipo: sql.Int, valor: cambios.idCategoria ?? null },
+      Nombre: { tipo: sql.NVarChar(150), valor: cambios.nombre ?? null },
+      Descripcion: { tipo: sql.NVarChar(2000), valor: cambios.descripcion ?? null },
+      QuitarDescripcion: { tipo: sql.Bit, valor: cambios.descripcion === null },
+    }),
+
+  cambiarEstadoProducto: (id: number, activo: boolean): Promise<ProductoAdmin> =>
+    productoAdminEscrito('SP_Catalogo_CambiarEstadoProducto', {
+      ...idProducto(id),
+      Activo: { tipo: sql.Bit, valor: activo },
+    }),
+
+  async eliminarProducto(id: number): Promise<void> {
+    await ejecutarSP('SP_Catalogo_EliminarProducto', idProducto(id));
+  },
+
+  guardarImagenes: (id: number, datos: GuardarImagenes): Promise<ProductoAdmin> =>
+    productoAdminEscrito('SP_Catalogo_GuardarImagenes', {
+      ...idProducto(id),
+      Imagenes: comoJson(datos.imagenes),
+    }),
+
+  crearVariante: (id: number, datos: CrearVariante): Promise<ProductoAdmin> =>
+    productoAdminEscrito('SP_Catalogo_CrearVariante', {
+      ...idProducto(id),
+      SKU: { tipo: sql.VarChar(40), valor: datos.sku },
+      Valores: comoJson(datos.valores),
+      Precio: { tipo: sql.Decimal(12, 2), valor: datos.precio },
+    }),
+
+  // PATCH: un campo ausente va en NULL (sin cambio).
+  actualizarVariante: (id: number, cambios: ActualizarVariante): Promise<ProductoAdmin> =>
+    productoAdminEscrito('SP_Catalogo_ActualizarVariante', {
+      ...idVariante(id),
+      SKU: { tipo: sql.VarChar(40), valor: cambios.sku ?? null },
+      Valores:
+        cambios.valores === undefined
+          ? { tipo: sql.NVarChar(sql.MAX), valor: null }
+          : comoJson(cambios.valores),
+    }),
+
+  cambiarEstadoVariante: (id: number, activo: boolean): Promise<ProductoAdmin> =>
+    productoAdminEscrito('SP_Catalogo_CambiarEstadoVariante', {
+      ...idVariante(id),
+      Activo: { tipo: sql.Bit, valor: activo },
+    }),
+
+  async eliminarVariante(id: number): Promise<void> {
+    await ejecutarSP('SP_Catalogo_EliminarVariante', idVariante(id));
   },
 };
 

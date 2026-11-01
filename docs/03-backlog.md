@@ -624,7 +624,7 @@ Se detalla en historias al cerrar la Fase 1.
 | E2-H05 | Direcciones y catálogo geográfico | Must | 0.25 | Hecha |
 | E3-H01 | Categorías | Must | 0.25 | En revisión |
 | E3-H02 | Atributos y valores | Must | 0.25 | En revisión |
-| E3-H03 | Productos, imágenes y variantes | Must | 1.0 | Lista |
+| E3-H03 | Productos, imágenes y variantes | Must | 1.0 | En revisión |
 | E3-H04 | Precios versionados | Must | 0.5 | Lista |
 | E3-H05 | Búsqueda y filtros del catálogo | Must | 0.75 | Lista |
 | E3-H06 | Inventario y kardex | Must | 0.75 | Lista |

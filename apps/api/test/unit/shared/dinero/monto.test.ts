@@ -1,6 +1,6 @@
 import { Decimal } from 'decimal.js';
 import { describe, expect, it } from 'vitest';
-import { aMonto, montoParaSql } from '../../../../src/shared/dinero/index.js';
+import { aMonto, montoATexto, montoParaSql } from '../../../../src/shared/dinero/index.js';
 
 // Lo que entrega el driver para un DECIMAL(12,2) es un number de JS (A-21).
 describe('aMonto (A-21)', () => {
@@ -41,5 +41,12 @@ describe('montoParaSql (A-21)', () => {
 
   it('falla con un valor de 1e13 o más', () => {
     expect(() => montoParaSql(new Decimal('10000000000000'))).toThrow(/A-21/);
+  });
+});
+
+describe('montoATexto (A-21)', () => {
+  it('sale como texto con dos decimales, aunque el Decimal tenga menos', () => {
+    expect(montoATexto(new Decimal('149.9'))).toBe('149.90');
+    expect(montoATexto(aMonto(1500))).toBe('1500.00');
   });
 });

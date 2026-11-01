@@ -27,3 +27,8 @@ function verificarLimite(monto: Decimal): Decimal {
   }
   return monto;
 }
+
+/** A-21: único punto de salida de un monto hacia JSON: texto con dos decimales ("149.90"). */
+export function montoATexto(monto: Decimal): string {
+  return monto.toFixed(DECIMALES);
+}

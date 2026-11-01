@@ -1,9 +1,23 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { CatalogoRepository } from '../../../../src/modules/catalogo/catalogo.repository.js';
 import { crearCatalogoService } from '../../../../src/modules/catalogo/catalogo.service.js';
-import type { Categoria } from '../../../../src/modules/catalogo/catalogo.types.js';
+import type {
+  Categoria,
+  ProductoAdmin,
+  ProductoTienda,
+} from '../../../../src/modules/catalogo/catalogo.types.js';
 
 const CATEGORIA: Categoria = { idCategoria: 4, nombre: 'Camisas', descripcion: null, activo: true };
+const PRODUCTO: ProductoAdmin = {
+  idProducto: 8,
+  idCategoria: 4,
+  categoria: 'Camisas',
+  nombre: 'Oxford',
+  descripcion: null,
+  activo: true,
+  imagenes: [],
+  variantes: [],
+};
 
 function preparar() {
   const repositorio = {
@@ -21,6 +35,18 @@ function preparar() {
     crearValorAtributo: vi.fn(() =>
       Promise.resolve({ idValorAtributo: 9, idAtributo: 2, valor: 'M', orden: 1 }),
     ),
+    listarProductosAdmin: vi.fn(() => Promise.resolve({ productos: [], total: 0 })),
+    obtenerProductoAdmin: vi.fn((): Promise<ProductoAdmin | null> => Promise.resolve(null)),
+    obtenerProductoTienda: vi.fn((): Promise<ProductoTienda | null> => Promise.resolve(null)),
+    crearProducto: vi.fn(() => Promise.resolve(PRODUCTO)),
+    actualizarProducto: vi.fn(() => Promise.resolve(PRODUCTO)),
+    cambiarEstadoProducto: vi.fn((_id: number, _activo: boolean) => Promise.resolve(PRODUCTO)),
+    eliminarProducto: vi.fn(() => Promise.resolve()),
+    guardarImagenes: vi.fn(() => Promise.resolve(PRODUCTO)),
+    crearVariante: vi.fn(() => Promise.resolve(PRODUCTO)),
+    actualizarVariante: vi.fn(() => Promise.resolve(PRODUCTO)),
+    cambiarEstadoVariante: vi.fn((_id: number, _activo: boolean) => Promise.resolve(PRODUCTO)),
+    eliminarVariante: vi.fn(() => Promise.resolve()),
   } satisfies CatalogoRepository;
   return { servicio: crearCatalogoService({ repositorio }), repositorio };
 }
@@ -62,5 +88,43 @@ describe('catalogo.service: atributos (E3-H02, N-14)', () => {
     await servicio.crearValorAtributo(2, { valor: 'M' });
 
     expect(repositorio.crearValorAtributo).toHaveBeenCalledWith(2, { valor: 'M' });
+  });
+});
+
+describe('catalogo.service: productos y variantes (E3-H03, N-06, N-14)', () => {
+  it('un producto que la base no devuelve responde NO_ENCONTRADO, en la tienda y en la administración', async () => {
+    const { servicio } = preparar();
+
+    await expect(servicio.obtenerProductoTienda(8)).rejects.toMatchObject({
+      codigo: 'NO_ENCONTRADO',
+    });
+    await expect(servicio.obtenerProductoAdmin(8)).rejects.toMatchObject({
+      codigo: 'NO_ENCONTRADO',
+    });
+  });
+
+  it('activar y desactivar productos y variantes llegan al SP con el estado pedido', async () => {
+    const { servicio, repositorio } = preparar();
+
+    await servicio.activarProducto(8);
+    await servicio.desactivarVariante(3);
+
+    expect(repositorio.cambiarEstadoProducto).toHaveBeenCalledWith(8, true);
+    expect(repositorio.cambiarEstadoVariante).toHaveBeenCalledWith(3, false);
+  });
+
+  it('el listado de administración responde con la paginación estándar', async () => {
+    const { servicio, repositorio } = preparar();
+    repositorio.listarProductosAdmin.mockResolvedValueOnce({ productos: [], total: 41 });
+
+    const respuesta = await servicio.listarProductosAdmin({
+      pagina: 2,
+      tamano: 20,
+      idCategoria: null,
+      activo: null,
+      texto: null,
+    });
+
+    expect(respuesta.paginacion).toEqual({ pagina: 2, tamano: 20, total: 41, totalPaginas: 3 });
   });
 });

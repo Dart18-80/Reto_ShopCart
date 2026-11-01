@@ -86,6 +86,20 @@ export const CATALOGO = {
     numeroSql: 50205,
     mensaje: 'Ya existe un registro con ese nombre.',
   },
+  // N-14: un producto activo siempre tiene su categoría activa.
+  CATEGORIA_INACTIVA: { http: 409, numeroSql: 50206, mensaje: 'La categoría está inactiva.' },
+  // N-14: todas las variantes de un producto usan el mismo conjunto de atributos (los esperados en detalles).
+  ATRIBUTOS_NO_COINCIDEN: {
+    http: 422,
+    numeroSql: 50207,
+    mensaje: 'La variante debe usar los mismos atributos que las demás del producto.',
+  },
+  // N-14: la combinación de una variante con historial no se cambia.
+  VARIANTE_CON_HISTORIAL: {
+    http: 409,
+    numeroSql: 50208,
+    mensaje: 'La variante tiene historial: desactívala y crea otra variante.',
+  },
 
   // 50300–50399 Inventario
   STOCK_INSUFICIENTE: { http: 409, numeroSql: 50301, mensaje: 'No hay existencia suficiente.' },

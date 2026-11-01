@@ -40,3 +40,15 @@ export async function ejecutarSPMultiple(
 ): Promise<unknown[][]> {
   return obtenerEjecutor().ejecutarSPMultiple(nombre, parametros);
 }
+
+/**
+ * Varios conjuntos de resultados con la forma que declara el repositorio, uno por elemento de la tupla
+ * (igual que ejecutarSP<T> con un solo conjunto). Un conjunto que el SP no devolvió llega como undefined.
+ */
+export async function ejecutarSPConjuntos<T extends unknown[][]>(
+  nombre: NombreSP,
+  parametros?: ParametrosSP,
+): Promise<Partial<T>> {
+  // El SP define la forma de sus filas y el repositorio la declara en T: es el mismo cast de ejecutarSP.
+  return (await obtenerEjecutor().ejecutarSPMultiple(nombre, parametros)) as Partial<T>;
+}
