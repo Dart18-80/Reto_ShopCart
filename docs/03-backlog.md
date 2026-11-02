@@ -640,6 +640,42 @@
 
 ---
 
+## E9 · Observabilidad, tiempo real y defensa
+
+Encargo del PO después del push de la Fase 1. E9-H01 y E9-H02 son historias grandes: plan escrito en `docs/planes/`, verificado contra el alcance antes de implementar.
+
+### E9-H01 · OpenTelemetry y Grafana LGTM — `Must` · 2.0 h ⭐ historia grande
+**Alcance:** paquetes de la familia `@opentelemetry` (SDK de Node, auto-instrumentación de http, express, tedious e ioredis, exportador OTLP e instrumentación de pino), listados con su versión en A-16 y el README; cualquier paquete fuera de esa familia requiere aprobación. El SDK se inicializa antes que todo (`node --import`). Perfil de compose `observabilidad` con `grafana/otel-lgtm` en versión fija, IP fija y `extra_hosts` (sin DNS), Grafana solo en `127.0.0.1` con su puerto en `.env`. Sin el perfil, la API funciona igual, sin errores repetidos en el log ni conexiones fuera de la subred; la activación es un solo comando del README. Trazas sin valores de parámetros de SQL, argumentos de Redis (incluido `AUTH`), `Authorization`, `Cookie`, cuerpos ni datos de tarjeta. `requestId` en cada span; `trace_id` y `span_id` en cada línea de pino. Spans propios de la pasarela (autorizar, capturar, anular, consultar, reembolsar), de cada tarea del planificador (réplica y si tomó el bloqueo) y del procesamiento de exportaciones; los spans de SQL muestran el SP. Métricas: duración HTTP por ruta y estado, pedidos creados, resultado de los pagos, ejecuciones de tareas por resultado y exportaciones pendientes. Logs a Loki por OTLP, correlacionados con sus trazas. Dashboard de Grafana aprovisionado desde `infra/grafana` (latencia y errores por endpoint, y negocio) y un recorrido de demo en el README. RNF-4, 01 §11 y el diagrama de arquitectura dejan de decir «planificado».
+**CA**
+- [ ] Sin el perfil, la API arranca y atiende igual, sin errores repetidos ni conexiones fuera de la subred.
+- [ ] Con el perfil (un comando), una compra se ve como una traza: petición → réplica → SPs → pasarela, y sus logs están en Loki con el mismo `trace_id`.
+- [ ] Un exportador en memoria prueba que ningún span lleva parámetros de SQL, argumentos de Redis, `Authorization`, `Cookie`, cuerpos ni datos de tarjeta.
+- [ ] Cada línea de pino lleva `trace_id` y `span_id`; cada span, el `requestId`.
+- [ ] Las métricas HTTP y de negocio aparecen en el dashboard aprovisionado.
+
+**Referencias:** RNF-4, A-16, A-03 (subred e IPs fijas), A-18 (requestId), N-03.
+
+### E9-H02 · Dashboard en tiempo real con SSE — `Must` · 1.5 h ⭐ historia grande
+**Alcance:** `GET /admin/reportes/eventos`, solo Admin, `text/event-stream`, con el token en `Authorization` (nunca en la URL; decisión A-25). Canal entre réplicas con Redis pub/sub y una conexión de suscripción propia por réplica: cada incremento de versión de la caché (A-11) publica `{ dominio, version }` después del commit y cada réplica lo reenvía a sus clientes. Los eventos solo avisan; el cliente vuelve a pedir el reporte. Evento inicial con las versiones actuales; cada evento lleva la versión como `id` (`Last-Event-ID`). Como máximo un evento por dominio cada N segundos por réplica (constante con nombre). Heartbeat como comentario SSE. El stream se cierra al vencer el access token y al cambiar la versión de sesión (A-07). Máximo de conexiones por usuario y por réplica → 429. Al apagarse (SIGTERM) la réplica cierra sus streams. nginx: `location` propia sin buffering y con timeout de lectura largo. Redis caído: el stream sigue sin eventos, con el log de cambio de estado; al volver, se envían las versiones actuales. Instrumentado con spans de E9-H01.
+**CA**
+- [ ] Un pedido creado en `api-1` llega como evento a un cliente conectado a `api-2`.
+- [ ] Una ráfaga de escrituras produce como máximo un evento por dominio en la ventana.
+- [ ] 401 sin token; 403 para Operador y Cliente; 429 al pasar el límite.
+- [ ] El stream se cierra al vencer el token, al revocar la sesión y al apagar la réplica.
+- [ ] Con Redis caído el stream sigue abierto; al volver, llegan las versiones actuales.
+
+**Referencias:** A-25 (nueva), A-11, A-07, RNF-2, A-03.
+
+### E9-H03 · Guía de defensa — `Must` · 1.5 h
+**Alcance:** `docs/defensa/` con un índice, un archivo por módulo y archivos transversales (arquitectura, base de datos, concurrencia, seguridad, pruebas, infraestructura y observabilidad). Cada módulo: qué hace (3–5 líneas), su flujo crítico en un diagrama de secuencia Mermaid, una tabla regla → dónde vive → `archivo:línea` → ID de la decisión, qué pasa con dos peticiones simultáneas y con una réplica que muere, modos de falla, alternativas descartadas y de 10 a 15 preguntas probables con respuesta corta y «muéstralo en». Un archivo con las 30 preguntas más difíciles del proyecto y un guion de demo de 10 minutos con los comandos exactos.
+**CA**
+- [ ] Cada afirmación cita `archivo:línea` o una prueba y se verificó contra el código; nada aspiracional.
+- [ ] El guion de demo se puede seguir de punta a punta con los comandos escritos.
+
+**Referencias:** todo `docs/`, el enunciado y `docs/revision/estado-backend.md`.
+
+---
+
 ## 4. Semana 2 (Fase 2: frontend y proyecto completo) — vista general
 
 Se detalla en historias al cerrar la Fase 1.
@@ -650,7 +686,7 @@ Se detalla en historias al cerrar la Fase 1.
 | F2 Tienda | Catálogo con búsqueda y filtros, detalle, carrito con avisos, checkout, pago, mis pedidos |
 | F3 Backoffice | Catálogo, precios, inventario y kardex, pedidos y devoluciones, cupones, usuarios, bitácora, configuración |
 | F4 Dashboard | Gráficas de ventas, categorías, top 10 y carritos abandonados |
-| F5 Extras y calidad | Observabilidad con Grafana LGTM, script de carga pesada y lo recortado de la Fase 1 (la conciliación de pagos pasó a E5-H04). **Carga pesada (decisión de cierre de E7):** sobre una base nueva, con el número de pedidos como parámetro del generador (`SP_Semilla_GenerarDatosDemo @Pedidos`), porque el generador es idempotente sobre una base que ya tiene los datos demo. Con esa carga se mide también el filtro de carritos abandonados (`VW_Carrito_Abandonados`), que hoy no usa un índice |
+| F5 Extras y calidad | Script de carga pesada (la observabilidad con Grafana LGTM pasó a E9-H01) y lo recortado de la Fase 1 (la conciliación de pagos pasó a E5-H04). **Carga pesada (decisión de cierre de E7):** sobre una base nueva, con el número de pedidos como parámetro del generador (`SP_Semilla_GenerarDatosDemo @Pedidos`), porque el generador es idempotente sobre una base que ya tiene los datos demo. Con esa carga se mide también el filtro de carritos abandonados (`VW_Carrito_Abandonados`), que hoy no usa un índice |
 | F6 Cierre y defensa | README final, ensayo de la demo (incluida la tolerancia a fallas) y preparación de preguntas de defensa |
 
 ---
@@ -705,3 +741,6 @@ Se detalla en historias al cerrar la Fase 1.
 | E8-H01 | README de la Fase 1 | Must | 0.75 | En revisión |
 | E8-H02 | Revisión contra penalizaciones | Must | 0.5 | En revisión |
 | E8-H03 | Ensayo en máquina limpia | Must | 0.25 | En revisión |
+| E9-H01 | OpenTelemetry y Grafana LGTM | Must | 2.0 | Lista |
+| E9-H02 | Dashboard en tiempo real con SSE | Must | 1.5 | Lista |
+| E9-H03 | Guía de defensa | Must | 1.5 | Lista |
