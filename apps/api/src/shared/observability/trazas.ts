@@ -1,4 +1,11 @@
-import { SpanStatusCode, trace, type Attributes, type Span } from '@opentelemetry/api';
+import {
+  context,
+  ROOT_CONTEXT,
+  SpanStatusCode,
+  trace,
+  type Attributes,
+  type Span,
+} from '@opentelemetry/api';
 
 const TRAZADOR = 'shopcart';
 
@@ -41,4 +48,12 @@ export function enSpan<T>(
         span.end();
       }
     });
+}
+
+/**
+ * Ejecuta `funcion` sin span activo: un temporizador creado dentro de una petición no cuelga de su traza lo que
+ * hace horas después (el latido del SSE, E9-H02).
+ */
+export function fueraDeLaTraza<T>(funcion: () => T): T {
+  return context.with(ROOT_CONTEXT, funcion);
 }

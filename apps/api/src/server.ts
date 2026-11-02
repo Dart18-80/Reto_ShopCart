@@ -144,7 +144,8 @@ async function iniciar(): Promise<void> {
           .then(() => exportaciones.detener())
           .then(() => pool.close()),
       () => avisos.cerrar().then(() => redis.quit()),
-      // E9-H01: lo último que se exportó (spans y logs del apagado) sale antes de terminar.
+      // E9-H01: lo pendiente de exportar sale antes de terminar. Corre a la vez que los demás cierres: lo que
+      // ellos registren después del vaciado se pierde (sin el colector, el apagado no espera por la telemetría).
       detenerTelemetria,
     ],
     logger,

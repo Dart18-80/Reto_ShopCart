@@ -146,6 +146,8 @@ describe('seguridad de la telemetría (E9-H01): lo que exporta la API instrument
       expect(exportado).not.toContain(secreto);
     }
     expect(exportado).not.toMatch(/cvv|authorization|cookie|Bearer /i);
+    // Tres dígitos sueltos aparecen en cualquier duración o puerto: se busca el CVV como valor de texto.
+    expect(exportado).not.toContain(`"${CVV}"`);
   });
 
   it('la traza del pago va de la petición a sus SPs y a la pasarela, y todos sus spans llevan su requestId', () => {

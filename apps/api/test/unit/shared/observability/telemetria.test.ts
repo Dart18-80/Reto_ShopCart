@@ -35,6 +35,25 @@ describe('apagado de la telemetría (E9-H01)', () => {
     expect(listo).toBe(true);
   });
 
+  it('si el vaciado falla, termina igual y no deja un rechazo sin manejar (apagaría la API con 1)', async () => {
+    const sinManejar = vi.fn();
+    process.on('unhandledRejection', sinManejar);
+    let listo = false;
+
+    void esperarComoMucho(
+      Promise.reject(new Error('colector caído')),
+      ESPERA_VACIADO_TELEMETRIA_MS,
+    ).then(() => {
+      listo = true;
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.runAllTimersAsync();
+    process.off('unhandledRejection', sinManejar);
+
+    expect(listo).toBe(true);
+    expect(sinManejar).not.toHaveBeenCalled();
+  });
+
   it('el límite deja margen dentro de la espera del apagado ordenado (10 s)', () => {
     expect(ESPERA_VACIADO_TELEMETRIA_MS).toBeLessThanOrEqual(3_000);
   });

@@ -2,7 +2,8 @@ import type { Logger } from 'pino';
 import type { AvisoDeVersion, AvisosDeVersion } from '../../shared/avisos/index.js';
 import type { Cache } from '../../shared/cache/index.js';
 import { AppError } from '../../shared/errors/index.js';
-import { ATRIBUTOS, enSpan } from '../../shared/observability/index.js';
+import { fueraDeLaPeticion } from '../../shared/http/index.js';
+import { ATRIBUTOS, enSpan, fueraDeLaTraza } from '../../shared/observability/index.js';
 import { relojDelSistema, type Reloj } from '../../shared/reloj/index.js';
 import { claveDeVersion, DOMINIOS_REPORTES, type DominioReportes } from './reportes.cache.js';
 
@@ -62,6 +63,9 @@ const evento = (nombre: string, id: string, datos: unknown): string =>
 
 const LATIDO = ': latido\n\n';
 
+// Los temporizadores del difusor viven más que la petición que los creó: sin su contexto ni su traza (A-18, RNF-4).
+const enSegundoPlano = <T>(funcion: () => T): T => fueraDeLaPeticion(() => fueraDeLaTraza(funcion));
+
 /**
  * E9-H02 (A-25): reenvía a los streams de esta réplica cada aviso de versión que llega por el canal entre réplicas.
  * Solo avisos («cambió ventas»): el cliente vuelve a pedir el reporte, que sale de la caché.
@@ -79,14 +83,23 @@ export function crearDifusorDeVersiones({
   // Conexiones que pasaron el límite y todavía leen las versiones: cuentan para el límite.
   const reservadas = new Map<number, number>();
   let latido: NodeJS.Timeout | undefined;
+  let cerrando = false;
 
+  /** Las versiones de Redis; con Redis caído, la última conocida de cada dominio. */
   async function leerVersiones(): Promise<Versiones> {
+    const leidas = { ...conocidas };
     for (const dominio of DOMINIOS_REPORTES) {
-      const version = await cache.contador(claveDeVersion(dominio));
-      // Con Redis caído se queda la última conocida.
-      if (version !== null) conocidas[dominio] = Math.max(conocidas[dominio], version);
+      leidas[dominio] = (await cache.contador(claveDeVersion(dominio))) ?? conocidas[dominio];
     }
-    return { ...conocidas };
+    return leidas;
+  }
+
+  // Una versión leída al conectar puede adelantarse a su aviso (INCR antes que PUBLISH): se difunde ya, porque
+  // al llegar el aviso se descartaría y los streams abiertos no se enterarían.
+  function avanzar(dominio: DominioReportes, version: number): void {
+    if (version <= conocidas[dominio]) return;
+    conocidas[dominio] = version;
+    if (clientes.size > 0) agrupar(dominio);
   }
 
   function quitar(cliente: ClienteDeEventos): void {
@@ -126,23 +139,26 @@ export function crearDifusorDeVersiones({
       void difundir(dominio);
       return;
     }
-    agrupacion.temporizador = setTimeout(() => {
-      agrupacion.temporizador = undefined;
-      agrupacion.ultimaDifusion = reloj.ahora().getTime();
-      void difundir(dominio);
-    }, espera);
+    agrupacion.temporizador = enSegundoPlano(() =>
+      setTimeout(() => {
+        agrupacion.temporizador = undefined;
+        agrupacion.ultimaDifusion = reloj.ahora().getTime();
+        void difundir(dominio);
+      }, espera),
+    );
     agrupacion.temporizador.unref();
   }
 
   function alRecibir({ dominio, version }: AvisoDeVersion): void {
-    if (!esDominio(dominio) || version <= conocidas[dominio]) return;
-    conocidas[dominio] = version;
-    agrupar(dominio);
+    if (esDominio(dominio)) avanzar(dominio, version);
   }
 
-  // Lo publicado durante la caída se perdió: se envían las versiones actuales y el cliente decide si recarga.
+  // Lo publicado durante la caída se perdió: se envían las versiones actuales y el cliente decide si recarga. Las
+  // leídas reemplazan a las conocidas aunque sean menores: si Redis perdió los contadores, los avisos nuevos
+  // empiezan de 1 y, comparados con las viejas, se descartarían.
   async function alReconectar(): Promise<void> {
     const versiones = await leerVersiones();
+    Object.assign(conocidas, versiones);
     escribirATodos(evento('versiones', idDe(versiones), { versiones, recargar: true }));
   }
 
@@ -151,18 +167,21 @@ export function crearDifusorDeVersiones({
       quitar(cliente);
       return;
     }
-    cliente.escribir(LATIDO);
+    // Mientras se revisaba la sesión, el stream pudo cerrarse.
+    if (clientes.has(cliente)) cliente.escribir(LATIDO);
   }
 
   function iniciarLatido(): void {
     if (latido !== undefined) return;
-    latido = setInterval(() => {
-      for (const cliente of clientes) {
-        revisar(cliente).catch((error: unknown) => {
-          logger.error({ err: error }, 'No se pudo revisar un stream del dashboard');
-        });
-      }
-    }, latidoMs);
+    latido = enSegundoPlano(() =>
+      setInterval(() => {
+        for (const cliente of clientes) {
+          revisar(cliente).catch((error: unknown) => {
+            logger.error({ err: error }, 'No se pudo revisar un stream del dashboard');
+          });
+        }
+      }, latidoMs),
+    );
     latido.unref();
   }
 
@@ -191,6 +210,12 @@ export function crearDifusorDeVersiones({
         if (restantes > 0) reservadas.set(idUsuario, restantes);
         else reservadas.delete(idUsuario);
       }
+      // SIGTERM llegó mientras se leían las versiones: el stream no se abre y el cliente reconecta a la otra.
+      if (cerrando) {
+        cliente.cerrar();
+        return () => undefined;
+      }
+      for (const dominio of DOMINIOS_REPORTES) avanzar(dominio, versiones[dominio]);
       const id = idDe(versiones);
       cliente.escribir(
         evento('versiones', id, {
@@ -206,8 +231,12 @@ export function crearDifusorDeVersiones({
     },
 
     cerrarTodas() {
+      cerrando = true;
       for (const cliente of [...clientes]) quitar(cliente);
-      for (const agrupacion of agrupaciones.values()) clearTimeout(agrupacion.temporizador);
+      for (const agrupacion of agrupaciones.values()) {
+        clearTimeout(agrupacion.temporizador);
+        agrupacion.temporizador = undefined;
+      }
     },
   };
 }

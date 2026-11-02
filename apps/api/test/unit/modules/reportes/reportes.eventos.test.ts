@@ -1,3 +1,4 @@
+import { trace } from '@opentelemetry/api';
 import { pino } from 'pino';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -8,17 +9,27 @@ import {
   type ClienteDeEventos,
 } from '../../../../src/modules/reportes/reportes.eventos.js';
 import type { OyenteDeAvisos } from '../../../../src/shared/avisos/index.js';
+import { ejecutarConContexto, obtenerContexto } from '../../../../src/shared/http/index.js';
+import { enSpan } from '../../../../src/shared/observability/index.js';
 import { usarTelemetriaEnMemoria } from '../../telemetria-en-memoria.js';
 
 const telemetria = usarTelemetriaEnMemoria();
 const UNA_HORA_MS = 3_600_000;
 
-function preparar(versiones: Record<string, number> = { ventas: 3, carritos: 7 }) {
+function preparar(
+  versiones: Record<string, number> = { ventas: 3, carritos: 7 },
+  latidoMs = INTERVALO_LATIDO_MS,
+) {
   const actuales = { ...versiones };
+  // Una lectura de las versiones que no responde hasta que la prueba la libera.
+  let lecturaPendiente: Promise<void> | undefined;
   let oyente: OyenteDeAvisos | undefined;
   const difusor = crearDifusorDeVersiones({
     cache: {
-      contador: vi.fn((clave: string) => Promise.resolve(actuales[clave.split(':')[1] ?? ''] ?? 0)),
+      contador: vi.fn(async (clave: string) => {
+        await lecturaPendiente;
+        return actuales[clave.split(':')[1] ?? ''] ?? 0;
+      }),
     },
     avisos: {
       publicar: () => Promise.resolve(),
@@ -27,12 +38,27 @@ function preparar(versiones: Record<string, number> = { ventas: 3, carritos: 7 }
       },
     },
     logger: pino({ level: 'silent' }),
+    latidoMs,
   });
   const avisar = (dominio: string, version: number) => {
     actuales[dominio] = version;
     oyente?.alRecibir({ dominio, version });
   };
-  return { difusor, avisar, actuales, reconectar: () => oyente?.alReconectar() };
+  const detenerLecturas = () => {
+    let liberar: () => void = () => undefined;
+    lecturaPendiente = new Promise((resolver) => (liberar = resolver));
+    return () => {
+      lecturaPendiente = undefined;
+      liberar();
+    };
+  };
+  return {
+    difusor,
+    avisar,
+    actuales,
+    detenerLecturas,
+    reconectar: () => oyente?.alReconectar(),
+  };
 }
 
 function cliente(cambios: Partial<Pick<ClienteDeEventos, 'idUsuario' | 'venceEn'>> = {}) {
@@ -207,6 +233,75 @@ describe('difusor de versiones del dashboard (E9-H02, A-25)', () => {
       evento: 'versiones',
       datos: { versiones: { ventas: 9, carritos: 7 } },
     });
+  });
+
+  it('si un Admin conecta con una versión que el aviso aún no trajo, los ya conectados reciben el cambio', async () => {
+    const { difusor, avisar, actuales } = preparar();
+    const conectado = cliente();
+    await difusor.conectar(conectado);
+    actuales.ventas = 4;
+
+    await difusor.conectar(cliente({ idUsuario: 2 }));
+    avisar('ventas', 4);
+
+    expect(conectado.eventos().map((e) => leer(e).datos)).toContainEqual({
+      dominio: 'ventas',
+      version: 4,
+    });
+  });
+
+  it('si Redis perdió los contadores, al volver el canal las versiones nuevas (menores) se vuelven a difundir', async () => {
+    const { difusor, avisar, actuales, reconectar } = preparar({ ventas: 30, carritos: 7 });
+    const admin = cliente();
+    await difusor.conectar(admin);
+    actuales.ventas = 0;
+    actuales.carritos = 0;
+
+    reconectar();
+    await vi.advanceTimersByTimeAsync(0);
+    avisar('ventas', 1);
+
+    expect(leer(admin.eventos().at(-1))).toMatchObject({
+      evento: 'cambio',
+      datos: { dominio: 'ventas', version: 1 },
+    });
+  });
+
+  it('un stream que todavía lee las versiones cuando empieza el apagado se cierra en lugar de quedar abierto', async () => {
+    const { difusor, detenerLecturas } = preparar();
+    const admin = cliente();
+    const liberar = detenerLecturas();
+    const conectando = difusor.conectar(admin);
+
+    difusor.cerrarTodas();
+    liberar();
+    await conectando;
+
+    expect(admin.cerrar).toHaveBeenCalledTimes(1);
+    expect(admin.eventos()).toEqual([]);
+  });
+
+  it('el latido corre fuera de la petición y de la traza que abrió el primer stream', async () => {
+    vi.useRealTimers();
+    const LATIDO_CORTO_MS = 10;
+    const { difusor } = preparar(undefined, LATIDO_CORTO_MS);
+    const admin = cliente();
+    const enElLatido: { span: unknown; peticion: unknown }[] = [];
+    admin.sesionVigente.mockImplementation(() => {
+      enElLatido.push({ span: trace.getActiveSpan(), peticion: obtenerContexto() });
+      return Promise.resolve(true);
+    });
+
+    const desconectar = await ejecutarConContexto(
+      { requestId: 'peticion-sse', idUsuario: 1, rol: 'Administrador' },
+      () => enSpan('GET /admin/reportes/eventos', {}, () => difusor.conectar(admin)),
+    );
+    await vi.waitFor(() => {
+      expect(enElLatido.length).toBeGreaterThan(0);
+    });
+    desconectar();
+
+    expect(enElLatido[0]).toEqual({ span: undefined, peticion: undefined });
   });
 
   it('cada difusión es un span con el dominio, la versión y cuántos clientes la recibieron', async () => {

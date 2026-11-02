@@ -140,10 +140,12 @@ export function esperarComoMucho(promesa: Promise<unknown>, limiteMs: number): P
   return new Promise((resolver) => {
     const limite = setTimeout(resolver, limiteMs);
     limite.unref();
-    void promesa.finally(() => {
+    const terminar = () => {
       clearTimeout(limite);
       resolver();
-    });
+    };
+    // Rechazada o no, solo importa que terminó: nunca deja un rechazo sin manejar.
+    promesa.then(terminar, terminar);
   });
 }
 
