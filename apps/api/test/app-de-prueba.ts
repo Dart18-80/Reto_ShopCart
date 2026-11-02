@@ -1,5 +1,6 @@
 import { pino } from 'pino';
 import type { DependenciasApp } from '../src/app.js';
+import { crearCarritoDeInvitadoParaSesion } from '../src/modules/carrito/index.js';
 import {
   crearTokensAcceso,
   type LimitadorIntentos,
@@ -41,6 +42,7 @@ export function dependenciasDePrueba(cambios: Partial<DependenciasApp> = {}): De
     },
     versionesSesion: versionesSesionEnMemoria(),
     cookiesSeguras: true,
+    carritoInvitado: crearCarritoDeInvitadoParaSesion(pino({ level: 'silent' })),
     ...cambios,
   };
 }

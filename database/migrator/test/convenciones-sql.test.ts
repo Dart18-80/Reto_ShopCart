@@ -7,7 +7,10 @@ const CARPETAS = ['programmability', 'test'];
 // Sentencias que modifican datos (fuera de comentarios); insertar en una variable de tabla no cuenta.
 const ESCRIBE = /\b(?:INSERT\s+INTO\s+(?!@)|UPDATE\s+\w|DELETE\s+FROM|MERGE\s+)/i;
 // SPs internos (sqlserver-sp §7): usan la transacción y el contexto de quien los llama.
-const INTERNOS = new Set(['R__SP_Inventario_RegistrarMovimiento.sql']);
+const INTERNOS = new Set([
+  'R__SP_Inventario_RegistrarMovimiento.sql',
+  'R__SP_Checkout_CancelarSesionActiva.sql',
+]);
 
 function sinComentarios(sql: string): string {
   return sql.replace(/\/\*[\s\S]*?\*\//g, '').replace(/--.*$/gm, '');

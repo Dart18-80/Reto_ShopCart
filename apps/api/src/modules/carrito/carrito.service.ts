@@ -15,7 +15,10 @@ import type {
 } from './carrito.types.js';
 
 interface Dependencias {
-  repositorio: CarritoRepository;
+  repositorio: Pick<
+    CarritoRepository,
+    'obtener' | 'agregarLinea' | 'marcarAvisosVistos' | 'actualizarCantidad' | 'eliminarLinea'
+  >;
   /** 01 §5.3: creación de carritos de invitado por IP. */
   limitadorCreacion: LimitadorIntentos;
 }

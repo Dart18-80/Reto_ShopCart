@@ -1,6 +1,7 @@
 import type { Logger } from 'pino';
 import { registrarApagadoOrdenado } from './apagado.js';
 import { crearApp } from './app.js';
+import { crearCarritoDeInvitadoParaSesion } from './modules/carrito/index.js';
 import {
   crearClienteRedis,
   crearVerificadorRedis,
@@ -62,6 +63,7 @@ async function iniciar(): Promise<void> {
     },
     // N-05: la cookie del carrito de invitado lleva Secure fuera de desarrollo.
     cookiesSeguras: config.entorno !== 'development',
+    carritoInvitado: crearCarritoDeInvitadoParaSesion(logger.child({ modulo: 'carrito' })),
     versionesSesion: crearVersionesSesionRedis(redis, logger),
   });
 

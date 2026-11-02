@@ -1,6 +1,5 @@
 import { Decimal } from 'decimal.js';
 import { describe, expect, it, vi } from 'vitest';
-import type { CarritoRepository } from '../../../../src/modules/carrito/carrito.repository.js';
 import { crearCarritoService } from '../../../../src/modules/carrito/carrito.service.js';
 import type {
   Carrito,
@@ -42,7 +41,7 @@ function preparar({ conCookie = CARRITO, permitido = true }: Opciones = {}) {
     ),
     eliminarLinea: vi.fn((_id: number, _hash: Buffer | null) => Promise.resolve(CARRITO)),
     marcarAvisosVistos: vi.fn((_hash: Buffer | null) => Promise.resolve(conCookie)),
-  } satisfies CarritoRepository;
+  } satisfies Parameters<typeof crearCarritoService>[0]['repositorio'];
   const consumir = vi.fn((_clave: string) =>
     Promise.resolve({ permitido, segundosParaReintentar: permitido ? 0 : 30 }),
   );

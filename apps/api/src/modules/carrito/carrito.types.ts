@@ -69,6 +69,18 @@ export interface CarritoConCookie {
   tokenNuevo: string | null;
 }
 
+export const TIPOS_AVISO_FUSION = ['CantidadAjustada', 'NoFusionada'] as const;
+
+/** N-05: una línea del invitado que no pasó completa al carrito del cliente al iniciar sesión. */
+export interface AvisoFusion {
+  idVariante: number;
+  producto: string;
+  tipo: (typeof TIPOS_AVISO_FUSION)[number];
+  cantidadSolicitada: number;
+  /** 0 si la línea no pasó (el carrito llegó al máximo de líneas). */
+  cantidadFinal: number;
+}
+
 export interface ConsultaCarrito {
   carrito: Carrito;
   /** La cookie de invitado ya no tiene un carrito Activo: se borra. */

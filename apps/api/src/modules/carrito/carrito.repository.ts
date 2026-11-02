@@ -1,6 +1,7 @@
 import sql from 'mssql';
 import {
   bigintANumero,
+  ejecutarSP,
   ejecutarSPConjuntos,
   type NombreSP,
   type ParametrosSP,
@@ -8,6 +9,7 @@ import {
 import { aMonto } from '../../shared/dinero/index.js';
 import type { EstadoExistencia } from '../catalogo/index.js';
 import type {
+  AvisoFusion,
   AvisoPrecio,
   Carrito,
   CookieInvitado,
@@ -44,6 +46,22 @@ interface FilaResumen {
   Total: number;
   PuedePagar: boolean;
 }
+
+interface FilaAvisoFusion {
+  IDVariante: number;
+  Producto: string;
+  Tipo: AvisoFusion['tipo'];
+  CantidadSolicitada: number;
+  CantidadFinal: number;
+}
+
+const aAvisoFusion = (fila: FilaAvisoFusion): AvisoFusion => ({
+  idVariante: fila.IDVariante,
+  producto: fila.Producto,
+  tipo: fila.Tipo,
+  cantidadSolicitada: fila.CantidadSolicitada,
+  cantidadFinal: fila.CantidadFinal,
+});
 
 const aAviso = (tipo: TipoAviso | null, precioAnterior: number | null): AvisoPrecio | null =>
   tipo === null
@@ -116,6 +134,19 @@ export const carritoRepository = {
   /** null si quien pide no tiene un carrito Activo. */
   marcarAvisosVistos(hash: Buffer | null): Promise<Carrito | null> {
     return carritoDe('SP_Carrito_MarcarAvisosVistos', { HashTokenInvitado: hashInvitado(hash) });
+  },
+
+  /** N-05: el carrito del invitado se fusiona con el del cliente de la petición. */
+  async fusionar(hash: Buffer): Promise<AvisoFusion[]> {
+    const filas = await ejecutarSP<FilaAvisoFusion>('SP_Carrito_Fusionar', {
+      HashTokenInvitado: hashInvitado(hash),
+    });
+    return filas.map(aAvisoFusion);
+  },
+
+  /** N-05: el carrito del invitado pasa a ser del cliente nuevo de la petición. */
+  async asignarInvitado(hash: Buffer): Promise<void> {
+    await ejecutarSP('SP_Carrito_AsignarInvitado', { HashTokenInvitado: hashInvitado(hash) });
   },
 
   async actualizarCantidad(

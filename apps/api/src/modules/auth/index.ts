@@ -1,13 +1,20 @@
 import type { Router } from 'express';
 import type { ClienteHttp, TokensAcceso } from '../../shared/http/index.js';
+import { crearCarritoAlAbrirSesion } from './auth.carrito.js';
 import { crearAuthController } from './auth.controller.js';
 import { authRepository } from './auth.repository.js';
 import { crearAuthRouter, type LimitadoresAuth } from './auth.routes.js';
 import { crearAuthService } from './auth.service.js';
-import type { IdentidadSesion, Sesion } from './auth.types.js';
+import type { CarritoDeInvitado, IdentidadSesion, Sesion } from './auth.types.js';
 
 export type { LimitadoresAuth } from './auth.routes.js';
-export type { IdentidadSesion, Sesion, UsuarioSesion } from './auth.types.js';
+export type {
+  AvisoFusionCarrito,
+  CarritoDeInvitado,
+  IdentidadSesion,
+  Sesion,
+  UsuarioSesion,
+} from './auth.types.js';
 export { enviarSesion } from './auth.controller.js';
 export { hashearContrasena, verificarContrasena } from './auth.contrasenas.js';
 export { contrasenaSchema, correoSchema } from './auth.schemas.js';
@@ -15,11 +22,17 @@ export { contrasenaSchema, correoSchema } from './auth.schemas.js';
 interface DependenciasAuth {
   tokens: TokensAcceso;
   limitadores: LimitadoresAuth;
+  carritoInvitado: CarritoDeInvitado;
 }
 
-export function crearModuloAuth({ tokens, limitadores }: DependenciasAuth): Router {
+export function crearModuloAuth({
+  tokens,
+  limitadores,
+  carritoInvitado,
+}: DependenciasAuth): Router {
   const servicio = crearAuthService({ repositorio: authRepository, tokens });
-  return crearAuthRouter(crearAuthController(servicio), limitadores);
+  const controller = crearAuthController(servicio, crearCarritoAlAbrirSesion(carritoInvitado));
+  return crearAuthRouter(controller, limitadores);
 }
 
 /** Abre una sesión nueva (A-07) para otros módulos, por ejemplo tras cambiar la contraseña. */

@@ -45,6 +45,21 @@ export const sesionSchema = z
       nombre: z.string(),
       rol: z.enum(ROLES_DE_USUARIO),
     }),
+    avisosCarrito: z
+      .array(
+        z.object({
+          idVariante: z.number().int(),
+          producto: z.string(),
+          tipo: z.enum(['CantidadAjustada', 'NoFusionada']),
+          cantidadSolicitada: z.number().int(),
+          cantidadFinal: z.number().int(),
+        }),
+      )
+      .optional()
+      .openapi({
+        description:
+          'Solo al iniciar sesión o registrarse: líneas del carrito de invitado que no pasaron completas al fusionarlo (N-05)',
+      }),
   })
   .openapi('Sesion');
 
