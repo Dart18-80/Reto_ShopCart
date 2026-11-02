@@ -48,7 +48,9 @@ export {
   crearInvalidadorReportes,
   hashDeFiltros,
   normalizarFiltros,
+  REPORTES,
   type DominioReportes,
+  type NombreReporte,
   type InvalidadorReportes,
 } from './reportes.cache.js';
 export {

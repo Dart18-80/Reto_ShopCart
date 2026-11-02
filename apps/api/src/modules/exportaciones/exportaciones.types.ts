@@ -1,14 +1,10 @@
 import type { Decimal } from 'decimal.js';
+import { REPORTES, type NombreReporte } from '../reportes/index.js';
 
-// Los reportes del dashboard que se exportan (RF-08); el mismo CHECK de SolicitudExportacion.Reporte.
-export const REPORTES_EXPORTABLES = [
-  'resumen',
-  'ventas',
-  'ventas-por-categoria',
-  'top-productos',
-  'carritos-abandonados',
-] as const;
-export type ReporteExportable = (typeof REPORTES_EXPORTABLES)[number];
+// RF-08: se exportan todos los reportes del dashboard; la lista vive en el módulo de reportes. El CHECK de
+// SolicitudExportacion.Reporte es la misma lista en la base.
+export const REPORTES_EXPORTABLES = REPORTES;
+export type ReporteExportable = NombreReporte;
 
 export const FORMATOS = ['xlsx', 'pdf'] as const;
 export type Formato = (typeof FORMATOS)[number];
