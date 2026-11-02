@@ -51,6 +51,7 @@ interface Agrupacion {
   temporizador: NodeJS.Timeout | undefined;
 }
 
+// El cast solo ensancha la lista para que `includes` acepte un string; el guard es lo que estrecha el tipo.
 const esDominio = (dominio: string): dominio is DominioReportes =>
   (DOMINIOS_REPORTES as readonly string[]).includes(dominio);
 

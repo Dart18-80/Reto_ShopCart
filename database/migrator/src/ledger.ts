@@ -2,6 +2,7 @@ import { appendFile, mkdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import sql from 'mssql';
 import type { Logger } from 'pino';
+import { z } from 'zod';
 import type { Configuracion } from './config.ts';
 import { conectar, LOGIN_ADMIN } from './conexion.ts';
 import { leerConsulta } from './consultas.ts';
@@ -14,13 +15,11 @@ export class ErrorLedger extends Error {
   }
 }
 
-interface FilaDigest {
-  latest_digest: string | null;
-}
-
-interface FilaCreacion {
-  CreadaEn: string;
-}
+// Lo que devuelve generar-digest-ledger.sql: el digest (JSON) y la fecha de creación de la base.
+const resultadoDigest = z.tuple([
+  z.array(z.object({ latest_digest: z.string().nullable() })),
+  z.array(z.object({ CreadaEn: z.string() })),
+]);
 
 /**
  * M-01: genera el digest del ledger, lo agrega a un archivo fuera de la base (uno por base y por fecha de
@@ -40,7 +39,7 @@ export async function verificarLedger(
   );
   try {
     const { recordsets } = await pool.request().query(await leerConsulta('generar-digest-ledger'));
-    const [digests, creacion] = recordsets as unknown as [FilaDigest[], FilaCreacion[]];
+    const [digests, creacion] = resultadoDigest.parse(recordsets);
     const digest = digests[0]?.latest_digest;
     const creadaEn = creacion[0]?.CreadaEn;
     if (digest == null || creadaEn === undefined) {

@@ -39,7 +39,7 @@ Todos pasan por `enSpan`, que crea un span hijo del activo y lo marca en error s
 | Decorador compuesto en `server.ts` sobre el puerto `PasarelaPago` | — | [server.ts:59](../../../apps/api/src/server.ts#L59 "conTrazas(crearPasarelaSimulada())") |
 | `tarea <nombre>` | `shopcart.replica`, `shopcart.tarea.bloqueo_tomado` | [planificador.ts:45](../../../apps/api/src/shared/jobs/planificador.ts#L45 "enSpan(`tarea ${tarea.nombre}`") y [planificador.ts:47](../../../apps/api/src/shared/jobs/planificador.ts#L47 "ATRIBUTOS.bloqueoTomado") |
 | `exportacion.procesar` | ID, reporte, formato y resultado | [exportaciones.procesador.ts:115](../../../apps/api/src/modules/exportaciones/exportaciones.procesador.ts#L115 "enSpan('exportacion.procesar'") |
-| `sse.difundir` (E9-H02) | dominio, versión y clientes de la réplica | [reportes.eventos.ts:124](../../../apps/api/src/modules/reportes/reportes.eventos.ts#L124 "enSpan('sse.difundir'") |
+| `sse.difundir` (E9-H02) | dominio, versión y clientes de la réplica | [reportes.eventos.ts:125](../../../apps/api/src/modules/reportes/reportes.eventos.ts#L125 "enSpan('sse.difundir'") |
 
 El decorador de la pasarela es un ejemplo de abierto/cerrado: se agrega trazabilidad sin tocar el adaptador ni el checkout.
 

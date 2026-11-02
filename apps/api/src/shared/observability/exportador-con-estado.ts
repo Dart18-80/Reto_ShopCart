@@ -39,6 +39,7 @@ export function conRegistroDeEstado<E extends Exportador>(
     get(objetivo, propiedad) {
       if (propiedad === 'export') return exportar;
       const valor: unknown = Reflect.get(objetivo, propiedad, objetivo);
+      // typeof ya comprobó que es una función; el cast solo le da una firma para poder enlazarla.
       return typeof valor === 'function'
         ? (valor as (...args: unknown[]) => unknown).bind(objetivo)
         : valor;
