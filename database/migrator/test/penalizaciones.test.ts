@@ -232,6 +232,34 @@ describe('fin de línea del repositorio (verificación de entrega)', () => {
 describe('imágenes fijadas (verificación de entrega)', () => {
   const compose = readFileSync(join(RAIZ, 'docker-compose.yml'), 'utf8');
   const imagenes = [...compose.matchAll(/^\s+image:\s*(\S+)/gm)].map(([, imagen]) => imagen ?? '');
+  // Las que construye el propio compose (shopcart-api y shopcart-web) no vienen de un registro.
+  const IMAGEN_LOCAL = /^shopcart-[\w-]+:local$/;
+  const DOCKERFILES = [
+    'apps/api/Dockerfile',
+    'apps/web/Dockerfile',
+    'database/migrator/Dockerfile',
+  ];
+  const bases = DOCKERFILES.flatMap((archivo) =>
+    [...readFileSync(join(RAIZ, archivo), 'utf8').matchAll(/^FROM\s+(\S+)/gm)].map(
+      ([, imagen]) => `${archivo}: ${imagen ?? ''}`,
+    ),
+  );
+  // Decisión del PO (E9): versión exacta (x.y.z, o el CU de SQL Server) y el digest del contenido que pasó las
+  // suites. Nunca una etiqueta que se mueve sola, como 24-alpine o 7-alpine.
+  const FIJADA = /:(?:\d+\.\d+\.\d+|\d{4}-CU\d+)[\w.-]*@sha256:[0-9a-f]{64}$/;
+
+  it('toda imagen del compose que viene de un registro tiene versión exacta y digest', () => {
+    const sueltas = imagenes.filter((imagen) => !IMAGEN_LOCAL.test(imagen) && !FIJADA.test(imagen));
+
+    expect(sueltas).toEqual([]);
+  });
+
+  it('toda imagen base de los Dockerfile tiene versión exacta y digest', () => {
+    const sueltas = bases.filter((base) => !FIJADA.test(base));
+
+    expect(bases.length).toBeGreaterThan(0);
+    expect(sueltas).toEqual([]);
+  });
 
   it('ninguna imagen del compose usa latest', () => {
     expect(imagenes.filter((imagen) => imagen.includes('latest'))).toEqual([]);

@@ -1,5 +1,6 @@
 # Contexto de build: raíz del repositorio (necesita el lockfile del workspace).
-FROM node:24-alpine AS build
+# Versión exacta y digest: se actualiza a propósito (README, «Actualizar las imágenes»), nunca con un pull.
+FROM node:24.22.2-alpine3.24@sha256:8a32c8cf649a49915a66e81e7a609223c708d0adabf288ee3f4077d765542f85 AS build
 WORKDIR /app
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -19,7 +20,7 @@ RUN pnpm --filter @shopcart/shared build && pnpm --filter @shopcart/api build
 RUN pnpm deploy --filter @shopcart/api --prod --legacy /prod/api
 
 # Imagen final: solo JavaScript compilado y dependencias de producción. Sin src/, TypeScript ni pnpm.
-FROM node:24-alpine
+FROM node:24.22.2-alpine3.24@sha256:8a32c8cf649a49915a66e81e7a609223c708d0adabf288ee3f4077d765542f85
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build /prod/api/package.json ./

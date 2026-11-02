@@ -79,12 +79,12 @@ La identidad viaja en un **access JWT corto** (15 min, en el encabezado `Authori
 
 - Solo en `.env`, que está en `.gitignore` ([.gitignore:12](../../../.gitignore#L12 ".env")); `.env.example` lleva valores marcados como `EJEMPLO`.
 - La configuración exige un `JWT_SECRETO` de al menos 32 caracteres ([index.ts:54](../../../apps/api/src/shared/config/index.ts#L54 "JWT_SECRETO: z.string().min(LARGO_MINIMO_SECRETO_JWT)")) y en `production` rechaza arrancar con los secretos de ejemplo ([index.ts:110](../../../apps/api/src/shared/config/index.ts#L110 "rechazarSecretosDeEjemplo(variables)")).
-- La contraseña de Redis no va en la línea de comandos de Compose, que se ve en `docker inspect` ([docker-compose.yml:127](../../../docker-compose.yml#L127 "La contraseña va en una variable y no en la línea de comandos de Compose")).
+- La contraseña de Redis no va en la línea de comandos de Compose, que se ve en `docker inspect` ([docker-compose.yml:128](../../../docker-compose.yml#L128 "La contraseña va en una variable y no en la línea de comandos de Compose")).
 - **La prueba de secretos:** todo secreto de `.env.example` está marcado como ejemplo y `.env` está ignorado ([secretos.test.ts:15](../../../apps/api/test/unit/secretos.test.ts#L15 "todo secreto de .env.example está marcado como ejemplo") y [secretos.test.ts:27](../../../apps/api/test/unit/secretos.test.ts#L27 ".env (con las credenciales reales) está en .gitignore")).
 
 ## Contenedores sin root
 
-- API y migrador: `USER node` ([Dockerfile:30](../../../apps/api/Dockerfile#L30 "USER node") y [Dockerfile:21](../../../database/migrator/Dockerfile#L21 "USER node")). Redis: `user: redis` ([docker-compose.yml:121](../../../docker-compose.yml#L121 "user: redis")). SQL Server: la imagen oficial 2022 corre como el usuario `mssql`.
+- API y migrador: `USER node` ([Dockerfile:31](../../../apps/api/Dockerfile#L31 "USER node") y [Dockerfile:22](../../../database/migrator/Dockerfile#L22 "USER node")). Redis: `user: redis` ([docker-compose.yml:122](../../../docker-compose.yml#L122 "user: redis")). SQL Server: la imagen oficial 2022 corre como el usuario `mssql`.
 - Prueba en el entorno real, leyendo el UID del proceso principal de cada contenedor: [contenedores.test.ts:15](../../../apps/api/test/entorno/contenedores.test.ts#L15 "el proceso principal de %s no corre como root").
 - La base y Redis solo se publican en `127.0.0.1`.
 

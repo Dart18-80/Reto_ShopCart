@@ -8,7 +8,7 @@ E9-H01 (RNF-4): la API emite trazas, métricas y logs con OpenTelemetry por OTLP
 
 | Regla | Dónde vive | Archivo:línea |
 |---|---|---|
-| La imagen arranca con la telemetría primero | `CMD` del Dockerfile | [Dockerfile:36](../../../apps/api/Dockerfile#L36 "./dist/telemetria.js") |
+| La imagen arranca con la telemetría primero | `CMD` del Dockerfile | [Dockerfile:37](../../../apps/api/Dockerfile#L37 "./dist/telemetria.js") |
 | Igual fuera de Docker (`pnpm start`) | `package.json` | [package.json:9](../../../apps/api/package.json#L9 "--import ./dist/telemetria.js dist/server.js") |
 | Hook de ESM síncrono de Node 24 (`import-in-the-middle`) | `telemetria.ts` | [telemetria.ts:4](../../../apps/api/src/telemetria.ts#L4 "import-in-the-middle/register-hooks.mjs") |
 | El hook solo envuelve los paquetes instrumentados | `telemetria.ts` | [telemetria.ts:11](../../../apps/api/src/telemetria.ts#L11 "register({ include: MODULOS_INSTRUMENTADOS })") |
@@ -88,7 +88,7 @@ El apagado ordenado tiene 10 s. Sin colector, vaciar los lotes esperaría el tim
 
 ## Dashboard aprovisionado
 
-- `otel-lgtm:0.36.0` fijada con digest, solo en el perfil [docker-compose.yml:187](../../../docker-compose.yml#L187 "grafana/otel-lgtm:0.36.0@sha256"); el aprovisionamiento y el dashboard se montan de solo lectura [docker-compose.yml:198](../../../docker-compose.yml#L198 "provisioning/dashboards/shopcart.yaml") desde [infra/grafana](../../../infra/grafana).
+- `otel-lgtm:0.36.0` fijada con digest, solo en el perfil [docker-compose.yml:188](../../../docker-compose.yml#L188 "grafana/otel-lgtm:0.36.0@sha256"); el aprovisionamiento y el dashboard se montan de solo lectura [docker-compose.yml:199](../../../docker-compose.yml#L199 "provisioning/dashboards/shopcart.yaml") desde [infra/grafana](../../../infra/grafana).
 - El proveedor no permite borrar ni editar desde la interfaz: [shopcart.yaml:8](../../../infra/grafana/provisioning/dashboards/shopcart.yaml#L8 "disableDeletion: true").
 - Paneles de [shopcart.json](../../../infra/grafana/dashboards/shopcart.json): latencia p95 por endpoint [shopcart.json:48](../../../infra/grafana/dashboards/shopcart.json#L48 "histogram_quantile(0.95"), peticiones y errores 4xx/5xx por endpoint, pedidos creados, exportaciones pendientes, pagos por resultado, tareas por resultado, peticiones por réplica [shopcart.json:329](../../../infra/grafana/dashboards/shopcart.json#L329 "sum by (instance)") y los logs [shopcart.json:358](../../../infra/grafana/dashboards/shopcart.json#L358 "Logs de las réplicas (con su trace_id)").
 - Prueba de entorno con el perfil: [observabilidad.test.ts:84](../../../apps/api/test/entorno/observabilidad.test.ts#L84 "el dashboard ShopCart está aprovisionado") y la compra completa en Tempo y Loki [observabilidad.test.ts:95](../../../apps/api/test/entorno/observabilidad.test.ts#L95 "una compra es una traza en Tempo").
@@ -120,7 +120,7 @@ Además, los spans de la pasarela nunca llevan la tarjeta: [pasarela-con-trazas.
 
 ### ¿Por qué `node --import` y no inicializar la telemetría en `server.ts`?
 Las instrumentaciones parchean las librerías al cargarlas. Si express, mssql, ioredis o pino se importan antes, quedan sin instrumentar.
-**Muéstralo en:** [Dockerfile:35](../../../apps/api/Dockerfile#L35 "la telemetría se carga antes que la API")
+**Muéstralo en:** [Dockerfile:36](../../../apps/api/Dockerfile#L36 "la telemetría se carga antes que la API")
 
 ### ¿Qué pasa si no levanto el perfil de observabilidad?
 La API atiende igual: cada señal registra una advertencia al caer y una línea al volver, nunca una por lote, y el envío no sale de la subred.

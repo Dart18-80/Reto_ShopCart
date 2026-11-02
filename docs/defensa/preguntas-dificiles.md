@@ -190,7 +190,6 @@ Sí, acotados. Quien escribe ve su cambio en la siguiente consulta porque la ver
 
 - **Frontend:** `apps/web` todavía no tiene código; la tienda, el backoffice y el dashboard son la Fase 2.
 - **Producción:** SQL Server Standard o Enterprise, HTTPS en nginx y secretos fuera de `.env`.
-- **Imágenes:** Redis usa `redis:7-alpine` sin digest, a diferencia de SQL Server y Grafana LGTM.
 - **Cobertura:** el reporte mide solo las unitarias y no tiene un umbral mínimo.
 - **Health:** nginx no lo consulta; saca una réplica solo por errores de conexión (detección pasiva).
 

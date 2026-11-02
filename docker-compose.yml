@@ -61,7 +61,7 @@ x-api: &api
 services:
   sqlserver:
     # Fijada al CU que pasó todas las suites (16.0.4305.5, KB5126934): la etiqueta y su digest. Se actualiza
-    # a propósito, nunca con un pull (README, «Actualizar SQL Server»).
+    # a propósito, nunca con un pull (README, «Actualizar las imágenes»).
     image: mcr.microsoft.com/mssql/server:2022-CU27-GDR1-ubuntu-22.04@sha256:cf8f0ab2ebe61feec2eed2629061a07d247f791c2a8ddda74a4ac9f06a291718
     # Cierra con un checkpoint de las bases: el mismo margen que la API.
     stop_grace_period: 15s
@@ -115,7 +115,8 @@ services:
     restart: 'no'
 
   redis:
-    image: redis:7-alpine
+    # Versión exacta y digest: se actualiza a propósito (README, «Actualizar las imágenes»), nunca con un pull.
+    image: redis:7.4.12-alpine3.21@sha256:8da19c7399dca900c6822a1cf30f9d2285585e2c4b457ff4095b0f4500054d3f
     # El entrypoint oficial solo baja a "redis" cuando el comando empieza con redis-server; con sh -c correría
     # como root. /data ya pertenece a redis en la imagen.
     user: redis

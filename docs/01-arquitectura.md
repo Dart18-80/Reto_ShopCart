@@ -66,7 +66,7 @@ Versión en texto:
 |---|---|---|---|---|
 | `sqlserver` | `mcr.microsoft.com/mssql/server:2022-CU27-GDR1-ubuntu-22.04` fijada con su digest | Fuente de verdad | `sqlcmd -Q "SELECT 1"` | — |
 | `db-migrator` | Propia (Node + scripts) | Ejecuta los scripts numerados y termina | — (one-shot) | `sqlserver` saludable |
-| `redis` | `redis:7-alpine` | Rate limiting, versión de sesión por usuario y caché de reportes | `redis-cli ping` | — |
+| `redis` | `redis:7.4.12-alpine3.21` fijada con su digest | Rate limiting, versión de sesión por usuario y caché de reportes | `redis-cli ping` | — |
 | `api-1`, `api-2` | Propia (`apps/api`) | API REST; misma imagen y misma configuración salvo `INSTANCIA_ID` | `GET /api/v1/health` | Migrador completado, `redis` saludable |
 | `web` | Propia (nginx + build de `apps/web`) | **Balanceador de carga** (`upstream` round-robin hacia `api-1` y `api-2`, con `max_fails=3 fail_timeout=10s`) y servidor de la SPA y `/static` | `GET /` | `api-1`, `api-2` |
 | `otel-lgtm` | `grafana/otel-lgtm:0.36.0` fijada con su digest | Colector OTLP, Tempo, Loki, Prometheus y Grafana (`127.0.0.1:${GRAFANA_PUERTO}`, 3001) | Propio de la imagen | Perfil `observabilidad` (E9-H01) |
