@@ -27,6 +27,19 @@ Sin hallazgos CRÍTICOS, ALTOS ni MEDIOS. Las tres observaciones BAJAS quedaron 
 
 Al preparar el flujo de Swagger de E8-H01 apareció además un hallazgo real: las rutas protegidas declaraban `security: bearer`, pero el documento no definía el esquema y Swagger no ofrecía **Authorize**. Se corrigió en E8-H01 y lo cubre `unit/app.api.test.ts`.
 
+### Revisión de E7-H04 y E7-H05 (alcance agregado al cierre)
+
+`revisor-shopcart` y `typescript-reviewer` sobre la caché de reportes y la exportación asíncrona: sin hallazgos CRÍTICOS ni ALTOS.
+
+**MEDIOS corregidos (`aa09dcb`):**
+- un archivo vencido se descargaba hasta que pasara la purga; ahora responde 410;
+- un fallo del almacén antes de leer el stream dejaba colgado al generador;
+- un error del documento PDF quedaba sin listener;
+- el apagado ordenado no esperaba las exportaciones en curso;
+- dos pruebas no verificaban lo que decían.
+
+**Abierto:** si la base falla al registrar un archivo ya guardado, ese archivo queda sin referencia en el almacén. No se borra, porque el COMMIT pudo ocurrir aunque se perdiera la respuesta (A-24). Requiere decidir un barrido de los archivos sin referencia.
+
 ## 3. Criterios de aceptación de RF-01 a RF-09
 
 | RF | Criterio | Prueba que lo demuestra |
