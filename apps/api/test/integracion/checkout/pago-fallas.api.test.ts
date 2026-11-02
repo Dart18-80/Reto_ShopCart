@@ -3,6 +3,7 @@ import { Writable } from 'node:stream';
 import sql from 'mssql';
 import request from 'supertest';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import { crearApp } from '../../../src/app.js';
 import { crearPasarelaSimulada } from '../../../src/shared/adapters/pasarela-simulada.js';
 import { ejecutarSP } from '../../../src/shared/db/index.js';
@@ -13,14 +14,17 @@ import { dependenciasDePrueba } from '../../app-de-prueba.js';
 import { iniciarSesion, leerSesion } from '../auth/apoyo-auth.js';
 import { usarBaseDePruebas } from '../base-de-pruebas.js';
 import { comoCliente, varianteVendible } from '../carrito/apoyo-carrito.js';
+import { unaFila } from '../datos-de-prueba.js';
 import {
   clienteConCarrito,
+  crearCupon,
   estadoEnPasarela,
   iniciarPago,
   intentosDe,
   leerPedido,
   leerSesionPago,
   metodoEnvio,
+  moverArrendamiento,
   pagar,
   pagoDe,
   TARJETA_APROBADA,
@@ -38,15 +42,37 @@ beforeAll(async () => {
   estandar = await metodoEnvio(app);
 });
 
-/** TR_Pruebas_FallarDetallePedido hace fallar el pedido de una variante con SKU 'FALLA-…'. */
-async function varianteQueFallaAlPedir(): Promise<number> {
-  const { IDVariante } = await varianteVendible('50.00', 10);
-  await request(app)
-    .patch(`/api/v1/admin/variantes/${String(IDVariante)}`)
+async function cambiarSku(idVariante: number, sku: string): Promise<void> {
+  const respuesta = await request(app)
+    .patch(`/api/v1/admin/variantes/${String(idVariante)}`)
     .set(comoCliente(tokenAdmin))
-    .send({ sku: `FALLA-${randomUUID().slice(0, 8)}` });
+    .send({ sku });
+  expect(respuesta.status).toBe(200);
+}
+
+/**
+ * TR_Pruebas_FallarDetallePedido hace fallar el pedido de una variante con SKU 'FALLA-…' (al insertar el
+ * detalle) y TR_Pruebas_FallarCierreDeCarrito, con 'FALLAFIN-…', al final (al cerrar el carrito).
+ */
+async function varianteQueFallaAlPedir(prefijo = 'FALLA-'): Promise<number> {
+  const { IDVariante } = await varianteVendible('50.00', 10);
+  await cambiarSku(IDVariante, `${prefijo}${randomUUID().slice(0, 8)}`);
   return IDVariante;
 }
+
+const estadoDeSesion = (idSesion: number) =>
+  unaFila<{
+    Estado: string;
+    IntentosRechazados: number;
+    EstadoReserva: string | null;
+    EstadoUsoCupon: string | null;
+    UsosComprometidosCupon: number | null;
+  }>('SP_Pruebas_LeerSesionCheckout', { IDSesionCheckout: { tipo: sql.Int, valor: idSesion } });
+
+const kardexDe = (idVariante: number) =>
+  unaFila<{ ExistenciaFisica: number; Movimientos: number }>('SP_Pruebas_LeerKardex', {
+    IDVariante: { tipo: sql.Int, valor: idVariante },
+  });
 
 async function sesionCon(idVariante: number, cantidad = 1, aplicacion = app) {
   const cliente = await clienteConCarrito(aplicacion, [{ idVariante, cantidad }]);
@@ -130,6 +156,83 @@ describe('atomicidad del pedido (E5-H03, RF-06)', () => {
   });
 });
 
+describe('atomicidad con la falla al final de la transacción (E5-H03, RF-06)', () => {
+  it('se revierten la salida del kardex, la existencia, las reservas, el cupón, la sesión y el carrito', async () => {
+    const idVariante = await varianteQueFallaAlPedir('FALLAFIN-');
+    const { codigo } = await crearCupon(app, tokenAdmin, { limiteUsosTotal: 3 });
+    const cliente = await clienteConCarrito(app, [{ idVariante, cantidad: 2 }]);
+    await request(app)
+      .put('/api/v1/carrito/cupon')
+      .set(comoCliente(cliente.token))
+      .send({ codigo });
+    const { idSesion } = leerSesionPago(await iniciarPago(app, cliente, estandar));
+    const kardexAntes = await kardexDe(idVariante);
+    const llave = randomUUID();
+
+    const respuesta = await pagar(app, cliente.token, llave);
+
+    expect(respuesta.status).toBe(500);
+    expect(await kardexDe(idVariante)).toEqual(kardexAntes);
+    expect(await estadoDeSesion(idSesion)).toMatchObject({
+      Estado: 'Activa',
+      EstadoReserva: 'Activa',
+      EstadoUsoCupon: 'Reservado',
+      UsosComprometidosCupon: 1,
+    });
+    expect(await pagoDe(idSesion)).toMatchObject({
+      Pedidos: 0,
+      Historial: 0,
+      EstadoCarrito: 'Activo',
+    });
+    expect(await intentosDe(idSesion)).toMatchObject([{ Estado: 'Anulado' }]);
+    expect(await estadoEnPasarela(llave)).toBe('Anulada');
+  });
+});
+
+describe('retomar con la misma llave (E5-H03, 01 §6.2)', () => {
+  it('pedido sin capturar: vencido el arrendamiento, el reintento captura y responde 200 con el mismo pedido', async () => {
+    const conCapturaCaida = crearApp(
+      dependenciasDePrueba({ pasarela: pasarelaQueFalla('capturar') }),
+    );
+    const { IDVariante } = await varianteVendible('30.00', 10);
+    const { cliente, idSesion } = await sesionCon(IDVariante, 1, conCapturaCaida);
+    const llave = randomUUID();
+    const primero = leerPedido(await pagar(conCapturaCaida, cliente.token, llave));
+    const [intento] = await intentosDe(idSesion);
+    await moverArrendamiento(intento?.IDIntentoPago ?? '0', -1);
+
+    const reintento = await pagar(app, cliente.token, llave);
+
+    expect(reintento.status).toBe(200);
+    expect(leerPedido(reintento).idPedido).toBe(primero.idPedido);
+    expect(await intentosDe(idSesion)).toMatchObject([{ Estado: 'Capturado' }]);
+    expect(await estadoEnPasarela(llave)).toBe('Capturada');
+    expect((await pagoDe(idSesion)).Pedidos).toBe(1);
+  });
+
+  it('autorizado sin pedido: vencido el arrendamiento, el reintento crea el pedido con la misma autorización', async () => {
+    const conAnulacionCaida = crearApp(
+      dependenciasDePrueba({ pasarela: pasarelaQueFalla('anular') }),
+    );
+    const idVariante = await varianteQueFallaAlPedir();
+    const { cliente, idSesion } = await sesionCon(idVariante, 1, conAnulacionCaida);
+    const llave = randomUUID();
+    await pagar(conAnulacionCaida, cliente.token, llave);
+    const [autorizado] = await intentosDe(idSesion);
+    await cambiarSku(idVariante, `SANA-${randomUUID().slice(0, 8)}`);
+    await moverArrendamiento(autorizado?.IDIntentoPago ?? '0', -1);
+
+    const reintento = await pagar(app, cliente.token, llave);
+
+    expect(reintento.status).toBe(201);
+    expect(await intentosDe(idSesion)).toMatchObject([
+      { Estado: 'Capturado', IDTransaccionPasarela: autorizado?.IDTransaccionPasarela },
+    ]);
+    expect(await estadoEnPasarela(llave)).toBe('Capturada');
+    expect((await pagoDe(idSesion)).Pedidos).toBe(1);
+  });
+});
+
 describe('reservas vencidas (E5-H03, N-06)', () => {
   const vencerReservas = (idSesion: number) =>
     ejecutarSP('SP_Pruebas_VencerReservasSesion', {
@@ -190,5 +293,44 @@ describe('datos de la tarjeta (E5-H02, N-03)', () => {
     expect(log).not.toMatch(/"cvv":"731"/);
     expect(JSON.stringify(respuesta.body)).not.toContain(TARJETA_APROBADA);
     expect(pedido.tarjeta).toEqual({ marca: 'Visa', ultimosDigitos: '4242' });
+  });
+
+  it('un cuerpo inválido responde 400 por campo sin repetir el número ni el CVV, ni en los logs', async () => {
+    const lineas: string[] = [];
+    const destino = new Writable({
+      write(fragmento: Buffer, _codificacion, listo) {
+        lineas.push(fragmento.toString());
+        listo();
+      },
+    });
+    const conLogs = crearApp(
+      dependenciasDePrueba({ logger: crearLogger({ nivel: 'debug', destino }) }),
+    );
+    const { IDVariante } = await varianteVendible('30.00', 10);
+    const { cliente } = await sesionCon(IDVariante, 1, conLogs);
+    const numero = '42424242x4242424';
+
+    const respuesta = await request(conLogs)
+      .post('/api/v1/checkout/sesion/pagos')
+      .set({ ...comoCliente(cliente.token), 'Idempotency-Key': randomUUID() })
+      .send({
+        numeroTarjeta: numero,
+        mesVencimiento: 13,
+        anioVencimiento: 2030,
+        cvv: '98',
+        extra: 1,
+      });
+
+    expect(respuesta.status).toBe(400);
+    const campos = z
+      .object({ errores: z.array(z.object({ campo: z.string() })) })
+      .parse(leerError(respuesta).detalles)
+      .errores.map((e) => e.campo);
+    expect(campos).toEqual(
+      expect.arrayContaining(['body.numeroTarjeta', 'body.mesVencimiento', 'body.cvv']),
+    );
+    const visible = JSON.stringify(respuesta.body) + lineas.join('');
+    expect(visible).not.toContain(numero);
+    expect(visible).not.toMatch(/"98"/);
   });
 });

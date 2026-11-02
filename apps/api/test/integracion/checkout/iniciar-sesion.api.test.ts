@@ -157,6 +157,27 @@ describe('iniciar la sesión de pago (E5-H01, 01 §6.1)', () => {
     });
   });
 
+  it('el límite por cliente se revalida al reservar: un uso confirmado después de aplicarlo → 422 sin reservar', async () => {
+    const { IDVariante } = await varianteVendible('30.00', 10);
+    const cliente = await clienteConCarrito(app, [{ idVariante: IDVariante, cantidad: 1 }]);
+    const { codigo, idCupon } = await cupon({ limiteUsosTotal: 5, limiteUsosPorCliente: 1 });
+    expect((await aplicarCupon(cliente.token, codigo)).status).toBe(200);
+    await ejecutarSP('SP_Pruebas_ConfirmarUsoCupon', {
+      IDUsuario: { tipo: sql.Int, valor: cliente.idUsuario },
+      IDCupon: { tipo: sql.Int, valor: idCupon },
+    });
+    const usosAntes = await usosDe(idCupon);
+
+    const respuesta = await iniciarPago(app, cliente, estandar);
+
+    expect(respuesta.status).toBe(422);
+    expect(leerError(respuesta).codigo).toBe('CUPON_LIMITE_CLIENTE');
+    expect(
+      (await request(app).get('/api/v1/checkout/sesion').set(comoCliente(cliente.token))).status,
+    ).toBe(404);
+    expect(await usosDe(idCupon)).toBe(usosAntes);
+  });
+
   it('el cupón queda reservado (UsosComprometidos + 1) y el descuento congelado', async () => {
     const { IDVariante } = await varianteVendible('40.00', 10);
     const cliente = await clienteConCarrito(app, [{ idVariante: IDVariante, cantidad: 1 }]);

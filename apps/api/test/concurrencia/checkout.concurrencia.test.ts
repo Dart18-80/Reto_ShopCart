@@ -35,7 +35,7 @@ beforeEach(() => limpiarCarritos(clientes));
 const agregar = (cliente: Cliente, idVariante: number) =>
   api('POST', '/carrito/lineas', { token: cliente.token, cuerpo: { idVariante, cantidad: 1 } });
 
-/** Todos a la vez: ninguno empieza hasta que los 20 están listos. */
+/** Los 20 a la vez: Promise.all dispara todas las peticiones en el mismo turno del event loop. */
 const comprarTodosALaVez = (): Promise<Intento[]> =>
   Promise.all(clientes.map((cliente) => comprar(cliente, idMetodoEnvio)));
 
@@ -93,7 +93,7 @@ describe('concurrencia del checkout (E5-H05, RNF-3)', () => {
       z.object({ idCupon: z.number() }),
     );
     for (const cliente of clientes) {
-      await agregar(cliente, variante.idVariante);
+      expect([200, 201]).toContain((await agregar(cliente, variante.idVariante)).status);
       const aplicado = await api('PUT', '/carrito/cupon', {
         token: cliente.token,
         cuerpo: { codigo },
