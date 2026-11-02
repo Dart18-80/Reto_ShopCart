@@ -1,6 +1,30 @@
 # Estado del backend (Fase 1)
 
-Revisión sobre `a31c5d5` (2026-11-02), actualizada tras el pulido del mismo día (§0). Suites en verde en un clon nuevo con `core.autocrlf=true` sobre `2d6f6fb`: API 467 unitarias y 743 de integración, migrador 248 + 9, concurrencia 2 y entorno 16.
+Revisión sobre `a31c5d5` (2026-11-02), actualizada tras el pulido del mismo día (§0) y tras la épica E9 (§E9). Suites en verde en un clon nuevo con `core.autocrlf=true` sobre `2d6f6fb`: API 467 unitarias y 743 de integración, migrador 248 + 9, concurrencia 2 y entorno 16.
+
+## E9. Observabilidad, tiempo real y defensa (2026-11-02)
+
+Encargo del PO después del push de la Fase 1. Las tres historias quedan **En revisión**. Suites en verde en un clon nuevo con `core.autocrlf=true` sobre `ee34fc8` (proyecto `shopcart-e8`, entorno desde cero en 103 s):
+
+| Suite | Sin el perfil `observabilidad` | Con el perfil |
+|---|---|---|
+| `pnpm lint` y `pnpm typecheck` | verde | — |
+| API unitarias | 516 | — |
+| Migrador | 249 + 9 de integración | 9 de integración |
+| API integración (incluida la telemetría) | 750 + 5 | 755 |
+| Concurrencia (RNF-3) | 2 | 2 |
+| Entorno | 21 (2 omitidas: las del perfil) | 22 (1 omitida: la de sin perfil) |
+
+El guion de demo (`docs/defensa/guion-demo.md`) se ensayó literal: los bloques de Bash se extrajeron del archivo y se ejecutaron, y el paso 7 encontró en Tempo la traza del 504 por su `requestId`.
+
+| Tema | Cambio | Commit |
+|---|---|---|
+| E9-H01 | OpenTelemetry (`node --import`, trazas, métricas y logs por OTLP), perfil `observabilidad` con Grafana LGTM fijado por digest, dashboard aprovisionado, prueba de seguridad de trazas con la API compilada | 08a561e, 4f34cd0, 34a2439, ee34fc8 |
+| E9-H02 | `GET /admin/reportes/eventos` (SSE, A-25): avisos por Redis pub/sub, agrupación, latido, 429, cierre por token, sesión y SIGTERM, `location` de nginx sin buffering | 675922d |
+| Revisión de E9 (`revisor-shopcart`: 0 CRÍTICO y 0 ALTO; `typescript-reviewer`: 1 ALTO y 4 MEDIOS) | El ALTO: con Redis caído al arrancar, la réplica no se suscribía nunca a los avisos. Los MEDIOS: una versión leída al conectar se adelantaba a su aviso y se perdía, contadores de Redis perdidos, un stream abierto durante el apagado y el latido colgado de la traza de la primera petición. Todos corregidos con su prueba | 20b8356, 8c42bb5 |
+| E9-H03 | `docs/defensa/`: índice, 15 módulos, 7 transversales, 30 preguntas difíciles y guion de demo; `defensa.test.ts` verifica que cada una de sus 1,701 citas siga en su línea | 37f0629 |
+| Bugs que encontró la guía | Con el pago en curso, el cliente no podía cambiar la cantidad de lo que él mismo reservó (409); una reserva vencida y aún no liberada del propio carrito retiraba el cupón como agotado | 2502250, ab3a5b1 |
+| Documentación | 01 y 02 alineados con el código: el 503 del health solo lo usa Docker, bitácora como ledger, índices de la búsqueda y de la bitácora, `manejar`, `LiberarArrendamiento` | c365608 |
 
 ## 0. Cambios del pulido (2026-11-02)
 
@@ -55,7 +79,7 @@ Pruebas: número de casos (archivos). Las de integración se asignan por carpeta
 
 ¹ Los casos de envíos viven en `test/integracion/carrito/envios.api.test.ts` y `secuencial/configuracion-envios.api.test.ts` (contados en carrito y configuración).
 
-Además: 2 pruebas de concurrencia (`test/concurrencia`, RNF-3) y 16 de entorno (`test/entorno`: seguridad HTTP, contenedores sin root y RNF-2). Los conteos por módulo y la cobertura son de la revisión; los totales, del pulido. Los SPs de prueba `database/test/R__SP_Pruebas_*` solo existen en `shopcart_test` y no se cuentan.
+Además: 2 pruebas de concurrencia (`test/concurrencia`, RNF-3) y 16 de entorno (`test/entorno`: seguridad HTTP, contenedores sin root y RNF-2); tras E9, 23 de entorno con observabilidad y tiempo real (§E9). Los conteos por módulo y la cobertura son de la revisión; los totales, del pulido. Los SPs de prueba `database/test/R__SP_Pruebas_*` solo existen en `shopcart_test` y no se cuentan.
 
 ## 2. Matriz de criterios y pruebas
 
@@ -97,7 +121,7 @@ Rutas relativas a `apps/api/test/`, salvo las que empiezan con `database/`. Los 
 | RNF-4 | Logs JSON sin secretos | `unit/shared/observability/logger.test.ts` › "redacta contraseñas, tarjeta, CVV, authorization y cookies, también anidados"; `integracion/auth/registro-login.api.test.ts` › "registro, login y un error de credenciales no dejan secretos en el log" | unitaria + integración |
 | RNF-4 | `requestId` hasta los SPs | `integracion/shared/contexto-de-sesion.test.ts` › "deja en SESSION_CONTEXT el usuario, el rol y el RequestId de la petición" | integración |
 | RNF-4 | `/health` verifica la base con un SP | `integracion/sistema/health.api.test.ts` › "responde 200 con la base en ok tras ejecutar el SP_Sistema_Health real"; `unit/modules/sistema/health.api.test.ts` › "con la base caída responde 503 para que el balanceador saque la réplica" | integración + unitaria |
-| RNF-4 | Trazas OpenTelemetry y Grafana LGTM | **Sin prueba: no implementado** (F5, §4) | — |
+| RNF-4 | Trazas OpenTelemetry y Grafana LGTM | `telemetria/seguridad-trazas.test.ts` (nada sensible en lo exportado; la traza del pago llega a sus SPs y a la pasarela); `entorno/observabilidad.test.ts` (sin el perfil, una advertencia por señal; con el perfil, la compra en Tempo y sus logs en Loki) | telemetría, entorno |
 | Enunciado §05/§08 | Seguridad HTTP | `entorno/seguridad-http.test.ts` (helmet, CORS, sin versión, 500 sin stack) | entorno |
 | Enunciado §05/§08 | Sin SQL en el backend, sin concatenación, sin tipos prohibidos | `database/migrator/test/penalizaciones.test.ts` › "ningún archivo TypeScript del backend contiene una sentencia SQL", "§08: el texto de un SQL dinámico nunca concatena valores, …", "§05: ningún FLOAT, REAL, MONEY, …" | unitaria (migrador) |
 | Enunciado §05 | Migración idempotente, `V###` inmutable, la app no lee tablas | `database/migrator/test/integracion/migrador.test.ts` › "ejecutarlo dos veces seguidas no aplica nada la segunda vez", "modificar un V### ya aplicado hace fallar el migrador con un mensaje claro", "ejecuta SP_Sistema_Health, pero un SELECT directo a una tabla devuelve error de permisos" | integración (migrador) |
@@ -158,8 +182,8 @@ Sin diferencias.
 |---|---|---|---|
 | RNF-1 | Semilla media + script opcional de 50k pedidos | Carga pesada en F5 | Semilla: `S006__datos_demo.sql`. **No encontrada:** `database/load/L001__carga_pesada.sql` (la carpeta solo tiene `.gitkeep`), aunque 02 §7 la lista como existente. La medición de §7 usó el mismo generador en una base desechable |
 | RNF-2 | Redis «solo contadores de rate limiting y caché de reportes» | Sin estado | Implementada; Redis guarda además la versión de sesión (`versiones-sesion-redis.ts`, A-07), que 01 §3 sí menciona |
-| RNF-4 | OpenTelemetry + Grafana LGTM (perfil `observability`) | F5 | Parcial: logs pino con `requestId`, `SP_Sistema_Health`. **No encontrados:** dependencias `@opentelemetry`, servicio `otel-lgtm` ni perfil en `docker-compose.yml` (solo la IP reservada, línea 47); `infra/grafana/` vacío. 01 §3 y §11 lo describen en presente |
-| A-16 | Librerías, incluida OpenTelemetry; «cada una se justifica en el README» | ✅ | OpenTelemetry no está en `apps/api/package.json`. Verificar: README §4 no justifica pino, helmet, cors, argon2, jose, ioredis, rate-limiter-flexible, exceljs ni pdfmake |
+| RNF-4 | OpenTelemetry + Grafana LGTM (perfil `observabilidad`) | ✅ | Implementado en E9-H01 (§E9) |
+| A-16 | Librerías, incluida OpenTelemetry; «cada una se justifica en el README» | ✅ | Los paquetes `@opentelemetry` e `import-in-the-middle` están en `apps/api/package.json` con su versión en A-16 y en la tabla del README (E9-H01) |
 | A-03 / A-07 / A-08 | nginx sirve la SPA; access token en memoria del frontend; esquemas compartidos con el frontend | ✅ | La parte del backend está; la SPA es un placeholder de Fase 2 (`apps/web/public/index.html`) |
 | A-11 | Caché de reportes con una versión | ✅ | El código usa una versión por dominio (`reportes.cache.ts`); el texto de A-11 quedó desactualizado frente a 01 §9 |
 | A-24 | Exportación asíncrona + barrido de huérfanos | ✅ | Implementada; `docs/04-verificacion-fase-1.md:41` todavía dice «Abierto: … requiere decidir un barrido» |
@@ -176,11 +200,11 @@ Sin diferencias.
 |---|---|---|
 | Frontend SPA (Vite + React): tienda, backoffice y dashboard | Fase 2 (F1–F4) | 00:53; 03-backlog §4 (:643-652); README:5, :331; 01:498, :521 |
 | Pantallas de revisión manual de pagos (`EnRevision`, reembolsos `Fallido`) | Fase 2 (hoy solo API) | README:336 |
-| OpenTelemetry, trazas y Grafana LGTM (perfil `observability`) | F5; no implementado | 00:160; 01 §11 (:476-481); 03-backlog:121, :653; README:335; docker-compose.yml:46 |
+| OpenTelemetry, trazas y Grafana LGTM (perfil `observabilidad`) | **Hecho en E9-H01** | §E9 |
 | Script de carga pesada (`database/load/L001`) | F5 (el generador ya acepta `@Pedidos`) | 00:157; 02 §7; 03-backlog:653; README:334 |
 | Índice para el filtro de carritos abandonados | F5 | 03-backlog:653; README:334 |
 | Correo (puerto `Notificador` + Mailpit): exportación terminada y recuperar contraseña | Fuera de la Fase 1 | 00:196 (N-15); README:332; planes/E7-H05:103 |
-| Dashboard en tiempo real (SSE) | Mejora documentada | README:333; 00:215; planes/E7-H05:103 |
+| Dashboard en tiempo real (SSE) | **Hecho en E9-H02** (falta la pantalla: Fase 2) | §E9; 01 A-25 |
 | Pasarela real (adaptador y webhooks firmados) | Mejora documentada | README:337; 00:174 (N-03); 01:570 |
 | Captura al despachar | Mejora documentada | 00:174 (N-03); 01:570 |
 | Kubernetes | Diferido (D-04) | 00:151; 01:83, :572; README:338 |
@@ -341,5 +365,12 @@ Generador `SP_Semilla_GenerarDatosDemo @Pedidos = 50000, @Dias = 90` en una base
 | 3 vulnerabilidades moderadas transitivas en producción (`uuid`, `minimatch` vía `exceljs`) | Verificación de entrega | Abierto; ninguna recibe entrada del usuario | `pnpm audit --prod` |
 | Documentación desalineada con el código | Inventario (§3) | **Resuelto en 3c09179 y a2a841e** (README con FEL, tarifa por zona y el resto de exclusiones) | §0 |
 | Sobre de paginación duplicado en 8 esquemas OpenAPI | Inventario (§5.4) | **Resuelto en 2d6f6fb** | §5.4 |
+| Un `.tmp` de una exportación que una réplica dejaba a medias al morir no lo recoge el barrido de huérfanos (`listar` solo ve nombres finales) | Guía de defensa (E9-H03) | Abierto: crece solo si una réplica muere mientras escribe; requiere decidir si el barrido también borra `.tmp` viejos | `almacen-disco.ts:9`, `exportaciones.tareas.ts:37` |
+| Se pueden desactivar todos los métodos de envío y entonces todo checkout falla con 404 | Guía de defensa (E9-H03) | Abierto: decisión de negocio («al menos un método activo») | `R__SP_Envios_ActualizarMetodo.sql`, `R__SP_Checkout_IniciarSesion.sql:99` |
+| La espera máxima del apagado (10 s) es igual al plazo de `docker stop`, y el compose no define `stop_grace_period` | Guía de defensa (E9-H03) | Abierto (menor): con una petición de casi 10 s, el SIGKILL compite con la salida forzada | `server.ts:36` |
+| Cambiar el rol sube la versión de sesión pero no revoca los refresh tokens; el refresh siguiente emite el token con el rol nuevo | Guía de defensa (E9-H03) | Por confirmar: N-15 dice «los que correspondan» | `R__SP_Usuarios_Actualizar.sql:61` |
+| El orden de capas dentro de un módulo (`routes → controller → service → repository`) no lo verifica el lint, solo las fronteras entre módulos | Guía de defensa (E9-H03) | Abierto: hoy se cumple (revisado a mano); CLAUDE.md dice que el lint lo verifica | `eslint.config.mjs` |
+| Redis usa `redis:7-alpine` sin digest | Guía de defensa (E9-H03) | Abierto (SQL Server y Grafana LGTM sí lo llevan) | `docker-compose.yml` |
+| El cierre de un stream SSE por token vencido o sesión revocada llega en el siguiente latido (hasta 15 s después) | Revisión de E9 | Aceptado y documentado en A-25 | `reportes.eventos.ts` (`revisar`) |
 
 Se descartaron 71 riesgos y dudas de los reportes de cierre de E0 a E8 por estar resueltos y verificados contra el código, las pruebas o un commit. Entre ellos están los 5 resueltos hoy (15ffc5f, 176d889, 4a9f80e, 609af26), y 3 se cerraron por decisión del PO sin riesgo residual.
