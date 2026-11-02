@@ -1,6 +1,6 @@
 # Plan E5-H01 · Iniciar la sesión de pago
 
-Estado: **propuesto, pendiente de revisión del PO.** No hay nada implementado.
+Estado: **aprobado por el PO** (decisiones en la sección 10).
 Referencias: 01 §6.1 y §6.6, RF-06, N-01, N-02, N-05, N-06, N-12, A-13, M-04.
 
 ## 1. Alcance
@@ -145,9 +145,9 @@ La usan cuatro caminos: el `POST` con contenido distinto, el `DELETE`, la fusió
 - **`DELETE`:** cancela y libera. Sin sesión → 404.
 - **Unitarias del servicio:** traducción 200/201 y nada de lógica de negocio.
 
-## 10. Decisiones que necesito
+## 10. Decisiones del PO
 
-1. **Precio cambiado entre el carrito y el inicio:** recomiendo no agregar un "total esperado" al `POST` (sección 5). ¿De acuerdo?
-2. **Hash de contenido:** incluye precio efectivo, descuento por línea, costo de envío y los datos de la dirección (sección 4). ¿De acuerdo, o prefieres solo variantes, cantidades, cupón, método y dirección (como dice el comentario de V007)?
-3. **Sesión con un pago en curso:** propongo que `POST` con otro contenido, `DELETE` y la fusión respondan 409 `PAGO_EN_CURSO` en lugar de cancelarla. ¿De acuerdo?
-4. **Código HTTP de la reutilización:** 200 si se reutiliza y 201 si se crea. ¿De acuerdo?
+1. **Aprobado:** el cliente no envía un "total esperado".
+2. **Aprobado el contenido del hash.** El SP lo calcula con los datos en orden canónico (por `IDVariante`) y con los decimales en formato fijo (`CONVERT(VARCHAR(20), monto)`, siempre con dos decimales). Prueba: dos carritos iguales (las mismas líneas agregadas en otro orden) dan el mismo hash, y el `POST` reutiliza la sesión.
+3. **Aprobado:** una sesión con un pago en curso no se cancela (`409 PAGO_EN_CURSO`). La fusión del login tampoco: se pospone con el aviso `FusionPendiente` y la cookie se conserva.
+4. **Aprobado:** `200` al reutilizar y `201` al crear.

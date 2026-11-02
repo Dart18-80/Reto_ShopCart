@@ -567,14 +567,36 @@ UQ `(IDSesionCheckout, IDVariante)`. **Invariante (lo valida el SP):** `SUM(Desc
 | LlaveIdempotencia | UNIQUEIDENTIFIER | **UQ** |
 | HashSolicitud | BINARY(32) | Para detectar "misma llave, otro contenido" → 422 |
 | Monto | DECIMAL(12,2) | CK > 0 |
-| Estado | VARCHAR(12) | CK `IN ('Pendiente','Autorizado','Capturado','Rechazado','Anulado','Error')` |
+| Estado | VARCHAR(12) | CK `IN ('Pendiente','Autorizado','Capturado','Rechazado','Anulado','Fallido','Error')` (`Fallido`: la conciliación confirmó que la pasarela nunca autorizó; V012) |
 | IDTransaccionPasarela | VARCHAR(64) *NULL* | |
 | CodigoRespuesta | VARCHAR(30) *NULL* | p. ej. `FONDOS_INSUFICIENTES` |
 | MensajeRespuesta | NVARCHAR(200) *NULL* | |
 | MarcaTarjeta | VARCHAR(20) *NULL* | |
 | UltimosDigitos | CHAR(4) *NULL* | CK: 4 dígitos |
+| ArrendadoHasta | DATETIME2(3) *NULL* | V012, N-03: hasta cuándo una petición tiene tomado el intento en curso; `NULL` cuando ya no está en curso |
 
-Índices: **`UX_IntentoPago_EnCursoPorSesion`** UNIQUE `(IDSesionCheckout) WHERE Estado IN ('Pendiente','Autorizado')` (**un solo intento en curso por sesión, garantizado por la BD** → 409, N-03), `UX_IntentoPago_Transaccion` UNIQUE `(IDTransaccionPasarela) WHERE IDTransaccionPasarela IS NOT NULL` e `IX_IntentoPago_PorConciliar (Estado, FechaActualizacion) WHERE Estado = 'Autorizado'`.
+Índices: **`UX_IntentoPago_EnCursoPorSesion`** UNIQUE `(IDSesionCheckout) WHERE Estado IN ('Pendiente','Autorizado')` (**un solo intento en curso por sesión, garantizado por la BD** → 409, N-03), `UX_IntentoPago_Transaccion` UNIQUE `(IDTransaccionPasarela) WHERE IDTransaccionPasarela IS NOT NULL` e `IX_IntentoPago_PorConciliar (ArrendadoHasta) INCLUDE (Estado, IDSesionCheckout) WHERE Estado IN ('Pendiente','Autorizado')` (V012: la conciliación busca los intentos en curso con el arrendamiento vencido).
+
+**`PasarelaAutorizacion`** y **`PasarelaReembolso`** (V012, N-03): el estado propio de la pasarela simulada, como si fuera la base de un sistema externo. Solo las usa su adaptador, por `SP_Pasarela_*`, y nunca dentro de una transacción del checkout.
+
+| Tabla | Columnas | Reglas |
+|---|---|---|
+| `PasarelaAutorizacion` | `IDPasarelaAutorizacion` INT PK, `LlaveIdempotencia` UNIQUEIDENTIFIER, `IDTransaccion` VARCHAR(64), `Monto` DECIMAL(12,2), `Marca` VARCHAR(20), `UltimosDigitos` CHAR(4), `Estado` VARCHAR(12), `CodigoRespuesta` VARCHAR(30) *NULL*, `MensajeRespuesta` NVARCHAR(200) *NULL*, fechas | **UQ** llave (misma llave → misma respuesta) y **UQ** `IDTransaccion`; CK `Estado IN ('Autorizada','Rechazada','Capturada','Anulada')`, CK monto > 0 |
+| `PasarelaReembolso` | `IDPasarelaReembolso` INT PK, `LlaveIdempotencia` UNIQUEIDENTIFIER, `IDTransaccion` VARCHAR(64) FK → `PasarelaAutorizacion`, `IDReembolso` VARCHAR(64), `Monto` DECIMAL(12,2), fecha | **UQ** llave y **UQ** `IDReembolso`; CK monto > 0 |
+
+**`SolicitudIdempotente`** (V012, E5-H03): las llaves de idempotencia de las operaciones que no son pagos (entradas y ajustes de inventario).
+
+| Columna | Tipo | Reglas |
+|---|---|---|
+| IDSolicitudIdempotente | BIGINT IDENTITY | PK |
+| IDUsuario | INT | FK → Usuario |
+| LlaveIdempotencia | UNIQUEIDENTIFIER | **UQ `(IDUsuario, LlaveIdempotencia)`** |
+| Operacion | VARCHAR(40) | p. ej. `Inventario.Entrada` |
+| HashSolicitud | BINARY(32) | Misma llave con otro contenido → 422 |
+| Respuesta | NVARCHAR(MAX) | CK `ISJSON = 1`: lo necesario para devolver la misma respuesta |
+| FechaCreacion | DATETIME2(3) | `IX_SolicitudIdempotente_Fecha`: el job horario purga las de más de 24 h |
+
+La inserta el SP de la operación (entrada o ajuste) **en la misma transacción que el movimiento**, nunca el middleware por separado.
 
 ### 3.9 Pedidos
 
@@ -772,7 +794,7 @@ Los SPs marcados **(interno)** solo los invocan otros SPs, nunca la API. Así ha
 `SP_Cupones_Listar` · `SP_Cupones_Obtener` · `SP_Cupones_Crear` · `SP_Cupones_Actualizar` (un cupón usado, con al menos una fila en `UsoCupon`, solo cambia vigencia, límites y estado; `detalles.campo` dice cuál no se puede cambiar; cada `CK_Cupon_*` se traduce a 50003 con su campo) · `SP_Cupones_CambiarEstado` · `SP_Cupones_ReservarUso` **(interno)** · `SP_Cupones_LiberarUso` **(interno)** · `SP_Envios_ListarMetodos` · `SP_Envios_ActualizarMetodo` · `SP_Configuracion_Obtener` · `SP_Configuracion_Actualizar`
 
 ### Checkout
-`SP_Checkout_IniciarSesion` · `SP_Checkout_ObtenerSesion` · `SP_Checkout_CancelarSesion` · `SP_Checkout_RegistrarIntentoPago` · `SP_Checkout_ActualizarIntentoPago` (autorizado, rechazado, anulado, capturado; cancela la sesión al llegar al máximo de rechazos) · `SP_Checkout_ExpirarSesiones` (job) · `SP_Checkout_ObtenerIntentosPorConciliar` (job)
+`SP_Checkout_IniciarSesion` · `SP_Checkout_ObtenerSesion` · `SP_Checkout_CancelarSesion` · `SP_Checkout_CancelarSesionActiva` **(interno)** · `SP_Checkout_RegistrarIntentoPago` (llave, hash, arrendamiento y compare-and-set) · `SP_Checkout_ActualizarIntentoPago` (autorizado, rechazado, anulado, capturado; cancela la sesión al llegar al máximo de rechazos) · `SP_Checkout_LiberarArrendamiento` (timeout de la pasarela) · `SP_Checkout_ExpirarSesiones` (job; no vence sesiones con un pago con el arrendamiento vivo) · `SP_Checkout_TomarIntentosPorConciliar` (job, `sp_getapplock`: toma los intentos con el arrendamiento vencido hace más de 2 min) · `SP_Checkout_ResolverIntentoConciliado` (job) · `SP_Inventario_LiberarReservas` **(interno)** · `SP_Cupones_ReservarUso` **(interno)** · `SP_Cupones_LiberarUso` **(interno)** · `SP_Pasarela_Autorizar` · `SP_Pasarela_Capturar` · `SP_Pasarela_Anular` · `SP_Pasarela_Reembolsar` · `SP_Pasarela_Consultar` (solo el adaptador de la pasarela simulada) · `SP_Sistema_PurgarSolicitudesIdempotentes` (job)
 
 ### Pedidos
 `SP_Pedidos_CrearPedido` (la transacción atómica de RF-06) · `SP_Pedidos_ListarPropios` · `SP_Pedidos_ObtenerDetalle` (con `@IDUsuario` si el rol es Cliente) · `SP_Pedidos_Listar` (gestión: filtros por estado, cliente y fechas, paginado) · `SP_Pedidos_CambiarEstado` · `SP_Pedidos_Cancelar` · `SP_Pedidos_RegistrarDevolucion` · `SP_Pedidos_ListarReembolsos` · `SP_Pedidos_ObtenerReembolsosPendientes` (job) · `SP_Pedidos_ActualizarReembolso` · `SP_Pedidos_ListarTransiciones` (para el test de coincidencia de N-08)
@@ -822,13 +844,13 @@ Rangos por módulo para `THROW`. El catálogo completo, con su código estable y
 
 | Rango | Módulo | Ejemplos |
 |---|---|---|
-| 50001–50099 | General | 50001 `NO_ENCONTRADO` (404) · 50002 `CONFLICTO_CONCURRENCIA` (409) · 50003 `PARAMETRO_INVALIDO` (400) · 50004 `CONTEXTO_NO_ESTABLECIDO` · 50005 `INVARIANTE_INTERNA` (500: un SP interno llamado sin transacción, actor o rol; error de programación, mensaje genérico y log en error) (500: error de programación, el cliente ve el mensaje genérico) |
+| 50001–50099 | General | 50001 `NO_ENCONTRADO` (404) · 50002 `CONFLICTO_CONCURRENCIA` (409) · 50003 `PARAMETRO_INVALIDO` (400) · 50004 `CONTEXTO_NO_ESTABLECIDO` (500: error de programación, el cliente ve el mensaje genérico) · 50005 `INVARIANTE_INTERNA` (500: un SP interno llamado sin transacción, actor o rol; error de programación, mensaje genérico y log en error) |
 | 50100–50199 | Auth y usuarios | 50101 `CORREO_EN_USO` (409) · 50102 `REFRESH_REUTILIZADO` (401) · 50103 `USUARIO_INACTIVO` (401) · 50104 `ULTIMO_ADMIN` (409) · 50105 `ACCION_SOBRE_SI_MISMO` (409: un Admin no se desactiva ni cambia su propio rol) · 50106 `LIMITE_DIRECCIONES` (422: máximo 10 direcciones por cliente) |
 | 50200–50299 | Catálogo | 50201 `SKU_DUPLICADO` (409) · 50202 `COMBINACION_DUPLICADA` (409) · 50203 `PRODUCTO_CON_HISTORIAL` (409) · 50204 `CATEGORIA_CON_PRODUCTOS` (409) · 50205 `NOMBRE_DUPLICADO` (409: nombre de categoría o de atributo, o valor repetido dentro de un atributo) · 50206 `CATEGORIA_INACTIVA` (409: un producto activo en una categoría inactiva) · 50207 `ATRIBUTOS_NO_COINCIDEN` (422: la variante no usa el conjunto de atributos del producto; los esperados van en `detalles`) · 50208 `VARIANTE_CON_HISTORIAL` (409: la combinación de una variante con historial no se cambia) · 50209 `CATEGORIA_EN_USO` (409: la categoría está en cupones o en pedidos y solo se puede desactivar) |
 | 50300–50399 | Inventario | 50301 `STOCK_INSUFICIENTE` (409) · 50302 `AJUSTE_DEJA_NEGATIVO` (422) · 50303 `AJUSTE_BAJO_RESERVADO` (422) · 50304 `MOTIVO_REQUERIDO` (400) |
 | 50400–50499 | Carrito | 50401 `LIMITE_LINEAS` (422) · 50402 `LINEAS_NO_DISPONIBLES` (409) · 50403 `CARRITO_VACIO` (422) |
 | 50500–50599 | Cupones | 50501 `CUPON_NO_EXISTE` · 50502 `CUPON_INACTIVO` · 50503 `CUPON_NO_VIGENTE_AUN` · 50504 `CUPON_VENCIDO` · 50505 `CUPON_AGOTADO` · 50506 `CUPON_LIMITE_CLIENTE` · 50507 `CUPON_MINIMO_NO_ALCANZADO` · 50508 `CUPON_SIN_PRODUCTOS_CATEGORIA` (todos 422) · 50509 `CUPON_USADO_NO_EDITABLE` (409) · 50510 `CUPON_CODIGO_DUPLICADO` (409) · 50511 `CUPON_LIMITE_BAJO_USOS` (422, traduce `CK_Cupon_UsosComprometidos`; `detalles.usosComprometidos`) |
-| 50600–50699 | Checkout y pago | 50601 `SESION_VENCIDA` (409) · 50602 `PAGO_EN_CURSO` (409) · 50603 `LLAVE_REUTILIZADA` (422) · 50604 `PAGO_RECHAZADO` (402) · 50605 `MAX_INTENTOS` (409) |
+| 50600–50699 | Checkout y pago | 50601 `SESION_VENCIDA` (409) · 50602 `PAGO_EN_CURSO` (409, con `Retry-After` si es la misma llave) · 50603 `LLAVE_REUTILIZADA` (422) · 50604 `PAGO_RECHAZADO` (402) · 50605 `MAX_INTENTOS` (409) · 50606 `PAGO_SIN_CONFIRMAR` (504: la pasarela no respondió; se puede reintentar con la misma llave y no se cobra dos veces) |
 | 50700–50799 | Pedidos | 50701 `TRANSICION_INVALIDA` (409) · 50702 `NO_CANCELABLE` (409) · 50703 `DEVOLUCION_EXCEDE_VENDIDO` (422) · 50704 `PLAZO_DEVOLUCION_VENCIDO` (422) · 50705 `REEMBOLSO_EXCEDE_TOTAL` (422) |
 | — (error del motor) | Ledger | **37359**: SQL Server rechaza `UPDATE`/`DELETE` sobre una tabla ledger append-only. Se produce al **compilar** un SP que lo intente, así que nunca llega a la API y no se mapea a HTTP |
 | — (sin número SQL) | API | `VALIDACION_FALLIDA` (400) · `JSON_INVALIDO` (400) · `CUERPO_DEMASIADO_GRANDE` (413) · `CONTENIDO_NO_SOPORTADO` (415) · `CREDENCIALES_INVALIDAS` (401, el mismo mensaje para correo inexistente y contraseña incorrecta) · `NO_AUTENTICADO` (401) · `SIN_PERMISO` (403) · `DEMASIADAS_PETICIONES` (429) · `NO_ENCONTRADO` (404, también para rutas inexistentes) · `ERROR_INTERNO` (500). Nacen en la API, no en un SP |

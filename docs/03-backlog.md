@@ -443,6 +443,8 @@
 - [ ] Repetir la petición sin cambios en el carrito devuelve la misma sesión; con cambios, cancela la anterior (liberando reservas y cupón) y crea una nueva.
 - [ ] Exige sesión iniciada; un invitado recibe `401`.
 
+**Plan aprobado:** `docs/planes/E5-H01-iniciar-sesion-de-pago.md`. `HashContenido` lo calcula el SP con los datos en orden canónico (por `IDVariante`) y los decimales en formato fijo; dos carritos iguales dan el mismo hash. Una sesión con un pago en curso no se cancela (`409 PAGO_EN_CURSO`) y la fusión del login se pospone con `FusionPendiente`. `200` al reutilizar y `201` al crear.
+
 **Nota (cierre de E4):** `SP_Checkout_CancelarSesionActiva` (creado en E4-H03) libera hoy las reservas y el uso del cupón en línea. En esta historia se crean `SP_Inventario_LiberarReservas` y `SP_Cupones_LiberarUso` (internos) y `SP_Checkout_CancelarSesionActiva` pasa a llamarlos: no queda otra ruta de liberación.
 
 **Referencias:** RF-06, N-01, N-02, N-06, A-13.
@@ -452,6 +454,8 @@
 **CA**
 - [ ] La misma llave devuelve la misma respuesta.
 - [ ] El número completo de tarjeta y el CVV nunca aparecen en logs, respuestas ni base de datos.
+- [ ] La pasarela simulada persiste sus autorizaciones por llave en tablas propias de SQL Server (`PasarelaAutorizacion`, `PasarelaReembolso`, solo por `SP_Pasarela_*`, nunca dentro de una transacción del checkout; sin Redis): autorizar con `4000…0119` en una réplica y reintentar con la misma llave en la otra devuelve la misma autorización.
+- [ ] El puerto incluye `consultar(llave)` (`NoExiste`, `Autorizada`, `Capturada`, `Anulada`, `Rechazada`).
 
 **Referencias:** N-03.
 
@@ -466,15 +470,23 @@
 - [ ] `FechaPagoLocal` es el día de Guatemala (UTC−6): un pago a las 05:59 UTC queda en el día anterior y uno a las 06:00 UTC en el mismo día (A-12, M-03).
 - [ ] Si la reserva venció, se intenta reservar de nuevo dentro de la transacción; si no hay existencia, se rechaza sin cobro.
 - [ ] Una tarjeta rechazada responde `402 PAGO_RECHAZADO`; el quinto rechazo cancela la sesión y libera reservas y cupón.
+- [ ] Timeout de la pasarela → `504 PAGO_SIN_CONFIRMAR` con el arrendamiento liberado; el reintento con la misma llave recibe la misma autorización: un solo pedido y un solo cobro.
+- [ ] Arrendamiento: reintento con la misma llave durante el arrendamiento → `409 PAGO_EN_CURSO` con `Retry-After`; después → retoma y se completa con un solo cobro; dos retomas simultáneas → solo una avanza.
+- [ ] Sesión ya pagada, con cualquier llave → `200` con el pedido existente, sin crear intento ni llamar a la pasarela.
+- [ ] `POST /inventario/entradas` y `/ajustes` aceptan `Idempotency-Key`: `SolicitudIdempotente` con `UNIQUE (IDUsuario, Llave)`, insertada por el SP en la misma transacción que el movimiento; misma llave → misma respuesta; otro contenido → `422`.
+
+**Plan aprobado:** `docs/planes/E5-H03-confirmar-pago-y-crear-pedido.md`.
 
 **Referencias:** RF-06, N-01, N-03, N-07, N-18.
 
 ### E5-H04 · Planificador de tareas y expiración de sesiones — `Must` · 0.5 h
-**Alcance:** planificador interno en `src/shared/jobs`; `SP_Checkout_ExpirarSesiones` cada minuto y `SP_Carrito_ExpirarInvitados` cada hora (carritos de invitado con 30 días sin actividad → `Expirado`, N-05), ambos protegidos con `sp_getapplock`.
+**Alcance:** planificador interno en `src/shared/jobs`; `SP_Checkout_ExpirarSesiones` cada minuto, la **conciliación de pagos** cada minuto (movida desde F5) y, cada hora, `SP_Carrito_ExpirarInvitados` (carritos de invitado con 30 días sin actividad → `Expirado`, N-05) y la purga de `SolicitudIdempotente` de más de 24 h. Todas protegidas con `sp_getapplock`.
 **CA**
 - [ ] Una sesión vencida pasa a `Expirada` y libera sus reservas y el uso del cupón **sin intervención manual** (criterio de RF-07).
 - [ ] Con las dos réplicas corriendo, cada ejecución la procesa una sola (comprobable en los logs).
 - [ ] La tarea es idempotente: ejecutarla dos veces no cambia nada la segunda.
+- [ ] La expiración no vence una sesión con un pago en curso mientras el arrendamiento del intento está vivo.
+- [ ] Conciliación (intentos con el arrendamiento vencido hace más de 2 min, 01 §6.2), con una prueba por rama: `Pendiente` → `consultar(llave)`: `NoExiste` → `Fallido` sin cobro; `Autorizada` → capturar si existe el pedido de la sesión, si no anular. `Autorizado` sin captura → capturar si existe el pedido, si no anular. Pedido existente con el intento sin `Capturado` → capturar (incluida la API que muere entre `CrearPedido` y la actualización del intento). Después, la sesión sin pedido puede expirar y liberar sus reservas. Correrla dos veces no cambia nada.
 
 **Nota (cierre de E4):** la expiración libera con `SP_Inventario_LiberarReservas` y `SP_Cupones_LiberarUso` (E5-H01), los mismos que usa `SP_Checkout_CancelarSesionActiva`: no queda otra ruta de liberación.
 
@@ -601,7 +613,7 @@ Se detalla en historias al cerrar la Fase 1.
 | F2 Tienda | Catálogo con búsqueda y filtros, detalle, carrito con avisos, checkout, pago, mis pedidos |
 | F3 Backoffice | Catálogo, precios, inventario y kardex, pedidos y devoluciones, cupones, usuarios, bitácora, configuración |
 | F4 Dashboard | Gráficas de ventas, categorías, top 10 y carritos abandonados |
-| F5 Extras y calidad | Caché de reportes en Redis, exportación a Excel, observabilidad con Grafana LGTM, script de carga pesada, job de conciliación de pagos y lo recortado de la Fase 1 |
+| F5 Extras y calidad | Caché de reportes en Redis, exportación a Excel, observabilidad con Grafana LGTM, script de carga pesada y lo recortado de la Fase 1 (la conciliación de pagos pasó a E5-H04) |
 | F6 Cierre y defensa | README final, ensayo de la demo (incluida la tolerancia a fallas) y preparación de preguntas de defensa |
 
 ---
@@ -639,11 +651,11 @@ Se detalla en historias al cerrar la Fase 1.
 | E4-H04 | Cupones (administración) | Must | 0.25 | Hecha |
 | E4-H05 | Aplicar cupón en el carrito | Must | 0.5 | Hecha |
 | E4-H06 | Envíos y parámetros | Should | 0.25 | Hecha |
-| E5-H01 | Iniciar la sesión de pago | Must | 1.0 | Propuesta |
-| E5-H02 | Pasarela de pago simulada | Must | 0.5 | Propuesta |
-| E5-H03 | Confirmar el pago y crear el pedido | Must | 1.25 | Propuesta |
-| E5-H04 | Planificador de tareas y expiración de sesiones | Must | 0.5 | Propuesta |
-| E5-H05 | Test de concurrencia | Must | 0.75 | Propuesta |
+| E5-H01 | Iniciar la sesión de pago | Must | 1.0 | Lista |
+| E5-H02 | Pasarela de pago simulada | Must | 0.5 | Lista |
+| E5-H03 | Confirmar el pago y crear el pedido | Must | 1.25 | Lista |
+| E5-H04 | Planificador de tareas y expiración de sesiones | Must | 0.5 | Lista |
+| E5-H05 | Test de concurrencia | Must | 0.75 | Lista |
 | E6-H01 | Consulta de pedidos | Must | 0.5 | Propuesta |
 | E6-H02 | Cambios de estado | Must | 0.75 | Propuesta |
 | E6-H03 | Cancelación con reembolso | Must | 1.0 | Propuesta |

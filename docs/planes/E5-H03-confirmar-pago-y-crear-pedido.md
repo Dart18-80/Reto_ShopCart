@@ -1,7 +1,6 @@
 # Plan E5-H03 · Confirmar el pago y crear el pedido
 
-Estado: **propuesto, pendiente de revisión del PO.** No hay nada implementado. Depende de E5-H01 (sesión) y
-E5-H02 (puerto `PasarelaPago` y `PasarelaSimulada`).
+Estado: **aprobado por el PO con cambios** (sección 14: las decisiones y los cambios A, B y C, que mandan sobre las secciones anteriores). Depende de E5-H01 (sesión) y E5-H02 (puerto `PasarelaPago` y `PasarelaSimulada`).
 Referencias: 01 §6.2 y §6.6, RF-06, N-01, N-03, N-07, N-08, N-18, A-12, A-13, M-03, M-04.
 
 ## 1. Alcance y piezas
@@ -166,12 +165,30 @@ Si no alcanza, toda la transacción se revierte, el servicio anula la autorizaci
 - **Falla de captura y de anulación** con la pasarela falsa: el estado de la tabla de la sección 11.
 - **Datos de tarjeta:** el número completo y el CVV nunca en logs ni en la base.
 
-## 14. Decisiones que necesito
+## 14. Decisiones del PO y cambios (mandan sobre las secciones anteriores)
 
-1. **Código para el timeout:** propongo uno nuevo, 50606 `PAGO_SIN_CONFIRMAR` con HTTP 503. ¿O prefieres 504?
-2. **`HashSolicitud` sin el número completo de tarjeta** (marca, últimos 4 y vencimiento). Alternativa: un HMAC con un secreto nuevo de configuración. Recomiendo lo primero, porque la llave ya identifica el intento.
-3. **"Sesión ya pagada" con una llave nueva:** el pedido de la última sesión `Pagada` del cliente si se cerró hace menos de `MinutosReserva`; después, 404 "no hay sesión de pago activa". ¿De acuerdo?
-4. **Tarjeta `4000…0119`:** autoriza pero simula que la respuesta se pierde, y el reintento con la misma llave recibe la autorización. Esto define el comportamiento de E5-H02. ¿De acuerdo?
-5. **Conciliación:** el job que anula o captura intentos `Autorizado` colgados está en F5 (backlog §604), no en E5. Sin él, una anulación o una captura que fallan quedan pendientes hasta resolverlas a mano. ¿Lo adelanto como parte de E5-H04 (planificador), o queda en F5 como riesgo documentado?
-6. **Idempotencia del inventario:** ¿apruebas `V012` con `SolicitudIdempotente` (sección 12), o la resuelvo de otra forma?
-7. **El job de expiración no vence sesiones con un intento en curso** (sección 7). Es una regla nueva para E5-H04. ¿De acuerdo?
+1. **Timeout:** 50606 `PAGO_SIN_CONFIRMAR` con **HTTP 504**. El mensaje dice que puede reintentar y que no se le cobrará dos veces.
+2. **`HashSolicitud`:** SHA-256 de **sesión, monto, marca y últimos 4 dígitos**. Nunca el número completo ni el CVV.
+3. **Sesión ya pagada, con cualquier llave:** `200` con el pedido existente, sin crear intento ni llamar a la pasarela (N-03).
+4. **Aprobado** el comportamiento de `4000…0119`: autoriza y pierde la respuesta.
+5. **La conciliación se adelanta a E5-H04** (cambio C).
+6. **Aprobada `SolicitudIdempotente`** en una V### nueva, con `UNIQUE (IDUsuario, LlaveIdempotencia)`, el hash y la respuesta guardada. La inserta el SP de entrada o de ajuste en la misma transacción que el movimiento, nunca el middleware por separado. El job horario purga las de más de 24 h.
+7. **Aprobado:** el job de expiración no vence sesiones con un pago en curso, **pero solo mientras el arrendamiento del intento esté vivo** (cambio B).
+
+**Cambio A · Pasarela simulada con estado compartido entre réplicas.** Una pasarela en memoria autorizaría otra vez si el reintento cae en la otra réplica. La pasarela simulada persiste sus autorizaciones por llave en tablas propias de SQL Server (`PasarelaAutorizacion`, `PasarelaReembolso`; módulo pasarela), solo por `SP_Pasarela_*`, que solo usa su adaptador y que nunca participan en una transacción del checkout: simula un sistema externo con su propia base. Sin Redis (RNF-2). Prueba: autorizar con `4000…0119` en una réplica y reintentar con la misma llave en la otra devuelve la misma autorización.
+
+**Cambio B · Arrendamiento del intento de pago** (reemplaza los "30 s desde `FechaActualizacion`" de la sección 3).
+- Un intento `Pendiente` guarda en `IntentoPago.ArrendadoHasta` hasta cuándo está tomado: `TIMEOUT_PASARELA_MS + MARGEN_ARRENDAMIENTO_MS` (constantes con nombre en el servicio).
+- La misma llave con el arrendamiento vivo → `409 PAGO_EN_CURSO` con `Retry-After`.
+- Con el arrendamiento vencido, la petición toma el intento con un compare-and-set bajo `UPDLOCK` y vuelve a llamar a la pasarela con la misma llave.
+- Ante un timeout, el arrendamiento se libera de inmediato (`SP_Checkout_LiberarArrendamiento`) y se responde 504.
+- Pruebas: reintento durante el arrendamiento → 409; reintento después → retoma y se completa con un solo cobro; dos retomas simultáneas → solo una avanza.
+
+**Cambio C · Conciliación en E5-H04** con `sp_getapplock`, cada minuto. El puerto `PasarelaPago` agrega `consultar(llave)` (`NoExiste`, `Autorizada`, `Capturada`, `Anulada`; también `Rechazada`, porque la pasarela simulada guarda los rechazos para responder lo mismo a la misma llave), implementado en el adaptador simulado. Para los intentos con el arrendamiento vencido hace más de 2 minutos (01 §6.2):
+- `Pendiente`: `consultar(llave)`. `NoExiste` → `Fallido` sin cobro. `Autorizada` → capturar si existe el pedido de la sesión; si no, anular. (`Rechazada` → `Rechazado`.)
+- `Autorizado` sin captura: capturar si existe el pedido; si no, anular.
+- Pedido existente con el intento sin `Capturado`: capturar.
+
+Después, la sesión sin pedido puede expirar y liberar sus reservas. Es idempotente: correrla dos veces no cambia nada. Hay una prueba por rama, incluida la API que muere entre `CrearPedido` y la actualización del intento.
+
+Para que dos réplicas no tomen el mismo intento, `SP_Checkout_TomarIntentosPorConciliar` toma el `sp_getapplock` (dueño: la transacción) y **arrienda** los intentos que devuelve. El servicio llama a la pasarela fuera de toda transacción y cierra cada uno con `SP_Checkout_ResolverIntentoConciliado`.
