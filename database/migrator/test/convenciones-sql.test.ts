@@ -10,6 +10,9 @@ const ESCRIBE = /\b(?:INSERT\s+INTO\s+(?!@)|UPDATE\s+\w|DELETE\s+FROM|MERGE\s+)/
 const INTERNOS = new Set([
   'R__SP_Inventario_RegistrarMovimiento.sql',
   'R__SP_Checkout_CancelarSesionActiva.sql',
+  'R__SP_Cupones_LiberarUso.sql',
+  'R__SP_Cupones_ReservarUso.sql',
+  'R__SP_Inventario_LiberarReservas.sql',
 ]);
 
 function sinComentarios(sql: string): string {

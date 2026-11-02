@@ -1,8 +1,9 @@
 -- Interno (sqlserver-sp §7): cancela la sesión de checkout Activa del cliente, si la tiene, y libera lo que
--- tenía apartado: sus reservas (N-06) y el uso reservado del cupón (N-12, contador con CHECK de A-13).
--- Lo usan la fusión del carrito (N-05) y, en E5, el reinicio del pago (N-02).
--- Bloquea la sesión antes de cambiarla; liberar reservas no necesita el bloqueo de las variantes, porque
--- solo aumenta el disponible (sqlserver-sp §9.1).
+-- tenía apartado por la única ruta de liberación: SP_Inventario_LiberarReservas (N-06) y
+-- SP_Cupones_LiberarUso (N-12, A-13). Lo usan el reinicio del pago (E5-H01), su cancelación y la fusión del
+-- carrito (N-05). Una sesión con un pago en curso (intento Pendiente o Autorizado) no se cancela: 50602. La
+-- fusión del login se pospone así con FusionPendiente.
+-- Orden de bloqueo (01 §6.6): la sesión y después el cupón (dentro de SP_Cupones_LiberarUso).
 CREATE OR ALTER PROCEDURE dbo.SP_Checkout_CancelarSesionActiva
     @IDUsuario INT
 AS
@@ -22,21 +23,12 @@ BEGIN
     IF @IDSesionCheckout IS NULL
         RETURN;
 
-    UPDATE dbo.Reserva
-    SET    Estado = 'Liberada', FechaCierre = SYSUTCDATETIME()
-    WHERE  IDSesionCheckout = @IDSesionCheckout AND Estado = 'Activa';
+    IF EXISTS (SELECT 1 FROM dbo.IntentoPago AS i
+               WHERE i.IDSesionCheckout = @IDSesionCheckout AND i.Estado IN ('Pendiente', 'Autorizado'))
+        THROW 50602, N'Hay un pago en curso: espera a que termine antes de cambiar tu compra.', 1;
 
-    DECLARE @Usos TABLE (IDCupon INT NOT NULL);
-
-    UPDATE dbo.UsoCupon
-    SET    Estado = 'Liberado', FechaActualizacion = SYSUTCDATETIME()
-    OUTPUT inserted.IDCupon INTO @Usos
-    WHERE  IDSesionCheckout = @IDSesionCheckout AND Estado = 'Reservado';
-
-    UPDATE c
-    SET    UsosComprometidos = c.UsosComprometidos - 1
-    FROM   dbo.Cupon AS c
-    JOIN   @Usos     AS u ON u.IDCupon = c.IDCupon;
+    EXEC dbo.SP_Inventario_LiberarReservas @IDSesionCheckout;
+    EXEC dbo.SP_Cupones_LiberarUso @IDSesionCheckout;
 
     UPDATE dbo.SesionCheckout
     SET    Estado = 'Cancelada', FechaCierre = SYSUTCDATETIME(), FechaActualizacion = SYSUTCDATETIME()

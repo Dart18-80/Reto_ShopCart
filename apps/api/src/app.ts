@@ -6,6 +6,7 @@ import swaggerUi from 'swagger-ui-express';
 import { crearModuloAuth, crearSesiones, type LimitadoresAuth } from './modules/auth/index.js';
 import { crearModuloCarrito } from './modules/carrito/index.js';
 import { crearModuloCatalogo } from './modules/catalogo/index.js';
+import { crearModuloCheckout } from './modules/checkout/index.js';
 import { crearModuloConfiguracion } from './modules/configuracion/index.js';
 import { crearModuloCupones } from './modules/cupones/index.js';
 import { crearModuloEnvios } from './modules/envios/index.js';
@@ -99,6 +100,7 @@ export function crearApp({
   v1.use(crearModuloCupones({ autenticar }));
   v1.use(crearModuloEnvios({ autenticar }));
   v1.use(crearModuloConfiguracion({ autenticar }));
+  v1.use(crearModuloCheckout({ autenticar }));
   v1.use(
     crearModuloCarrito({
       autenticar,

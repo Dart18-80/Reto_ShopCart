@@ -8,7 +8,8 @@
 -- calculan sobre eso; la línea sigue mostrando su cantidad y su estado.
 -- Aviso (N-02): CambioDePrecio (alerta guardada al vencer la garantía, hasta que el cliente la vea),
 -- PrecioGarantizado (garantía vigente y el precio subió) o BajoDePrecio (el vigente es menor que el garantizado).
--- N-06: la existencia solo se muestra como etiqueta; la cifra, en el umbral o por debajo.
+-- N-06: la existencia solo se muestra como etiqueta; la cifra, en el umbral o por debajo. El disponible no
+-- descuenta las reservas de la sesión de pago activa del mismo carrito (E5-H01).
 CREATE OR ALTER FUNCTION dbo.FU_Carrito_Lineas (@IDCarrito INT)
 RETURNS TABLE
 AS
@@ -22,6 +23,7 @@ RETURN
             img.Url                AS Imagen,
             l.Cantidad,
             pr.PrecioEfectivo      AS PrecioUnitario,
+            pr.IDPrecioVarianteEfectivo,
             CONVERT(DECIMAL(15,2), pr.PrecioEfectivo * l.Cantidad) AS TotalLinea,
             co.CantidadComprable,
             CONVERT(DECIMAL(15,2), pr.PrecioEfectivo * co.CantidadComprable) AS TotalComprable,
@@ -41,7 +43,16 @@ RETURN
     JOIN    dbo.Producto       AS p  ON p.IDProducto = v.IDProducto
     JOIN    dbo.PrecioVariante AS pg ON pg.IDPrecioVariante = l.IDPrecioVarianteGarantizado
     OUTER APPLY dbo.FU_Catalogo_PrecioVigente(l.IDVariante) AS pv
-    CROSS APPLY dbo.FU_Inventario_Disponible(l.IDVariante)  AS d
+    CROSS APPLY dbo.FU_Inventario_Disponible(l.IDVariante)  AS inv
+    -- Las reservas vigentes de la sesión de pago activa de este mismo carrito son suyas: no le restan
+    -- disponible (si no, al iniciar el pago sus propias líneas se verían agotadas).
+    OUTER APPLY (SELECT COALESCE(SUM(r.Cantidad), 0) AS Cantidad
+                 FROM   dbo.Reserva AS r
+                 JOIN   dbo.SesionCheckout AS s ON s.IDSesionCheckout = r.IDSesionCheckout
+                 WHERE  s.IDCarrito = @IDCarrito AND s.Estado = 'Activa'
+                   AND  r.IDVariante = l.IDVariante AND r.Estado = 'Activa'
+                   AND  r.FechaExpiracion > SYSUTCDATETIME()) AS propias
+    CROSS APPLY (SELECT inv.Disponible + propias.Cantidad AS Disponible) AS d
     CROSS APPLY (SELECT TOP (1) ps.UmbralUltimasUnidades AS Umbral
                  FROM dbo.ParametroSistema AS ps ORDER BY ps.IDParametroSistema) AS u
     OUTER APPLY (SELECT TOP (1) i.Url
@@ -49,7 +60,11 @@ RETURN
                  WHERE i.IDProducto = p.IDProducto AND i.EsPrincipal = 1) AS img
     CROSS APPLY (SELECT CASE WHEN l.FechaGarantiaHasta > SYSUTCDATETIME() AND pg.Precio < pv.Precio
                              THEN pg.Precio
-                             ELSE COALESCE(pv.Precio, pg.Precio) END AS PrecioEfectivo) AS pr
+                             ELSE COALESCE(pv.Precio, pg.Precio) END AS PrecioEfectivo,
+                        -- La versión de precio que se cobra (la sesión de pago la congela, E5-H01).
+                        CASE WHEN l.FechaGarantiaHasta > SYSUTCDATETIME() AND pg.Precio < pv.Precio
+                             THEN pg.IDPrecioVariante
+                             ELSE COALESCE(pv.IDPrecioVariante, pg.IDPrecioVariante) END AS IDPrecioVarianteEfectivo) AS pr
     CROSS APPLY (SELECT CASE WHEN p.Activo = 0 OR v.Activo = 0 OR pv.Precio IS NULL THEN 'NoDisponible'
                              WHEN d.Disponible <= 0                                THEN 'Agotado'
                              WHEN l.Cantidad > d.Disponible                        THEN 'CantidadExcedida'

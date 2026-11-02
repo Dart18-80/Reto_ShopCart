@@ -383,6 +383,31 @@ describe('si pasar el carrito de invitado falla dentro del SP (E4-H03, N-05)', (
     expect(log).not.toContain(invitado.token);
   });
 
+  it('con un pago en curso del cliente la fusión se pospone con FusionPendiente y la cookie se conserva', async () => {
+    const { IDVariante } = await varianteVendible('10.00', 10);
+    const cliente = await clienteRegistrado();
+    const { IDSesionCheckout } = await unaFila<{ IDSesionCheckout: number }>(
+      'SP_Pruebas_CrearSesionConReserva',
+      {
+        IDUsuario: { tipo: sql.Int, valor: cliente.usuario.idUsuario },
+        IDVariante: { tipo: sql.Int, valor: IDVariante },
+        Cantidad: { tipo: sql.Int, valor: 1 },
+      },
+    );
+    await unaFila('SP_Pruebas_InsertarIntentoPago', {
+      IDSesionCheckout: { tipo: sql.Int, valor: IDSesionCheckout },
+      Estado: { tipo: sql.VarChar(12), valor: 'Pendiente' },
+    });
+    const invitado = await invitadoConCarrito(app, IDVariante);
+
+    const respuesta = await login(cliente.correo, invitado.token);
+
+    expect(respuesta.status).toBe(200);
+    expect(leerDatos(respuesta, pendienteSchema).avisosCarrito).toHaveLength(1);
+    expect(cookieCarrito(respuesta)).toBeUndefined();
+    expect(await carritosConHash(hashDe(invitado.token))).toMatchObject([{ Estado: 'Activo' }]);
+  });
+
   it('la fusión se reintenta en el siguiente inicio de sesión', async () => {
     const cliente = await clienteRegistrado();
     const invitado = await invitadoQueFalla();
