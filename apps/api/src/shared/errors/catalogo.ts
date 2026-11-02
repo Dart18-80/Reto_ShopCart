@@ -245,6 +245,14 @@ export const CATALOGO = {
   EXPORTACION_NO_LISTA: { http: 409, mensaje: 'La exportación todavía no está lista.' },
   EXPORTACION_EXPIRADA: { http: 410, mensaje: 'La exportación expiró. Vuelve a solicitarla.' },
 
+  // Envíos (50900–50999, N-04).
+  METODO_ENVIO_ULTIMO_ACTIVO: {
+    http: 409,
+    numeroSql: 50901,
+    mensaje:
+      'Debe quedar al menos un método de envío activo: activa otro antes de desactivar este.',
+  },
+
   // Dashboard en tiempo real (E9-H02, A-25). Nace en la API.
   CONEXIONES_MAXIMAS: {
     http: 429,

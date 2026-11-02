@@ -38,6 +38,13 @@ const metodoSchema = z.strictObject({
   diasMax: z.number(),
   activo: z.boolean(),
 });
+const metodoActivoSchema = z.looseObject({
+  idMetodoEnvio: z.number(),
+  nombre: z.string(),
+  tarifa: z.string(),
+  diasMin: z.number(),
+  diasMax: z.number(),
+});
 const metodosSchema = z.object({
   metodos: z.array(
     z.looseObject({ idMetodoEnvio: z.number(), codigo: z.string(), costo: z.string() }),
@@ -187,6 +194,35 @@ describe('tarifas de envío (E4-H06, N-04, RF-09)', () => {
         diasMax: original.diasMax,
         activo: original.activo,
       });
+    }
+  });
+
+  it('N-04: dos desactivaciones simultáneas de los dos últimos métodos activos: una pasa y la otra recibe 409', async () => {
+    const activos = leerDatos(
+      await request(app).get('/api/v1/envios/metodos'),
+      z.object({ metodos: z.array(metodoActivoSchema) }),
+    ).metodos;
+    const cuerpo = (m: z.infer<typeof metodoActivoSchema>, activo: boolean) => ({
+      nombre: m.nombre,
+      costo: m.tarifa,
+      diasMin: m.diasMin,
+      diasMax: m.diasMax,
+      activo,
+    });
+    try {
+      const respuestas = await Promise.all(
+        activos.map((m) => actualizarMetodo(m.idMetodoEnvio, cuerpo(m, false))),
+      );
+      const quedan = leerDatos(await request(app).get('/api/v1/envios/metodos'), metodosSchema);
+
+      expect(activos).toHaveLength(2);
+      expect(respuestas.map((r) => r.status).sort()).toEqual([200, 409]);
+      expect(respuestas.find((r) => r.status === 409)?.body).toMatchObject({
+        error: { codigo: 'METODO_ENVIO_ULTIMO_ACTIVO' },
+      });
+      expect(quedan.metodos).toHaveLength(1);
+    } finally {
+      for (const m of activos) await actualizarMetodo(m.idMetodoEnvio, cuerpo(m, true));
     }
   });
 

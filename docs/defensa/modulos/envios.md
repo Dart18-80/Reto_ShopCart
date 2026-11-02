@@ -50,20 +50,22 @@ sequenceDiagram
 | Total de la sesión y del pedido incluye el envío | `CHECK` | [V008__pedidos.sql:88](../../../database/migrations/V008__pedidos.sql#L88 "CK_Pedido_Total CHECK (Total = Subtotal - Descuento + CostoEnvio)") | N-04 |
 | El pedido guarda fecha estimada de entrega con los días máximos | `SP_Pedidos_CrearPedido` | [R__SP_Pedidos_CrearPedido.sql:110](../../../database/programmability/R__SP_Pedidos_CrearPedido.sql#L110 "DATEADD(DAY, s.DiasMax, @FechaLocal)") | N-04 |
 | Cada cambio de tarifa queda en la bitácora con el valor anterior y el nuevo | Trigger | [R__TR_Envios_Bitacora.sql:28](../../../database/programmability/R__TR_Envios_Bitacora.sql#L28 "CONVERT(VARCHAR(20), d.Costo)") | RF-09, A-21 |
+| Siempre queda al menos un método activo | `SP_Envios_ActualizarMetodo` bajo el bloqueo de todas las filas | [R__SP_Envios_ActualizarMetodo.sql:35](../../../database/programmability/R__SP_Envios_ActualizarMetodo.sql#L35 "THROW 50901") | N-04 |
 
 ## Concurrencia y réplicas
 
-- **Dos administradores cambian el mismo método a la vez:** `SP_Envios_ActualizarMetodo` bloquea la fila con `UPDLOCK` ([R__SP_Envios_ActualizarMetodo.sql:24](../../../database/programmability/R__SP_Envios_ActualizarMetodo.sql#L24 "WITH (UPDLOCK, ROWLOCK)")); se aplican en serie y el último gana, porque el `PUT` reemplaza la representación completa. Ninguno se pierde de la auditoría: el trigger registra cada cambio real con su usuario y su `RequestId` ([R__TR_Envios_Bitacora.sql:36](../../../database/programmability/R__TR_Envios_Bitacora.sql#L36 "EXCEPT SELECT d.Codigo")).
+- **Dos administradores cambian métodos a la vez:** `SP_Envios_ActualizarMetodo` bloquea todas las filas de `MetodoEnvio` con `UPDLOCK, HOLDLOCK` (son pocas, en el orden de la llave) ([R__SP_Envios_ActualizarMetodo.sql:30](../../../database/programmability/R__SP_Envios_ActualizarMetodo.sql#L30 "WITH (UPDLOCK, HOLDLOCK)")): los cambios se serializan, y de dos desactivaciones simultáneas de los dos últimos métodos activos una pasa y la otra recibe 409 ([configuracion-envios.api.test.ts:200](../../../apps/api/test/integracion/secuencial/configuracion-envios.api.test.ts#L200 "dos desactivaciones simultáneas de los dos últimos métodos activos")).
 - **El Admin cambia la tarifa mientras un cliente paga:** la sesión de checkout ya guardó su `CostoEnvio` ([V007__checkout.sql:46](../../../database/migrations/V007__checkout.sql#L46 "CK_SesionCheckout_Total CHECK (Total = Subtotal - Descuento + CostoEnvio)")) y el pedido copia el de la sesión, no el de `MetodoEnvio` ([R__SP_Pedidos_CrearPedido.sql:109](../../../database/programmability/R__SP_Pedidos_CrearPedido.sql#L109 "s.CostoEnvio, s.Total")). El cambio solo afecta sesiones nuevas.
 - **El Admin desactiva un método elegido en un checkout nuevo:** `FU_Envios_Costos` ya no lo devuelve y el checkout responde 50001 ([R__SP_Checkout_IniciarSesion.sql:99](../../../database/programmability/R__SP_Checkout_IniciarSesion.sql#L99 "El método de envío no existe o no está disponible.")).
-- **Una réplica muere a mitad de un `PUT`:** la actualización es una sola transacción con `XACT_ABORT` ([R__SP_Envios_ActualizarMetodo.sql:17](../../../database/programmability/R__SP_Envios_ActualizarMetodo.sql#L17 "SET XACT_ABORT ON;")); SQL Server la revierte y el Admin repite el `PUT`, que es idempotente. `GET /envios/metodos` no escribe nada, así que no deja estado.
+- **Una réplica muere a mitad de un `PUT`:** la actualización es una sola transacción con `XACT_ABORT` ([R__SP_Envios_ActualizarMetodo.sql:18](../../../database/programmability/R__SP_Envios_ActualizarMetodo.sql#L18 "SET XACT_ABORT ON;")); SQL Server la revierte y el Admin repite el `PUT`, que es idempotente. `GET /envios/metodos` no escribe nada, así que no deja estado.
 
 ## Modos de falla
 
-- **Entrada inválida** (días al revés, costo con 3 decimales, campo extra): `400 VALIDACION_FALLIDA` desde Zod ([envios.schemas.ts:20](../../../apps/api/src/modules/envios/envios.schemas.ts#L20 "metodo.diasMax >= metodo.diasMin")); si llegara a la base, el `CHECK` se traduce a `400 PARAMETRO_INVALIDO` ([R__SP_Envios_ActualizarMetodo.sql:38](../../../database/programmability/R__SP_Envios_ActualizarMetodo.sql#L38 "THROW 50003")).
-- **Método inexistente:** `404 NO_ENCONTRADO` ([R__SP_Envios_ActualizarMetodo.sql:26](../../../database/programmability/R__SP_Envios_ActualizarMetodo.sql#L26 "THROW 50001")), probado en [configuracion-envios.api.test.ts:193](../../../apps/api/test/integracion/secuencial/configuracion-envios.api.test.ts#L193 "un método inexistente responde 404 y días al revés 400").
+- **Entrada inválida** (días al revés, costo con 3 decimales, campo extra): `400 VALIDACION_FALLIDA` desde Zod ([envios.schemas.ts:20](../../../apps/api/src/modules/envios/envios.schemas.ts#L20 "metodo.diasMax >= metodo.diasMin")); si llegara a la base, el `CHECK` se traduce a `400 PARAMETRO_INVALIDO` ([R__SP_Envios_ActualizarMetodo.sql:47](../../../database/programmability/R__SP_Envios_ActualizarMetodo.sql#L47 "THROW 50003")).
+- **Método inexistente:** `404 NO_ENCONTRADO` ([R__SP_Envios_ActualizarMetodo.sql:33](../../../database/programmability/R__SP_Envios_ActualizarMetodo.sql#L33 "THROW 50001")), probado en [configuracion-envios.api.test.ts:229](../../../apps/api/test/integracion/secuencial/configuracion-envios.api.test.ts#L229 "un método inexistente responde 404 y días al revés 400").
+- **Desactivar el último método activo:** `409 METODO_ENVIO_ULTIMO_ACTIVO` ([R__SP_Envios_ActualizarMetodo.sql:35](../../../database/programmability/R__SP_Envios_ActualizarMetodo.sql#L35 "THROW 50901")); sin ningún método, ningún checkout podría empezar.
 - **Token inválido en la consulta pública:** `401` (si hay `Authorization`, se verifica) ([envios.api.test.ts:138](../../../apps/api/test/integracion/carrito/envios.api.test.ts#L138 "un token inválido responde 401")).
-- **Operador o Cliente en el `PUT`:** `403 SIN_PERMISO` ([configuracion-envios.api.test.ts:137](../../../apps/api/test/integracion/secuencial/configuracion-envios.api.test.ts#L137 "el Operador y el Cliente reciben 403")).
+- **Operador o Cliente en el `PUT`:** `403 SIN_PERMISO` ([configuracion-envios.api.test.ts:144](../../../apps/api/test/integracion/secuencial/configuracion-envios.api.test.ts#L144 "el Operador y el Cliente reciben 403")).
 - **Sin carrito:** no es error; el monto es 0, cada método cuesta su tarifa y falta todo el mínimo ([envios.api.test.ts:72](../../../apps/api/test/integracion/carrito/envios.api.test.ts#L72 "sin carrito, cada método cuesta su tarifa")).
 - **Base caída:** `500 ERROR_INTERNO` ([middleware.ts:80](../../../apps/api/src/shared/errors/middleware.ts#L80 "return new AppError('ERROR_INTERNO', { cause: error });")).
 - **Redis caído:** el módulo no usa Redis; la autenticación sigue aceptando el access token vigente ([autenticar.ts:11](../../../apps/api/src/shared/http/autenticar.ts#L11 "si Redis no responde")).
@@ -116,12 +118,12 @@ La base solo guarda el hash del token de invitado (N-05); el servicio lo calcula
 ### ¿Dónde queda registrado quién cambió una tarifa?
 
 En la bitácora, con un trigger `AFTER INSERT, UPDATE, DELETE` que guarda el valor anterior y el nuevo (montos como texto), el usuario y el `RequestId` del contexto. Sin contexto, el trigger falla con 50004.
-**Muéstralo en:** [configuracion-envios.api.test.ts:152](../../../apps/api/test/integracion/secuencial/configuracion-envios.api.test.ts#L152 "el Admin cambia una tarifa, los métodos la reflejan")
+**Muéstralo en:** [configuracion-envios.api.test.ts:159](../../../apps/api/test/integracion/secuencial/configuracion-envios.api.test.ts#L159 "el Admin cambia una tarifa, los métodos la reflejan")
 
 ### ¿Cómo se quita el envío gratis?
 
 Con `montoEnvioGratis: null` en la configuración; `FU_Envios_EnvioGratis` devuelve entonces `Alcanzado = 0` y la API responde `envioGratis: null`.
-**Muéstralo en:** [configuracion-envios.api.test.ts:112](../../../apps/api/test/integracion/secuencial/configuracion-envios.api.test.ts#L112 "montoEnvioGratis en null deja la tienda sin envío gratis")
+**Muéstralo en:** [configuracion-envios.api.test.ts:119](../../../apps/api/test/integracion/secuencial/configuracion-envios.api.test.ts#L119 "montoEnvioGratis en null deja la tienda sin envío gratis")
 
 ### ¿El envío gratis aplica también a Express?
 

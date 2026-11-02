@@ -70,9 +70,9 @@ Dónde se usan los parámetros (los SPs los leen en cada operación, sin caché)
 
 ## Modos de falla
 
-- **Valor fuera de rango, campo desconocido o PATCH vacío:** 400 `VALIDACION_FALLIDA` por Zod ([configuracion-envios.api.test.ts:131](../../../apps/api/test/integracion/secuencial/configuracion-envios.api.test.ts#L131 "rechaza %o con 400")).
+- **Valor fuera de rango, campo desconocido o PATCH vacío:** 400 `VALIDACION_FALLIDA` por Zod ([configuracion-envios.api.test.ts:138](../../../apps/api/test/integracion/secuencial/configuracion-envios.api.test.ts#L138 "rechaza %o con 400")).
 - **Fuera de rango que llega a la base** (escritura directa o Zod desalineado): el `CHECK` lo rechaza y el SP responde 400 `PARAMETRO_INVALIDO` (50003).
-- **Operador o Cliente:** 403 `SIN_PERMISO` ([configuracion-envios.api.test.ts:137](../../../apps/api/test/integracion/secuencial/configuracion-envios.api.test.ts#L137 "el Operador y el Cliente reciben 403")).
+- **Operador o Cliente:** 403 `SIN_PERMISO` ([configuracion-envios.api.test.ts:144](../../../apps/api/test/integracion/secuencial/configuracion-envios.api.test.ts#L144 "el Operador y el Cliente reciben 403")).
 - **Una escritura sin contexto de actor:** el trigger de bitácora la rechaza con 50004 `CONTEXTO_NO_ESTABLECIDO` (500) ([R__TR_Configuracion_Bitacora.sql:12](../../../database/programmability/R__TR_Configuracion_Bitacora.sql#L12 "IF SESSION_CONTEXT(N'Rol') IS NULL")).
 - **Redis caído:** el cambio se guarda igual; la invalidación de la caché de reportes nunca lanza (puerto `Cache`), y el reporte de carritos se refresca por TTL.
 - **Base caída:** 500 `ERROR_INTERNO`.
@@ -110,7 +110,7 @@ El `CHECK` rechaza con el error 547, el CATCH del SP lo reconoce por el nombre `
 ### ¿Cómo se quita el envío gratis?
 
 Con `montoEnvioGratis: null` en el PATCH: el repositorio envía `QuitarMontoEnvioGratis = 1` y el SP deja la columna en NULL. Ausente significa sin cambio.
-**Muéstralo en:** [configuracion-envios.api.test.ts:112](../../../apps/api/test/integracion/secuencial/configuracion-envios.api.test.ts#L112 "montoEnvioGratis en null deja la tienda sin envío gratis")
+**Muéstralo en:** [configuracion-envios.api.test.ts:119](../../../apps/api/test/integracion/secuencial/configuracion-envios.api.test.ts#L119 "montoEnvioGratis en null deja la tienda sin envío gratis")
 
 ### ¿El monto de envío gratis usa FLOAT en algún punto?
 
@@ -120,7 +120,7 @@ No: `DECIMAL(12,2)` en la tabla y en el parámetro del SP, `Decimal` de decimal.
 ### ¿Queda registrado quién cambió un parámetro?
 
 Sí: el trigger escribe en la bitácora el valor anterior y el nuevo con el `IDUsuario` y el `RequestId` de `SESSION_CONTEXT`, y la fila guarda `IDUsuarioActualizacion`.
-**Muéstralo en:** [configuracion-envios.api.test.ts:80](../../../apps/api/test/integracion/secuencial/configuracion-envios.api.test.ts#L80 "el cambio queda en la bitácora con su usuario y su petición")
+**Muéstralo en:** [configuracion-envios.api.test.ts:87](../../../apps/api/test/integracion/secuencial/configuracion-envios.api.test.ts#L87 "el cambio queda en la bitácora con su usuario y su petición")
 
 ### ¿Un PATCH que no cambia nada deja una fila en la bitácora?
 
