@@ -40,14 +40,20 @@ export function crearAvisosRedis(
 
   function escuchar(conexion: Suscriptor, oyente: OyenteDeAvisos): void {
     let estado: 'conectando' | 'lista' | 'caida' = 'conectando';
+    // ioredis restablece al reconectar solo lo ya suscrito: con Redis caído al arrancar, la primera suscripción
+    // ocurre en el primer `ready`, venga o no después de una caída.
+    let suscrito = false;
     conexion.on('ready', () => {
+      if (!suscrito) {
+        suscrito = true;
+        conexion.subscribe(CANAL_AVISOS).catch((error: unknown) => {
+          suscrito = false;
+          logger.warn({ err: error }, 'No se pudo suscribir a los avisos del dashboard');
+        });
+      }
       if (estado === 'caida') {
         logger.info('La suscripción a los avisos del dashboard volvió');
         oyente.alReconectar();
-      } else if (estado === 'conectando') {
-        conexion.subscribe(CANAL_AVISOS).catch((error: unknown) => {
-          logger.warn({ err: error }, 'No se pudo suscribir a los avisos del dashboard');
-        });
       }
       estado = 'lista';
     });

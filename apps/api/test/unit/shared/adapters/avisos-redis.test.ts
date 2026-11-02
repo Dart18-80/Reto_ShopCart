@@ -81,6 +81,31 @@ describe('avisos de versión sobre Redis pub/sub (E9-H02, A-25)', () => {
     expect(lineas.filter((l) => l.level === 40)).toHaveLength(1);
   });
 
+  it('con Redis caído al arrancar, se suscribe en cuanto la conexión está lista y envía las versiones', async () => {
+    const { avisos, suscriptor } = preparar();
+    const alReconectar = vi.fn();
+    avisos.suscribir({ alRecibir: vi.fn(), alReconectar });
+
+    suscriptor.emit('error', new Error('ECONNREFUSED'));
+    suscriptor.emit('ready');
+
+    await vi.waitFor(() => {
+      expect(suscriptor.subscribe).toHaveBeenCalledWith(CANAL_AVISOS);
+    });
+    expect(alReconectar).toHaveBeenCalledTimes(1);
+  });
+
+  it('una reconexión no repite la suscripción: ioredis la restablece sola', () => {
+    const { avisos, suscriptor } = preparar();
+    avisos.suscribir({ alRecibir: vi.fn(), alReconectar: vi.fn() });
+
+    suscriptor.emit('ready');
+    suscriptor.emit('error', new Error('ECONNRESET'));
+    suscriptor.emit('ready');
+
+    expect(suscriptor.subscribe).toHaveBeenCalledTimes(1);
+  });
+
   it('cerrar termina la conexión de suscripción (apagado)', async () => {
     const { avisos, suscriptor } = preparar();
     avisos.suscribir({ alRecibir: vi.fn(), alReconectar: vi.fn() });

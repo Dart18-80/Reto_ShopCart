@@ -187,7 +187,9 @@ export function crearDifusorDeVersiones({
       try {
         versiones = await leerVersiones();
       } finally {
-        reservadas.set(idUsuario, (reservadas.get(idUsuario) ?? 1) - 1);
+        const restantes = (reservadas.get(idUsuario) ?? 1) - 1;
+        if (restantes > 0) reservadas.set(idUsuario, restantes);
+        else reservadas.delete(idUsuario);
       }
       const id = idDe(versiones);
       cliente.escribir(
