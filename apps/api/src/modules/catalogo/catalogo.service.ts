@@ -49,7 +49,7 @@ export function crearCatalogoService({ repositorio, reportes }: Dependencias) {
       repositorio.crearCategoria(datos),
 
     actualizarCategoria: (id: number, cambios: ActualizarCategoria): Promise<Categoria> =>
-      reportes.tras(repositorio.actualizarCategoria(id, cambios)),
+      reportes.tras(repositorio.actualizarCategoria(id, cambios), 'ventas'),
 
     activarCategoria: (id: number): Promise<Categoria> =>
       repositorio.cambiarEstadoCategoria(id, true),
@@ -92,7 +92,7 @@ export function crearCatalogoService({ repositorio, reportes }: Dependencias) {
       repositorio.crearProducto(datos),
 
     actualizarProducto: (id: number, cambios: ActualizarProducto): Promise<ProductoAdmin> =>
-      reportes.tras(repositorio.actualizarProducto(id, cambios)),
+      reportes.tras(repositorio.actualizarProducto(id, cambios), 'ventas'),
 
     activarProducto: (id: number): Promise<ProductoAdmin> =>
       repositorio.cambiarEstadoProducto(id, true),
@@ -101,7 +101,7 @@ export function crearCatalogoService({ repositorio, reportes }: Dependencias) {
       repositorio.cambiarEstadoProducto(id, false),
 
     eliminarProducto: (id: number): Promise<void> =>
-      reportes.tras(repositorio.eliminarProducto(id)),
+      reportes.tras(repositorio.eliminarProducto(id), 'carritos'),
 
     guardarImagenes: (id: number, datos: GuardarImagenes): Promise<ProductoAdmin> =>
       repositorio.guardarImagenes(id, datos),
@@ -119,14 +119,14 @@ export function crearCatalogoService({ repositorio, reportes }: Dependencias) {
       repositorio.cambiarEstadoVariante(id, false),
 
     eliminarVariante: (id: number): Promise<void> =>
-      reportes.tras(repositorio.eliminarVariante(id)),
+      reportes.tras(repositorio.eliminarVariante(id), 'carritos'),
 
     historialPrecios: (idVariante: number): Promise<VersionPrecio[]> =>
       repositorio.historialPrecios(idVariante),
 
     // N-02: el SP cierra la versión vigente e inserta la nueva en una transacción.
     cambiarPrecio: (idVariante: number, datos: CambiarPrecio): Promise<VersionPrecio[]> =>
-      reportes.tras(repositorio.cambiarPrecio(idVariante, datos)),
+      reportes.tras(repositorio.cambiarPrecio(idVariante, datos), 'carritos'),
   };
 }
 

@@ -113,7 +113,7 @@ describe('caché de reportes (E7-H04, A-11)', () => {
     await servicio.resumen(RANGO);
 
     expect(cache.guardar).toHaveBeenCalledWith(
-      `reportes:v0:resumen:${hashDeFiltros(RANGO)}`,
+      `reportes:ventas0.carritos0:resumen:${hashDeFiltros(RANGO)}`,
       expect.any(String),
       SEGUNDOS_CACHE_REPORTES,
     );
@@ -121,8 +121,8 @@ describe('caché de reportes (E7-H04, A-11)', () => {
 
   it('filtros distintos son llaves distintas; un filtro ausente no cambia la llave', () => {
     expect(hashDeFiltros({ desde: 'a', hasta: undefined })).toBe(hashDeFiltros({ desde: 'a' }));
-    expect(claveDeReporte(1, 'ventas', { agrupacion: 'dia' })).not.toBe(
-      claveDeReporte(1, 'ventas', { agrupacion: 'mes' }),
+    expect(claveDeReporte([['ventas', 1]], 'ventas', { agrupacion: 'dia' })).not.toBe(
+      claveDeReporte([['ventas', 1]], 'ventas', { agrupacion: 'mes' }),
     );
   });
 
@@ -131,7 +131,7 @@ describe('caché de reportes (E7-H04, A-11)', () => {
     await servicio.resumen(RANGO);
     repositorio.resumen.mockResolvedValueOnce(resumenCon('150.00'));
 
-    await invalidador.invalidar();
+    await invalidador.invalidar('ventas');
     const despues = await servicio.resumen(RANGO);
 
     expect(despues.ventas.toFixed(2)).toBe('150.00');
@@ -142,7 +142,7 @@ describe('caché de reportes (E7-H04, A-11)', () => {
     const { servicio, repositorio, invalidador } = preparar();
     // Mientras se consulta la base (datos viejos), otra petición escribe e invalida.
     repositorio.resumen.mockImplementationOnce(async () => {
-      await invalidador.invalidar();
+      await invalidador.invalidar('ventas');
       return resumenCon('120.00');
     });
     await servicio.resumen(RANGO);
@@ -153,6 +153,37 @@ describe('caché de reportes (E7-H04, A-11)', () => {
     expect(despues.ventas.toFixed(2)).toBe('150.00');
   });
 
+  it('un cambio en un carrito invalida carritos abandonados y el resumen, pero no los reportes de ventas', async () => {
+    const { servicio, repositorio, invalidador } = preparar();
+    const consulta = { pagina: 1, tamano: 20 };
+    await servicio.ventasPorCategoria({});
+    await servicio.carritosAbandonados(consulta);
+    await servicio.resumen(RANGO);
+
+    await invalidador.invalidar('carritos');
+    await servicio.ventasPorCategoria({});
+    await servicio.carritosAbandonados(consulta);
+    await servicio.resumen(RANGO);
+
+    expect(repositorio.ventasPorCategoria).toHaveBeenCalledTimes(1);
+    expect(repositorio.carritosAbandonados).toHaveBeenCalledTimes(2);
+    expect(repositorio.resumen).toHaveBeenCalledTimes(2);
+  });
+
+  it('una venta invalida los reportes de ventas y el resumen, pero no los carritos abandonados', async () => {
+    const { servicio, repositorio, invalidador } = preparar();
+    const consulta = { pagina: 1, tamano: 20 };
+    await servicio.topProductos({});
+    await servicio.carritosAbandonados(consulta);
+
+    await invalidador.invalidar('ventas');
+    await servicio.topProductos({});
+    await servicio.carritosAbandonados(consulta);
+
+    expect(repositorio.topProductos).toHaveBeenCalledTimes(2);
+    expect(repositorio.carritosAbandonados).toHaveBeenCalledTimes(1);
+  });
+
   it('dos réplicas con la misma caché comparten la versión', async () => {
     const cache = cacheEnMemoria();
     const replica1 = preparar(cache);
@@ -160,7 +191,7 @@ describe('caché de reportes (E7-H04, A-11)', () => {
     await replica1.servicio.resumen(RANGO);
     await replica2.servicio.resumen(RANGO);
 
-    await replica2.invalidador.invalidar();
+    await replica2.invalidador.invalidar('ventas');
     await replica1.servicio.resumen(RANGO);
 
     expect(replica1.repositorio.resumen).toHaveBeenCalledTimes(2);
@@ -180,7 +211,18 @@ describe('caché de reportes (E7-H04, A-11)', () => {
   it('un valor en la caché que no se puede leer se descarta y se consulta la base', async () => {
     const cache = cacheEnMemoria();
     const { servicio, repositorio } = preparar(cache);
-    await cache.guardar(claveDeReporte(0, 'resumen', RANGO), '{"ventas": 1', 60);
+    await cache.guardar(
+      claveDeReporte(
+        [
+          ['ventas', 0],
+          ['carritos', 0],
+        ],
+        'resumen',
+        RANGO,
+      ),
+      '{"ventas": 1',
+      60,
+    );
 
     const resumen = await servicio.resumen(RANGO);
 

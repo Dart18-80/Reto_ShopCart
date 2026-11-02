@@ -76,7 +76,9 @@ export function crearAuthService({ repositorio, tokens, logger, reportes }: Depe
   ): Promise<CarritoAlAbrirSesion> {
     if (tokenInvitado === undefined || usuario.rol !== 'Cliente') return sinCambiosEnElCarrito();
     try {
-      const avisos = await comoCliente(usuario, () => reportes.tras(pasar(tokenInvitado)));
+      const avisos = await comoCliente(usuario, () =>
+        reportes.tras(pasar(tokenInvitado), 'carritos'),
+      );
       return { cookieConsumida: true, avisos };
     } catch (error) {
       logger.error(

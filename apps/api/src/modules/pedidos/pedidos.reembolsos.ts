@@ -188,7 +188,7 @@ export function crearReembolsosService({ repositorio, pasarela, logger, reportes
     procesar,
 
     async cancelar(idPedido: number, motivo: string): Promise<Cancelacion> {
-      const idReembolso = await reportes.tras(repositorio.cancelar(idPedido, motivo));
+      const idReembolso = await reportes.tras(repositorio.cancelar(idPedido, motivo), 'ventas');
       // Con el pago en revisión no hay reembolso: la autorización ya no existe en la pasarela.
       const reembolso =
         idReembolso === null
@@ -205,6 +205,7 @@ export function crearReembolsosService({ repositorio, pasarela, logger, reportes
     ): Promise<DevolucionRegistrada> {
       const { idDevolucion, idReembolso, montoReembolso } = await reportes.tras(
         repositorio.registrarDevolucion(idPedido, datos),
+        'ventas',
       );
       const estado = await procesarTrasConfirmar(idReembolso, { idPedido, idDevolucion });
       const pedido = await repositorio.obtener(idPedido);

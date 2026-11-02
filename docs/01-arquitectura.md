@@ -426,35 +426,35 @@ Se ejecutan **dentro de cada réplica de la API** con un planificador interno (`
 
 ## 9. Caché de reportes (A-11, E7-H04)
 
-- **Patrón:** *cache-aside* en la capa de servicio de reportes, detrás del puerto `Cache` (adaptador `crearCacheRedis`). Llave `reportes:v{version}:{reporte}:{hash}`, donde el hash es el SHA-256 de los filtros normalizados (sin los ausentes y con las claves ordenadas). TTL corto: `SEGUNDOS_CACHE_REPORTES = 60`.
-- **Versión global en Redis** (`reportes:version`). El servicio la lee **antes** de consultar la base. Si una escritura la incrementa mientras tanto, el resultado (quizá ya viejo) queda guardado bajo la versión anterior, que nadie vuelve a leer. Quien escribe ve su cambio en la siguiente consulta: la versión sube antes de responderle. Los demás lectores lo ven apenas sube la versión y, si el `INCR` falló, como mucho al vencer el TTL. Entre el commit y el `INCR` (milisegundos) otra réplica todavía puede servir la versión anterior. La leyenda "Datos al" de una exportación es la hora en que se generó el archivo, y sus datos pueden venir de la caché con hasta 60 s de antigüedad.
-- **Invalidación:** cada escritura que cambia lo que leen las vistas del dashboard llama a `InvalidadorReportes.tras(escritura)`. Este espera el commit y después hace `INCR reportes:version`. Una escritura que falla no invalida.
+- **Patrón:** *cache-aside* en la capa de servicio de reportes, detrás del puerto `Cache` (adaptador `crearCacheRedis`). Llave `reportes:{dominio}{versión}…:{reporte}:{hash}` (por ejemplo `reportes:ventas3.carritos7:resumen:…`), donde el hash es el SHA-256 de los filtros normalizados (sin los ausentes y con las claves ordenadas). TTL corto: `SEGUNDOS_CACHE_REPORTES = 60`.
+- **Una versión por dominio en Redis** (decisión del PO al cierre de la Fase 1): `reportes:ventas:version` y `reportes:carritos:version`. Cada reporte declara de qué dominios depende (`DEPENDENCIAS`): ventas, ventas por categoría y top de productos solo de `ventas`; carritos abandonados solo de `carritos`; el resumen de los dos, porque también cuenta los carritos abandonados y su monto potencial. Así un cambio en un carrito ya no invalida los reportes de ventas. El servicio lee las versiones de sus dominios **antes** de consultar la base; sin alguna (Redis no responde) consulta la base directo. Si una escritura incrementa una mientras tanto, el resultado (quizá ya viejo) queda guardado bajo la versión anterior, que nadie vuelve a leer. Quien escribe ve su cambio en la siguiente consulta: la versión sube antes de responderle. Los demás lectores lo ven apenas sube la versión y, si el `INCR` falló, como mucho al vencer el TTL. Entre el commit y el `INCR` (milisegundos) otra réplica todavía puede servir la versión anterior. La leyenda "Datos al" de una exportación es la hora en que se generó el archivo, y sus datos pueden venir de la caché con hasta 60 s de antigüedad.
+- **Invalidación:** cada escritura que cambia lo que leen las vistas del dashboard llama a `InvalidadorReportes.tras(escritura, dominios…)`. Este espera el commit y después hace `INCR` de la versión de cada dominio. Una escritura que falla no invalida.
 - **Por qué llaves con versión:** no hay que borrar claves (un borrado por patrón es costoso y deja una ventana entre el borrado y la siguiente lectura), ni coordinar a las réplicas. Las dos leen la misma versión de Redis, y las llaves viejas quedan huérfanas hasta que vence su TTL.
 - **El TTL corto** acota dos casos que la versión no cubre: los reportes que dependen de la hora (el rango por defecto de los últimos 30 días y los carritos que se vuelven abandonados con el paso del tiempo) y un `INCR` que falló.
 - **Redis caído o con error:** el adaptador nunca lanza. Sin versión, el servicio consulta la base directo; el dashboard es más lento, pero correcto. El fallo se registra solo cuando cambia el estado (una advertencia al caer y un aviso al volver). Un valor guardado que no se puede leer cuenta como ausente.
 
 **Escrituras que invalidan.** La lista sale de lo que leen `VW_Dashboard_HechosVenta`, `VW_Dashboard_VentasPorCategoria`, `VW_Carrito_Abandonados` y `SP_Dashboard_*`:
 
-| Dato que leen los reportes | Escritura | Servicio |
-|---|---|---|
-| `Pedido`, `DetallePedido` (ventas, envío) y el carrito que pasa a `Convertido` | Crear el pedido al pagar | `checkout.pago` |
-| `Pedido.IDEstadoPedido = Cancelado` | Cancelar un pedido (cliente o gestión) | `pedidos.reembolsos` |
-| `Devolucion`, `DetalleDevolucion` | Registrar una devolución | `pedidos.reembolsos` |
-| `Carrito.FechaUltimaActividad`, `LineaCarrito` | Agregar, cambiar o quitar una línea; aplicar o quitar el cupón | `carrito.service` |
-| `Carrito.IDUsuario` y sus líneas | Pasar el carrito de invitado al cliente al registrarse o al iniciar sesión | `auth.service` |
-| `Carrito.Estado = Expirado` | Expirar los carritos de invitado (job, solo si expiró alguno) | `carrito.tareas` |
-| El precio vigente (`FU_Catalogo_PrecioVigente`) | Cambiar el precio de una variante | `catalogo.service` |
-| `Categoria.Nombre`, `Producto.Nombre` | Renombrar una categoría o un producto | `catalogo.service` |
-| `LineaCarrito` borradas con la variante | Borrar un producto o una variante sin historial | `catalogo.service` |
-| `ParametroSistema.HorasCarritoAbandonado` | Cambiar la configuración | `configuracion.service` |
-| `Usuario.Nombre` (cliente del carrito abandonado) | Cambiar el nombre (perfil o administración) | `usuarios.service` |
+| Dato que leen los reportes | Escritura | Dominios | Servicio |
+|---|---|---|---|
+| `Pedido`, `DetallePedido` (ventas, envío) y el carrito que pasa a `Convertido` | Crear el pedido al pagar | ventas, carritos | `checkout.pago` |
+| `Pedido.IDEstadoPedido = Cancelado` | Cancelar un pedido (cliente o gestión) | ventas | `pedidos.reembolsos` |
+| `Devolucion`, `DetalleDevolucion` | Registrar una devolución | ventas | `pedidos.reembolsos` |
+| `Carrito.FechaUltimaActividad`, `LineaCarrito` | Agregar, cambiar o quitar una línea; aplicar o quitar el cupón | carritos | `carrito.service` |
+| `Carrito.IDUsuario` y sus líneas | Pasar el carrito de invitado al cliente al registrarse o al iniciar sesión | carritos | `auth.service` |
+| `Carrito.Estado = Expirado` | Expirar los carritos de invitado (job, solo si expiró alguno) | carritos | `carrito.tareas` |
+| El precio vigente (`FU_Catalogo_PrecioVigente`, solo el monto potencial de los carritos) | Cambiar el precio de una variante | carritos | `catalogo.service` |
+| `Categoria.Nombre`, `Producto.Nombre` | Renombrar una categoría o un producto | ventas | `catalogo.service` |
+| `LineaCarrito` borradas con la variante | Borrar un producto o una variante sin historial | carritos | `catalogo.service` |
+| `ParametroSistema.HorasCarritoAbandonado` | Cambiar la configuración | carritos | `configuracion.service` |
+| `Usuario.Nombre` (cliente del carrito abandonado) | Cambiar el nombre (perfil o administración) | carritos | `usuarios.service` |
 
 **No invalidan, a propósito:**
 - Los cambios de estado de gestión (`Pagado` → `Entregado`), porque los reportes solo excluyen `Cancelado`.
 - El reembolso y la conciliación, que no cambian ventas ni carritos.
 - El generador de datos demo, que corre en el migrador antes de que la API arranque.
 
-**Costo conocido:** cualquier cambio en un carrito invalida todos los reportes, aunque el carrito no estuviera abandonado. Con tráfico de compras real conviene separar la versión de ventas de la de carritos (ver §14).
+**Costo que queda:** cualquier cambio en un carrito invalida carritos abandonados y el resumen, aunque el carrito no estuviera abandonado (ver §14).
 
 ## 10. Seguridad
 
@@ -563,7 +563,7 @@ Estado: 🟡 Propuesta · 🔍 En análisis · ✅ Confirmada · ✏️ Modifica
 | Señal | Evolución |
 |---|---|
 | El dashboard pasa de 1 s con millones de pedidos | Vistas indexadas (materializadas) por día y categoría, o una tabla de agregados mantenida en la misma transacción del pedido |
-| La caché de reportes se invalida demasiado con tráfico de compras | Separar la versión de ventas (`reportes:ventas:v…`) de la de carritos, o invalidar los carritos solo si el carrito tocado ya estaba abandonado (que el SP lo devuelva) |
+| Los carritos abandonados y el resumen se invalidan demasiado con tráfico de compras | Invalidar el dominio `carritos` solo si el carrito tocado ya estaba abandonado (que el SP lo devuelva). Las versiones de ventas y carritos ya están separadas (cierre de la Fase 1) |
 | El kardex y la bitácora crecen sin límite | Particionar por mes y archivar los periodos cerrados |
 | Más réplicas de la API o jobs pesados | Extraer los jobs a un worker y pasar los reembolsos a una cola (outbox → broker) |
 | Picos de lectura en el catálogo | Caché del catálogo en Redis o en una CDN, y réplica de lectura de SQL Server para reportes |

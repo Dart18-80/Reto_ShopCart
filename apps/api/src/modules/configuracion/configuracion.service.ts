@@ -15,7 +15,7 @@ export function crearConfiguracionService({ repositorio, reportes }: Dependencia
 
     // RF-09: la bitácora del cambio la escribe el trigger con el actor y el RequestId (A-18).
     actualizar: (cambios: ActualizarConfiguracion): Promise<Configuracion> =>
-      reportes.tras(repositorio.actualizar(cambios)),
+      reportes.tras(repositorio.actualizar(cambios), 'carritos'),
   };
 }
 

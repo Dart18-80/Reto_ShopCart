@@ -44,7 +44,7 @@ export function crearUsuariosService({ repositorio, sesiones, versiones, reporte
 
     // PATCH: el SP mezcla los cambios con lo guardado bajo bloqueo; telefono en null lo quita.
     actualizarPerfil: (cambios: ActualizarPerfil): Promise<Usuario> =>
-      reportes.tras(repositorio.actualizarPerfil(cambios)),
+      reportes.tras(repositorio.actualizarPerfil(cambios), 'carritos'),
 
     /**
      * N-15, A-07: verifica la contraseña actual; el SP guarda la nueva, revoca todos los refresh tokens y
@@ -85,6 +85,7 @@ export function crearUsuariosService({ repositorio, sesiones, versiones, reporte
     async actualizar(idUsuario: number, cambios: ActualizarUsuario): Promise<Usuario> {
       const { usuario, versionSesion } = await reportes.tras(
         repositorio.actualizar(idUsuario, cambios.nombre ?? null, cambios.rol ?? null),
+        'carritos',
       );
       if (cambios.rol !== undefined) await versiones.publicar(idUsuario, versionSesion);
       return usuario;

@@ -3,27 +3,53 @@ import { Decimal } from 'decimal.js';
 import type { Cache } from '../../shared/cache/index.js';
 import { z } from '../../shared/openapi/zod.js';
 
-// A-11: la versión global de los reportes. Cada escritura que cambia lo que leen las vistas del dashboard la
-// incrementa después de su commit (la lista está en 01-arquitectura.md §9).
-export const CLAVE_VERSION_REPORTES = 'reportes:version';
+// A-11 (decisión del PO al cierre de la Fase 1): una versión por dominio de datos. Cada escritura incrementa,
+// después de su commit, la de los dominios que cambia (la lista está en 01-arquitectura.md §9).
+export const DOMINIOS_REPORTES = ['ventas', 'carritos'] as const;
+export type DominioReportes = (typeof DOMINIOS_REPORTES)[number];
+
+export const REPORTES = [
+  'resumen',
+  'ventas',
+  'ventas-por-categoria',
+  'top-productos',
+  'carritos-abandonados',
+] as const;
+export type NombreReporte = (typeof REPORTES)[number];
+
+/**
+ * De qué dominios depende cada reporte: un cambio en un carrito ya no invalida los reportes de ventas. El resumen
+ * depende de los dos porque también cuenta los carritos abandonados y su monto potencial.
+ */
+export const DEPENDENCIAS: Record<NombreReporte, readonly DominioReportes[]> = {
+  resumen: ['ventas', 'carritos'],
+  ventas: ['ventas'],
+  'ventas-por-categoria': ['ventas'],
+  'top-productos': ['ventas'],
+  'carritos-abandonados': ['carritos'],
+};
+
+export const claveDeVersion = (dominio: DominioReportes): string => `reportes:${dominio}:version`;
 // TTL corto: acota lo que duran los reportes que dependen de la hora (el rango por defecto de los últimos 30
 // días y los carritos que se vuelven abandonados con el paso del tiempo) y un incremento de versión fallido.
 export const SEGUNDOS_CACHE_REPORTES = 60;
 
 /** Invalida la caché de reportes (A-11). Nunca lanza: si Redis no responde, el TTL acota lo desactualizado. */
 export interface InvalidadorReportes {
-  invalidar(): Promise<void>;
-  /** Espera la escritura y, solo si se confirmó (después de su commit), invalida. */
-  tras<T>(escritura: Promise<T>): Promise<T>;
+  invalidar(dominio: DominioReportes, ...otros: DominioReportes[]): Promise<void>;
+  /** Espera la escritura y, solo si se confirmó (después de su commit), invalida sus dominios. */
+  tras<T>(escritura: Promise<T>, dominio: DominioReportes, ...otros: DominioReportes[]): Promise<T>;
 }
 
 export function crearInvalidadorReportes(cache: Cache): InvalidadorReportes {
-  const invalidar = () => cache.incrementar(CLAVE_VERSION_REPORTES);
+  const invalidar = async (dominio: DominioReportes, ...otros: DominioReportes[]) => {
+    await Promise.all([dominio, ...otros].map((d) => cache.incrementar(claveDeVersion(d))));
+  };
   return {
     invalidar,
-    async tras(escritura) {
+    async tras(escritura, dominio, ...otros) {
       const resultado = await escritura;
-      await invalidar();
+      await invalidar(dominio, ...otros);
       return resultado;
     },
   };
@@ -43,8 +69,13 @@ export const hashDeFiltros = (filtros: object): string =>
     .update(JSON.stringify(normalizarFiltros(filtros)))
     .digest('hex');
 
-export const claveDeReporte = (version: number, reporte: string, filtros: object): string =>
-  `reportes:v${String(version)}:${reporte}:${hashDeFiltros(filtros)}`;
+/** La llave lleva la versión de cada dominio del reporte: `reportes:ventas3.carritos7:resumen:{hash}`. */
+export const claveDeReporte = (
+  versiones: readonly (readonly [DominioReportes, number])[],
+  reporte: NombreReporte,
+  filtros: object,
+): string =>
+  `reportes:${versiones.map(([d, v]) => `${d}${String(v)}`).join('.')}:${reporte}:${hashDeFiltros(filtros)}`;
 
 // En la caché los montos viajan como texto (Decimal.toJSON) y las fechas en ISO: al leer se restauran.
 const monto = z.string().transform((valor) => new Decimal(valor));

@@ -106,7 +106,7 @@ export function crearCarritoService({ repositorio, limitadorCreacion, reportes }
     },
 
     agregarLinea: (comprador: Comprador, linea: NuevaLinea): Promise<CarritoConCookie> =>
-      reportes.tras(agregarLinea(comprador, linea)),
+      reportes.tras(agregarLinea(comprador, linea), 'carritos'),
 
     // Una línea de otro carrito responde 404, igual que una inexistente (RF-01): lo decide el SP.
     actualizarCantidad: (
@@ -114,14 +114,20 @@ export function crearCarritoService({ repositorio, limitadorCreacion, reportes }
       idLinea: number,
       cantidad: number,
     ): Promise<Carrito> =>
-      reportes.tras(repositorio.actualizarCantidad(idLinea, cantidad, hashDe(comprador))),
+      reportes.tras(
+        repositorio.actualizarCantidad(idLinea, cantidad, hashDe(comprador)),
+        'carritos',
+      ),
 
     // N-12: cada causa de rechazo responde su propio código; lo decide el SP con FU_Cupones_Validar.
     aplicarCupon: (comprador: Comprador, codigo: string): Promise<Carrito> =>
-      reportes.tras(repositorio.aplicarCupon(codigo, hashDe(comprador))),
+      reportes.tras(repositorio.aplicarCupon(codigo, hashDe(comprador)), 'carritos'),
 
     async quitarCupon(comprador: Comprador): Promise<Carrito> {
-      return (await reportes.tras(repositorio.quitarCupon(hashDe(comprador)))) ?? carritoVacio();
+      return (
+        (await reportes.tras(repositorio.quitarCupon(hashDe(comprador)), 'carritos')) ??
+        carritoVacio()
+      );
     },
 
     async marcarAvisosVistos(comprador: Comprador): Promise<Carrito> {
@@ -129,7 +135,7 @@ export function crearCarritoService({ repositorio, limitadorCreacion, reportes }
     },
 
     eliminarLinea: (comprador: Comprador, idLinea: number): Promise<Carrito> =>
-      reportes.tras(repositorio.eliminarLinea(idLinea, hashDe(comprador))),
+      reportes.tras(repositorio.eliminarLinea(idLinea, hashDe(comprador)), 'carritos'),
   };
 }
 

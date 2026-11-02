@@ -20,7 +20,7 @@ export function tareasCarrito(
         const carritosExpirados = await repositorio.expirarInvitados();
         if (carritosExpirados === null) return null;
         // A-11: un carrito expirado deja de contar como abandonado.
-        if (carritosExpirados > 0) await reportes.invalidar();
+        if (carritosExpirados > 0) await reportes.invalidar('carritos');
         return { carritosExpirados };
       },
     },

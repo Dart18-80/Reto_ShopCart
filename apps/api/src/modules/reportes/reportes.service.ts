@@ -5,7 +5,9 @@ import type { z } from '../../shared/openapi/zod.js';
 import {
   carritosAbandonadosEnCache,
   claveDeReporte,
-  CLAVE_VERSION_REPORTES,
+  claveDeVersion,
+  DEPENDENCIAS,
+  type NombreReporte,
   productosVendidosEnCache,
   resumenEnCache,
   SEGUNDOS_CACHE_REPORTES,
@@ -46,14 +48,19 @@ export function crearReportesService({ repositorio, cache, logger }: Dependencia
    * a leer. Sin versión (Redis no responde) se consulta la base directo.
    */
   async function conCache<E extends z.ZodType>(
-    reporte: string,
+    reporte: NombreReporte,
     filtros: object,
     enCache: E,
     consultar: () => Promise<z.output<E>>,
   ): Promise<z.output<E>> {
-    const version = await cache.contador(CLAVE_VERSION_REPORTES);
-    if (version === null) return consultar();
-    const clave = claveDeReporte(version, reporte, filtros);
+    const dominios = DEPENDENCIAS[reporte];
+    const versiones = await Promise.all(dominios.map((d) => cache.contador(claveDeVersion(d))));
+    if (versiones.some((v) => v === null)) return consultar();
+    const clave = claveDeReporte(
+      dominios.map((d, i) => [d, versiones[i] ?? 0] as const),
+      reporte,
+      filtros,
+    );
     const guardado = await cache.obtener(clave);
     const leido = guardado === null ? null : leerGuardado(guardado, enCache);
     if (leido?.success) return leido.data;

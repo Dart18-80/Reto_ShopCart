@@ -32,6 +32,7 @@ export {
   crearInvalidadorReportes,
   hashDeFiltros,
   normalizarFiltros,
+  type DominioReportes,
   type InvalidadorReportes,
 } from './reportes.cache.js';
 export { consultaRangoSchema, consultaVentasSchema } from './reportes.schemas.js';

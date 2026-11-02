@@ -539,12 +539,15 @@ describe('checkout.pago (E5-H03)', () => {
 });
 
 describe('checkout.pago: caché de reportes (E7-H04, A-11)', () => {
-  it('un pedido creado invalida los reportes antes de responder', async () => {
+  it('un pedido creado invalida las ventas y los carritos (el carrito pasa a Convertido) antes de responder', async () => {
     const { servicio, invalidaciones } = preparar(AUTORIZAR);
 
     await servicio.pagar(SOLICITUD);
 
-    expect(invalidaciones).toHaveBeenCalledTimes(1);
+    expect(invalidaciones.mock.calls.map(([clave]) => clave).sort()).toEqual([
+      'reportes:carritos:version',
+      'reportes:ventas:version',
+    ]);
   });
 
   it('un pago rechazado o un pedido que ya existía no invalida', async () => {

@@ -223,7 +223,8 @@ export function crearPagoService({
       pedido = await pedidoTrasFalla(error, arrendamiento, idTransaccion);
     }
     // El pedido ya está confirmado (su COMMIT ocurrió): los reportes lo ven desde ahora.
-    await reportes.invalidar();
+    // Una venta nueva y un carrito que deja de estar activo (Convertido).
+    await reportes.invalidar('ventas', 'carritos');
     await capturar(arrendamiento, idTransaccion);
     return { pedido, creado: true };
   }

@@ -43,6 +43,10 @@ afterAll(() => {
   redis.disconnect();
 });
 
+// Un año propio por corrida: repetir el archivo sobre la misma base no se cruza con lo que dejó la anterior.
+const ANIO = String(1900 + Math.floor(Math.random() * 50));
+const enElAnio = (mesDia: string): string => `${ANIO}-${mesDia}`;
+
 const resumenSchema = z.object({
   pedidos: z.number(),
   ventas: z.string(),
@@ -70,8 +74,8 @@ async function pedidoEnFecha(dia: string, app = replica2) {
 
 describe('caché de reportes con invalidación por versión (E7-H04, A-11)', () => {
   it('la segunda consulta sale de la caché: un cambio que no pasa por un servicio no se ve', async () => {
-    const dia = '2004-03-01';
-    const { pedido } = await pedidoEnFecha('2004-03-02');
+    const dia = enElAnio('03-01');
+    const { pedido } = await pedidoEnFecha(enElAnio('03-02'));
     const antes = await resumenDelDia(replica1, dia);
 
     // Mover la fecha directo en la base no invalida: la caché todavía responde lo anterior.
@@ -82,8 +86,30 @@ describe('caché de reportes con invalidación por versión (E7-H04, A-11)', () 
     expect(desdeCache).toEqual(antes);
   });
 
+  it('un cambio en un carrito no invalida los reportes de ventas (dominios separados)', async () => {
+    const dia = enElAnio('03-03');
+    const { pedido } = await pedidoEnFecha(enElAnio('03-04'));
+    const ventasDelDia = async () =>
+      leerDatos(
+        await request(replica1)
+          .get(`/api/v1/dashboard/ventas-por-categoria?desde=${dia}&hasta=${dia}`)
+          .set(comoCliente(tokenAdmin)),
+        z.array(z.object({ ventas: z.string() })),
+      );
+    const antes = await ventasDelDia();
+    // El pedido se mueve al día directo en la base (sin invalidar) y después se toca un carrito: solo invalida
+    // los carritos, así el reporte de ventas sigue saliendo de la caché.
+    await moverFechaPedido(pedido.idPedido, dia);
+    const { IDVariante } = await varianteVendible('5.00', 5);
+    const cliente = await clienteConCarrito(replica2, [{ idVariante: IDVariante, cantidad: 1 }]);
+    await agregar(replica2, comoCliente(cliente.token), IDVariante);
+
+    expect(antes).toEqual([]);
+    expect(await ventasDelDia()).toEqual([]);
+  });
+
   it('crear un pedido en una réplica se ve de inmediato en el reporte de la otra', async () => {
-    const dia = '2004-03-05';
+    const dia = enElAnio('03-05');
     expect((await resumenDelDia(replica1, dia)).pedidos).toBe(0);
 
     // El pedido se crea por la réplica 2 (invalida); moverlo de día no invalida, pero la versión ya cambió.
@@ -93,7 +119,7 @@ describe('caché de reportes con invalidación por versión (E7-H04, A-11)', () 
   });
 
   it('cancelar un pedido se ve en el reporte', async () => {
-    const dia = '2004-03-08';
+    const dia = enElAnio('03-08');
     const { cliente, pedido } = await pedidoEnFecha(dia);
     expect((await resumenDelDia(replica1, dia)).pedidos).toBe(1);
 
@@ -190,7 +216,7 @@ describe('caché de reportes con invalidación por versión (E7-H04, A-11)', () 
     const sinRedis = crearApp(
       dependenciasDePrueba({ cache: crearCacheRedis(caido, pino({ level: 'silent' })) }),
     );
-    const dia = '2004-03-12';
+    const dia = enElAnio('03-12');
     await pedidoEnFecha(dia);
 
     const respuesta = await request(sinRedis)
