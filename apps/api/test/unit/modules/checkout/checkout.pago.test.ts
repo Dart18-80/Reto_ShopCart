@@ -1,5 +1,5 @@
 import { Decimal } from 'decimal.js';
-import pino from 'pino';
+import pino, { type Logger } from 'pino';
 import { describe, expect, it, vi } from 'vitest';
 import { crearPagoService } from '../../../../src/modules/checkout/checkout.pago.js';
 import type {
@@ -61,7 +61,7 @@ const SOLICITUD = {
   tarjeta: { numero: '4242424242424242', mesVencimiento: 12, anioVencimiento: 2030, cvv: '123' },
 };
 
-function preparar(registro: RegistroIntento) {
+function preparar(registro: RegistroIntento, logger: Logger = pino({ level: 'silent' })) {
   const repositorio = {
     registrarIntento: vi.fn(() => Promise.resolve(registro)),
     actualizarIntento: vi.fn((_arrendamiento: Arrendamiento, _cambio: CambioIntento) =>
@@ -88,11 +88,14 @@ function preparar(registro: RegistroIntento) {
     repositorio,
     pedidos,
     pasarela,
-    logger: pino({ level: 'silent' }),
+    logger,
     esperar: () => Promise.resolve(),
   });
   return { servicio, repositorio, pedidos, pasarela };
 }
+
+// N-03: quien pierde el arrendamiento responde PAGO_EN_CURSO y el cliente reintenta tras el arrendamiento.
+const EN_CURSO = { codigo: 'PAGO_EN_CURSO', status: 409, segundosParaReintentar: 15 };
 
 const AUTORIZAR: RegistroIntento = {
   accion: 'Autorizar',
@@ -203,7 +206,7 @@ describe('checkout.pago (E5-H03)', () => {
     });
   });
 
-  it('si renovar el arrendamiento falla (base caída), no toca el cobro y relanza la causa', async () => {
+  it('si renovar el arrendamiento falla (base caída), no toca el cobro y responde PAGO_EN_CURSO', async () => {
     const { servicio, repositorio, pedidos, pasarela } = preparar(AUTORIZAR);
     const causa = new Error('timeout de CrearPedido');
     pedidos.crearDeIntento.mockRejectedValueOnce(causa);
@@ -211,8 +214,33 @@ describe('checkout.pago (E5-H03)', () => {
 
     const error = await servicio.pagar(SOLICITUD).catch((e: unknown) => e);
 
-    expect(error).toBe(causa);
+    expect(error).toMatchObject(EN_CURSO);
+    expect(error).toHaveProperty('cause', causa);
     expect(pasarela.anular).not.toHaveBeenCalled();
+  });
+
+  it('al perder el arrendamiento registra la causa original en el log', async () => {
+    const registrado: string[] = [];
+    const logger = pino({ level: 'warn' }, { write: (linea: string) => registrado.push(linea) });
+    const { servicio, repositorio, pedidos } = preparar(AUTORIZAR, logger);
+    pedidos.crearDeIntento.mockRejectedValueOnce(new Error('timeout de CrearPedido'));
+    repositorio.renovarArrendamiento.mockResolvedValueOnce(false);
+
+    await servicio.pagar(SOLICITUD).catch(() => undefined);
+
+    expect(registrado.join('')).toContain('timeout de CrearPedido');
+  });
+
+  it('si al registrar la autorización otro proceso ya tomó el intento, responde PAGO_EN_CURSO con Retry-After', async () => {
+    const { servicio, repositorio, pedidos } = preparar(AUTORIZAR);
+    const perdido = new AppError('PAGO_EN_CURSO', { mensaje: 'Otro proceso tomó este pago.' });
+    repositorio.actualizarIntento.mockRejectedValueOnce(perdido);
+
+    const error = await servicio.pagar(SOLICITUD).catch((e: unknown) => e);
+
+    expect(error).toMatchObject(EN_CURSO);
+    expect(error).toHaveProperty('cause', perdido);
+    expect(pedidos.crearDeIntento).not.toHaveBeenCalled();
   });
 
   it('antes de cada reintento de anulación retiene el arrendamiento; si lo perdió, no vuelve a anular', async () => {
@@ -225,8 +253,9 @@ describe('checkout.pago (E5-H03)', () => {
       .mockResolvedValueOnce(true)
       .mockResolvedValueOnce(false);
 
-    await servicio.pagar(SOLICITUD).catch(() => undefined);
+    const error = await servicio.pagar(SOLICITUD).catch((e: unknown) => e);
 
+    expect(error).toMatchObject(EN_CURSO);
     expect(pasarela.anular).toHaveBeenCalledTimes(1);
     expect(repositorio.renovarArrendamiento).toHaveBeenCalledTimes(3);
   });
@@ -239,7 +268,8 @@ describe('checkout.pago (E5-H03)', () => {
 
     const error = await servicio.pagar(SOLICITUD).catch((e: unknown) => e);
 
-    expect(error).toBe(causa);
+    expect(error).toMatchObject(EN_CURSO);
+    expect(error).toHaveProperty('cause', causa);
     expect(repositorio.renovarArrendamiento).toHaveBeenCalledWith(ARRENDAMIENTO, 15);
     expect(pedidos.obtenerDeIntento).not.toHaveBeenCalled();
     expect(pasarela.anular).not.toHaveBeenCalled();
@@ -282,7 +312,8 @@ describe('checkout.pago (E5-H03)', () => {
 
     const error = await servicio.pagar(SOLICITUD).catch((e: unknown) => e);
 
-    expect(error).toBe(perdido);
+    expect(error).toMatchObject(EN_CURSO);
+    expect(error).toHaveProperty('cause', perdido);
     expect(pedidos.obtenerDeIntento).not.toHaveBeenCalled();
     expect(pasarela.anular).not.toHaveBeenCalled();
   });
@@ -305,6 +336,22 @@ describe('checkout.pago (E5-H03)', () => {
       ARRENDAMIENTO,
       expect.objectContaining({ estado: 'Anulado', codigo: 'SESION_VENCIDA' }),
     );
+  });
+
+  it('Cerrar con el cobro Capturado y sin pedido es una invariante rota: no toca el intento ni dice "sin cobro"', async () => {
+    const { servicio, repositorio, pasarela } = preparar({ accion: 'Cerrar', ...ARRENDAMIENTO });
+    pasarela.consultar.mockResolvedValueOnce({
+      estado: 'Capturada',
+      idTransaccion: ID_TRANSACCION,
+      marca: 'Visa',
+      ultimosDigitos: '4242',
+    });
+
+    const error = await servicio.pagar(SOLICITUD).catch((e: unknown) => e);
+
+    expect(error).toMatchObject({ codigo: 'INVARIANTE_INTERNA', status: 500 });
+    expect(repositorio.actualizarIntento).not.toHaveBeenCalled();
+    expect(pasarela.anular).not.toHaveBeenCalled();
   });
 
   it('Cerrar sin autorización en la pasarela: el intento queda Fallido, sin autorizar', async () => {

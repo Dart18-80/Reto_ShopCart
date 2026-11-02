@@ -26,6 +26,10 @@ BEGIN
     IF @RolActor IS NULL OR @RolActor NOT IN ('Cliente', 'Operador', 'Administrador', 'Sistema')
         THROW 50005, N'Rol no válido para procesar un reembolso.', 1;
 
+    -- Aplicado = 0: el cambio no se registró (un fallo con un reclamo desplazado, o un éxito sobre un reembolso
+    -- que ya no estaba Pendiente ni Fallido). El servicio lo registra en el log.
+    DECLARE @Aplicado BIT = 0;
+
     BEGIN TRY
         BEGIN TRAN;
 
@@ -50,6 +54,7 @@ BEGIN
               AND  (@RolActor <> 'Cliente' OR EXISTS (SELECT 1 FROM dbo.Pedido AS p
                                                      WHERE p.IDPedido = Reembolso.IDPedido
                                                        AND p.IDUsuario = @IDUsuarioActor));
+        SET @Aplicado = IIF(@@ROWCOUNT = 1, 1, 0);
 
         COMMIT;
     END TRY
@@ -58,6 +63,7 @@ BEGIN
         THROW;
     END CATCH
 
-    SELECT r.IDReembolso, r.Estado, r.Intentos FROM dbo.Reembolso AS r WHERE r.IDReembolso = @IDReembolso;
+    SELECT r.IDReembolso, r.Estado, r.Intentos, @Aplicado AS Aplicado
+    FROM   dbo.Reembolso AS r WHERE r.IDReembolso = @IDReembolso;
 END
 GO

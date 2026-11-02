@@ -625,7 +625,7 @@ Se detalla en historias al cerrar la Fase 1.
 | F2 Tienda | Catálogo con búsqueda y filtros, detalle, carrito con avisos, checkout, pago, mis pedidos |
 | F3 Backoffice | Catálogo, precios, inventario y kardex, pedidos y devoluciones, cupones, usuarios, bitácora, configuración |
 | F4 Dashboard | Gráficas de ventas, categorías, top 10 y carritos abandonados |
-| F5 Extras y calidad | Caché de reportes en Redis, exportación a Excel, observabilidad con Grafana LGTM, script de carga pesada y lo recortado de la Fase 1 (la conciliación de pagos pasó a E5-H04) |
+| F5 Extras y calidad | Caché de reportes en Redis (en la capa de servicio de reportes y bitácora, A-11), exportación a Excel, observabilidad con Grafana LGTM, script de carga pesada y lo recortado de la Fase 1 (la conciliación de pagos pasó a E5-H04). **Carga pesada (decisión de cierre de E7):** sobre una base nueva, con el número de pedidos como parámetro del generador (`SP_Semilla_GenerarDatosDemo @Pedidos`), porque el generador es idempotente sobre una base que ya tiene los datos demo. Con esa carga se mide también el filtro de carritos abandonados (`VW_Carrito_Abandonados`), que hoy no usa un índice |
 | F6 Cierre y defensa | README final, ensayo de la demo (incluida la tolerancia a fallas) y preparación de preguntas de defensa |
 
 ---

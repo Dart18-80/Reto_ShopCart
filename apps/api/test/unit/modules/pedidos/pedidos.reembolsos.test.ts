@@ -1,16 +1,18 @@
 import { Decimal } from 'decimal.js';
-import pino from 'pino';
+import pino, { type Logger } from 'pino';
 import { describe, expect, it, vi } from 'vitest';
 import { crearReembolsosService } from '../../../../src/modules/pedidos/pedidos.reembolsos.js';
 import type {
   EstadoReembolso,
   Pedido,
   ReembolsoParaProcesar,
+  ResultadoActualizacionReembolso,
   ResultadoReembolso,
 } from '../../../../src/modules/pedidos/pedidos.types.js';
 import type { EstadoEnPasarela } from '../../../../src/shared/pasarela/index.js';
 
 const TARJETA = { marca: 'Visa', ultimosDigitos: '4242' };
+const CAPTURADA: EstadoEnPasarela = { estado: 'Capturada', idTransaccion: 'txn-1', ...TARJETA };
 const CANCELACION: ReembolsoParaProcesar = {
   idReembolso: 3,
   origen: 'Cancelacion',
@@ -21,7 +23,11 @@ const CANCELACION: ReembolsoParaProcesar = {
   llaveIntento: 'llave-intento',
 };
 
-function preparar(tomado: ReembolsoParaProcesar | null, enPasarela: EstadoEnPasarela) {
+function preparar(
+  tomado: ReembolsoParaProcesar | null,
+  enPasarela: EstadoEnPasarela,
+  logger: Logger = pino({ level: 'silent' }),
+) {
   const repositorio = {
     cancelar: vi.fn(() => Promise.resolve(3)),
     registrarDevolucion: vi.fn(() =>
@@ -30,8 +36,11 @@ function preparar(tomado: ReembolsoParaProcesar | null, enPasarela: EstadoEnPasa
     obtener: vi.fn((): Promise<Pedido | null> => Promise.resolve(null)),
     tomarReembolso: vi.fn(() => Promise.resolve(tomado)),
     actualizarReembolso: vi.fn(
-      (_reembolso: unknown, resultado: ResultadoReembolso): Promise<EstadoReembolso> =>
-        Promise.resolve(resultado.exito ? 'Completado' : 'Pendiente'),
+      (
+        _reembolso: unknown,
+        resultado: ResultadoReembolso,
+      ): Promise<ResultadoActualizacionReembolso> =>
+        Promise.resolve({ estado: resultado.exito ? 'Completado' : 'Pendiente', aplicado: true }),
     ),
     obtenerReembolsosPendientes: vi.fn((): Promise<number[] | null> => Promise.resolve([])),
     listarReembolsos: vi.fn(() => Promise.resolve({ filas: [], total: 0 })),
@@ -47,7 +56,7 @@ function preparar(tomado: ReembolsoParaProcesar | null, enPasarela: EstadoEnPasa
   const servicio = crearReembolsosService({
     repositorio,
     pasarela,
-    logger: pino({ level: 'silent' }),
+    logger,
   });
   return { servicio, repositorio, pasarela };
 }
@@ -179,5 +188,30 @@ describe('pedidos.reembolsos (E6-H03, N-09)', () => {
     repositorio.obtenerReembolsosPendientes.mockResolvedValueOnce(null);
 
     expect(await servicio.reintentarPendientes()).toBeNull();
+  });
+
+  it('si la base falla tras devolver el dinero, el log conserva la transacción del reembolso', async () => {
+    const registrado: string[] = [];
+    const logger = pino({ level: 'error' }, { write: (linea: string) => registrado.push(linea) });
+    const { servicio, repositorio } = preparar(CANCELACION, CAPTURADA, logger);
+    repositorio.actualizarReembolso.mockRejectedValueOnce(new Error('base caída'));
+
+    const cancelacion = servicio.cancelar(10, 'Ya no lo necesito');
+
+    await expect(cancelacion).rejects.toThrow();
+    expect(registrado.join('')).toContain('SIMR-1');
+  });
+
+  it('un fallo con el reclamo desplazado (Aplicado = 0) se registra como proceso desplazado', async () => {
+    const registrado: string[] = [];
+    const logger = pino({ level: 'warn' }, { write: (linea: string) => registrado.push(linea) });
+    const { servicio, repositorio, pasarela } = preparar(CANCELACION, CAPTURADA, logger);
+    pasarela.reembolsar.mockRejectedValueOnce(new Error('pasarela caída'));
+    repositorio.actualizarReembolso.mockResolvedValueOnce({ estado: 'Pendiente', aplicado: false });
+
+    const estado = await servicio.procesar(3);
+
+    expect(estado).toBe('Pendiente');
+    expect(registrado.join('')).toContain('Reclamo desplazado');
   });
 });

@@ -14,7 +14,7 @@ import {
 } from '../../shared/pasarela/index.js';
 import type { Pedido, PedidosParaCheckout } from '../pedidos/index.js';
 import type { CheckoutRepository } from './checkout.repository.js';
-import type { Arrendamiento, PagoRealizado } from './checkout.types.js';
+import type { Arrendamiento, CambioIntento, PagoRealizado } from './checkout.types.js';
 
 // N-03: el arrendamiento cubre el timeout de la pasarela más un margen para crear el pedido y capturar.
 export const MARGEN_ARRENDAMIENTO_MS = 5_000;
@@ -23,6 +23,8 @@ const SEGUNDOS_ARRENDAMIENTO = (TIMEOUT_PASARELA_MS + MARGEN_ARRENDAMIENTO_MS) /
 // Si la anulación falla, se reintenta en la misma petición antes de dejarla a la conciliación.
 const INTENTOS_ANULACION = 3;
 const ESPERA_BASE_ANULACION_MS = 100;
+const MENSAJE_EN_CURSO =
+  'Tu pago se está procesando. Espera un momento y reintenta con la misma llave.';
 
 interface Dependencias {
   repositorio: Pick<
@@ -53,6 +55,36 @@ export function crearPagoService({
   logger,
   esperar = dormir,
 }: Dependencias) {
+  /**
+   * N-03 (fencing): otro proceso tiene el intento y lo resuelve. Esta petición responde PAGO_EN_CURSO con
+   * Retry-After (como mucho, lo que dura un arrendamiento): al reintentar con la misma llave, el cliente recibe
+   * el resultado de quien lo tiene. La causa original queda en el log.
+   */
+  function arrendamientoPerdido(arrendamiento: Arrendamiento, causa: unknown): AppError {
+    logger.warn(
+      { err: causa, idIntento: arrendamiento.idIntento },
+      'Otro proceso tiene el pago; esta petición no toca el cobro y responde PAGO_EN_CURSO',
+    );
+    return new AppError('PAGO_EN_CURSO', {
+      mensaje: MENSAJE_EN_CURSO,
+      segundosParaReintentar: SEGUNDOS_ARRENDAMIENTO,
+      cause: causa,
+    });
+  }
+
+  /** actualizarIntento con fencing: si el token ya no es el vigente, el arrendamiento se perdió. */
+  async function actualizar(
+    arrendamiento: Arrendamiento,
+    cambio: CambioIntento,
+  ): ReturnType<CheckoutRepository['actualizarIntento']> {
+    try {
+      return await repositorio.actualizarIntento(arrendamiento, cambio);
+    } catch (error) {
+      if (esArrendamientoPerdido(error)) throw arrendamientoPerdido(arrendamiento, error);
+      throw error;
+    }
+  }
+
   async function obtenerPedido(idPedido: number): Promise<Pedido> {
     const pedido = await pedidos.obtener(idPedido);
     if (pedido === null) throw new Error(`El pedido ${String(idPedido)} del pago no existe`);
@@ -91,10 +123,11 @@ export function crearPagoService({
     for (let intento = 1; intento <= INTENTOS_ANULACION; intento++) {
       // N-03 (fencing): cada intento puede tardar el timeout de la pasarela; antes de cada uno se retiene el
       // arrendamiento, para que un reintento del cliente no retome el intento y cree el pedido mientras se anula.
-      if (!(await retenerArrendamiento(arrendamiento))) return;
+      if (!(await retenerArrendamiento(arrendamiento)))
+        throw arrendamientoPerdido(arrendamiento, causa);
       try {
         await pasarela.anular(idTransaccion);
-        await repositorio.actualizarIntento(arrendamiento, {
+        await actualizar(arrendamiento, {
           estado: 'Anulado',
           codigo,
           mensaje: causa instanceof AppError ? causa.message : null,
@@ -104,10 +137,10 @@ export function crearPagoService({
       } catch (error) {
         if (esArrendamientoPerdido(error)) {
           logger.error(
-            { err: error, idIntento, idTransaccion },
+            { idIntento, idTransaccion },
             'La autorización se anuló pero otro proceso tomó el intento; lo resuelve quien lo tiene',
           );
-          return;
+          throw error;
         }
         logger.warn({ err: error, idIntento, idTransaccion, intento }, 'La anulación falló');
         if (intento === INTENTOS_ANULACION) {
@@ -133,7 +166,8 @@ export function crearPagoService({
     const { idIntento } = arrendamiento;
     // N-03 (fencing): si otro proceso retomó el arrendamiento, esta petición ya no toca el cobro. Renovarlo
     // antes de anular impide además que, mientras tanto, un reintento retome el intento y cree el pedido.
-    if (esArrendamientoPerdido(causa) || !(await retenerArrendamiento(arrendamiento))) throw causa;
+    if (esArrendamientoPerdido(causa) || !(await retenerArrendamiento(arrendamiento)))
+      throw arrendamientoPerdido(arrendamiento, causa);
     let pedido: Pedido | null;
     try {
       pedido = await pedidos.obtenerDeIntento(idIntento);
@@ -156,22 +190,20 @@ export function crearPagoService({
     return pedido;
   }
 
-  /** Renueva el arrendamiento si sigue siendo de esta petición; false si otro proceso lo tomó. */
+  /**
+   * Renueva el arrendamiento si sigue siendo de esta petición; false si otro proceso lo tomó o si no se pudo
+   * comprobar (sin saberlo, esta petición no toca el cobro).
+   */
   async function retenerArrendamiento(arrendamiento: Arrendamiento): Promise<boolean> {
     try {
-      if (await repositorio.renovarArrendamiento(arrendamiento, SEGUNDOS_ARRENDAMIENTO))
-        return true;
-      logger.warn(
-        { idIntento: arrendamiento.idIntento },
-        'Otro proceso retomó el pago; esta petición no toca el cobro',
-      );
+      return await repositorio.renovarArrendamiento(arrendamiento, SEGUNDOS_ARRENDAMIENTO);
     } catch (error) {
       logger.error(
         { err: error, idIntento: arrendamiento.idIntento },
         'No se pudo renovar el arrendamiento; el cobro queda para quien tenga el intento',
       );
+      return false;
     }
-    return false;
   }
 
   async function crearPedidoYCapturar(
@@ -221,18 +253,15 @@ export function crearPagoService({
     }
 
     if (resultado.tipo === 'Rechazada') {
-      const { intentosRestantes, sesionCancelada } = await repositorio.actualizarIntento(
-        arrendamiento,
-        {
-          estado: 'Rechazado',
-          codigo: resultado.codigo,
-          mensaje: resultado.mensaje,
-        },
-      );
+      const { intentosRestantes, sesionCancelada } = await actualizar(arrendamiento, {
+        estado: 'Rechazado',
+        codigo: resultado.codigo,
+        mensaje: resultado.mensaje,
+      });
       throw rechazo(resultado.mensaje, intentosRestantes, sesionCancelada);
     }
 
-    await repositorio.actualizarIntento(arrendamiento, {
+    await actualizar(arrendamiento, {
       estado: 'Autorizado',
       idTransaccion: resultado.idTransaccion,
     });
@@ -257,19 +286,22 @@ export function crearPagoService({
     if (enPasarela.estado === 'Autorizada') {
       await anular(arrendamiento, enPasarela.idTransaccion, vencida);
     } else if (enPasarela.estado === 'Anulada') {
-      await repositorio.actualizarIntento(arrendamiento, {
+      await actualizar(arrendamiento, {
         estado: 'Anulado',
         codigo: vencida.codigo,
         mensaje: null,
       });
     } else if (enPasarela.estado === 'Capturada') {
-      // Imposible sin pedido: no se toca el cobro y lo revisa la conciliación.
+      // Sin pedido no puede haber captura: no se toca el cobro ni se dice que no hubo cobro.
       logger.error(
         { idIntento: arrendamiento.idIntento },
         'Cobro capturado en una sesión vencida sin pedido; queda para la conciliación',
       );
+      throw new AppError('INVARIANTE_INTERNA', {
+        mensaje: 'No pudimos confirmar el estado de tu pago. Contáctanos antes de volver a pagar.',
+      });
     } else {
-      await repositorio.actualizarIntento(arrendamiento, {
+      await actualizar(arrendamiento, {
         estado: 'Fallido',
         codigo: vencida.codigo,
       });
@@ -300,8 +332,7 @@ export function crearPagoService({
           return { pedido: await obtenerPedido(registro.idPedido), creado: false };
         case 'EnCurso':
           throw new AppError('PAGO_EN_CURSO', {
-            mensaje:
-              'Tu pago se está procesando. Espera un momento y reintenta con la misma llave.',
+            mensaje: MENSAJE_EN_CURSO,
             segundosParaReintentar: registro.segundosParaReintentar,
           });
         case 'Rechazado':

@@ -156,6 +156,28 @@ describe('el pago empieza dentro de la vigencia de la sesión (cierre de E5, N-0
 });
 
 describe('fencing de los SPs que escriben el intento (cierre de E5, revisión de E6)', () => {
+  it('renovar el arrendamiento con otro rol o sobre un intento ajeno es INVARIANTE_INTERNA, no un arrendamiento perdido', async () => {
+    const { cliente, idSesion } = await sesionDePago();
+    const otro = await sesionDePago();
+    await pagar(app, cliente.token, randomUUID(), TARJETA_TIEMPO_AGOTADO);
+    const [intento] = await intentosDe(idSesion);
+    if (intento?.TokenArrendamiento == null) throw new Error('Falta el intento');
+    const arrendamiento = {
+      idIntento: Number(intento.IDIntentoPago),
+      token: intento.TokenArrendamiento,
+    };
+
+    const comoOperador = comoActor(cliente.idUsuario, 'Operador', () =>
+      checkoutRepository.renovarArrendamiento(arrendamiento, 60),
+    );
+    const ajeno = comoActor(otro.cliente.idUsuario, 'Cliente', () =>
+      checkoutRepository.renovarArrendamiento(arrendamiento, 60),
+    );
+
+    await expect(comoOperador).rejects.toMatchObject({ codigo: 'INVARIANTE_INTERNA' });
+    await expect(ajeno).rejects.toMatchObject({ codigo: 'INVARIANTE_INTERNA' });
+  });
+
   it('con un token que otro proceso ya reemplazó, ni se actualiza, ni se libera, ni se renueva el intento', async () => {
     const { cliente, idSesion } = await sesionDePago();
     const llave = randomUUID();

@@ -15,6 +15,7 @@ import type {
   EstadoReembolso,
   Reembolso,
   ReembolsoParaProcesar,
+  ResultadoActualizacionReembolso,
   ResultadoReembolso,
 } from './pedidos.types.js';
 
@@ -107,15 +108,43 @@ export function crearReembolsosService({ repositorio, pasarela, logger }: Depend
     }
   }
 
+  /**
+   * Si la base falla después de que la pasarela respondió, el resultado queda en el log (con la transacción
+   * del reembolso) antes de relanzar: la llave fija evita devolver dos veces cuando el job lo reintente.
+   */
+  async function registrarResultado(
+    reembolso: ReembolsoParaProcesar,
+    resultado: ResultadoReembolso,
+  ): Promise<EstadoReembolso> {
+    const { idReembolso } = reembolso;
+    let registro: ResultadoActualizacionReembolso;
+    try {
+      registro = await repositorio.actualizarReembolso(reembolso, resultado, {
+        maxIntentos: MAX_INTENTOS,
+        segundosEntreIntentos: SEGUNDOS_ENTRE_INTENTOS,
+      });
+    } catch (error) {
+      logger.error(
+        { err: error, idReembolso, resultado },
+        'No se registró el resultado de la pasarela; el reembolso queda Pendiente para el job',
+      );
+      throw error;
+    }
+    if (!registro.aplicado && !resultado.exito) {
+      logger.warn(
+        { idReembolso, error: resultado.error, estado: registro.estado },
+        'Reclamo desplazado: otro proceso tomó el reembolso y este fallo no se registró',
+      );
+    }
+    return registro.estado;
+  }
+
   /** null si no estaba Pendiente o ya lo procesaba otro (no se toca). */
   async function procesar(idReembolso: number): Promise<EstadoReembolso | null> {
     const reembolso = await repositorio.tomarReembolso(idReembolso, SEGUNDOS_RECLAMO);
     if (reembolso === null) return null;
     const resultado = await devolver(reembolso);
-    const estado = await repositorio.actualizarReembolso(reembolso, resultado, {
-      maxIntentos: MAX_INTENTOS,
-      segundosEntreIntentos: SEGUNDOS_ENTRE_INTENTOS,
-    });
+    const estado = await registrarResultado(reembolso, resultado);
     if (resultado.exito && estado !== 'Completado') {
       logger.error(
         { idReembolso, idTransaccionReembolso: resultado.idTransaccionReembolso, estado },

@@ -21,6 +21,7 @@ import type {
   Pedido,
   Reembolso,
   ReembolsoParaProcesar,
+  ResultadoActualizacionReembolso,
   ResultadoReembolso,
   ResumenPedido,
   ResumenPedidoGestion,
@@ -327,22 +328,25 @@ export const pedidosRepository = {
     { idReembolso, tokenReclamo }: Pick<ReembolsoParaProcesar, 'idReembolso' | 'tokenReclamo'>,
     resultado: ResultadoReembolso,
     reglas: { maxIntentos: number; segundosEntreIntentos: number },
-  ): Promise<EstadoReembolso> {
-    const [fila] = await ejecutarSP<{ Estado: EstadoReembolso }>('SP_Pedidos_ActualizarReembolso', {
-      IDReembolso: { tipo: sql.Int, valor: idReembolso },
-      Exito: { tipo: sql.Bit, valor: resultado.exito },
-      IDTransaccionReembolso: {
-        tipo: sql.VarChar(64),
-        valor: resultado.exito ? resultado.idTransaccionReembolso : null,
+  ): Promise<ResultadoActualizacionReembolso> {
+    const [fila] = await ejecutarSP<{ Estado: EstadoReembolso; Aplicado: boolean }>(
+      'SP_Pedidos_ActualizarReembolso',
+      {
+        IDReembolso: { tipo: sql.Int, valor: idReembolso },
+        Exito: { tipo: sql.Bit, valor: resultado.exito },
+        IDTransaccionReembolso: {
+          tipo: sql.VarChar(64),
+          valor: resultado.exito ? resultado.idTransaccionReembolso : null,
+        },
+        Error: { tipo: sql.NVarChar(500), valor: resultado.exito ? null : resultado.error },
+        TokenReclamo: { tipo: sql.UniqueIdentifier, valor: tokenReclamo },
+        MaxIntentos: { tipo: sql.TinyInt, valor: reglas.maxIntentos },
+        SegundosEntreIntentos: { tipo: sql.Int, valor: reglas.segundosEntreIntentos },
       },
-      Error: { tipo: sql.NVarChar(500), valor: resultado.exito ? null : resultado.error },
-      TokenReclamo: { tipo: sql.UniqueIdentifier, valor: tokenReclamo },
-      MaxIntentos: { tipo: sql.TinyInt, valor: reglas.maxIntentos },
-      SegundosEntreIntentos: { tipo: sql.Int, valor: reglas.segundosEntreIntentos },
-    });
+    );
     if (fila === undefined)
       throw new Error('SP_Pedidos_ActualizarReembolso no devolvió el reembolso');
-    return fila.Estado;
+    return { estado: fila.Estado, aplicado: fila.Aplicado };
   },
 
   /** Job (A-04). null si la otra réplica tenía el sp_getapplock. */

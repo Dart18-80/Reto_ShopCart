@@ -1,4 +1,4 @@
-import pino from 'pino';
+import pino, { type Logger } from 'pino';
 import { describe, expect, it, vi } from 'vitest';
 import { crearConciliacionService } from '../../../../src/modules/checkout/checkout.conciliacion.js';
 import type {
@@ -26,8 +26,15 @@ const AUTORIZADO: IntentoPorConciliar = {
   token: 'token-c',
 };
 
+const CON_PEDIDO: IntentoPorConciliar = { ...AUTORIZADO, idPedido: 9 };
+const AUTORIZADA_2: EstadoEnPasarela = { estado: 'Autorizada', idTransaccion: 'txn-2', ...TARJETA };
+
 /** La conciliación toma los intentos dados, uno por llamada, y después ninguno. */
-function preparar(intentos: IntentoPorConciliar[], enPasarela?: EstadoEnPasarela) {
+function preparar(
+  intentos: IntentoPorConciliar[],
+  enPasarela?: EstadoEnPasarela,
+  logger: Logger = pino({ level: 'silent' }),
+) {
   const tomas: TomaConciliacion[] = intentos.map((intento) => ({ ejecutada: true, intento }));
   const repositorio = {
     tomarIntentoPorConciliar: vi.fn((): Promise<TomaConciliacion> =>
@@ -47,7 +54,7 @@ function preparar(intentos: IntentoPorConciliar[], enPasarela?: EstadoEnPasarela
   const servicio = crearConciliacionService({
     repositorio,
     pasarela,
-    logger: pino({ level: 'silent' }),
+    logger,
   });
   return { servicio, repositorio, pasarela };
 }
@@ -116,15 +123,36 @@ describe('checkout.conciliacion (E5-H04, N-03)', () => {
     expect(resoluciones(repositorio)).toEqual([{ estado: 'Anulado', idTransaccion: 'txn-1' }]);
   });
 
-  it('Autorizado con pedido → captura sin consultar', async () => {
-    const { servicio, repositorio, pasarela } = preparar([{ ...AUTORIZADO, idPedido: 9 }]);
+  it('Autorizado con pedido y autorizado en la pasarela → consulta y captura', async () => {
+    const { servicio, repositorio, pasarela } = preparar([CON_PEDIDO], AUTORIZADA_2);
 
     await servicio.conciliar();
 
-    expect(pasarela.consultar).not.toHaveBeenCalled();
+    expect(pasarela.consultar).toHaveBeenCalledWith('llave-2');
     expect(pasarela.capturar).toHaveBeenCalledWith('txn-2');
     expect(resoluciones(repositorio)).toEqual([{ estado: 'Capturado', idTransaccion: 'txn-2' }]);
   });
+
+  it.each([
+    ['anulada', { estado: 'Anulada' as const, idTransaccion: 'txn-2', ...TARJETA }],
+    ['desconocida', { estado: 'NoExiste' as const }],
+  ])(
+    'Autorizado con pedido y la autorización %s en la pasarela → EnRevision, una vez y con log de error, sin capturar',
+    async (_caso, enPasarela) => {
+      const registrado: string[] = [];
+      const logger = pino({ level: 'error' }, { write: (linea: string) => registrado.push(linea) });
+      const { servicio, repositorio, pasarela } = preparar([CON_PEDIDO], enPasarela, logger);
+
+      const resultado = await servicio.conciliar();
+
+      expect(pasarela.capturar).not.toHaveBeenCalled();
+      expect(pasarela.anular).not.toHaveBeenCalled();
+      expect(resoluciones(repositorio)).toEqual([{ estado: 'EnRevision' }]);
+      expect(resultado).toMatchObject({ EnRevision: 1, errores: 0 });
+      expect(registrado).toHaveLength(1);
+      expect(registrado[0]).toContain('EnRevision');
+    },
+  );
 
   it('Autorizado sin pedido → anula', async () => {
     const { servicio, repositorio, pasarela } = preparar([AUTORIZADO]);
@@ -136,7 +164,7 @@ describe('checkout.conciliacion (E5-H04, N-03)', () => {
   });
 
   it('si falla uno, lo cuenta como error y sigue con el siguiente', async () => {
-    const { servicio, pasarela } = preparar([{ ...AUTORIZADO, idPedido: 9 }, AUTORIZADO]);
+    const { servicio, pasarela } = preparar([CON_PEDIDO, AUTORIZADO], AUTORIZADA_2);
     pasarela.capturar.mockRejectedValueOnce(new Error('pasarela caída'));
 
     const resultado = await servicio.conciliar();

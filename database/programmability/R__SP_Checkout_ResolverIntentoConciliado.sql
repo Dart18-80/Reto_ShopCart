@@ -5,6 +5,8 @@
 --               MaxIntentosPagoRechazados con la sesión Activa, la cancela y libera (como el pago)
 --   Anulado     Pendiente o Autorizado sin pedido → se anuló la autorización
 --   Capturado   Pendiente o Autorizado con su pedido → se capturó
+--   EnRevision  Pendiente o Autorizado con su pedido, pero la autorización ya no existe en la pasarela (anulada
+--               o desconocida): el pedido quedó sin cobro posible. Terminal, para revisión manual (V019)
 -- Compare-and-set: si el intento ya no está en @EstadoEsperado o su arrendamiento ya no es el de esta toma
 -- (@TokenArrendamiento: otro proceso lo retomó), no cambia nada y devuelve Resuelto = 0. Fallido y Anulado guardan PAGO_NO_COMPLETADO: es la respuesta que
 -- recibe un reintento con la misma llave. Solo el rol Sistema (los jobs).
@@ -30,8 +32,8 @@ BEGIN
     IF @RolActor IS NULL OR @RolActor <> 'Sistema'
         THROW 50005, N'Solo la conciliación resuelve intentos de pago.', 1;
 
-    IF NOT (   (@EstadoEsperado = 'Pendiente'  AND @Estado IN ('Fallido', 'Rechazado', 'Anulado', 'Capturado'))
-            OR (@EstadoEsperado = 'Autorizado' AND @Estado IN ('Anulado', 'Capturado')))
+    IF NOT (   (@EstadoEsperado = 'Pendiente'  AND @Estado IN ('Fallido', 'Rechazado', 'Anulado', 'Capturado', 'EnRevision'))
+            OR (@EstadoEsperado = 'Autorizado' AND @Estado IN ('Anulado', 'Capturado', 'EnRevision')))
         THROW 50005, N'Transición inválida del intento de pago en la conciliación.', 1;
 
     IF @Estado = 'Rechazado' AND (@CodigoRespuesta IS NULL OR @MensajeRespuesta IS NULL)
@@ -68,6 +70,8 @@ BEGIN
             -- RF-06: se captura solo lo que tiene pedido y se anula solo lo que no lo tiene.
             IF @Estado = 'Capturado' AND @TienePedido = 0
                 THROW 50005, N'No se captura un intento de pago sin pedido.', 1;
+            IF @Estado = 'EnRevision' AND @TienePedido = 0
+                THROW 50005, N'Solo un intento de pago con pedido queda en revisión.', 1;
             -- Plan E6-H03 §2.6: el cobro de un pedido cancelado nunca se captura (la cancelación ya cercó el
             -- intento; esto es la última defensa).
             IF @Estado = 'Capturado' AND EXISTS (SELECT 1 FROM dbo.Pedido AS p

@@ -326,6 +326,29 @@ describe('conciliación de pagos (E5-H04, N-03)', () => {
     expect((await pagoDe(idSesion)).Pedidos).toBe(1);
   });
 
+  it('Autorizado con pedido y la autorización ya anulada en la pasarela → EnRevision, una sola vez', async () => {
+    const real = crearPasarelaSimulada();
+    const capturaCaida = crearApp(
+      dependenciasDePrueba({
+        pasarela: pasarelaCon({ capturar: () => Promise.reject(new Error('pasarela caída')) }),
+      }),
+    );
+    const { cliente, idSesion } = await sesionDePago(capturaCaida);
+    const llave = randomUUID();
+    expect((await pagar(capturaCaida, cliente.token, llave)).status).toBe(201);
+    const enPasarela = await real.consultar(llave);
+    if (enPasarela.estado !== 'Autorizada') throw new Error('La autorización no quedó viva');
+    await real.anular(enPasarela.idTransaccion);
+    await abandonarIntento(idSesion);
+
+    await conciliar();
+    const segunda = await conciliar();
+
+    expect(await intentosDe(idSesion)).toMatchObject([{ Estado: 'EnRevision', Arrendado: false }]);
+    expect(segunda).toMatchObject({ EnRevision: 0 });
+    expect((await pagoDe(idSesion)).Pedidos).toBe(1);
+  });
+
   it('no toca un intento cuyo arrendamiento venció hace menos de 2 minutos', async () => {
     const { cliente, idSesion } = await sesionDePago();
     await pagar(app, cliente.token, randomUUID(), TARJETA_TIEMPO_AGOTADO);
@@ -350,6 +373,7 @@ describe('conciliación de pagos (E5-H04, N-03)', () => {
       Rechazado: 0,
       Anulado: 0,
       Capturado: 0,
+      EnRevision: 0,
       SinCambio: 0,
       errores: 0,
     });

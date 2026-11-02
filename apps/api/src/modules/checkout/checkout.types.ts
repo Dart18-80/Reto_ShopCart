@@ -100,6 +100,6 @@ export type TomaConciliacion =
   { ejecutada: false } | { ejecutada: true; intento: IntentoPorConciliar | null };
 
 export type ResolucionConciliada =
-  | { estado: 'Fallido' }
+  | { estado: 'Fallido' | 'EnRevision' }
   | { estado: 'Rechazado'; codigo: string; mensaje: string }
   | { estado: 'Anulado' | 'Capturado'; idTransaccion: string };

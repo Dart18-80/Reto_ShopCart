@@ -131,3 +131,9 @@ export interface DevolucionRegistrada {
   devolucion: { idDevolucion: number; montoReembolso: Decimal };
   reembolso: { idReembolso: number; estado: EstadoReembolso };
 }
+
+/** aplicado = false: el resultado no se registró (reclamo desplazado o reembolso ya resuelto). */
+export interface ResultadoActualizacionReembolso {
+  estado: EstadoReembolso;
+  aplicado: boolean;
+}
