@@ -49,3 +49,22 @@ describe('todo SP que escribe sigue la plantilla', () => {
     },
   );
 });
+
+// Enunciado: FU_Modulo_Proceso es una «función tipo tabla». Inline (RETURNS TABLE AS RETURN): el optimizador la
+// expande dentro de la consulta, a diferencia de una escalar o de una de varias sentencias.
+describe('toda FU_ es una función de tabla inline', () => {
+  const funciones = readdirSync(join(DATABASE, 'programmability'))
+    .filter((archivo) => /^R__FU_.*\.sql$/.test(archivo))
+    .map((archivo) => ({
+      archivo,
+      codigo: sinComentarios(readFileSync(join(DATABASE, 'programmability', archivo), 'utf8')),
+    }));
+
+  it('hay funciones (la prueba no está vacía)', () => {
+    expect(funciones.length).toBeGreaterThanOrEqual(14);
+  });
+
+  it.each(funciones)('$archivo: RETURNS TABLE AS RETURN', ({ codigo }) => {
+    expect(codigo).toMatch(/RETURNS\s+TABLE\s+(?:WITH\s+\w+\s+)?AS\s+RETURN\b/i);
+  });
+});
