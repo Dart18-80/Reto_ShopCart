@@ -37,7 +37,7 @@ export const crearProcesadorExportaciones = ({
 }: DependenciasProcesador): ProcesadorExportaciones =>
   crearProcesador({
     repositorio: exportacionesRepository,
-    reportes: crearServicioReportes(cache),
+    reportes: crearServicioReportes(cache, logger),
     almacen,
     logger: logger.child({ modulo: 'exportaciones' }),
     reloj,
@@ -49,6 +49,7 @@ interface DependenciasExportaciones {
   procesador: ProcesadorExportaciones;
   limitador: LimitadorIntentos;
   logger: Logger;
+  reloj: Reloj;
 }
 
 /** Monta /admin/reportes/:reporte/exportaciones y /admin/exportaciones (Admin). */
@@ -58,12 +59,14 @@ export function crearModuloExportaciones({
   procesador,
   limitador,
   logger,
+  reloj,
 }: DependenciasExportaciones): Router {
   const servicio = crearExportacionesService({
     repositorio: exportacionesRepository,
     almacen,
     procesador,
     logger: logger.child({ modulo: 'exportaciones' }),
+    reloj,
   });
   return crearExportacionesRouter(crearExportacionesController(servicio), autenticar, limitador);
 }

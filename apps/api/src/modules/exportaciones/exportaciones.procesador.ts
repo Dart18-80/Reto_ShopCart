@@ -5,6 +5,7 @@ import type { AlmacenArchivos } from '../../shared/almacen/index.js';
 import { ejecutarConContexto, fueraDeLaPeticion } from '../../shared/http/index.js';
 import type { Reloj } from '../../shared/reloj/index.js';
 import type { ReportesService } from '../reportes/index.js';
+import { ExportacionImposible } from './exportaciones.errors.js';
 import { GENERADORES } from './exportaciones.generadores.js';
 import type { ExportacionesRepository } from './exportaciones.repository.js';
 import { TABLAS } from './exportaciones.tablas.js';
@@ -20,15 +21,18 @@ export const MAX_INTENTOS_EXPORTACION = 3;
 export const HORAS_VIGENCIA_ARCHIVO = 24;
 const MENSAJE_REINTENTO = 'No se pudo generar el archivo; se volverá a intentar.';
 
-/** Un error que reintentar no arregla (por ejemplo, el reporte pasa el límite de filas del formato). */
-export class ExportacionImposible extends Error {
-  constructor(mensaje: string) {
-    super(mensaje);
-    this.name = 'ExportacionImposible';
-  }
-}
-
 type Resultado = 'completadas' | 'reintentos' | 'fallidas' | 'desplazadas' | 'errores';
+
+const resumenVacio = (): Record<Resultado, number> => ({
+  completadas: 0,
+  reintentos: 0,
+  fallidas: 0,
+  desplazadas: 0,
+  errores: 0,
+});
+
+const comoError = (error: unknown): Error =>
+  error instanceof Error ? error : new Error(String(error));
 
 interface Dependencias {
   repositorio: Pick<ExportacionesRepository, 'tomar' | 'completar' | 'registrarFallo'>;
@@ -50,11 +54,16 @@ export function crearProcesadorExportaciones({
   reloj,
 }: Dependencias) {
   let enCurso = 0;
+  let detenido = false;
+  // Los trabajos en curso de esta réplica: el apagado ordenado los espera antes de cerrar el pool.
+  const trabajos = new Set<Promise<void>>();
 
   async function generar(tomada: ExportacionTomada) {
     const generador = GENERADORES[tomada.formato];
     const definicion = TABLAS[tomada.reporte];
-    // SP_Dashboard_* es solo para el Admin: el reporte se lee en nombre del Administrador que lo pidió.
+    // SP_Dashboard_* es solo para el Admin: el reporte se lee en nombre del Administrador que lo pidió. Si lo
+    // degradaran entre la solicitud y la toma, el archivo se genera igual pero no lo puede descargar: la descarga
+    // pasa por SP_Exportaciones_Obtener con el rol de su token.
     const tabla = await ejecutarConContexto(
       { requestId: randomUUID(), idUsuario: tomada.idUsuario, rol: 'Administrador' },
       () => definicion.construir(reportes, tomada.filtros, generador.limiteFilas),
@@ -68,12 +77,14 @@ export function crearProcesadorExportaciones({
     // El nombre lo genera el servidor; el ID lo agrupa y el UUID evita choques entre réplicas.
     const referencia = `${String(tomada.idExportacion)}-${randomUUID()}.${tomada.formato}`;
     const destino = new PassThrough();
+    // Si una de las dos puntas falla, se destruye el stream: la otra termina en lugar de quedar colgada.
+    const cortar = (error: unknown): never => {
+      destino.destroy(comoError(error));
+      throw error;
+    };
     const [, { tamanoBytes }] = await Promise.all([
-      generador.escribir(tabla, reloj.ahora(), destino).catch((error: unknown) => {
-        destino.destroy(error instanceof Error ? error : new Error(String(error)));
-        throw error;
-      }),
-      almacen.guardar(referencia, destino),
+      generador.escribir(tabla, reloj.ahora(), destino).catch(cortar),
+      almacen.guardar(referencia, destino).catch(cortar),
     ]);
     return { referencia, tamanoBytes };
   }
@@ -100,6 +111,9 @@ export function crearProcesadorExportaciones({
     } catch (error) {
       return fallar(tomada, error);
     }
+    // Si completar lanza, el archivo no se borra: el COMMIT pudo ocurrir aunque se perdiera la respuesta, y
+    // borrarlo rompería una exportación Completada. Si no ocurrió, queda sin referencia en el almacén (limitación
+    // conocida, A-24): la exportación se retoma al vencer su arrendamiento.
     const completada = await repositorio.completar(
       tomada,
       archivo.referencia,
@@ -116,13 +130,9 @@ export function crearProcesadorExportaciones({
     return 'desplazadas';
   }
 
-  async function tomar(): Promise<ExportacionTomada | null> {
-    try {
-      return await repositorio.tomar(SEGUNDOS_ARRENDAMIENTO_EXPORTACION, MAX_INTENTOS_EXPORTACION);
-    } catch (error) {
-      enCurso -= 1;
-      throw error;
-    }
+  function seguir(trabajo: Promise<void>): Promise<void> {
+    trabajos.add(trabajo);
+    return trabajo.finally(() => trabajos.delete(trabajo));
   }
 
   return {
@@ -132,43 +142,59 @@ export function crearProcesadorExportaciones({
      */
     procesarPendientes(): Promise<Record<Resultado, number>> {
       return fueraDeLaPeticion(async () => {
-        const resumen: Record<Resultado, number> = {
-          completadas: 0,
-          reintentos: 0,
-          fallidas: 0,
-          desplazadas: 0,
-          errores: 0,
-        };
+        const resumen = resumenVacio();
         const enProceso: Promise<void>[] = [];
-        while (enCurso < CONCURRENCIA_MAXIMA_POR_REPLICA) {
-          // El lugar se reserva antes de tomar: dos llamadas a la vez (el POST y la tarea) no lo pasan.
-          enCurso += 1;
-          const tomada = await tomar();
-          if (tomada === null) {
-            enCurso -= 1;
-            break;
+        try {
+          while (!detenido && enCurso < CONCURRENCIA_MAXIMA_POR_REPLICA) {
+            // El lugar se reserva antes de tomar: dos llamadas a la vez (el POST y la tarea) no lo pasan.
+            enCurso += 1;
+            let tomada: ExportacionTomada | null;
+            try {
+              tomada = await repositorio.tomar(
+                SEGUNDOS_ARRENDAMIENTO_EXPORTACION,
+                MAX_INTENTOS_EXPORTACION,
+              );
+            } catch (error) {
+              enCurso -= 1;
+              throw error;
+            }
+            if (tomada === null) {
+              enCurso -= 1;
+              break;
+            }
+            const { idExportacion } = tomada;
+            enProceso.push(
+              seguir(
+                procesar(tomada)
+                  .then((resultado) => {
+                    resumen[resultado] += 1;
+                  })
+                  .catch((error: unknown) => {
+                    // La base falló al registrar: queda Procesando y se retoma al vencer su arrendamiento.
+                    resumen.errores += 1;
+                    logger.error(
+                      { err: error, idExportacion },
+                      'No se registró el resultado de la exportación',
+                    );
+                  })
+                  .finally(() => {
+                    enCurso -= 1;
+                  }),
+              ),
+            );
           }
-          enProceso.push(
-            procesar(tomada)
-              .then((resultado) => {
-                resumen[resultado] += 1;
-              })
-              .catch((error: unknown) => {
-                // La base falló al registrar: queda Procesando y se retoma al vencer su arrendamiento.
-                resumen.errores += 1;
-                logger.error(
-                  { err: error, idExportacion: tomada.idExportacion },
-                  'No se registró el resultado de la exportación',
-                );
-              })
-              .finally(() => {
-                enCurso -= 1;
-              }),
-          );
+        } finally {
+          // Aunque tomar falle a mitad, lo que ya se tomó termina antes de responder.
+          await Promise.allSettled(enProceso);
         }
-        await Promise.all(enProceso);
         return resumen;
       });
+    },
+
+    /** Apagado ordenado: deja de tomar exportaciones y espera las que esta réplica está generando. */
+    async detener(): Promise<void> {
+      detenido = true;
+      await Promise.allSettled([...trabajos]);
     },
   };
 }

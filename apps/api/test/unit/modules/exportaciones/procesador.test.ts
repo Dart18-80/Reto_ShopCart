@@ -109,6 +109,71 @@ describe('procesador de exportaciones (E7-H05, A-24)', () => {
     expect(archivos.size).toBe(0);
   });
 
+  it('si la base falla al completarla, no borra el archivo (el COMMIT pudo ocurrir) y la cuenta como error', async () => {
+    const { procesador, repositorio, archivos } = preparar();
+    repositorio.completar.mockRejectedValueOnce(new Error('base caída'));
+
+    const resumen = await procesador.procesarPendientes();
+
+    expect(resumen).toMatchObject({ errores: 1, completadas: 0 });
+    expect(archivos.size).toBe(1);
+  });
+
+  it('si el almacén falla antes de leer el archivo, el generador no queda colgado: se registra para reintentar', async () => {
+    const { procesador, repositorio, almacen } = preparar();
+    almacen.guardar.mockRejectedValueOnce(new Error('volumen sin permisos'));
+
+    const resumen = await procesador.procesarPendientes();
+
+    expect(resumen).toMatchObject({ reintentos: 1 });
+    expect(repositorio.registrarFallo).toHaveBeenCalledTimes(1);
+  });
+
+  it('si tomar de la cola falla, libera el lugar: la siguiente vez vuelve a tomar', async () => {
+    const { procesador, repositorio } = preparar();
+    repositorio.tomar.mockRejectedValueOnce(new Error('base caída'));
+
+    await expect(procesador.procesarPendientes()).rejects.toThrow('base caída');
+    const resumen = await procesador.procesarPendientes();
+
+    expect(resumen).toMatchObject({ completadas: 1 });
+  });
+
+  it('detener deja de tomar y espera lo que está generando', async () => {
+    const { procesador, repositorio, reportes } = preparar([
+      tomada({ idExportacion: 1 }),
+      tomada({ idExportacion: 2 }),
+    ]);
+    let liberar = (): void => undefined;
+    reportes.topProductos.mockImplementationOnce(async () => {
+      await new Promise<void>((resolve) => {
+        liberar = resolve;
+      });
+      return [];
+    });
+    const enCurso = procesador.procesarPendientes();
+    await vi.waitFor(() => {
+      expect(reportes.topProductos).toHaveBeenCalled();
+    });
+
+    let detenido = false;
+    const deteniendo = procesador.detener().then(() => {
+      detenido = true;
+    });
+    await Promise.resolve();
+    const antesDeTerminar = detenido;
+    liberar();
+    await Promise.all([enCurso, deteniendo]);
+    const despues = await procesador.procesarPendientes();
+
+    expect(antesDeTerminar).toBe(false);
+    expect(detenido).toBe(true);
+    expect(despues).toMatchObject({ completadas: 0 });
+    expect(repositorio.tomar.mock.calls.length).toBeLessThanOrEqual(
+      CONCURRENCIA_MAXIMA_POR_REPLICA,
+    );
+  });
+
   it('un error al leer el reporte se registra para reintentar, con un mensaje sin detalles internos', async () => {
     const { procesador, repositorio, reportes } = preparar();
     reportes.topProductos.mockRejectedValueOnce(new Error('timeout de SQL Server'));
@@ -159,16 +224,20 @@ describe('procesador de exportaciones (E7-H05, A-24)', () => {
       return [];
     });
 
+    // Una sola llamada con cinco pendientes toma exactamente el máximo.
     const primera = procesador.procesarPendientes();
-    const segunda = procesador.procesarPendientes();
     await vi.waitFor(() => {
       expect(reportes.topProductos).toHaveBeenCalledTimes(CONCURRENCIA_MAXIMA_POR_REPLICA);
     });
-    const tomadasDuranteElBloqueo = repositorio.tomar.mock.calls.length;
+    const tomadasPorLaPrimera = repositorio.tomar.mock.calls.length;
+    // Otra llamada (la tarea, mientras el POST genera) con la réplica llena ni siquiera toma.
+    await procesador.procesarPendientes();
+    const tomadasConLaReplicaLlena = repositorio.tomar.mock.calls.length;
     liberar();
-    await Promise.all([primera, segunda]);
+    await primera;
 
-    expect(tomadasDuranteElBloqueo).toBe(CONCURRENCIA_MAXIMA_POR_REPLICA);
+    expect(tomadasPorLaPrimera).toBe(CONCURRENCIA_MAXIMA_POR_REPLICA);
+    expect(tomadasConLaReplicaLlena).toBe(CONCURRENCIA_MAXIMA_POR_REPLICA);
   });
 
   it('la cola corre como Sistema aunque la dispare una petición; el reporte, como el Admin que la pidió', async () => {

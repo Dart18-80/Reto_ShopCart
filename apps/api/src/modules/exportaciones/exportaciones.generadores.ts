@@ -1,5 +1,5 @@
 import type { Writable } from 'node:stream';
-import { finished } from 'node:stream/promises';
+import { pipeline } from 'node:stream/promises';
 import { Decimal } from 'decimal.js';
 import ExcelJS from 'exceljs';
 import pdfmake from 'pdfmake';
@@ -127,9 +127,10 @@ const generadorPdf: Generador = {
 
   async escribir(tabla, datosAl, destino) {
     const documento = await pdfmake.createPdf(definicionPdf(tabla, datosAl)).getStream();
-    documento.pipe(destino);
+    // pipeline propaga un error del documento al destino (y lo rechaza): nunca un 'error' sin listener.
+    const escrito = pipeline(documento, destino);
     documento.end();
-    await finished(destino);
+    await escrito;
   },
 };
 

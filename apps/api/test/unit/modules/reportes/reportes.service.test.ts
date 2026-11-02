@@ -6,7 +6,11 @@ import {
   hashDeFiltros,
   SEGUNDOS_CACHE_REPORTES,
 } from '../../../../src/modules/reportes/reportes.cache.js';
-import { crearReportesService } from '../../../../src/modules/reportes/reportes.service.js';
+import { pino } from 'pino';
+import {
+  crearReportesService,
+  type ReportesService,
+} from '../../../../src/modules/reportes/reportes.service.js';
 import type { Resumen } from '../../../../src/modules/reportes/reportes.types.js';
 import type { Cache } from '../../../../src/shared/cache/index.js';
 
@@ -49,12 +53,24 @@ const REDIS_CAIDO: Cache = {
   incrementar: () => Promise.resolve(),
 };
 
+// Una fila que cumple los tres reportes de lista (ventas, por categoría y top de productos).
+const FILA_CON_MONTO = {
+  periodo: '2026-10-01',
+  pedidos: 1,
+  idCategoria: 2,
+  categoria: 'Calzado',
+  idProducto: 3,
+  producto: 'Tenis',
+  unidades: 4,
+  ventas: new Decimal('12.30'),
+};
+
 function preparar(cache: Cache = cacheEnMemoria()) {
   const repositorio = {
     resumen: vi.fn(() => Promise.resolve(resumenCon('120.00'))),
-    ventasPorPeriodo: vi.fn(() => Promise.resolve([])),
-    ventasPorCategoria: vi.fn(() => Promise.resolve([])),
-    topProductos: vi.fn(() => Promise.resolve([])),
+    ventasPorPeriodo: vi.fn((): Promise<(typeof FILA_CON_MONTO)[]> => Promise.resolve([])),
+    ventasPorCategoria: vi.fn((): Promise<(typeof FILA_CON_MONTO)[]> => Promise.resolve([])),
+    topProductos: vi.fn((): Promise<(typeof FILA_CON_MONTO)[]> => Promise.resolve([])),
     carritosAbandonados: vi.fn(() =>
       Promise.resolve({
         filas: [
@@ -72,7 +88,7 @@ function preparar(cache: Cache = cacheEnMemoria()) {
     ),
   };
   return {
-    servicio: crearReportesService({ repositorio, cache }),
+    servicio: crearReportesService({ repositorio, cache, logger: pino({ level: 'silent' }) }),
     repositorio,
     invalidador: crearInvalidadorReportes(cache),
   };
@@ -172,13 +188,36 @@ describe('caché de reportes (E7-H04, A-11)', () => {
     expect(repositorio.resumen).toHaveBeenCalledTimes(1);
   });
 
+  it.each([
+    [
+      'ventas',
+      (s: ReportesService) => s.ventasPorPeriodo({ agrupacion: 'dia' }),
+      'ventasPorPeriodo',
+    ],
+    ['por categoría', (s: ReportesService) => s.ventasPorCategoria({}), 'ventasPorCategoria'],
+    ['top de productos', (s: ReportesService) => s.topProductos({}), 'topProductos'],
+  ] as const)(
+    'el reporte de %s sale de la caché la segunda vez, con montos Decimal',
+    async (_caso, consultar, metodo) => {
+      const { servicio, repositorio } = preparar();
+      repositorio[metodo].mockResolvedValue([FILA_CON_MONTO]);
+
+      await consultar(servicio);
+      const [fila] = await consultar(servicio);
+
+      expect(repositorio[metodo]).toHaveBeenCalledTimes(1);
+      expect(fila).toMatchObject({ ventas: new Decimal('12.30') });
+    },
+  );
+
   it('los carritos abandonados restauran la fecha y el monto al salir de la caché', async () => {
-    const { servicio } = preparar();
+    const { servicio, repositorio } = preparar();
     const consulta = { pagina: 1, tamano: 20 };
     await servicio.carritosAbandonados(consulta);
 
     const { filas } = await servicio.carritosAbandonados(consulta);
 
+    expect(repositorio.carritosAbandonados).toHaveBeenCalledTimes(1);
     expect(filas[0]?.fechaUltimaActividad).toEqual(new Date('2026-10-30T12:00:00.000Z'));
     expect(filas[0]?.montoPotencial.toFixed(2)).toBe('80.50');
   });

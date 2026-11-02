@@ -23,7 +23,7 @@ function preparar() {
 }
 
 describe('crearCacheRedis (A-11, RNF-2)', () => {
-  it('guarda con el TTL en segundos y lee lo guardado', async () => {
+  it('guarda con el TTL en segundos (SET … EX) y devuelve lo que Redis responde', async () => {
     const { cache, cliente } = preparar();
     cliente.get.mockResolvedValueOnce('{"x":1}');
 

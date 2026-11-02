@@ -51,7 +51,10 @@ const replica2 = crearApp(dependenciasDePrueba({ almacen, exportaciones: procesa
 const sinProcesar = crearApp(
   dependenciasDePrueba({
     almacen,
-    exportaciones: { procesarPendientes: () => Promise.resolve({ ...SIN_RESULTADOS }) },
+    exportaciones: {
+      procesarPendientes: () => Promise.resolve({ ...SIN_RESULTADOS }),
+      detener: () => Promise.resolve(),
+    },
   }),
 );
 const SIN_RESULTADOS = { completadas: 0, reintentos: 0, fallidas: 0, desplazadas: 0, errores: 0 };

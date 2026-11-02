@@ -27,7 +27,12 @@ const reintentarEn = {
 };
 
 // Va después de autenticar: el usuario ya está en el contexto.
-const porUsuario = (): string => String(obtenerContexto()?.idUsuario);
+function porUsuario(): string {
+  const idUsuario = obtenerContexto()?.idUsuario;
+  if (idUsuario == null)
+    throw new Error('El limitador de exportaciones corrió sin un usuario autenticado');
+  return String(idUsuario);
+}
 
 export function crearExportacionesRouter(
   controller: ExportacionesController,

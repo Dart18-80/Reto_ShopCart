@@ -121,7 +121,15 @@ async function iniciar(): Promise<void> {
     proceso: process,
     servidor,
     // Las tareas en curso terminan antes de cerrar el pool que usan.
-    recursos: [() => planificador.detener().then(() => pool.close()), () => redis.quit()],
+    recursos: [
+      // Primero dejan de correr las tareas y las exportaciones en curso (las que disparó un POST también).
+      () =>
+        planificador
+          .detener()
+          .then(() => exportaciones.detener())
+          .then(() => pool.close()),
+      () => redis.quit(),
+    ],
     logger,
     salir: (codigo) => process.exit(codigo),
     esperaMaximaMs: ESPERA_APAGADO_MS,

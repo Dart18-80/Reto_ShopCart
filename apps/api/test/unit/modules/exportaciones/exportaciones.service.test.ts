@@ -24,6 +24,9 @@ const EXPORTACION: Exportacion = {
   fechaExpiracion: new Date('2026-11-03T15:30:00.000Z'),
 };
 
+// Antes de que venza la exportación de prueba (fechaExpiracion: 2026-11-03 15:30 UTC).
+const AHORA = new Date('2026-11-02T18:00:00.000Z');
+
 function preparar(exportacion: Exportacion | null = EXPORTACION, nueva = true) {
   const repositorio = {
     solicitar: vi.fn((..._argumentos: unknown[]) =>
@@ -33,12 +36,17 @@ function preparar(exportacion: Exportacion | null = EXPORTACION, nueva = true) {
     listar: vi.fn(() => Promise.resolve({ filas: [], total: 0 })),
   };
   const almacen = { leer: vi.fn(() => Promise.resolve(Readable.from(['contenido']))) };
-  const procesador = { procesarPendientes: vi.fn(() => Promise.resolve({})) };
+  const procesador = {
+    procesarPendientes: vi.fn(() =>
+      Promise.resolve({ completadas: 0, reintentos: 0, fallidas: 0, desplazadas: 0, errores: 0 }),
+    ),
+  };
   const servicio = crearExportacionesService({
     repositorio,
     almacen,
-    procesador: procesador as never,
+    procesador,
     logger: pino({ level: 'silent' }),
+    reloj: { ahora: () => AHORA },
   });
   return { servicio, repositorio, almacen, procesador };
 }
@@ -116,6 +124,29 @@ describe('exportaciones.service (E7-H05)', () => {
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     );
     expect(archivo.tamanoBytes).toBe(2048);
+  });
+
+  it('una Completada que ya venció (la purga todavía no pasó) responde EXPORTACION_EXPIRADA', async () => {
+    const { servicio, almacen } = preparar({
+      ...EXPORTACION,
+      fechaExpiracion: new Date('2026-11-02T17:59:59.000Z'),
+    });
+
+    await expect(servicio.archivo(5)).rejects.toMatchObject({
+      codigo: 'EXPORTACION_EXPIRADA',
+      status: 410,
+    });
+    expect(almacen.leer).not.toHaveBeenCalled();
+  });
+
+  it('si el procesamiento inmediato falla, la solicitud igual responde (la tarea la retoma)', async () => {
+    const { servicio, procesador } = preparar();
+    procesador.procesarPendientes.mockRejectedValueOnce(new Error('base caída'));
+
+    const { exportacion } = await servicio.solicitar('resumen', { formato: 'xlsx', filtros: {} });
+    await new Promise((listo) => setImmediate(listo));
+
+    expect(exportacion.idExportacion).toBe(5);
   });
 
   it('una Completada cuyo archivo ya no está responde EXPORTACION_EXPIRADA', async () => {

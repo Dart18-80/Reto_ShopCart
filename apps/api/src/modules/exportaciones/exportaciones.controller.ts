@@ -10,6 +10,9 @@ import {
 import type { ExportacionesService } from './exportaciones.service.js';
 import type { Exportacion } from './exportaciones.types.js';
 
+const esDescargaCancelada = (error: unknown): boolean =>
+  error instanceof Error && 'code' in error && error.code === 'ERR_STREAM_PREMATURE_CLOSE';
+
 export const RUTA_EXPORTACIONES = '/api/v1/admin/exportaciones';
 // Cada cuánto conviene volver a consultar una exportación que todavía no termina.
 const SEGUNDOS_PARA_CONSULTAR = 2;
@@ -76,7 +79,12 @@ export function crearExportacionesController(
       res.attachment(archivo.nombreDescarga);
       res.setHeader('Content-Type', archivo.tipoContenido);
       res.setHeader('Content-Length', String(archivo.tamanoBytes));
-      await pipeline(archivo.contenido, res);
+      try {
+        await pipeline(archivo.contenido, res);
+      } catch (error) {
+        // El cliente cerró la conexión a mitad de la descarga: es normal y no hay nada que responder.
+        if (!esDescargaCancelada(error)) throw error;
+      }
     }),
   };
 }

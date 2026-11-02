@@ -132,7 +132,7 @@ export function crearApp({
   v1.use(crearModuloConfiguracion({ autenticar, reportes }));
   v1.use(crearModuloCheckout({ autenticar, pasarela, logger, reloj, reportes }));
   v1.use(crearModuloPedidos({ autenticar, pasarela, logger, reportes }));
-  v1.use(crearModuloReportes({ autenticar, cache }));
+  v1.use(crearModuloReportes({ autenticar, cache, logger }));
   v1.use(crearModuloBitacora({ autenticar }));
   v1.use(
     crearModuloExportaciones({
@@ -141,6 +141,7 @@ export function crearApp({
       procesador: exportaciones,
       limitador: limitadores.exportaciones,
       logger,
+      reloj,
     }),
   );
   v1.use(

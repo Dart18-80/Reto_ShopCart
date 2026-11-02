@@ -6,6 +6,7 @@ import {
   consultaVentasSchema,
   type ReportesService,
 } from '../reportes/index.js';
+import { ExportacionImposible } from './exportaciones.errors.js';
 import type { ReporteExportable, TablaReporte } from './exportaciones.types.js';
 
 const CERO = new Decimal(0);
@@ -49,8 +50,19 @@ const definir = <E extends z.ZodType<object>>({
 }: DefinicionTabla<E>): Tabla => ({
   filtros,
   construir: (reportes, crudos, limiteFilas) =>
-    construir(reportes, filtros.parse(crudos), limiteFilas),
+    construir(reportes, filtrosValidos(filtros, crudos), limiteFilas),
 });
+
+/** Los filtros guardados que ya no cumplen el esquema del reporte (por ejemplo, tras cambiarlo) no se reintentan. */
+function filtrosValidos<E extends z.ZodType<object>>(esquema: E, crudos: unknown): z.output<E> {
+  const leidos = esquema.safeParse(crudos);
+  if (!leidos.success) {
+    throw new ExportacionImposible('Los filtros guardados ya no son válidos para este reporte.', {
+      cause: leidos.error,
+    });
+  }
+  return leidos.data;
+}
 
 /**
  * E7-H05: cada reporte exportable como tabla neutra, con sus totales sumados con Decimal (coinciden al centavo

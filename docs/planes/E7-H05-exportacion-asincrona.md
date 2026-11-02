@@ -6,12 +6,12 @@ Historia grande (CLAUDE.md, flujo por historia). Alcance aprobado por el PO al c
 
 - **`EstadoExportacion`** (catálogo, A-15): `IDEstadoExportacion TINYINT` con IDs fijos 1 `Pendiente`, 2 `Procesando`, 3 `Completada`, 4 `Fallida`, 5 `Expirada`; `UQ` por código.
 - **`SolicitudExportacion`**:
-  - `IDSolicitudExportacion BIGINT IDENTITY` y `IDUsuario` (FK).
+  - `IDSolicitudExportacion INT IDENTITY` y `IDUsuario` (FK).
   - `Reporte` (`CK` con los cinco reportes del dashboard) y `Formato` (`CK IN ('xlsx','pdf')`).
   - `Filtros NVARCHAR(1000)` (`CK ISJSON`) y `HashFiltros BINARY(32)`.
   - `IDEstadoExportacion` (FK) e `Intentos TINYINT` (`CK 0..10`).
   - `TokenArrendamiento` y `ArrendadoHasta`: fencing, como en `IntentoPago`.
-  - `UltimoError NVARCHAR(500)`, `ReferenciaArchivo VARCHAR(100)` y `TamanoBytes BIGINT` (`CK ≥ 0`).
+  - `UltimoError NVARCHAR(500)`, `ReferenciaArchivo VARCHAR(100)` y `TamanoBytes INT` (`CK ≥ 0`). Es `INT` y no `BIGINT` porque el driver devuelve `BIGINT` como texto, y el volumen de exportaciones y el límite de filas no lo necesitan.
   - Fechas: `FechaCreacion`, `FechaFinalizacion`, `FechaExpiracion` y `FechaActualizacion`.
 - **`CHECK` de coherencia por estado:**
   - `Procesando` ⇒ token y arrendamiento.

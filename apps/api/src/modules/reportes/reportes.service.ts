@@ -1,3 +1,4 @@
+import type { Logger } from 'pino';
 import type { Cache } from '../../shared/cache/index.js';
 import type { PaginaSP } from '../../shared/db/index.js';
 import type { z } from '../../shared/openapi/zod.js';
@@ -33,11 +34,12 @@ function leerGuardado<E extends z.ZodType>(texto: string, enCache: E) {
 interface Dependencias {
   repositorio: ReportesRepository;
   cache: Cache;
+  logger: Logger;
 }
 
 // Casos de uso del dashboard (E7-H01). El SP agrega sobre la definición única de venta (M-07); el servicio
 // guarda cada resultado en la caché con invalidación por versión (A-11, E7-H04).
-export function crearReportesService({ repositorio, cache }: Dependencias) {
+export function crearReportesService({ repositorio, cache, logger }: Dependencias) {
   /**
    * Cache-aside con versión. La versión se lee antes de consultar la base: si una escritura la incrementa
    * mientras tanto, este resultado (quizá ya viejo) queda guardado bajo la versión anterior, que nadie vuelve
@@ -55,6 +57,9 @@ export function crearReportesService({ repositorio, cache }: Dependencias) {
     const guardado = await cache.obtener(clave);
     const leido = guardado === null ? null : leerGuardado(guardado, enCache);
     if (leido?.success) return leido.data;
+    // Cuenta como ausente; si pasa siempre (el esquema y lo guardado no coinciden), la caché nunca acierta.
+    if (guardado !== null)
+      logger.warn({ clave }, 'Un reporte en la caché no se pudo leer; se consulta la base');
     const resultado = await consultar();
     await cache.guardar(clave, JSON.stringify(resultado), SEGUNDOS_CACHE_REPORTES);
     return resultado;
