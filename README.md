@@ -182,21 +182,53 @@ Abre <http://localhost:8080/api/docs>. En cada paso: **Try it out** → completa
 | **Caché de reportes con invalidación por versión** (Redis, en el servicio): cada escritura que cambia lo que leen los reportes incrementa la versión después de su commit                                   | Sin borrar claves ni coordinar réplicas; con Redis caído se lee la base                                                     | [A-11 y 01 §9](docs/01-arquitectura.md)                                                                 |
 | **Exportación asíncrona a Excel y PDF** con la cola en SQL Server, consumida por las dos réplicas en competencia, y archivos en un volumen compartido                                                       | Un reporte grande no bloquea la réplica; la cola no se pierde (RNF-2) y el archivo de una réplica se descarga desde la otra | [A-24](docs/01-arquitectura.md)                                                                         |
 
-### Decisiones de negocio (las que el enunciado deja abiertas)
+### Decisiones abiertas del enunciado
 
-| Tema                     | Postura                                                                                                                                 | Detalle                                                                    |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| ¿Cuándo nace el pedido?  | Solo cuando el pago se confirma; antes hay carrito y sesión de pago                                                                     | [N-01](docs/00-vision-y-contexto.md)                                       |
-| Congelamiento de precio  | El carrito garantiza el precio 3 días; la sesión de pago congela precio y descuento                                                     | [N-02](docs/00-vision-y-contexto.md)                                       |
-| Existencia               | El carrito valida pero no reserva; la sesión de pago reserva 15 minutos; el stock sale del kardex al confirmar el pago                  | [N-06](docs/00-vision-y-contexto.md), [N-07](docs/00-vision-y-contexto.md) |
-| Ciclo de vida del pedido | §5; las devoluciones derivan el estado a partir de lo devuelto                                                                          | [N-08](docs/00-vision-y-contexto.md)                                       |
-| Cancelación              | Cliente u Operador desde `Pagado` o `EnPreparacion`, con motivo; reintegra stock y reembolsa (o anula si el cobro no se capturó)        | [N-09](docs/00-vision-y-contexto.md)                                       |
-| Devoluciones             | Las registra el Operador hasta 30 días después de la entrega, por línea; reembolso proporcional, el envío no se reembolsa               | [N-10](docs/00-vision-y-contexto.md)                                       |
-| Qué es una venta         | Pedido no cancelado en su fecha de pago local, neto de descuento, con IVA y sin envío; las devoluciones restan en su propia fecha       | [N-11](docs/00-vision-y-contexto.md)                                       |
-| Cupones                  | Aplicados en el carrito como vista previa y comprometidos en la sesión de pago; límites total y por cliente con contadores bajo bloqueo | [N-12](docs/00-vision-y-contexto.md)                                       |
-| Carrito abandonado       | Activo con productos y 24 horas sin cambios (configurable)                                                                              | [N-13](docs/00-vision-y-contexto.md)                                       |
-| Envío                    | Estándar y Express con tarifa fija configurable y monto para envío gratis                                                               | [N-04](docs/00-vision-y-contexto.md)                                       |
-| IVA                      | Precios con IVA incluido; el desglose se calcula sobre el total del pedido                                                              | [N-18](docs/00-vision-y-contexto.md)                                       |
+Cada ambigüedad que encontramos en el enunciado, la postura que se tomó y dónde está escrita con su porqué y sus alternativas.
+
+| Ambigüedad                                                 | Postura                                                                                                                          | Detalle                              |
+| ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| ¿Cuándo nace el pedido?                                    | Solo cuando el pago se confirma; antes hay carrito y sesión de pago                                                              | [N-01](docs/00-vision-y-contexto.md) |
+| ¿Qué precio se cobra si cambia mientras el cliente decide? | El carrito garantiza el precio 3 días; la sesión de pago congela precio y descuento                                              | [N-02](docs/00-vision-y-contexto.md) |
+| ¿Cómo se paga?                                             | Pasarela simulada como adaptador de un puerto, idempotente por `Idempotency-Key`; captura inmediata                              | [N-03](docs/00-vision-y-contexto.md) |
+| ¿Cuánto cuesta el envío?                                   | Estándar y Express con tarifa fija configurable y envío gratis desde un monto, evaluado después del cupón                        | [N-04](docs/00-vision-y-contexto.md) |
+| ¿Puede comprar un invitado?                                | Arma su carrito con un token en cookie httpOnly; para pagar inicia sesión y los carritos se fusionan                             | [N-05](docs/00-vision-y-contexto.md) |
+| ¿El carrito aparta existencia?                             | Valida pero no reserva; la sesión de pago reserva 15 minutos, todo o nada                                                        | [N-06](docs/00-vision-y-contexto.md) |
+| ¿Cuándo sale el stock?                                     | Al confirmar el pago (es la venta); despachar solo cambia el estado                                                              | [N-07](docs/00-vision-y-contexto.md) |
+| ¿Qué estados tiene un pedido?                              | `Pagado → EnPreparacion → Despachado → Entregado`, más `Cancelado`, `DevueltoParcial` y `Devuelto` derivados de lo devuelto (§5) | [N-08](docs/00-vision-y-contexto.md) |
+| ¿Quién cancela y hasta cuándo?                             | Cliente u Operador desde `Pagado` o `EnPreparacion`, con motivo; reintegra stock y reembolsa                                     | [N-09](docs/00-vision-y-contexto.md) |
+| ¿Cómo son las devoluciones?                                | Las registra el Operador hasta 30 días después de la entrega, por línea; el envío no se reembolsa                                | [N-10](docs/00-vision-y-contexto.md) |
+| ¿Qué cuenta como venta?                                    | Pedido no cancelado en su día de pago local, neto de descuento, con IVA y sin envío; las devoluciones restan en su propio día    | [N-11](docs/00-vision-y-contexto.md) |
+| ¿Cómo se aplican y limitan los cupones?                    | Vista previa en el carrito, compromiso en la sesión de pago; límites total y por cliente con contadores bajo bloqueo             | [N-12](docs/00-vision-y-contexto.md) |
+| ¿Qué es un carrito abandonado?                             | Activo con productos y 24 horas sin cambios (configurable)                                                                       | [N-13](docs/00-vision-y-contexto.md) |
+| ¿Se puede borrar un producto vendido?                      | Solo se borra sin historial; con historial, se desactiva                                                                         | [N-14](docs/00-vision-y-contexto.md) |
+| ¿Quién crea usuarios y con qué rol?                        | El registro público crea Clientes; el Admin crea Operadores y Admins; un rol por usuario                                         | [N-15](docs/00-vision-y-contexto.md) |
+| ¿Hay proveedores o compras?                                | No: el Operador registra entradas con cantidad, motivo y referencia                                                              | [N-16](docs/00-vision-y-contexto.md) |
+| ¿Cómo son las direcciones?                                 | Catálogo de departamentos y municipios de Guatemala; varias por cliente, una predeterminada; el pedido las copia                 | [N-17](docs/00-vision-y-contexto.md) |
+| ¿Los precios incluyen IVA?                                 | Sí; el desglose se calcula sobre el total del pedido (base = total / 1.12)                                                       | [N-18](docs/00-vision-y-contexto.md) |
+| ¿Dónde viven las imágenes?                                 | URLs por producto, varias con orden; las de la semilla se sirven localmente                                                      | [N-19](docs/00-vision-y-contexto.md) |
+| ¿Cómo se busca sin distinguir tildes?                      | `LIKE` sobre una columna calculada con `Latin1_General_CI_AI`                                                                    | [A-10](docs/01-arquitectura.md)      |
+| ¿En qué zona horaria se agrupan los reportes?              | Fechas en UTC y una columna con el día de Guatemala (UTC−6)                                                                      | [A-12](docs/01-arquitectura.md)      |
+| ¿Qué es configurable por el Admin?                         | Una tabla tipada de una sola fila (`ParametroSistema`): garantía de precio, minutos de reserva, envío gratis, horas de abandono  | [A-14](docs/01-arquitectura.md)      |
+| ¿Cómo se exporta un reporte grande?                        | Asíncrono, con la cola en SQL Server y el archivo en un volumen compartido por las réplicas                                      | [A-24](docs/01-arquitectura.md)      |
+
+**Fuera de alcance y mejoras.** Lo que se excluyó a propósito, con su porqué:
+
+| Tema                                                           | Postura                                                                                            | Detalle                                                               |
+| -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Factura electrónica (FEL de la SAT)                            | Fuera de alcance: el pedido guarda la base y el IVA que la factura necesitaría                     | [N-18](docs/00-vision-y-contexto.md)                                  |
+| Tarifa de envío por zona                                       | Mejora: hoy la tarifa es fija por método                                                           | [N-04](docs/00-vision-y-contexto.md)                                  |
+| Capturar el cobro al despachar                                 | Mejora: hoy autoriza y captura al pagar, y una cancelación reembolsa                               | [N-03](docs/00-vision-y-contexto.md)                                  |
+| Pasarela real                                                  | Mejora: otro adaptador del puerto `PasarelaPago`, sin tocar el checkout                            | [N-03](docs/00-vision-y-contexto.md)                                  |
+| Límite de compra por cliente                                   | Fuera de alcance: el límite es la existencia disponible                                            | [N-06](docs/00-vision-y-contexto.md)                                  |
+| Solicitud de devolución por el cliente, con aprobación         | Mejora: hoy la registra el Operador                                                                | [N-10](docs/00-vision-y-contexto.md)                                  |
+| Agregar una dimensión de atributos a un producto con historial | Fuera de alcance: un producto con variantes con historial no cambia su conjunto de atributos       | [N-14](docs/00-vision-y-contexto.md)                                  |
+| Costo del inventario (costo promedio, valoración)              | Mejora: las entradas no llevan costo                                                               | [N-16](docs/00-vision-y-contexto.md)                                  |
+| Recuperación de contraseña por correo                          | Fuera de la Fase 1: requiere SMTP; con sesión iniciada, el usuario cambia la suya                  | [N-15](docs/00-vision-y-contexto.md)                                  |
+| Correo (aviso de exportación terminada)                        | Fuera de la Fase 1: un puerto `Notificador` con Mailpit; requiere SMTP                             | [N-15](docs/00-vision-y-contexto.md), [A-24](docs/01-arquitectura.md) |
+| Dashboard en tiempo real (SSE)                                 | Mejora: con dos réplicas necesita un canal de avisos entre ellas; mientras tanto, la caché de 60 s | §8                                                                    |
+| Kubernetes                                                     | Diferido: el diseño stateless ya lo permite                                                        | [D-04](docs/00-vision-y-contexto.md)                                  |
+| Producción                                                     | SQL Server Standard o Enterprise, HTTPS en nginx y secretos en un vault en lugar de `.env`         | §8                                                                    |
 
 **Definiciones de los reportes** (`/api/v1/dashboard/*`, solo Admin). Todos agregan sobre una única definición de venta (`VW_Dashboard_HechosVenta`):
 
@@ -209,6 +241,31 @@ Abre <http://localhost:8080/api/docs>. En cada paso: **Try it out** → completa
 - Los reportes salen de una caché de 60 s que se invalida con cada pedido, cancelación, devolución, cambio de carrito o de precio (la lista completa en [01 §9](docs/01-arquitectura.md)).
 
 **Exportar un reporte (Admin).** `POST /api/v1/admin/reportes/{reporte}/exportaciones` con `{ "formato": "xlsx", "filtros": { "desde": "2026-10-01", "hasta": "2026-10-31" } }` (o `"pdf"`) responde `202` con `Location`. `GET /api/v1/admin/exportaciones/{id}` muestra el estado (con `Retry-After` mientras no termina) y, cuando está `Completada`, `GET /api/v1/admin/exportaciones/{id}/archivo` descarga el archivo. Una solicitud igual vigente devuelve la misma; cada Admin puede tener 3 en curso; los archivos vencen a las 24 h.
+
+### Librerías del backend
+
+Cada una con su porqué ([A-16](docs/01-arquitectura.md)); ninguna fuera de esta lista sin aprobación del PO.
+
+| Librería                                     | Para qué                                                                      |
+| -------------------------------------------- | ----------------------------------------------------------------------------- |
+| `express` 5                                  | HTTP; propaga los errores de los handlers `async` al middleware central       |
+| `mssql`                                      | Ejecuta stored procedures con parámetros tipados (nunca texto SQL)            |
+| `zod`                                        | Valida toda entrada y es la única fuente de los tipos de entrada              |
+| `@asteasolutions/zod-to-openapi`             | Genera el OpenAPI 3.1 desde los mismos esquemas Zod                           |
+| `swagger-ui-express`                         | Sirve Swagger en `/api/docs`                                                  |
+| `decimal.js`                                 | Dinero sin errores de punto flotante; nunca `number`                          |
+| `pino`                                       | Logs JSON con `requestId` e instancia, y redacción de datos sensibles         |
+| `helmet`                                     | Encabezados de seguridad HTTP                                                 |
+| `cors`                                       | CORS con la lista de orígenes de `.env`, con credenciales                     |
+| `argon2`                                     | Hash de contraseñas con argon2id (parámetros de OWASP)                        |
+| `jose`                                       | Firma y verificación del JWT con el algoritmo fijado (HS256)                  |
+| `ioredis`                                    | Cliente de Redis para la caché, la versión de sesión y el rate limiting       |
+| `rate-limiter-flexible`                      | Rate limiting compartido por las réplicas en Redis, con respaldo en memoria   |
+| `exceljs`                                    | Excel en modo streaming: escribe fila por fila sin cargar el libro en memoria |
+| `pdfmake`                                    | PDF declarativo con las fuentes estándar: sin archivos de fuente en la imagen |
+| `vitest`, `supertest`, `@vitest/coverage-v8` | Pruebas unitarias, de integración y de API, y cobertura (solo desarrollo)     |
+
+`pnpm audit` (2026-11-02): ninguna alta ni crítica; 3 moderadas en producción, todas transitivas de `exceljs`: `uuid` (solo con el parámetro `buf`, que exceljs no usa) y `minimatch` vía `archiver` (los patrones no vienen del usuario). Ninguna recibe entrada del usuario. OpenTelemetry, también en A-16, está planificado para F5.
 
 ---
 
@@ -334,14 +391,11 @@ docker compose start api-1        # nginx la reincorpora sola
 
 ## 8. Mejoras documentadas
 
-Lo que queda fuera de la Fase 1, a propósito y con su lugar en el plan ([docs/03-backlog.md](docs/03-backlog.md) §4):
+Lo que queda fuera de la Fase 1, a propósito y con su lugar en el plan ([docs/03-backlog.md](docs/03-backlog.md) §4). Las exclusiones del alcance y las mejoras de producto están en §4, «Fuera de alcance y mejoras».
 
 - **Fase 2 · Frontend:** SPA con Vite + React + TypeScript (tienda, backoffice y dashboard con gráficas), renovación transparente del token y estados de carga, vacío y error.
-- **Correo** (avisar que una exportación terminó y recuperar la contraseña, N-15): un puerto `Notificador` con Mailpit en desarrollo. Queda fuera de la Fase 1 porque requiere un servidor SMTP.
-- **Dashboard en tiempo real (SSE):** con dos réplicas, el evento que ocurre en una tiene que llegar a los clientes conectados a la otra, así que necesita un canal de avisos entre ellas (Redis pub/sub o el outbox de la base). Mientras tanto, el dashboard consulta y la caché lo hace barato.
-- **Carga pesada:** el generador de datos demo con 50,000 pedidos sobre una base nueva (el número de pedidos es un parámetro), para medir los reportes y el filtro de carritos abandonados, que hoy no usa un índice.
-- **Observabilidad** con OpenTelemetry y Grafana LGTM ([RNF-4](docs/00-vision-y-contexto.md)).
 - **Revisión manual de pagos:** un intento con pedido cuya autorización ya no existe en la pasarela queda `EnRevision` y un reembolso que agota sus 5 intentos queda `Fallido` en la lista del Admin (`GET /api/v1/admin/reembolsos`, con reintento). La Fase 2 les dará pantalla.
-- **Pasarela real:** otro adaptador del puerto `PasarelaPago`, sin tocar el checkout.
-- **Kubernetes** queda diferido ([D-04](docs/00-vision-y-contexto.md)); el diseño stateless ya lo permite.
+- **Carga pesada (F5):** el script `database/load/L001` con el generador de datos demo a 50,000 pedidos. Ya se midió en una base desechable: ningún listado ni reporte pasa de 1 s ([docs/revision/estado-backend.md](docs/revision/estado-backend.md) §7).
+- **Observabilidad (F5):** OpenTelemetry y Grafana LGTM ([RNF-4](docs/00-vision-y-contexto.md)); hoy hay logs JSON con `requestId` y `/health`.
+- **Dashboard en tiempo real (SSE):** con dos réplicas, el evento que ocurre en una tiene que llegar a los clientes conectados a la otra, así que necesita un canal de avisos entre ellas (Redis pub/sub o el outbox de la base).
 - **Producción:** SQL Server Standard o Enterprise en lugar de Developer, HTTPS en nginx y secretos fuera de `.env`.
