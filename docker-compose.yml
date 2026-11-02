@@ -61,6 +61,8 @@ services:
     networks:
       shopcart:
         ipv4_address: ${RED_PREFIJO:-172.28.10}.10
+    # Healthcheck de infraestructura, no del backend: sqlcmd necesita una consulta trivial para saber que el
+    # motor acepta conexiones. La API solo ejecuta SPs (SP_Sistema_Health).
     healthcheck:
       test:
         - CMD-SHELL

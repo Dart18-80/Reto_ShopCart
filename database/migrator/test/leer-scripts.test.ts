@@ -6,6 +6,7 @@ import { ErrorMigracion } from '../src/errores.ts';
 import { BASE_PRUEBAS } from '../src/conexion.ts';
 import { carpetasPara, leerScripts } from '../src/scripts.ts';
 
+// El SQL de estas pruebas es el contenido de archivos .sql de ejemplo para el lector: nunca se ejecuta.
 const CARPETAS = carpetasPara('ShopCart');
 const BOM = String.fromCharCode(0xfeff);
 

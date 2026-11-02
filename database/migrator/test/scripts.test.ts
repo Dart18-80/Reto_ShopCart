@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { calcularChecksum, dividirEnLotes, normalizar } from '../src/scripts.ts';
 
+// El SQL de estas pruebas es el texto de entrada de un script .sql para el lector y el divisor de lotes del
+// migrador: nunca se ejecuta contra una base.
 const BOM = String.fromCharCode(0xfeff);
 const SCRIPT_LF = 'CREATE TABLE dbo.Uno (ID INT);\nGO\n';
 

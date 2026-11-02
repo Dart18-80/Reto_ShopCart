@@ -183,3 +183,43 @@ describe('gestión de pedidos (E6-H01, RF-07)', () => {
     expect(duracion).toBeLessThan(1000);
   });
 });
+
+describe('el pedido conserva sus precios (RF-02)', () => {
+  const detalleSchema = z.object({
+    datos: z.object({
+      subtotal: z.string(),
+      total: z.string(),
+      lineas: z.array(z.object({ precioUnitario: z.string(), totalLinea: z.string() })),
+    }),
+  });
+
+  it('un cambio de precio posterior no altera el monto de un pedido ya realizado', async () => {
+    const { cliente, pedido, variantes } = await pedidoPagado(app, estandar, {
+      lineas: [{ precio: '50.00', cantidad: 2 }],
+    });
+    const idVariante = variantes[0]?.idVariante ?? 0;
+    const antes = detalleSchema.parse(
+      (
+        await request(app)
+          .get(`/api/v1/pedidos/${String(pedido.idPedido)}`)
+          .set(comoCliente(cliente.token))
+      ).body,
+    );
+
+    const cambio = await request(app)
+      .put(`/api/v1/admin/variantes/${String(idVariante)}/precio`)
+      .set(comoCliente(tokenAdmin))
+      .send({ precio: '80.00' });
+    const despues = detalleSchema.parse(
+      (
+        await request(app)
+          .get(`/api/v1/pedidos/${String(pedido.idPedido)}`)
+          .set(comoCliente(cliente.token))
+      ).body,
+    );
+
+    expect(cambio.status).toBe(200);
+    expect(despues).toEqual(antes);
+    expect(despues.datos.lineas).toMatchObject([{ precioUnitario: '50.00', totalLinea: '100.00' }]);
+  });
+});

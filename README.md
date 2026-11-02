@@ -4,13 +4,14 @@ Tienda en línea de una cadena guatemalteca de ropa, calzado y accesorios: catá
 
 **Fase 1 (esta entrega):** backend completo (Express 5 + TypeScript + SQL Server 2022) con dos réplicas detrás de nginx. El frontend es la Fase 2.
 
-| Documento                                                    | Contenido                                                                        |
-| ------------------------------------------------------------ | -------------------------------------------------------------------------------- |
-| [docs/enunciado-shopcart.md](docs/enunciado-shopcart.md)     | El enunciado oficial del reto                                                    |
-| [docs/00-vision-y-contexto.md](docs/00-vision-y-contexto.md) | Decisiones de negocio (`N-xx`), no funcionales (`RNF-xx`) y generales (`D-xx`)   |
-| [docs/01-arquitectura.md](docs/01-arquitectura.md)           | Arquitectura (`A-xx`), flujos críticos, errores y API                            |
-| [docs/02-modelo-datos.md](docs/02-modelo-datos.md)           | Tablas, constraints, índices, SPs, vistas, funciones y códigos de error (`M-xx`) |
-| [docs/03-backlog.md](docs/03-backlog.md)                     | Historias, criterios de aceptación y tablero                                     |
+| Documento                                                        | Contenido                                                                            |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| [docs/enunciado-shopcart.md](docs/enunciado-shopcart.md)         | El enunciado oficial del reto                                                        |
+| [docs/00-vision-y-contexto.md](docs/00-vision-y-contexto.md)     | Decisiones de negocio (`N-xx`), no funcionales (`RNF-xx`) y generales (`D-xx`)       |
+| [docs/01-arquitectura.md](docs/01-arquitectura.md)               | Arquitectura (`A-xx`), flujos críticos, errores y API                                |
+| [docs/02-modelo-datos.md](docs/02-modelo-datos.md)               | Tablas, constraints, índices, SPs, vistas, funciones y códigos de error (`M-xx`)     |
+| [docs/03-backlog.md](docs/03-backlog.md)                         | Historias, criterios de aceptación y tablero                                         |
+| [docs/04-verificacion-fase-1.md](docs/04-verificacion-fase-1.md) | Checklist de penalizaciones y la prueba que demuestra cada criterio de RF-01 a RF-09 |
 
 ---
 
