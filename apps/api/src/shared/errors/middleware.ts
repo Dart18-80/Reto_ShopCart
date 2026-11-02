@@ -81,6 +81,12 @@ function aAppError(error: unknown): AppError {
 }
 
 function errorDelParserJson(error: unknown): string | undefined {
-  if (typeof error !== 'object' || error === null || !('type' in error)) return undefined;
+  if (typeof error !== 'object' || error === null) return undefined;
+  if (!('type' in error)) return esCuerpoIlegible(error) ? 'entity.parse.failed' : undefined;
   return typeof error.type === 'string' ? error.type : undefined;
 }
+
+// body-parser entrega sin `type` el error de zlib de un cuerpo comprimido que no se puede descomprimir, con
+// status 400: es un cuerpo ilegible del cliente, igual que un JSON mal formado, no un error interno.
+const esCuerpoIlegible = (error: object): boolean =>
+  'status' in error && error.status === 400 && 'errno' in error;

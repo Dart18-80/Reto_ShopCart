@@ -148,6 +148,23 @@ describe('middleware central de errores', () => {
     expect(leerError(respuesta).codigo).toBe('CONTENIDO_NO_SOPORTADO');
   });
 
+  it.each(['gzip', 'deflate', 'br'])(
+    'un cuerpo %s que no se puede descomprimir es un 400 JSON_INVALIDO del cliente, no un error interno',
+    async (codificacion) => {
+      const { app, lineas } = crearAppDePrueba();
+
+      const respuesta = await request(app)
+        .post('/json')
+        .set('Content-Type', 'application/json')
+        .set('Content-Encoding', codificacion)
+        .send('no está comprimido');
+
+      expect(respuesta.status).toBe(400);
+      expect(leerError(respuesta).codigo).toBe('JSON_INVALIDO');
+      expect(lineas.filter((linea) => linea.level >= NIVEL_ERROR_PINO)).toEqual([]);
+    },
+  );
+
   it('si las cabeceras ya se enviaron, registra el error con pino y su requestId antes de delegar en Express', async () => {
     const { app, lineas, crudas } = crearAppDePrueba();
 
