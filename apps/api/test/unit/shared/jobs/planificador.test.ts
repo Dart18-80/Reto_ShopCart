@@ -5,7 +5,7 @@ import { crearLogger } from '../../../../src/shared/observability/logger.js';
 
 const INTERVALO_MS = 1000;
 
-function loggerEnMemoria() {
+function loggerEnMemoria(nivel: 'info' | 'debug' = 'info') {
   const lineas: Record<string, unknown>[] = [];
   const destino = new Writable({
     write(fragmento: Buffer, _codificacion, listo) {
@@ -13,7 +13,7 @@ function loggerEnMemoria() {
       listo();
     },
   });
-  return { logger: crearLogger({ destino }), lineas };
+  return { logger: crearLogger({ destino, nivel }), lineas };
 }
 
 function tarea(ejecutar: Tarea['ejecutar']): Tarea {
@@ -47,8 +47,31 @@ describe('planificador de tareas (E5-H04, A-04)', () => {
     );
   });
 
-  it('si la otra réplica tiene el bloqueo, registra que la omitió', async () => {
-    const { logger, lineas } = loggerEnMemoria();
+  it('una ejecución sin trabajo (todo en cero) solo se registra en debug, no en info', async () => {
+    const enInfo = loggerEnMemoria('info');
+    const enDebug = loggerEnMemoria('debug');
+    const vacia = () => Promise.resolve({ sesionesExpiradas: 0, carritosExpirados: 0 });
+    const planificadores = [
+      crearPlanificador([tarea(vacia)], enInfo.logger),
+      crearPlanificador([tarea(vacia)], enDebug.logger),
+    ];
+
+    for (const p of planificadores) p.iniciar();
+    await vi.advanceTimersByTimeAsync(INTERVALO_MS);
+    await Promise.all(planificadores.map((p) => p.detener()));
+
+    expect(enInfo.lineas).toEqual([]);
+    expect(enDebug.lineas).toContainEqual(
+      expect.objectContaining({
+        level: 20,
+        tarea: 'Prueba.Tarea',
+        msg: 'Tarea ejecutada sin trabajo',
+      }),
+    );
+  });
+
+  it('si la otra réplica tiene el bloqueo, lo registra en debug (no hubo trabajo en esta)', async () => {
+    const { logger, lineas } = loggerEnMemoria('debug');
     const planificador = crearPlanificador([tarea(() => Promise.resolve(null))], logger);
 
     planificador.iniciar();
@@ -57,6 +80,7 @@ describe('planificador de tareas (E5-H04, A-04)', () => {
 
     expect(lineas).toContainEqual(
       expect.objectContaining({
+        level: 20,
         tarea: 'Prueba.Tarea',
         msg: 'Tarea omitida: otra réplica la está ejecutando',
       }),

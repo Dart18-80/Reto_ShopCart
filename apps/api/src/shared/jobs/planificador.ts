@@ -28,10 +28,13 @@ export function crearPlanificador(tareas: readonly Tarea[], logger: Logger): Pla
   async function ejecutar(tarea: Tarea): Promise<void> {
     try {
       const resultado = await tarea.ejecutar();
+      // Decisión del PO (cierre de la Fase 1): en info solo cuando hubo trabajo; lo vacío, en debug.
       if (resultado === null) {
-        logger.info({ tarea: tarea.nombre }, 'Tarea omitida: otra réplica la está ejecutando');
-      } else {
+        logger.debug({ tarea: tarea.nombre }, 'Tarea omitida: otra réplica la está ejecutando');
+      } else if (Object.values(resultado).some((cantidad) => cantidad !== 0)) {
         logger.info({ tarea: tarea.nombre, ...resultado }, 'Tarea ejecutada');
+      } else {
+        logger.debug({ tarea: tarea.nombre }, 'Tarea ejecutada sin trabajo');
       }
     } catch (error) {
       logger.error(
