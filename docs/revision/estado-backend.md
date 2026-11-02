@@ -4,7 +4,7 @@ Revisión sobre `a31c5d5` (2026-11-02), actualizada tras el pulido del mismo dí
 
 ## E9. Observabilidad, tiempo real y defensa (2026-11-02)
 
-Encargo del PO después del push de la Fase 1. Las tres historias quedan **En revisión**. Suites en verde en un clon nuevo con `core.autocrlf=true` sobre `ee34fc8` (proyecto `shopcart-e8`, entorno desde cero en 103 s):
+Encargo del PO después del push de la Fase 1. Las tres historias quedan **En revisión**. Suites en verde en clones nuevos con `core.autocrlf=true`: lint, tipos y unitarias sobre `7433caf`; integración, concurrencia y entorno sobre `ee34fc8`, después del cual solo cambió documentación (proyecto `shopcart-e8`, entorno desde cero en 103 s):
 
 | Suite | Sin el perfil `observabilidad` | Con el perfil |
 |---|---|---|
