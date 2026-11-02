@@ -211,7 +211,7 @@ Es una pregunta segura en la defensa, porque el enunciado pide que los **servici
 | direcciones | `GET/POST /direcciones`, `PATCH/DELETE /direcciones/:id`; `GET /departamentos`, `GET /departamentos/:id/municipios` | Cliente / público |
 | catalogo | `GET /productos` (búsqueda y filtros), `GET /productos/:id`, `GET /categorias`; administración: `POST/PATCH/DELETE /admin/productos…`, `/admin/variantes…`, `/admin/categorias…`, `/admin/atributos…`, `PUT /admin/variantes/:id/precio` | Público / Admin |
 | inventario | `POST /inventario/entradas`, `POST /inventario/ajustes`, `GET /inventario/kardex?variante=`, `GET /inventario/existencias`, `GET /inventario/conciliacion` | Operador, Admin |
-| carrito | `GET /carrito`, `POST /carrito/lineas`, `PATCH /carrito/lineas/:idLinea`, `DELETE /carrito/lineas/:idLinea`, `PUT /carrito/cupon`, `DELETE /carrito/cupon` | Invitado, Cliente |
+| carrito | `GET /carrito`, `POST /carrito/lineas`, `PATCH /carrito/lineas/:idLinea`, `DELETE /carrito/lineas/:idLinea`, `POST /carrito/avisos/vistos`, `PUT /carrito/cupon`, `DELETE /carrito/cupon` | Invitado, Cliente |
 | envios | `GET /envios/metodos`; `PUT /admin/envios/metodos/:id` | Público / Admin |
 | cupones | `GET/POST /admin/cupones`, `GET/PATCH /admin/cupones/:id`, `POST /admin/cupones/:id/activar`, `POST /admin/cupones/:id/desactivar` | Admin |
 | checkout | `POST /checkout/sesion` (iniciar pago), `GET /checkout/sesion`, `DELETE /checkout/sesion`, `POST /checkout/sesion/pagos` (**`Idempotency-Key`**) | Cliente |
@@ -346,7 +346,7 @@ Al vencer la garantía, la línea se re-ancla a la versión de precio vigente.
 
 Todo SP de catálogo bloquea en este orden: **categoría → producto → variantes en orden de `IDVariante`**. Desactivar una categoría y activar uno de sus productos se serializan en la fila de la categoría (un producto activo siempre tiene su categoría activa), y el alta de una variante bloquea la fila del producto antes de leer su conjunto de atributos, así dos altas simultáneas nunca fijan dos conjuntos.
 
-En el carrito: **carrito → variantes en orden de `IDVariante`**. Todo SP de carrito bloquea primero la fila del carrito (así el límite de 50 líneas y la existencia se validan sin que otra petición se cuele); la fusión (E4-H03) bloquea los dos carritos en orden de `IDCarrito` y después las variantes.
+En el carrito: **carrito → variantes en orden de `IDVariante`**. Todo SP de carrito bloquea primero la fila del carrito (así el límite de 50 líneas y la existencia se validan sin que otra petición se cuele); la fusión (E4-H03) bloquea los dos carritos en orden de `IDCarrito` y después las variantes. Orden completo cuando un SP toca más: **carrito → variantes (por `IDVariante`) → sesión de checkout → cupón**. La fusión cancela la sesión activa del cliente (`SP_Checkout_CancelarSesionActiva`) en ese orden, y E5 debe respetarlo.
 
 ---
 

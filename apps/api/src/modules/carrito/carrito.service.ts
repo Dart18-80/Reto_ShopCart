@@ -32,7 +32,8 @@ interface Dependencias {
 const SIN_IP = 'desconocida';
 const SIN_COOKIE = { hashActual: null, hashNuevo: null };
 
-const CARRITO_VACIO: Carrito = {
+// Una fábrica y no una constante: nunca se comparte un objeto mutable entre peticiones.
+const carritoVacio = (): Carrito => ({
   lineas: [],
   resumen: {
     lineas: 0,
@@ -46,7 +47,7 @@ const CARRITO_VACIO: Carrito = {
     // Sin carrito no se consulta el parámetro: el SPA lo muestra al agregar el primer producto.
     envioGratis: null,
   },
-};
+});
 
 /** N-05: con sesión manda el carrito del cliente (la cookie no se usa); sin sesión, el de la cookie. */
 function hashDe(comprador: Comprador): Buffer | null {
@@ -82,7 +83,7 @@ export function crearCarritoService({ repositorio, limitadorCreacion }: Dependen
       const hash = hashDe(comprador);
       const carrito = await repositorio.obtener(hash);
       return {
-        carrito: carrito ?? CARRITO_VACIO,
+        carrito: carrito ?? carritoVacio(),
         cookieObsoleta: hash !== null && carrito === null,
       };
     },
@@ -110,15 +111,15 @@ export function crearCarritoService({ repositorio, limitadorCreacion }: Dependen
 
     // N-12: cada causa de rechazo responde su propio código; lo decide el SP con FU_Cupones_Validar.
     async aplicarCupon(comprador: Comprador, codigo: string): Promise<Carrito> {
-      return (await repositorio.aplicarCupon(codigo, hashDe(comprador))) ?? CARRITO_VACIO;
+      return repositorio.aplicarCupon(codigo, hashDe(comprador));
     },
 
     async quitarCupon(comprador: Comprador): Promise<Carrito> {
-      return (await repositorio.quitarCupon(hashDe(comprador))) ?? CARRITO_VACIO;
+      return (await repositorio.quitarCupon(hashDe(comprador))) ?? carritoVacio();
     },
 
     async marcarAvisosVistos(comprador: Comprador): Promise<Carrito> {
-      return (await repositorio.marcarAvisosVistos(hashDe(comprador))) ?? CARRITO_VACIO;
+      return (await repositorio.marcarAvisosVistos(hashDe(comprador))) ?? carritoVacio();
     },
 
     eliminarLinea: (comprador: Comprador, idLinea: number): Promise<Carrito> =>

@@ -1,4 +1,4 @@
-import { establecerUsuario } from '../../shared/http/index.js';
+import { ejecutarConContexto, obtenerContexto } from '../../shared/http/index.js';
 import type { AvisoFusionCarrito, CarritoDeInvitado, UsuarioSesion } from './auth.types.js';
 
 /** Lo que pasó con el carrito de la cookie al abrir sesión. */
@@ -8,7 +8,8 @@ export interface CarritoAlAbrirSesion {
   avisos: AvisoFusionCarrito[];
 }
 
-const SIN_CAMBIOS: CarritoAlAbrirSesion = { cookieConsumida: false, avisos: [] };
+// Una fábrica y no una constante: nunca se comparte un objeto mutable entre peticiones.
+const sinCambios = (): CarritoAlAbrirSesion => ({ cookieConsumida: false, avisos: [] });
 
 /**
  * N-05: al iniciar sesión, el carrito de invitado se fusiona con el del cliente; al registrarse, pasa a ser
@@ -16,9 +17,16 @@ const SIN_CAMBIOS: CarritoAlAbrirSesion = { cookieConsumida: false, avisos: [] }
  * abre igual y el carrito de invitado queda intacto.
  */
 export function crearCarritoAlAbrirSesion(carrito: CarritoDeInvitado) {
-  // A-18: desde aquí la petición actúa como quien abrió la sesión; los SPs del carrito lo toman del contexto.
-  function actuarComo(usuario: UsuarioSesion): void {
-    establecerUsuario(usuario.idUsuario, usuario.rol);
+  // A-18: los SPs del carrito toman al cliente del contexto. Solo esa llamada corre como él; el resto de la
+  // petición sigue siendo anónima (el login no lleva token).
+  function comoCliente<T>(usuario: UsuarioSesion, accion: () => Promise<T>): Promise<T> {
+    const contexto = obtenerContexto();
+    if (contexto === undefined)
+      throw new Error('El carrito de invitado se procesó fuera de una petición');
+    return ejecutarConContexto(
+      { requestId: contexto.requestId, idUsuario: usuario.idUsuario, rol: usuario.rol },
+      accion,
+    );
   }
 
   return {
@@ -26,20 +34,18 @@ export function crearCarritoAlAbrirSesion(carrito: CarritoDeInvitado) {
       usuario: UsuarioSesion,
       tokenInvitado: string | undefined,
     ): Promise<CarritoAlAbrirSesion> {
-      if (tokenInvitado === undefined || usuario.rol !== 'Cliente') return SIN_CAMBIOS;
-      actuarComo(usuario);
-      const avisos = await carrito.fusionar(tokenInvitado);
-      return avisos === null ? SIN_CAMBIOS : { cookieConsumida: true, avisos };
+      if (tokenInvitado === undefined || usuario.rol !== 'Cliente') return sinCambios();
+      const avisos = await comoCliente(usuario, () => carrito.fusionar(tokenInvitado));
+      return avisos === null ? sinCambios() : { cookieConsumida: true, avisos };
     },
 
     async alRegistrarse(
       usuario: UsuarioSesion,
       tokenInvitado: string | undefined,
     ): Promise<CarritoAlAbrirSesion> {
-      if (tokenInvitado === undefined) return SIN_CAMBIOS;
-      actuarComo(usuario);
-      const asignado = await carrito.asignar(tokenInvitado);
-      return asignado ? { cookieConsumida: true, avisos: [] } : SIN_CAMBIOS;
+      if (tokenInvitado === undefined) return sinCambios();
+      const asignado = await comoCliente(usuario, () => carrito.asignar(tokenInvitado));
+      return asignado ? { cookieConsumida: true, avisos: [] } : sinCambios();
     },
   };
 }

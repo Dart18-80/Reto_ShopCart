@@ -143,8 +143,13 @@ async function carritoDe(nombre: NombreSP, parametros: ParametrosSP): Promise<Ca
     nombre,
     parametros,
   );
+  if (lineas === undefined && resumenes === undefined) return null;
+  // Un carrito a medias es un error del SP, nunca "no hay carrito": eso borraría la cookie del invitado.
   const resumen = resumenes?.[0];
-  return lineas === undefined || resumen === undefined ? null : aCarrito(lineas, resumen);
+  if (lineas === undefined || resumen === undefined) {
+    throw new Error(`${nombre} devolvió un carrito incompleto`);
+  }
+  return aCarrito(lineas, resumen);
 }
 
 function existente(carrito: Carrito | null, nombre: NombreSP): Carrito {
@@ -177,12 +182,13 @@ export const carritoRepository = {
     return carritoDe('SP_Carrito_MarcarAvisosVistos', { HashTokenInvitado: hashInvitado(hash) });
   },
 
-  /** N-12: aplica el cupón como vista previa; null si quien pide no tiene carrito (no ocurre: el SP lanza 50403). */
-  aplicarCupon(codigo: string, hash: Buffer | null): Promise<Carrito | null> {
-    return carritoDe('SP_Carrito_AplicarCupon', {
+  /** N-12: aplica el cupón como vista previa. Sin carrito o vacío, el SP responde 50403. */
+  async aplicarCupon(codigo: string, hash: Buffer | null): Promise<Carrito> {
+    const carrito = await carritoDe('SP_Carrito_AplicarCupon', {
       Codigo: { tipo: sql.VarChar(30), valor: codigo },
       HashTokenInvitado: hashInvitado(hash),
     });
+    return existente(carrito, 'SP_Carrito_AplicarCupon');
   },
 
   /** null si quien pide no tiene un carrito Activo. */

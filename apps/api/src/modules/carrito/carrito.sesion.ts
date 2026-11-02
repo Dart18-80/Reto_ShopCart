@@ -10,8 +10,9 @@ interface Dependencias {
 
 /**
  * N-05: el carrito de invitado cuando el cliente abre sesión; corre como ese cliente. Si la fusión o la
- * asignación fallan, la sesión se abre igual: el SP revierte todo (el carrito de invitado queda intacto) y
- * el error se registra con su causa. Nunca se registra el token.
+ * asignación fallan, la sesión se abre igual, la cookie se conserva y el error se registra con su causa. Un
+ * error dentro de la transacción la revierte completa (el carrito de invitado queda intacto). Nunca se
+ * registra el token.
  */
 export function crearCarritoDeInvitado({ repositorio, logger }: Dependencias) {
   return {
@@ -20,7 +21,7 @@ export function crearCarritoDeInvitado({ repositorio, logger }: Dependencias) {
       try {
         return await repositorio.fusionar(hashearTokenOpaco(tokenInvitado));
       } catch (error) {
-        logger.error({ err: error }, 'No se pudo fusionar el carrito de invitado; queda intacto');
+        logger.error({ err: error }, 'No se pudo fusionar el carrito de invitado');
         return null;
       }
     },
@@ -31,7 +32,7 @@ export function crearCarritoDeInvitado({ repositorio, logger }: Dependencias) {
         await repositorio.asignarInvitado(hashearTokenOpaco(tokenInvitado));
         return true;
       } catch (error) {
-        logger.error({ err: error }, 'No se pudo asignar el carrito de invitado; queda intacto');
+        logger.error({ err: error }, 'No se pudo asignar el carrito de invitado');
         return false;
       }
     },

@@ -25,17 +25,23 @@ const enPeticion = <T>(accion: () => Promise<T>) =>
   ejecutarConContexto({ requestId: 'r-1', idUsuario: null, rol: null }, accion);
 
 describe('carrito de invitado al abrir sesión (E4-H03, N-05)', () => {
-  it('al iniciar sesión fusiona como el cliente y consume la cookie', async () => {
+  it('al iniciar sesión fusiona como el cliente (solo durante esa llamada) y consume la cookie', async () => {
     const { politica, carrito } = preparar();
+    let duranteLaFusion: unknown;
+    carrito.fusionar.mockImplementation(() => {
+      duranteLaFusion = obtenerContexto();
+      return Promise.resolve([AVISO]);
+    });
 
-    const { resultado, contexto } = await enPeticion(async () => ({
+    const { resultado, despues } = await enPeticion(async () => ({
       resultado: await politica.alIniciarSesion(CLIENTE, TOKEN),
-      contexto: obtenerContexto(),
+      despues: obtenerContexto(),
     }));
 
     expect(resultado).toEqual({ cookieConsumida: true, avisos: [AVISO] });
     expect(carrito.fusionar).toHaveBeenCalledWith(TOKEN);
-    expect(contexto).toMatchObject({ idUsuario: 9, rol: 'Cliente' });
+    expect(duranteLaFusion).toMatchObject({ requestId: 'r-1', idUsuario: 9, rol: 'Cliente' });
+    expect(despues).toMatchObject({ idUsuario: null, rol: null });
   });
 
   it('si la fusión falla, la cookie queda', async () => {

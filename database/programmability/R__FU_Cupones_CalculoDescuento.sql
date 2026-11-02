@@ -2,7 +2,7 @@
 -- RF-05, N-12, N-02: el descuento de un cupón repartido por línea del carrito. Solo las líneas de la
 -- categoría del cupón (o todas si no tiene). Descuento total: porcentaje redondeado al centavo y con su
 -- tope; monto fijo; en ambos casos nunca más que el subtotal de esas líneas (el total no baja de cero).
--- Reparto proporcional al total de cada línea, al centavo hacia abajo; el sobrante va a la línea de mayor
+-- Reparto proporcional al total de cada línea, al centavo hacia abajo (en centavos enteros); el sobrante va a la línea de mayor
 -- monto (desempate: menor IDLineaCarrito, determinista) y, si no le cabe sin pasar de su total, sigue con la
 -- siguiente. La suma de los descuentos por línea es exactamente el descuento total.
 -- Una fila por línea con descuento; las demás líneas no aparecen (descuento 0).
@@ -35,7 +35,10 @@ RETURN
     ),
     Partes AS (
         SELECT t.IDLineaCarrito, t.TotalLinea, t.Descuento,
-               CONVERT(DECIMAL(15,2), FLOOR(t.Descuento * t.TotalLinea * 100 / t.Subtotal) / 100) AS Parte
+               -- En centavos enteros: la división de BIGINT trunca exacto; la de DECIMAL redondea a su escala
+               -- y podría subir un centavo, con lo que las partes sumarían más que el descuento.
+               CONVERT(DECIMAL(15,2), CONVERT(BIGINT, t.Descuento * 100) * CONVERT(BIGINT, t.TotalLinea * 100)
+                                      / CONVERT(BIGINT, t.Subtotal * 100) / 100.0) AS Parte
         FROM   Total AS t
     ),
     Sobrante AS (
