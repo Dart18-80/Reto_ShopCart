@@ -8,26 +8,26 @@ Todo el entorno se levanta con `docker compose up -d`: SQL Server, un migrador q
 
 | Servicio | Imagen | IP | Healthcheck | Arranca después de | Cita |
 |---|---|---|---|---|---|
-| `sqlserver` | `mssql/server:2022-CU27-GDR1-ubuntu-22.04` fijada con digest | `.10` | `sqlcmd` contra el motor | — | [docker-compose.yml:62](../../../docker-compose.yml#L62 "2022-CU27-GDR1-ubuntu-22.04@sha256") |
-| `db-migrator` | propia, Node 24 sin compilar | `.12` | — (one-shot) | `sqlserver` saludable | [docker-compose.yml:104](../../../docker-compose.yml#L104 "condition: service_healthy") |
-| `redis` | `redis:7-alpine` (etiqueta, sin digest) | `.11` | `redis-cli ping` | — | [docker-compose.yml:113](../../../docker-compose.yml#L113 "image: redis:7-alpine") |
+| `sqlserver` | `mssql/server:2022-CU27-GDR1-ubuntu-22.04` fijada con digest | `.10` | `sqlcmd` contra el motor | — | [docker-compose.yml:65](../../../docker-compose.yml#L65 "2022-CU27-GDR1-ubuntu-22.04@sha256") |
+| `db-migrator` | propia, Node 24 sin compilar | `.12` | — (one-shot) | `sqlserver` saludable | [docker-compose.yml:109](../../../docker-compose.yml#L109 "condition: service_healthy") |
+| `redis` | `redis:7-alpine` (etiqueta, sin digest) | `.11` | `redis-cli ping` | — | [docker-compose.yml:118](../../../docker-compose.yml#L118 "image: redis:7-alpine") |
 | `api-1`, `api-2` | `shopcart-api:local` | `.21`, `.22` | `wget` a `/api/v1/health` | migrador terminado con éxito y `redis` saludable | [docker-compose.yml:41](../../../docker-compose.yml#L41 "condition: service_completed_successfully") |
-| `web` | `nginx:1.28-alpine` + `nginx.conf` | `.30` | `wget` a `/` | `api-1` y `api-2` saludables | [docker-compose.yml:164](../../../docker-compose.yml#L164 "condition: service_healthy") |
-| `otel-lgtm` | `grafana/otel-lgtm:0.36.0` fijada con digest | `.40` | — | perfil `observabilidad` | [docker-compose.yml:181](../../../docker-compose.yml#L181 "profiles: [observabilidad]") |
+| `web` | `nginx:1.28-alpine` + `nginx.conf` | `.30` | `wget` a `/` | `api-1` y `api-2` saludables | [docker-compose.yml:171](../../../docker-compose.yml#L171 "condition: service_healthy") |
+| `otel-lgtm` | `grafana/otel-lgtm:0.36.0` fijada con digest | `.40` | — | perfil `observabilidad` | [docker-compose.yml:188](../../../docker-compose.yml#L188 "profiles: [observabilidad]") |
 
-- Las dos réplicas comparten el mismo bloque (`x-api`) y solo cambia `INSTANCIA_ID`: [docker-compose.yml:34](../../../docker-compose.yml#L34 "x-api: &api") y [docker-compose.yml:140](../../../docker-compose.yml#L140 "INSTANCIA_ID: api-1"). Cada respuesta lleva `X-Instancia`: [instancia.ts:6](../../../apps/api/src/shared/http/instancia.ts#L6 "res.setHeader('X-Instancia', instancia)").
+- Las dos réplicas comparten el mismo bloque (`x-api`) y solo cambia `INSTANCIA_ID`: [docker-compose.yml:34](../../../docker-compose.yml#L34 "x-api: &api") y [docker-compose.yml:147](../../../docker-compose.yml#L147 "INSTANCIA_ID: api-1"). Cada respuesta lleva `X-Instancia`: [instancia.ts:6](../../../apps/api/src/shared/http/instancia.ts#L6 "res.setHeader('X-Instancia', instancia)").
 - Mínimo privilegio en variables: las réplicas no reciben `MSSQL_SA_PASSWORD` ni la contraseña del migrador [docker-compose.yml:8](../../../docker-compose.yml#L8 "x-api-entorno: &api-entorno").
-- SQL Server y Redis solo se publican en `127.0.0.1`: [docker-compose.yml:70](../../../docker-compose.yml#L70 "127.0.0.1:${DB_PORT:-1433}") y [docker-compose.yml:124](../../../docker-compose.yml#L124 "127.0.0.1:${REDIS_PORT:-6379}").
+- SQL Server y Redis solo se publican en `127.0.0.1`: [docker-compose.yml:75](../../../docker-compose.yml#L75 "127.0.0.1:${DB_PORT:-1433}") y [docker-compose.yml:131](../../../docker-compose.yml#L131 "127.0.0.1:${REDIS_PORT:-6379}").
 - `restart: unless-stopped` en las réplicas: un proceso que se cae vuelve solo; un `docker compose stop` se respeta [docker-compose.yml:56](../../../docker-compose.yml#L56 "restart: unless-stopped").
 
 ## Red: subred fija y `extra_hosts` sin DNS (A-03)
 
 | Regla | Dónde vive | Archivo:línea | Decisión |
 |---|---|---|---|
-| Subred `/24` con IPs fijas de `.2` a `.127` | `networks` | [docker-compose.yml:205](../../../docker-compose.yml#L205 "subnet: ${RED_PREFIJO:-172.28.10}.0/24") | A-03 |
-| Los contenedores sin IP fija toman de `.128/25`: nadie ocupa la IP de una réplica detenida | `ip_range` | [docker-compose.yml:206](../../../docker-compose.yml#L206 "ip_range: ${RED_PREFIJO:-172.28.10}.128/25") | A-03 |
+| Subred `/24` con IPs fijas de `.2` a `.127` | `networks` | [docker-compose.yml:212](../../../docker-compose.yml#L212 "subnet: ${RED_PREFIJO:-172.28.10}.0/24") | A-03 |
+| Los contenedores sin IP fija toman de `.128/25`: nadie ocupa la IP de una réplica detenida | `ip_range` | [docker-compose.yml:213](../../../docker-compose.yml#L213 "ip_range: ${RED_PREFIJO:-172.28.10}.128/25") | A-03 |
 | La API resuelve `sqlserver`, `redis` y `otel-lgtm` desde `/etc/hosts` | `extra_hosts` | [docker-compose.yml:48](../../../docker-compose.yml#L48 "sqlserver:${RED_PREFIJO:-172.28.10}.10") | A-03 |
-| nginx resuelve las réplicas desde `/etc/hosts`, una vez al arrancar | `extra_hosts` de `web` | [docker-compose.yml:172](../../../docker-compose.yml#L172 "api-1:${RED_PREFIJO:-172.28.10}.21") | A-03 |
+| nginx resuelve las réplicas desde `/etc/hosts`, una vez al arrancar | `extra_hosts` de `web` | [docker-compose.yml:179](../../../docker-compose.yml#L179 "api-1:${RED_PREFIJO:-172.28.10}.21") | A-03 |
 | El prefijo se cambia en `.env` si choca con otra red | `.env.example` | [.env.example:76](../../../.env.example#L76 "RED_PREFIJO=172.28.10") | — |
 
 Por qué: con un contenedor detenido, el DNS de Docker reenvía el nombre al DNS del host, que puede devolver una IP pública; la API mandaría el login de SQL Server o el `AUTH` de Redis fuera de la subred [docker-compose.yml:46](../../../docker-compose.yml#L46 "la API mandaría el login de SQL Server"). Lo verifica una prueba de entorno para el colector: [observabilidad.test.ts:56](../../../apps/api/test/entorno/observabilidad.test.ts#L56 "el colector se resuelve a su IP fija de la subred").
@@ -60,15 +60,15 @@ Detalle importante de `proxy_next_upstream error timeout`: nginx no reenvía un 
 | Healthcheck de la réplica contra `/api/v1/health` | [Dockerfile:33](../../../apps/api/Dockerfile#L33 "http://127.0.0.1:3000/api/v1/health") |
 | `node` es PID 1 y carga la telemetría antes que la API | [Dockerfile:36](../../../apps/api/Dockerfile#L36 "--import") |
 | El migrador también corre como `node` | [Dockerfile:21](../../../database/migrator/Dockerfile#L21 "USER node") |
-| Redis corre como `redis` (con `sh -c` el entrypoint oficial lo dejaría como root) | [docker-compose.yml:116](../../../docker-compose.yml#L116 "user: redis") |
-| La contraseña de Redis va en una variable, no en la línea de comandos de Compose | [docker-compose.yml:122](../../../docker-compose.yml#L122 "--requirepass") |
+| Redis corre como `redis` (con `sh -c` el entrypoint oficial lo dejaría como root) | [docker-compose.yml:121](../../../docker-compose.yml#L121 "user: redis") |
+| La contraseña de Redis va en una variable, no en la línea de comandos de Compose | [docker-compose.yml:129](../../../docker-compose.yml#L129 "--requirepass") |
 
-La prueba de entorno lee el UID del PID 1 de `api-1`, `api-2`, `sqlserver` y `redis`: [contenedores.test.ts:15](../../../apps/api/test/entorno/contenedores.test.ts#L15 "no corre como root"). `otel-lgtm` sí corre como root (imagen de desarrollo), por eso solo publica Grafana en `127.0.0.1` [docker-compose.yml:189](../../../docker-compose.yml#L189 "127.0.0.1:${GRAFANA_PUERTO:-3001}:3000").
+La prueba de entorno lee el UID del PID 1 de `api-1`, `api-2`, `sqlserver` y `redis`: [contenedores.test.ts:15](../../../apps/api/test/entorno/contenedores.test.ts#L15 "no corre como root"). `otel-lgtm` sí corre como root (imagen de desarrollo), por eso solo publica Grafana en `127.0.0.1` [docker-compose.yml:196](../../../docker-compose.yml#L196 "127.0.0.1:${GRAFANA_PUERTO:-3001}:3000").
 
 ## SQL Server fijado y migrador one-shot
 
 - El CU y el digest se fijan a propósito; una prueba lo exige: [penalizaciones.test.ts:240](../../../database/migrator/test/penalizaciones.test.ts#L240 "SQL Server se fija a un CU exacto y a su digest"), y ninguna imagen usa `latest` [penalizaciones.test.ts:236](../../../database/migrator/test/penalizaciones.test.ts#L236 "ninguna imagen del compose usa latest").
-- El migrador termina y no se reinicia [docker-compose.yml:110](../../../docker-compose.yml#L110 "restart: 'no'"). Como `sa` crea la base, activa RCSI (A-05) [preparar-servidor.sql:21](../../../database/migrator/sql/preparar-servidor.sql#L21 "SET READ_COMMITTED_SNAPSHOT ON") y crea los logins; luego aplica los scripts como `shopcart_migrator` [preparar-servidor.sql:45](../../../database/migrator/sql/preparar-servidor.sql#L45 "LOGIN shopcart_migrator").
+- El migrador termina y no se reinicia [docker-compose.yml:115](../../../docker-compose.yml#L115 "restart: 'no'"). Como `sa` crea la base, activa RCSI (A-05) [preparar-servidor.sql:21](../../../database/migrator/sql/preparar-servidor.sql#L21 "SET READ_COMMITTED_SNAPSHOT ON") y crea los logins; luego aplica los scripts como `shopcart_migrator` [preparar-servidor.sql:45](../../../database/migrator/sql/preparar-servidor.sql#L45 "LOGIN shopcart_migrator").
 - Dos migradores a la vez no se pisan: `sp_getapplock` de sesión [migrador.ts:26](../../../database/migrator/src/migrador.ts#L26 "await adquirirBloqueo(bloqueo)"). Cada script corre en su transacción con su fila de historial, con el contexto `Sistema` fijado antes [migrador.ts:93](../../../database/migrator/src/migrador.ts#L93 "establecer-contexto-sistema").
 - Las réplicas no arrancan si el migrador falla, porque esperan `service_completed_successfully` [docker-compose.yml:41](../../../docker-compose.yml#L41 "service_completed_successfully").
 
@@ -86,8 +86,9 @@ El archivo que genera una réplica se descarga desde la otra: las dos montan el 
 | Luego tareas, exportaciones y el pool de SQL, en ese orden | [server.ts:143](../../../apps/api/src/server.ts#L143 ".detener()") |
 | Redis (suscripción y cliente) y la telemetría | [server.ts:146](../../../apps/api/src/server.ts#L146 "avisos.cerrar().then(() => redis.quit())") y [server.ts:149](../../../apps/api/src/server.ts#L149 "detenerTelemetria") |
 | Si tarda más de 10 s, salida forzada con 1 | [server.ts:36](../../../apps/api/src/server.ts#L36 "ESPERA_APAGADO_MS = 10_000") y [apagado.ts:56](../../../apps/api/src/apagado.ts#L56 "forzarSalida = setTimeout") |
+| Docker espera 15 s antes del SIGKILL (réplicas, Redis y SQL Server): el SIGKILL nunca compite con la salida de la API | [docker-compose.yml:59](../../../docker-compose.yml#L59 "stop_grace_period: 15s") |
 
-Pruebas: [apagado.test.ts:123](../../../apps/api/test/unit/apagado.test.ts#L123 "con SIGTERM termina las peticiones en curso") y, en el entorno, [tiempo-real.test.ts:120](../../../apps/api/test/entorno/tiempo-real.test.ts#L120 "al detener la réplica (SIGTERM) su stream se cierra enseguida").
+Pruebas: [apagado.test.ts:123](../../../apps/api/test/unit/apagado.test.ts#L123 "con SIGTERM termina las peticiones en curso") y, en el entorno, [apagado.test.ts:32](../../../apps/api/test/entorno/apagado.test.ts#L32 "docker stop durante una petición en curso") (un `docker stop` con una petición retenida por SQL Server pausado: la petición termina con 200 y la réplica sale con 0) y [tiempo-real.test.ts:120](../../../apps/api/test/entorno/tiempo-real.test.ts#L120 "al detener la réplica (SIGTERM) su stream se cierra enseguida").
 
 ## `.env` y `.env.example`
 
@@ -97,7 +98,7 @@ Pruebas: [apagado.test.ts:123](../../../apps/api/test/unit/apagado.test.ts#L123 
 
 ## Perfil `observabilidad`
 
-`docker compose --profile observabilidad up -d` agrega `otel-lgtm` con su IP `.40`, el dashboard montado de solo lectura [docker-compose.yml:192](../../../docker-compose.yml#L192 "./infra/grafana/dashboards:/otel-lgtm/shopcart-dashboards:ro") y sin salidas a internet de Grafana [docker-compose.yml:184](../../../docker-compose.yml#L184 "GF_PLUGINS_PREINSTALL_DISABLED"). Las réplicas siempre exportan a `http://otel-lgtm:4318` [docker-compose.yml:30](../../../docker-compose.yml#L30 "OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-lgtm:4318"): no hay que reiniciarlas. Detalle en [observabilidad.md](observabilidad.md).
+`docker compose --profile observabilidad up -d` agrega `otel-lgtm` con su IP `.40`, el dashboard montado de solo lectura [docker-compose.yml:199](../../../docker-compose.yml#L199 "./infra/grafana/dashboards:/otel-lgtm/shopcart-dashboards:ro") y sin salidas a internet de Grafana [docker-compose.yml:191](../../../docker-compose.yml#L191 "GF_PLUGINS_PREINSTALL_DISABLED"). Las réplicas siempre exportan a `http://otel-lgtm:4318` [docker-compose.yml:30](../../../docker-compose.yml#L30 "OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-lgtm:4318"): no hay que reiniciarlas. Detalle en [observabilidad.md](observabilidad.md).
 
 ## Qué pasa cuando algo cae
 
@@ -168,11 +169,11 @@ Cierra los streams SSE, deja de aceptar conexiones, espera las peticiones en cur
 
 ### ¿Por qué SQL Server está fijado con digest y Redis no?
 SQL Server se fijó al CU que pasó todas las suites para que un `pull` no cambie el motor; una prueba lo exige. Redis usa la etiqueta `7-alpine` sin digest: solo guarda lo que se puede perder.
-**Muéstralo en:** [docker-compose.yml:62](../../../docker-compose.yml#L62 "@sha256:")
+**Muéstralo en:** [docker-compose.yml:65](../../../docker-compose.yml#L65 "@sha256:")
 
 ### ¿Por qué el healthcheck de SQL Server ejecuta un `SELECT 1` si el backend no puede escribir SQL?
 Es infraestructura, no backend: `sqlcmd` necesita una consulta trivial para saber que el motor acepta conexiones. La API solo ejecuta `SP_Sistema_Health`.
-**Muéstralo en:** [docker-compose.yml:76](../../../docker-compose.yml#L76 "Healthcheck de infraestructura, no del backend")
+**Muéstralo en:** [docker-compose.yml:81](../../../docker-compose.yml#L81 "Healthcheck de infraestructura, no del backend")
 
 ### ¿Cómo comparte la exportación una réplica con la otra?
 Las dos montan el mismo volumen `exportaciones`; la cola y el arrendamiento viven en SQL Server (A-24).
