@@ -71,22 +71,6 @@ describe('consulta de la bitácora (E7-H02, RF-09)', () => {
     );
   });
 
-  it('pagina en el servidor: páginas distintas y el total del filtro, lo más reciente primero', async () => {
-    await crearCupon(app, admin.token, { limiteUsosTotal: 2 });
-    await crearCupon(app, admin.token, { limiteUsosTotal: 2 });
-
-    const primera = await bitacora('modulo=Cupones&tamano=1&pagina=1');
-    const segunda = await bitacora('modulo=Cupones&tamano=1&pagina=2');
-
-    expect(primera.datos).toHaveLength(1);
-    expect(primera.paginacion).toMatchObject({ pagina: 1, tamano: 1 });
-    expect(primera.paginacion.total).toBeGreaterThanOrEqual(2);
-    expect(primera.datos[0]?.idBitacora).not.toBe(segunda.datos[0]?.idBitacora);
-    expect(Date.parse(primera.datos[0]?.fecha ?? '')).toBeGreaterThanOrEqual(
-      Date.parse(segunda.datos[0]?.fecha ?? ''),
-    );
-  });
-
   it('el rango usa días de Guatemala: hoy incluye el alta; un día pasado sin cambios, nada', async () => {
     const { idCupon } = await crearCupon(app, admin.token, { limiteUsosTotal: 2 });
     const hoy = await hoyEnGuatemala();

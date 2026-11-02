@@ -38,6 +38,19 @@ BEGIN
             WHERE h.IDEstadoAnterior IS NULL AND h.Fecha <> d.FechaPago) AS HistorialFueraDeFecha,
            (SELECT COUNT(*) FROM dbo.HistorialEstadoPedido AS h JOIN @Demo AS d ON d.IDPedido = h.IDPedido
             WHERE h.Fecha > SYSUTCDATETIME()) AS HistorialEnElFuturo,
+           -- La pasarela simulada conoce cada cobro y cada reembolso: si no, cancelar o devolver en la demo falla.
+           (SELECT COUNT(*) FROM @Demo AS d
+            JOIN dbo.Pedido AS p ON p.IDPedido = d.IDPedido
+            JOIN dbo.IntentoPago AS ip ON ip.IDIntentoPago = p.IDIntentoPago
+            WHERE NOT EXISTS (SELECT 1 FROM dbo.PasarelaAutorizacion AS a
+                              WHERE a.LlaveIdempotencia = ip.LlaveIdempotencia
+                                AND a.IDTransaccion = p.IDTransaccionPasarela
+                                AND a.Monto = p.Total AND a.Estado = 'Capturada')) AS CobrosFueraDeLaPasarela,
+           (SELECT COUNT(*) FROM dbo.Reembolso AS r JOIN @Demo AS d ON d.IDPedido = r.IDPedido
+            WHERE NOT EXISTS (SELECT 1 FROM dbo.PasarelaReembolso AS pr
+                              WHERE pr.LlaveIdempotencia = r.LlaveIdempotencia
+                                AND pr.IDReembolso = r.IDTransaccionReembolso
+                                AND pr.Monto = r.Monto)) AS ReembolsosFueraDeLaPasarela,
            (SELECT COUNT(*) FROM dbo.VW_Carrito_Abandonados AS a
             JOIN dbo.Usuario AS u ON u.IDUsuario = a.IDUsuario
             WHERE u.Correo LIKE N'demo[0-9][0-9][0-9]@shopcart.gt') AS CarritosAbandonados,

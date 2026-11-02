@@ -89,6 +89,9 @@ export function crearPagoService({
     const { idIntento } = arrendamiento;
     const codigo = causa instanceof AppError ? causa.codigo : 'ERROR_INTERNO';
     for (let intento = 1; intento <= INTENTOS_ANULACION; intento++) {
+      // N-03 (fencing): cada intento puede tardar el timeout de la pasarela; antes de cada uno se retiene el
+      // arrendamiento, para que un reintento del cliente no retome el intento y cree el pedido mientras se anula.
+      if (!(await retenerArrendamiento(arrendamiento))) return;
       try {
         await pasarela.anular(idTransaccion);
         await repositorio.actualizarIntento(arrendamiento, {
@@ -130,7 +133,7 @@ export function crearPagoService({
     const { idIntento } = arrendamiento;
     // N-03 (fencing): si otro proceso retomó el arrendamiento, esta petición ya no toca el cobro. Renovarlo
     // antes de anular impide además que, mientras tanto, un reintento retome el intento y cree el pedido.
-    if (esArrendamientoPerdido(causa) || !(await sigueSiendoDueno(arrendamiento))) throw causa;
+    if (esArrendamientoPerdido(causa) || !(await retenerArrendamiento(arrendamiento))) throw causa;
     let pedido: Pedido | null;
     try {
       pedido = await pedidos.obtenerDeIntento(idIntento);
@@ -153,7 +156,8 @@ export function crearPagoService({
     return pedido;
   }
 
-  async function sigueSiendoDueno(arrendamiento: Arrendamiento): Promise<boolean> {
+  /** Renueva el arrendamiento si sigue siendo de esta petición; false si otro proceso lo tomó. */
+  async function retenerArrendamiento(arrendamiento: Arrendamiento): Promise<boolean> {
     try {
       if (await repositorio.renovarArrendamiento(arrendamiento, SEGUNDOS_ARRENDAMIENTO))
         return true;
@@ -185,12 +189,16 @@ export function crearPagoService({
   }
 
   // N-03: un timeout libera el arrendamiento para que el reintento con la misma llave no espere.
-  async function liberarTrasFalla(arrendamiento: Arrendamiento, causa: unknown): Promise<never> {
+  async function liberarTrasFalla(
+    arrendamiento: Arrendamiento,
+    operacion: 'autorizar' | 'consultar',
+    causa: unknown,
+  ): Promise<never> {
     const { idIntento } = arrendamiento;
     if (causa instanceof PasarelaSinRespuesta) {
-      logger.warn({ err: causa, idIntento }, 'La pasarela no respondió al autorizar');
+      logger.warn({ err: causa, idIntento }, `La pasarela no respondió al ${operacion}`);
     } else {
-      logger.error({ err: causa, idIntento }, 'Error inesperado al autorizar en la pasarela');
+      logger.error({ err: causa, idIntento }, `Error inesperado al ${operacion} en la pasarela`);
     }
     try {
       await repositorio.liberarArrendamiento(arrendamiento);
@@ -209,7 +217,7 @@ export function crearPagoService({
     try {
       resultado = await pasarela.autorizar({ llave, monto, tarjeta });
     } catch (error) {
-      return liberarTrasFalla(arrendamiento, error);
+      return liberarTrasFalla(arrendamiento, 'autorizar', error);
     }
 
     if (resultado.tipo === 'Rechazada') {
@@ -241,7 +249,7 @@ export function crearPagoService({
     try {
       enPasarela = await pasarela.consultar(llave);
     } catch (error) {
-      return liberarTrasFalla(arrendamiento, error);
+      return liberarTrasFalla(arrendamiento, 'consultar', error);
     }
     const vencida = new AppError('SESION_VENCIDA', {
       mensaje: 'Tu sesión de pago venció y no se hizo ningún cobro. Vuelve a iniciar el pago.',

@@ -203,6 +203,34 @@ describe('checkout.pago (E5-H03)', () => {
     });
   });
 
+  it('si renovar el arrendamiento falla (base caída), no toca el cobro y relanza la causa', async () => {
+    const { servicio, repositorio, pedidos, pasarela } = preparar(AUTORIZAR);
+    const causa = new Error('timeout de CrearPedido');
+    pedidos.crearDeIntento.mockRejectedValueOnce(causa);
+    repositorio.renovarArrendamiento.mockRejectedValueOnce(new Error('base caída'));
+
+    const error = await servicio.pagar(SOLICITUD).catch((e: unknown) => e);
+
+    expect(error).toBe(causa);
+    expect(pasarela.anular).not.toHaveBeenCalled();
+  });
+
+  it('antes de cada reintento de anulación retiene el arrendamiento; si lo perdió, no vuelve a anular', async () => {
+    const { servicio, repositorio, pedidos, pasarela } = preparar(AUTORIZAR);
+    pedidos.crearDeIntento.mockRejectedValueOnce(new Error('timeout de CrearPedido'));
+    pasarela.anular.mockRejectedValueOnce(new PasarelaSinRespuesta('anular'));
+    // pedidoTrasFalla y el primer intento lo retienen; para el segundo ya es de otro proceso.
+    repositorio.renovarArrendamiento
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false);
+
+    await servicio.pagar(SOLICITUD).catch(() => undefined);
+
+    expect(pasarela.anular).toHaveBeenCalledTimes(1);
+    expect(repositorio.renovarArrendamiento).toHaveBeenCalledTimes(3);
+  });
+
   it('si al fallar el pedido el arrendamiento ya es de otro proceso, no toca el cobro (fencing)', async () => {
     const { servicio, repositorio, pedidos, pasarela } = preparar(AUTORIZAR);
     const causa = new Error('timeout de CrearPedido');

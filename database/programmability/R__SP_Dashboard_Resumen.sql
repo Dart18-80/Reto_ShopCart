@@ -33,6 +33,8 @@ BEGIN
     SELECT @Desde AS Desde, @Hasta AS Hasta, @Ventas AS Ventas, @Pedidos AS Pedidos,
            CONVERT(DECIMAL(15,2), IIF(@Pedidos = 0, 0, @Ventas / @Pedidos)) AS TicketPromedio,
            @Unidades AS Unidades, @Devoluciones AS Devoluciones,
+           -- M-07: el envío no es venta (N-11), por eso no está en VW_Dashboard_HechosVenta; usa la misma regla
+           -- (pedido no cancelado en su FechaPagoLocal).
            (SELECT CONVERT(DECIMAL(15,2), COALESCE(SUM(p.CostoEnvio), 0))
             FROM   dbo.Pedido AS p
             JOIN   dbo.EstadoPedido AS e ON e.IDEstadoPedido = p.IDEstadoPedido

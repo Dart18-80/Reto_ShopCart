@@ -285,7 +285,8 @@ export const checkoutRepository = {
       TokenArrendamiento: { tipo: sql.UniqueIdentifier, valor: token },
       SegundosArrendamiento: { tipo: sql.Int, valor: segundosArrendamiento },
     });
-    return fila?.Vigente === true;
+    if (!fila) throw new Error('SP_Checkout_RenovarArrendamiento no devolvió el resultado');
+    return fila.Vigente;
   },
 
   // Jobs (A-04): corren con RolActor = 'Sistema'. null si la otra réplica tenía el sp_getapplock.

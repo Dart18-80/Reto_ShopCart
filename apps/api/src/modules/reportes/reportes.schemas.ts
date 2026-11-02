@@ -26,13 +26,16 @@ export type ConsultaRango = z.infer<typeof consultaRangoSchema>;
 export type ConsultaVentas = z.infer<typeof consultaVentasSchema>;
 export type ConsultaCarritos = z.infer<typeof consultaCarritosSchema>;
 
+// Las ventas netas de un periodo pueden ser negativas si solo hubo devoluciones (N-11).
+const montoConSigno = z.string().regex(/^-?\d+\.\d{2}$/);
+
 export const resumenSchema = z
   .object({
     desde: z.iso.date(),
     hasta: z.iso.date(),
-    ventas: montoSchema,
+    ventas: montoConSigno,
     pedidos: z.number().int(),
-    ticketPromedio: montoSchema,
+    ticketPromedio: montoConSigno,
     unidades: z.number().int(),
     devoluciones: montoSchema,
     envio: montoSchema,
@@ -40,9 +43,6 @@ export const resumenSchema = z
     montoPotencialPerdido: montoSchema,
   })
   .openapi('ResumenDashboard');
-
-// Las ventas netas de un periodo pueden ser negativas si solo hubo devoluciones (N-11).
-const montoConSigno = z.string().regex(/^-?\d+\.\d{2}$/);
 
 export const ventasDelPeriodoSchema = z
   .object({ periodo: z.iso.date(), ventas: montoConSigno, pedidos: z.number().int() })

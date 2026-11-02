@@ -36,6 +36,8 @@ interface ResumenDemo {
   ReingresosFueraDeFecha: number;
   HistorialFueraDeFecha: number;
   HistorialEnElFuturo: number;
+  CobrosFueraDeLaPasarela: number;
+  ReembolsosFueraDeLaPasarela: number;
   CarritosAbandonados: number;
   FilasConciliacion: number;
 }
@@ -63,6 +65,12 @@ describe('datos demo de S006 (E7-H03, RNF-1)', () => {
       HistorialEnElFuturo: 0,
       FilasConciliacion: 0,
     });
+  });
+
+  it('la pasarela simulada conoce cada cobro y cada reembolso demo, para poder cancelar o devolver en la demo', async () => {
+    const resumen = await unaFila<ResumenDemo>('SP_Pruebas_ResumenDatosDemo');
+
+    expect(resumen).toMatchObject({ CobrosFueraDeLaPasarela: 0, ReembolsosFueraDeLaPasarela: 0 });
   });
 
   it('el dashboard muestra los últimos 90 días desde el primer arranque', async () => {

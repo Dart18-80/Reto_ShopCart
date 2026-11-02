@@ -143,6 +143,15 @@ describe('dashboard (E7-H01, RF-08, N-11)', () => {
       resumenSchema,
     );
     expect(resumenDelDia.ventas).toBe('120.00');
+    const resumenDeLaDevolucion = leerDatos(
+      await dashboard('/resumen?desde=2002-04-14&hasta=2002-04-14'),
+      resumenSchema,
+    );
+    expect(resumenDeLaDevolucion).toMatchObject({
+      ventas: `-${primera}`,
+      pedidos: 0,
+      devoluciones: primera,
+    });
   });
 
   it('agrupa por semana (desde el lunes) y por mes', async () => {

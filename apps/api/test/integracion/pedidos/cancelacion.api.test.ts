@@ -13,6 +13,7 @@ import { usarBaseDePruebas } from '../base-de-pruebas.js';
 import { comoCliente } from '../carrito/apoyo-carrito.js';
 import { crearCupon, metodoEnvio } from '../checkout/apoyo-checkout.js';
 import { unaFila } from '../datos-de-prueba.js';
+import { pedidosRepository } from '../../../src/modules/pedidos/pedidos.repository.js';
 import { pedidoPagado } from './apoyo-pedidos.js';
 
 usarBaseDePruebas();
@@ -285,6 +286,53 @@ describe('cancelación con reembolso (E6-H03, N-09)', () => {
       idPedido: pedido.idPedido,
       estado: 'Cancelado',
     });
+  });
+
+  it('un proceso desplazado no suma intentos y un éxito de la pasarela deja Completado incluso un Fallido', async () => {
+    const sinReembolsos = crearApp(
+      dependenciasDePrueba({
+        pasarela: pasarelaCon({ reembolsar: () => Promise.reject(new Error('pasarela caída')) }),
+      }),
+    );
+    const { cliente, pedido } = await pedidoPagado(app, estandar);
+    const { reembolso } = leerDatos(
+      await cancelarComoCliente(sinReembolsos, cliente.token, pedido.idPedido),
+      cancelacionSchema,
+    );
+    const adelantar = () =>
+      ejecutarSP('SP_Pruebas_AdelantarReembolso', {
+        IDReembolso: { tipo: sql.Int, valor: reembolso.idReembolso },
+      });
+    const reglas = { maxIntentos: 3, segundosEntreIntentos: 300 };
+    await adelantar();
+    const desplazado = await pedidosRepository.tomarReembolso(reembolso.idReembolso, 60);
+    await adelantar();
+    const vigente = await pedidosRepository.tomarReembolso(reembolso.idReembolso, 60);
+    if (desplazado === null || vigente === null) throw new Error('No se tomó el reembolso');
+
+    await pedidosRepository.actualizarReembolso(
+      desplazado,
+      { exito: false, error: 'tarde' },
+      reglas,
+    );
+    const trasDesplazado = (await cancelacionDe(pedido.idPedido)).reembolsos;
+    await pedidosRepository.actualizarReembolso(vigente, { exito: false, error: 'caída' }, reglas);
+    await adelantar();
+    const ultimo = await pedidosRepository.tomarReembolso(reembolso.idReembolso, 60);
+    if (ultimo === null) throw new Error('No se tomó el reembolso');
+    await pedidosRepository.actualizarReembolso(ultimo, { exito: false, error: 'caída' }, reglas);
+    const fallido = (await cancelacionDe(pedido.idPedido)).reembolsos;
+    await pedidosRepository.actualizarReembolso(
+      desplazado,
+      { exito: true, idTransaccionReembolso: 'SIMR-tardio' },
+      reglas,
+    );
+
+    expect(trasDesplazado).toMatchObject([{ Estado: 'Pendiente', Intentos: 1 }]);
+    expect(fallido).toMatchObject([{ Estado: 'Fallido', Intentos: 3 }]);
+    expect((await cancelacionDe(pedido.idPedido)).reembolsos).toMatchObject([
+      { Estado: 'Completado', IDTransaccionReembolso: 'SIMR-tardio' },
+    ]);
   });
 
   it('repetir la cancelación responde 409 y no genera un segundo reembolso', async () => {

@@ -4,7 +4,9 @@
 --   ~200 clientes demo (demo001@shopcart.gt…, contraseña documentada en el README), @Pedidos pedidos pagados en los
 --   últimos @Dias días con sus copias (carrito Convertido, sesión Pagada, intento Capturado, detalle, historial con
 --   las fechas reales de cada paso), cancelaciones con su reembolso, devoluciones parciales y totales con su
---   reembolso, carritos abandonados y un cupón por cada mensaje de rechazo de RF-05.
+--   reembolso, carritos abandonados y un cupón por cada mensaje de rechazo de RF-05. La pasarela simulada recibe
+--   el cobro Capturado de cada pedido y cada reembolso, con las mismas llaves: así se puede cancelar o devolver
+--   un pedido demo durante la demo.
 --   El inventario solo cambia con SP_Inventario_RegistrarMovimiento (N-07), con la fecha de cada evento: una
 --   entrada inicial antes del periodo, la salida de cada venta en su fecha de pago y los reingresos en la fecha de
 --   la cancelación o la devolución, en orden cronológico. Así kardex, pedidos e historial coinciden en el tiempo y
@@ -167,7 +169,8 @@ BEGIN
                 @BaseImponible DECIMAL(12,2), @IDCupon INT, @IDCarrito INT, @IDSesion INT, @IDIntento BIGINT, @IDPedido INT,
                 @IDTransaccion VARCHAR(64), @FechaLocal DATE, @Estado INT, @Nombre NVARCHAR(100),
                 @IDMunicipio INT, @Municipio NVARCHAR(80), @Departamento NVARCHAR(50), @FechaEvento DATETIME2(3),
-                @IDDevolucion INT, @MontoDevolucion DECIMAL(12,2), @Numero VARCHAR(20);
+                @IDDevolucion INT, @MontoDevolucion DECIMAL(12,2), @Numero VARCHAR(20),
+                @LlaveIntento UNIQUEIDENTIFIER, @LlaveReembolso UNIQUEIDENTIFIER, @IDReembolsoPasarela VARCHAR(64);
 
         WHILE @Orden IS NOT NULL
         BEGIN
@@ -217,7 +220,9 @@ BEGIN
             SET @BaseImponible = ROUND(@Total / 1.12, 2);
             SET @FechaLocal = (SELECT f.FechaLocal FROM dbo.FU_Sistema_FechaLocal(@FechaPago) AS f);
             SET @IDCupon = (SELECT c.IDCupon FROM dbo.Cupon AS c WHERE c.Codigo = @Cupon);
-            SET @IDTransaccion = CONCAT('DEMO-', REPLACE(CONVERT(VARCHAR(36), NEWID()), '-', ''));
+            SET @IDTransaccion = CONCAT('DEMO-',
+                                        CONVERT(VARCHAR(32), HASHBYTES('MD5', CONCAT(@Semilla, N'|', @N, N'|transaccion')), 2));
+            SET @LlaveIntento = CONVERT(UNIQUEIDENTIFIER, HASHBYTES('MD5', CONCAT(@Semilla, N'|', @N, N'|pago')));
             SET @Estado = CASE @Destino WHEN 'Cancelado' THEN @IDCancelado WHEN 'Pagado' THEN @IDPagado
                                         WHEN 'EnPreparacion' THEN @IDEnPreparacion WHEN 'Despachado' THEN @IDDespachado
                                         WHEN 'DevolucionTotal' THEN @IDDevuelto
@@ -240,9 +245,12 @@ BEGIN
             INSERT INTO dbo.IntentoPago (IDSesionCheckout, LlaveIdempotencia, HashSolicitud, Monto, Estado,
                                          IDTransaccionPasarela, MarcaTarjeta, UltimosDigitos, FechaCreacion,
                                          FechaActualizacion)
-            VALUES (@IDSesion, NEWID(), HASHBYTES('SHA2_256', CONCAT(N'demo-pago|', @N)), @Total, 'Capturado',
+            VALUES (@IDSesion, @LlaveIntento, HASHBYTES('SHA2_256', CONCAT(N'demo-pago|', @N)), @Total, 'Capturado',
                     @IDTransaccion, 'Visa', '4242', @FechaPago, @FechaPago);
             SET @IDIntento = SCOPE_IDENTITY();
+            INSERT INTO dbo.PasarelaAutorizacion (LlaveIdempotencia, IDTransaccion, Monto, Marca, UltimosDigitos, Estado,
+                                                  CodigoRespuesta, FechaCreacion, FechaActualizacion)
+            VALUES (@LlaveIntento, @IDTransaccion, @Total, 'Visa', '4242', 'Capturada', NULL, @FechaPago, @FechaPago);
 
             INSERT INTO dbo.Pedido (IDUsuario, IDSesionCheckout, IDIntentoPago, IDEstadoPedido, Subtotal, Descuento,
                                     CostoEnvio, Total, BaseImponible, IVA, IDCupon, CodigoCupon, IDMetodoEnvio,
@@ -282,11 +290,15 @@ BEGIN
                 SET @FechaEvento = DATEADD(MINUTE, 30, @FechaPago);
                 INSERT INTO dbo.HistorialEstadoPedido (IDPedido, IDEstadoAnterior, IDEstadoNuevo, IDUsuario, Motivo, Fecha)
                 VALUES (@IDPedido, @IDPagado, @IDCancelado, @IDUsuario, N'Ya no lo necesito', @FechaEvento);
+                SET @LlaveReembolso = CONVERT(UNIQUEIDENTIFIER,
+                                              HASHBYTES('MD5', CONCAT(N'Reembolso|', @IDPedido, N'|Cancelacion')));
+                SET @IDReembolsoPasarela = CONCAT('DEMOR-', @IDPedido);
                 INSERT INTO dbo.Reembolso (IDPedido, IDDevolucion, Origen, Monto, Estado, LlaveIdempotencia,
                                            IDTransaccionReembolso, FechaCompletado, FechaCreacion, FechaActualizacion)
-                VALUES (@IDPedido, NULL, 'Cancelacion', @Total, 'Completado',
-                        CONVERT(UNIQUEIDENTIFIER, HASHBYTES('MD5', CONCAT(N'Reembolso|', @IDPedido, N'|Cancelacion'))),
-                        CONCAT('DEMOR-', @IDPedido), @FechaEvento, @FechaEvento, @FechaEvento);
+                VALUES (@IDPedido, NULL, 'Cancelacion', @Total, 'Completado', @LlaveReembolso,
+                        @IDReembolsoPasarela, @FechaEvento, @FechaEvento, @FechaEvento);
+                INSERT INTO dbo.PasarelaReembolso (LlaveIdempotencia, IDTransaccion, IDReembolso, Monto, FechaCreacion)
+                VALUES (@LlaveReembolso, @IDTransaccion, @IDReembolsoPasarela, @Total, @FechaEvento);
                 UPDATE dbo.Pedido SET MontoReembolsado = @Total WHERE IDPedido = @IDPedido;
                 INSERT INTO @Eventos (Fecha, Tipo, IDPedido) VALUES (@FechaEvento, 'Cancelacion', @IDPedido);
             END
@@ -336,12 +348,15 @@ BEGIN
 
                 INSERT INTO dbo.HistorialEstadoPedido (IDPedido, IDEstadoAnterior, IDEstadoNuevo, IDUsuario, Motivo, Fecha)
                 VALUES (@IDPedido, @IDEntregado, @Estado, @IDOperador, N'El cliente devolvió el producto', @FechaEvento);
+                SET @LlaveReembolso = CONVERT(UNIQUEIDENTIFIER,
+                                              HASHBYTES('MD5', CONCAT(N'Reembolso|', @IDPedido, N'|Devolucion|', @IDDevolucion)));
+                SET @IDReembolsoPasarela = CONCAT('DEMOR-', @IDPedido, '-', @IDDevolucion);
                 INSERT INTO dbo.Reembolso (IDPedido, IDDevolucion, Origen, Monto, Estado, LlaveIdempotencia,
                                            IDTransaccionReembolso, FechaCompletado, FechaCreacion, FechaActualizacion)
-                VALUES (@IDPedido, @IDDevolucion, 'Devolucion', @MontoDevolucion, 'Completado',
-                        CONVERT(UNIQUEIDENTIFIER,
-                                HASHBYTES('MD5', CONCAT(N'Reembolso|', @IDPedido, N'|Devolucion|', @IDDevolucion))),
-                        CONCAT('DEMOR-', @IDPedido, '-', @IDDevolucion), @FechaEvento, @FechaEvento, @FechaEvento);
+                VALUES (@IDPedido, @IDDevolucion, 'Devolucion', @MontoDevolucion, 'Completado', @LlaveReembolso,
+                        @IDReembolsoPasarela, @FechaEvento, @FechaEvento, @FechaEvento);
+                INSERT INTO dbo.PasarelaReembolso (LlaveIdempotencia, IDTransaccion, IDReembolso, Monto, FechaCreacion)
+                VALUES (@LlaveReembolso, @IDTransaccion, @IDReembolsoPasarela, @MontoDevolucion, @FechaEvento);
                 UPDATE dbo.Pedido SET MontoReembolsado = @MontoDevolucion WHERE IDPedido = @IDPedido;
                 INSERT INTO @Eventos (Fecha, Tipo, IDPedido, IDDevolucion)
                 VALUES (@FechaEvento, 'Devolucion', @IDPedido, @IDDevolucion);
@@ -426,6 +441,11 @@ BEGIN
         CROSS JOIN @Numeros AS j
         JOIN   @Variantes AS v ON v.N = (ca.IDCarrito * 3 + j.N * @SaltoVariante) % @TotalVariantes
         WHERE  ca.Estado = 'Activo' AND j.N < 2;
+
+        -- N-07: lo generado debe cuadrar; si no, nada se confirma.
+        IF EXISTS (SELECT 1 FROM dbo.VW_Inventario_Conciliacion AS c
+                   WHERE EXISTS (SELECT 1 FROM @Eventos AS e WHERE e.IDVariante = c.IDVariante))
+            THROW 50005, N'Los datos demo dejaron el inventario sin conciliar.', 1;
 
         COMMIT;
     END TRY
