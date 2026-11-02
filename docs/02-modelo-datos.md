@@ -786,7 +786,7 @@ UQ `(IDPedido, IDVariante)`. Índices: `IX_DetallePedido_Variante (IDVariante) I
 | RequestId | UNIQUEIDENTIFIER *NULL* | |
 | Fecha | DATETIME2(3) | |
 
-Índices: `IX_Bitacora_Modulo (Modulo, Fecha DESC)` (filtro de RF-09) e `IX_Bitacora_Entidad (Entidad, IDEntidad, Fecha DESC)`.
+Índices: `IX_Bitacora_Modulo (Modulo, Fecha DESC)` (filtro de RF-09), `IX_Bitacora_Entidad (Entidad, IDEntidad, Fecha DESC)`, `IX_Bitacora_Fecha (Fecha DESC, IDBitacora DESC)` (V017: el listado sin filtro, lo más reciente primero) e `IX_Bitacora_ModuloFecha (Modulo, Fecha DESC, IDBitacora DESC)` (V018: el filtro por módulo ya en el orden del listado).
 
 **Triggers que la alimentan** (`AFTER INSERT, UPDATE, DELETE`, serializando `inserted`/`deleted` con `FOR JSON PATH`). Las columnas de dinero (`Precio`, `Costo`, `Valor`, `MontoMaximoDescuento`, `MontoMinimoCompra`, `MontoEnvioGratis`) se serializan como texto (`"149.90"`), igual que en la API (A-21):
 

@@ -10,7 +10,7 @@ registroOpenApi.registerPath({
   tags: ['Sistema'],
   summary: 'Estado de la réplica, de SQL Server y de Redis',
   description:
-    'Pública: la usan el healthcheck de Docker y nginx. Solo devuelve estados; la versión y la ' +
+    'Pública: la usa el healthcheck de Docker. Solo devuelve estados; la versión y la ' +
     'hora de SQL Server van al log.',
   responses: {
     200: {
@@ -27,7 +27,7 @@ registroOpenApi.registerPath({
 
 export function crearSistemaRouter(controller: SistemaController): Router {
   const router = Router();
-  // Pública a propósito: la usan el healthcheck de Docker y nginx, sin token. No expone datos de negocio.
+  // Pública a propósito: la usa el healthcheck de Docker, sin token. No expone datos de negocio.
   router.get('/health', controller.health);
   return router;
 }

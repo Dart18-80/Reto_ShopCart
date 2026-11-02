@@ -114,7 +114,7 @@ describe('GET /api/v1/health', () => {
     expect(leerDatos(respuesta, saludSchema).baseDatos).toBe('caida');
   });
 
-  it('con la base caída responde 503 para que el balanceador saque la réplica', async () => {
+  it('con la base caída responde 503 para que el healthcheck de Docker marque la réplica', async () => {
     ejecutar.mockRejectedValue(new Error('Failed to connect'));
 
     const respuesta = await request(crearAppDePrueba(REDIS_DISPONIBLE)).get('/api/v1/health');

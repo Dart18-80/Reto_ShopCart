@@ -13,7 +13,7 @@ export function crearSistemaController(servicio: SistemaService): SistemaControl
   return {
     health: manejar({}, async (_entrada, res) => {
       const salud = await servicio.salud();
-      // Sin base la réplica no puede atender: 503 hace que nginx y el healthcheck la saquen.
+      // Sin base la réplica no puede atender: con 503 el healthcheck de Docker la marca unhealthy.
       res
         .status(salud.estado === 'caido' ? HTTP_SERVICIO_NO_DISPONIBLE : HTTP_OK)
         .json({ datos: salud });
