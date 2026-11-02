@@ -52,6 +52,11 @@ export const MODULOS_INSTRUMENTADOS: (string | RegExp)[] = [
 const RUTA_HEALTH = '/api/v1/health';
 // Cada cuánto se exportan las métricas: lo bastante seguido para ver la demo moverse en el dashboard.
 const INTERVALO_METRICAS_MS = 15_000;
+/**
+ * Lo máximo que el apagado espera para vaciar lo pendiente. Sin el colector, el envío esperaría el timeout del
+ * exportador y el apagado ordenado (10 s) terminaría forzado: el vaciado es de mejor esfuerzo.
+ */
+export const ESPERA_VACIADO_TELEMETRIA_MS = 2_000;
 
 export interface SenalesTelemetria {
   procesadoresDeSpans: SpanProcessor[];
@@ -130,9 +135,25 @@ export function iniciarTelemetria(instancia: string, senales: SenalesTelemetria)
   apagar = () => Promise.allSettled([trazas.shutdown(), medidor.shutdown(), registros.shutdown()]);
 }
 
-/** Vacía lo pendiente y cierra los exportadores (apagado ordenado). Sin telemetría iniciada, no hace nada. */
+/** Termina cuando termina `promesa` o cuando pasa `limiteMs`, lo que ocurra primero. */
+export function esperarComoMucho(promesa: Promise<unknown>, limiteMs: number): Promise<void> {
+  return new Promise((resolver) => {
+    const limite = setTimeout(resolver, limiteMs);
+    limite.unref();
+    void promesa.finally(() => {
+      clearTimeout(limite);
+      resolver();
+    });
+  });
+}
+
+/**
+ * Vacía lo pendiente y cierra los exportadores (apagado ordenado), como mucho ESPERA_VACIADO_TELEMETRIA_MS. Sin
+ * telemetría iniciada, no hace nada.
+ */
 export async function detenerTelemetria(): Promise<void> {
-  await apagar?.();
+  if (apagar === undefined) return;
+  await esperarComoMucho(apagar(), ESPERA_VACIADO_TELEMETRIA_MS);
 }
 
 /** Las tres señales por OTLP/HTTP hacia el colector (`otel-lgtm`), cada una con su registro de estado. */
