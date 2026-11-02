@@ -14,6 +14,11 @@ export interface AlmacenArchivos {
   borrar(nombre: string): Promise<void>;
   /** Los archivos guardados (solo los nombres que genera el servidor) con su fecha de modificación. */
   listar(): Promise<{ nombre: string; modificado: Date }[]>;
+  /**
+   * Borra lo que quedó a medias antes de `limite` (una réplica que murió mientras escribía) y devuelve cuántos.
+   * Un almacén que no deja restos (S3 con su regla de cargas incompletas) devuelve 0.
+   */
+  borrarTemporales(limite: Date): Promise<number>;
 }
 
 export class ArchivoNoEncontrado extends Error {

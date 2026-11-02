@@ -44,6 +44,7 @@ function almacenEnMemoria() {
     listar: vi.fn(() =>
       Promise.resolve([...archivos.keys()].map((nombre) => ({ nombre, modificado: new Date() }))),
     ),
+    borrarTemporales: vi.fn(() => Promise.resolve(0)),
   } satisfies AlmacenArchivos;
   return { almacen, archivos };
 }

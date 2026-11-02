@@ -8,6 +8,7 @@ import { ArchivoNoEncontrado, type AlmacenArchivos } from '../almacen/index.js';
 // Solo nombres generados por el servidor: sin rutas ni "..", así nadie escribe ni lee fuera del directorio.
 const NOMBRE_VALIDO = /^[\w-]+\.(?:xlsx|pdf)$/;
 const SUFIJO_TEMPORAL = '.tmp';
+const TEMPORAL_VALIDO = /^[\w-]+\.(?:xlsx|pdf)\.tmp$/;
 
 const noExiste = (error: unknown): boolean =>
   error instanceof Error && 'code' in error && error.code === 'ENOENT';
@@ -55,23 +56,31 @@ export function crearAlmacenEnDisco(directorio: string): AlmacenArchivos {
       await rm(ruta(nombre), { force: true });
     },
 
-    async listar() {
-      let nombres: string[];
-      try {
-        nombres = await readdir(directorio);
-      } catch (error) {
-        if (noExiste(error)) return [];
-        throw error;
-      }
-      const archivos = await Promise.all(
-        nombres
-          .filter((nombre) => NOMBRE_VALIDO.test(nombre))
-          .map(async (nombre) => ({
-            nombre,
-            modificado: (await stat(join(directorio, nombre))).mtime,
-          })),
-      );
-      return archivos;
+    listar: () => listarCon(NOMBRE_VALIDO),
+
+    // Solo temporales con el nombre que genera `guardar`; nunca un archivo ajeno del volumen.
+    async borrarTemporales(limite: Date) {
+      const viejos = (await listarCon(TEMPORAL_VALIDO)).filter((t) => t.modificado <= limite);
+      for (const { nombre } of viejos) await rm(join(directorio, nombre), { force: true });
+      return viejos.length;
     },
   };
+
+  async function listarCon(patron: RegExp): Promise<{ nombre: string; modificado: Date }[]> {
+    let nombres: string[];
+    try {
+      nombres = await readdir(directorio);
+    } catch (error) {
+      if (noExiste(error)) return [];
+      throw error;
+    }
+    return Promise.all(
+      nombres
+        .filter((nombre) => patron.test(nombre))
+        .map(async (nombre) => ({
+          nombre,
+          modificado: (await stat(join(directorio, nombre))).mtime,
+        })),
+    );
+  }
 }

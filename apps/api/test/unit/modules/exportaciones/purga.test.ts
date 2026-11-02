@@ -23,6 +23,7 @@ function preparar(archivos: { nombre: string; modificado: Date }[], referenciado
     leer: vi.fn(),
     borrar: vi.fn(() => Promise.resolve()),
     listar: vi.fn(() => Promise.resolve(archivos)),
+    borrarTemporales: vi.fn((_limite: Date) => Promise.resolve(2)),
   };
   const [, purga] = tareasExportaciones({
     procesador: { procesarPendientes: vi.fn() },
@@ -62,5 +63,14 @@ describe('barrido de archivos huérfanos en la purga (cierre de la Fase 1)', () 
     await purga.ejecutar();
 
     expect(repositorio.referenciasExistentes).not.toHaveBeenCalled();
+  });
+
+  it('borra también los temporales con más de 24 h que dejó una réplica que murió escribiendo', async () => {
+    const { purga, almacen } = preparar([], []);
+
+    const resultado = await purga.ejecutar();
+
+    expect(almacen.borrarTemporales).toHaveBeenCalledWith(horasAntes(HORAS_ANTIGUEDAD_HUERFANO));
+    expect(resultado).toMatchObject({ temporales: 2 });
   });
 });

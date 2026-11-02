@@ -1,4 +1,4 @@
-import { mkdtemp, readdir, writeFile } from 'node:fs/promises';
+import { mkdtemp, readdir, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
@@ -65,5 +65,31 @@ describe('almacén en disco (E7-H05, A-24)', () => {
     expect(archivos.map((a) => a.nombre)).toEqual(['4-abc.xlsx']);
     expect(archivos[0]?.modificado).toBeInstanceOf(Date);
     expect(vacio).toEqual([]);
+  });
+
+  it('borrarTemporales borra los .tmp anteriores al límite (una réplica que murió escribiendo) y nada más', async () => {
+    const { almacen, directorio } = await preparar();
+    const limite = new Date('2026-11-01T12:00:00.000Z');
+    const antes = new Date(limite.getTime() - 1_000);
+    const despues = new Date(limite.getTime() + 1_000);
+    await writeFile(join(directorio, '5-viejo.xlsx.tmp'), 'a medias');
+    await writeFile(join(directorio, '6-en-curso.pdf.tmp'), 'escribiéndose');
+    await writeFile(join(directorio, 'ajeno.tmp'), 'no es nuestro');
+    await almacen.guardar('7-final.xlsx', Readable.from(['x']));
+    await utimes(join(directorio, '5-viejo.xlsx.tmp'), antes, antes);
+    await utimes(join(directorio, 'ajeno.tmp'), antes, antes);
+    await utimes(join(directorio, '7-final.xlsx'), antes, antes);
+    await utimes(join(directorio, '6-en-curso.pdf.tmp'), despues, despues);
+
+    const borrados = await almacen.borrarTemporales(limite);
+    const vacio = await crearAlmacenEnDisco(join(directorio, 'no-existe')).borrarTemporales(limite);
+
+    expect(borrados).toBe(1);
+    expect((await readdir(directorio)).sort()).toEqual([
+      '6-en-curso.pdf.tmp',
+      '7-final.xlsx',
+      'ajeno.tmp',
+    ]);
+    expect(vacio).toBe(0);
   });
 });

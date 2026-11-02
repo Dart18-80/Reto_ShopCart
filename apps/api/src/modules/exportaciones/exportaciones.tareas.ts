@@ -15,6 +15,9 @@ const MAXIMO_POR_PURGA = 100;
 export const HORAS_ANTIGUEDAD_HUERFANO = 24;
 const MS_POR_HORA = 3_600_000;
 
+const limiteDeHuerfano = (reloj: Reloj): Date =>
+  new Date(reloj.ahora().getTime() - HORAS_ANTIGUEDAD_HUERFANO * MS_POR_HORA);
+
 interface Dependencias {
   procesador: Pick<ProcesadorExportaciones, 'procesarPendientes'>;
   repositorio: Pick<ExportacionesRepository, 'expirar' | 'quitarArchivo' | 'referenciasExistentes'>;
@@ -33,9 +36,9 @@ async function barrerHuerfanos({
   logger,
   reloj,
 }: Omit<Dependencias, 'procesador'>): Promise<number> {
-  const limite = reloj.ahora().getTime() - HORAS_ANTIGUEDAD_HUERFANO * MS_POR_HORA;
+  const limite = limiteDeHuerfano(reloj);
   const viejos = (await almacen.listar())
-    .filter((archivo) => archivo.modificado.getTime() <= limite)
+    .filter((archivo) => archivo.modificado <= limite)
     .map((archivo) => archivo.nombre);
   if (viejos.length === 0) return 0;
   const referenciados = await repositorio.referenciasExistentes(viejos);
@@ -48,6 +51,18 @@ async function barrerHuerfanos({
     );
   }
   return huerfanos.length;
+}
+
+/** Decisión del PO (E9): los temporales que dejó una réplica que murió escribiendo, con el mismo plazo. */
+async function barrerTemporales({
+  almacen,
+  logger,
+  reloj,
+}: Omit<Dependencias, 'procesador'>): Promise<number> {
+  const temporales = await almacen.borrarTemporales(limiteDeHuerfano(reloj));
+  if (temporales > 0)
+    logger.warn({ temporales }, 'Se borraron exportaciones que quedaron a medias');
+  return temporales;
 }
 
 /**
@@ -72,7 +87,8 @@ async function purgar(dependencias: Omit<Dependencias, 'procesador'>): Promise<R
     }
   }
   const huerfanos = await barrerHuerfanos(dependencias);
-  return { borrados, pendientes: archivos.length - borrados, huerfanos };
+  const temporales = await barrerTemporales(dependencias);
+  return { borrados, pendientes: archivos.length - borrados, huerfanos, temporales };
 }
 
 /**
