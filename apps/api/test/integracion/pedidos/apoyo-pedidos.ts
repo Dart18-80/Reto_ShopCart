@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { Express } from 'express';
 import sql from 'mssql';
+import request from 'supertest';
 import { ejecutarSP } from '../../../src/shared/db/index.js';
 import { agregar, comoCliente, varianteVendible } from '../carrito/apoyo-carrito.js';
 import {
@@ -19,7 +20,12 @@ export async function pedidoPagado(
   {
     cliente,
     lineas,
-  }: { cliente?: ClienteDePrueba; lineas?: { precio: string; cantidad: number }[] } = {},
+    codigoCupon,
+  }: {
+    cliente?: ClienteDePrueba;
+    lineas?: { precio: string; cantidad: number }[];
+    codigoCupon?: string;
+  } = {},
 ) {
   const variantes = await Promise.all(
     (lineas ?? [{ precio: '50.00', cantidad: 2 }]).map(async ({ precio, cantidad }) => ({
@@ -34,6 +40,12 @@ export async function pedidoPagado(
     for (const { idVariante, cantidad } of variantes) {
       await agregar(app, comoCliente(comprador.token), idVariante, cantidad);
     }
+  }
+  if (codigoCupon !== undefined) {
+    await request(app)
+      .put('/api/v1/carrito/cupon')
+      .set(comoCliente(comprador.token))
+      .send({ codigo: codigoCupon });
   }
   leerSesionPago(await iniciarPago(app, comprador, idMetodoEnvio));
   const pedido = leerPedido(await pagar(app, comprador.token, randomUUID()));

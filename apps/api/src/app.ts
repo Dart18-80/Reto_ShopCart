@@ -110,7 +110,7 @@ export function crearApp({
   v1.use(crearModuloEnvios({ autenticar }));
   v1.use(crearModuloConfiguracion({ autenticar }));
   v1.use(crearModuloCheckout({ autenticar, pasarela, logger, reloj }));
-  v1.use(crearModuloPedidos({ autenticar }));
+  v1.use(crearModuloPedidos({ autenticar, pasarela, logger }));
   v1.use(
     crearModuloCarrito({
       autenticar,

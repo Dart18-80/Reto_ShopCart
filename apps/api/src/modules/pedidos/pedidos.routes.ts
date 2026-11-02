@@ -4,12 +4,18 @@ import { registroOpenApi, respuestasError } from '../../shared/openapi/index.js'
 import { z } from '../../shared/openapi/zod.js';
 import type { PedidosController } from './pedidos.controller.js';
 import {
+  cancelacionSchema,
   pedidoSchema,
+  reembolsoSchema,
   resumenPedidoGestionSchema,
   resumenPedidoSchema,
 } from './pedidos.respuesta.js';
+import { ESTADOS_REEMBOLSO } from './pedidos.types.js';
 import {
   cambiarEstadoSchema,
+  cancelarPedidoSchema,
+  listarReembolsosSchema,
+  paramsIdReembolsoSchema,
   listarPedidosGestionSchema,
   listarPedidosPropiosSchema,
   paramsIdPedidoSchema,
@@ -85,6 +91,69 @@ registroOpenApi.registerPath({
   },
 });
 
+const respuestaCancelacion = {
+  200: {
+    description:
+      'Pedido cancelado; el reembolso queda Completado o, si la pasarela falló, Pendiente para el job',
+    ...json(z.object({ datos: cancelacionSchema })),
+  },
+  ...respuestasError(400, 401, 403, 404, 409),
+};
+const resumenCancelar =
+  'Cancela el pedido completo (solo Pagado o EnPreparacion, motivo obligatorio): reingreso al inventario, cupón revertido y reembolso del total con envío (N-09)';
+
+registroOpenApi.registerPath({
+  method: 'post',
+  path: '/api/v1/pedidos/{id}/cancelar',
+  tags: ['Pedidos'],
+  summary: resumenCancelar,
+  security: seguridad,
+  request: { params: paramsIdPedidoSchema, body: json(cancelarPedidoSchema) },
+  responses: respuestaCancelacion,
+});
+registroOpenApi.registerPath({
+  method: 'post',
+  path: '/api/v1/admin/pedidos/{id}/cancelar',
+  tags: ['Pedidos'],
+  summary: `${resumenCancelar}, desde la gestión`,
+  security: seguridad,
+  request: { params: paramsIdPedidoSchema, body: json(cancelarPedidoSchema) },
+  responses: respuestaCancelacion,
+});
+registroOpenApi.registerPath({
+  method: 'get',
+  path: '/api/v1/admin/reembolsos',
+  tags: ['Pedidos'],
+  summary:
+    'Reembolsos (los más recientes primero); estado=Fallido es la lista para resolver a mano',
+  security: seguridad,
+  request: { query: listarReembolsosSchema },
+  responses: {
+    200: { description: 'Página de reembolsos', ...pagina(reembolsoSchema) },
+    ...respuestasError(400, 401, 403),
+  },
+});
+registroOpenApi.registerPath({
+  method: 'post',
+  path: '/api/v1/admin/reembolsos/{id}/reintentar',
+  tags: ['Pedidos'],
+  summary:
+    'Vuelve a Pendiente un reembolso Fallido y lo procesa con la misma llave (nunca reembolsa dos veces)',
+  security: seguridad,
+  request: { params: paramsIdReembolsoSchema },
+  responses: {
+    200: {
+      description: 'El estado del reembolso después del reintento',
+      ...json(
+        z.object({
+          datos: z.object({ idReembolso: z.number().int(), estado: z.enum(ESTADOS_REEMBOLSO) }),
+        }),
+      ),
+    },
+    ...respuestasError(400, 401, 403, 404),
+  },
+});
+
 export function crearPedidosRouter(
   controller: PedidosController,
   autenticar: RequestHandler,
@@ -92,10 +161,15 @@ export function crearPedidosRouter(
   const router = Router();
   const soloCliente = [autenticar, autorizar('Cliente')];
   const gestion = [autenticar, autorizar('Operador', 'Administrador')];
+  const soloAdmin = [autenticar, autorizar('Administrador')];
 
   router.get('/pedidos', ...soloCliente, controller.listarPropios);
   router.get('/pedidos/:id', ...soloCliente, controller.obtenerPropio);
   router.get('/admin/pedidos', ...gestion, controller.listarGestion);
   router.post('/admin/pedidos/:id/estado', ...gestion, controller.cambiarEstado);
+  router.post('/pedidos/:id/cancelar', ...soloCliente, controller.cancelar);
+  router.post('/admin/pedidos/:id/cancelar', ...gestion, controller.cancelar);
+  router.get('/admin/reembolsos', ...soloAdmin, controller.listarReembolsos);
+  router.post('/admin/reembolsos/:id/reintentar', ...soloAdmin, controller.reintentarReembolso);
   return router;
 }

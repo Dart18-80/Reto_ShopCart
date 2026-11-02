@@ -3,13 +3,14 @@ import sql from 'mssql';
 import pino from 'pino';
 import request from 'supertest';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import { crearApp } from '../../../src/app.js';
 import { crearTareasDeCarrito } from '../../../src/modules/carrito/index.js';
 import { crearTareasDeCheckout } from '../../../src/modules/checkout/index.js';
-import { pedidosParaCheckout } from '../../../src/modules/pedidos/index.js';
+import { crearTareasDePedidos, pedidosParaCheckout } from '../../../src/modules/pedidos/index.js';
 import { crearTareasDeSistema } from '../../../src/modules/sistema/index.js';
 import { crearPasarelaSimulada } from '../../../src/shared/adapters/pasarela-simulada.js';
-import { ejecutarSP } from '../../../src/shared/db/index.js';
+import { ejecutarSP, ejecutarSPConjuntos } from '../../../src/shared/db/index.js';
 import type { ResultadoTarea, Tarea } from '../../../src/shared/jobs/index.js';
 import { PasarelaSinRespuesta, type PasarelaPago } from '../../../src/shared/pasarela/index.js';
 import { leerError } from '../../unit/respuestas.js';
@@ -32,6 +33,7 @@ import {
   TARJETA_TIEMPO_AGOTADO,
 } from '../checkout/apoyo-checkout.js';
 import { comoActor, unaFila } from '../datos-de-prueba.js';
+import { pedidoPagado } from '../pedidos/apoyo-pedidos.js';
 
 usarBaseDePruebas();
 
@@ -436,6 +438,111 @@ describe('cierre de E5: vigencia y fencing (N-03)', () => {
     expect((await pagoDe(idSesion)).Pedidos).toBe(0);
     expect(await intentosDe(idSesion)).toMatchObject([{ Estado: 'Anulado' }]);
     expect(await estadoEnPasarela(llave)).toBe('Anulada');
+  });
+});
+
+describe('reintento de reembolsos y cancelaciones (E6-H03, N-09)', () => {
+  const reembolsosDe = async (idPedido: number) => {
+    const [, reembolsos] = await ejecutarSPConjuntos<
+      [unknown[], { IDReembolso: number; Estado: string; Intentos: number }[]]
+    >('SP_Pruebas_LeerCancelacion', { IDPedido: { tipo: sql.Int, valor: idPedido } });
+    return reembolsos ?? [];
+  };
+  const adelantar = (idReembolso: number) =>
+    ejecutarSP('SP_Pruebas_AdelantarReembolso', {
+      IDReembolso: { tipo: sql.Int, valor: idReembolso },
+    });
+  const cancelar = (aplicacion: typeof app, token: string, idPedido: number) =>
+    request(aplicacion)
+      .post(`/api/v1/pedidos/${String(idPedido)}/cancelar`)
+      .set(comoCliente(token))
+      .send({ motivo: 'Ya no lo necesito' });
+  const sinReembolsos = pasarelaCon({
+    reembolsar: () => Promise.reject(new Error('pasarela caída')),
+  });
+  const tareaReembolsos = (pasarela: PasarelaPago) => {
+    const [tarea] = crearTareasDePedidos({ pasarela, logger: pino({ level: 'silent' }) });
+    if (tarea === undefined) throw new Error('Falta la tarea de reembolsos');
+    return tarea;
+  };
+
+  it('el job reintenta; al quinto fallo el reembolso queda Fallido en la lista del Admin, que lo resuelve', async () => {
+    const { cliente, pedido } = await pedidoPagado(app, estandar);
+    await cancelar(
+      crearApp(dependenciasDePrueba({ pasarela: sinReembolsos })),
+      cliente.token,
+      pedido.idPedido,
+    );
+    const [reembolso] = await reembolsosDe(pedido.idPedido);
+    if (reembolso === undefined) throw new Error('La cancelación no dejó reembolso');
+    const jobCaido = tareaReembolsos(sinReembolsos);
+
+    for (let intento = 2; intento <= 5; intento++) {
+      await adelantar(reembolso.IDReembolso);
+      await jobCaido.ejecutar();
+    }
+
+    expect(await reembolsosDe(pedido.idPedido)).toMatchObject([{ Estado: 'Fallido', Intentos: 5 }]);
+    const fallidos = z
+      .object({ datos: z.array(z.object({ idReembolso: z.number() })) })
+      .parse(
+        (
+          await request(app)
+            .get('/api/v1/admin/reembolsos?estado=Fallido&tamano=100')
+            .set(comoCliente(tokenAdmin))
+        ).body,
+      );
+    expect(fallidos.datos.map((r) => r.idReembolso)).toContain(reembolso.IDReembolso);
+    await request(app)
+      .post(`/api/v1/admin/reembolsos/${String(reembolso.IDReembolso)}/reintentar`)
+      .set(comoCliente(tokenAdmin));
+    expect(await reembolsosDe(pedido.idPedido)).toMatchObject([{ Estado: 'Completado' }]);
+  });
+
+  it('el job completa un reembolso pendiente cuando la pasarela vuelve', async () => {
+    const { cliente, pedido } = await pedidoPagado(app, estandar);
+    await cancelar(
+      crearApp(dependenciasDePrueba({ pasarela: sinReembolsos })),
+      cliente.token,
+      pedido.idPedido,
+    );
+    const [reembolso] = await reembolsosDe(pedido.idPedido);
+    await adelantar(reembolso?.IDReembolso ?? 0);
+
+    const resultado = await tareaReembolsos(crearPasarelaSimulada()).ejecutar();
+
+    expect(resultado).toMatchObject({ Completado: expect.any(Number) as number });
+    expect(await reembolsosDe(pedido.idPedido)).toMatchObject([
+      { Estado: 'Completado', Intentos: 1 },
+    ]);
+  });
+
+  it('si la otra réplica tiene el bloqueo, el job retorna sin hacer nada', async () => {
+    const resultado = await conBloqueoTomado('Job_Pedidos_ReintentarReembolsos', () =>
+      tareaReembolsos(crearPasarelaSimulada()).ejecutar(),
+    );
+
+    expect(resultado).toBeNull();
+  });
+
+  it('la conciliación nunca captura el cobro de un pedido cancelado con la captura pendiente', async () => {
+    const capturaCaida = crearApp(
+      dependenciasDePrueba({
+        pasarela: pasarelaCon({ capturar: () => Promise.reject(new Error('pasarela caída')) }),
+      }),
+    );
+    const { cliente, pedido } = await pedidoPagado(capturaCaida, estandar);
+    const [intento] = await ejecutarSPConjuntos<[{ LlaveIntento: string }[]]>(
+      'SP_Pruebas_LeerCancelacion',
+      {
+        IDPedido: { tipo: sql.Int, valor: pedido.idPedido },
+      },
+    ).then(([filas]) => filas ?? []);
+    await cancelar(app, cliente.token, pedido.idPedido);
+
+    await conciliar();
+
+    expect(await estadoEnPasarela(intento?.LlaveIntento ?? '')).toBe('Anulada');
   });
 });
 

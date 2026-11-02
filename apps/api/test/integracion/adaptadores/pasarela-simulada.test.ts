@@ -148,11 +148,13 @@ describe('contrato completo del puerto (cierre de E5)', () => {
     const llave = randomUUID();
     await pasarela.autorizar({ llave, monto: MONTO, tarjeta: APROBADA });
 
-    const otroMonto = pasarela.autorizar({ llave, monto: new Decimal('1.00'), tarjeta: APROBADA });
-    const otraTarjeta = pasarela.autorizar({ llave, monto: MONTO, tarjeta: RECHAZADA });
-
-    await expect(otroMonto).rejects.toMatchObject({ codigo: 'LLAVE_REUTILIZADA' });
-    await expect(otraTarjeta).rejects.toMatchObject({ codigo: 'LLAVE_REUTILIZADA' });
+    // Cada promesa se crea dentro de su expect: una que rechaza sin esperarse sería un rechazo sin manejar.
+    await expect(
+      pasarela.autorizar({ llave, monto: new Decimal('1.00'), tarjeta: APROBADA }),
+    ).rejects.toMatchObject({ codigo: 'LLAVE_REUTILIZADA' });
+    await expect(
+      pasarela.autorizar({ llave, monto: MONTO, tarjeta: RECHAZADA }),
+    ).rejects.toMatchObject({ codigo: 'LLAVE_REUTILIZADA' });
   });
 
   it('el reembolso con la misma llave y otro monto u otra transacción se rechaza', async () => {
@@ -180,16 +182,14 @@ describe('contrato completo del puerto (cierre de E5)', () => {
       idTransaccion,
       monto: new Decimal('10.00'),
     });
-    const otroMonto = pasarela.reembolsar({ llave, idTransaccion, monto: new Decimal('20.00') });
-    const otraDeTransaccion = pasarela.reembolsar({
-      llave,
-      idTransaccion: otraTransaccion,
-      monto: new Decimal('10.00'),
-    });
 
     expect(repetido).toEqual(primero);
-    await expect(otroMonto).rejects.toMatchObject({ codigo: 'LLAVE_REUTILIZADA' });
-    await expect(otraDeTransaccion).rejects.toMatchObject({ codigo: 'LLAVE_REUTILIZADA' });
+    await expect(
+      pasarela.reembolsar({ llave, idTransaccion, monto: new Decimal('20.00') }),
+    ).rejects.toMatchObject({ codigo: 'LLAVE_REUTILIZADA' });
+    await expect(
+      pasarela.reembolsar({ llave, idTransaccion: otraTransaccion, monto: new Decimal('10.00') }),
+    ).rejects.toMatchObject({ codigo: 'LLAVE_REUTILIZADA' });
   });
 
   it('declina una tarjeta vencida según su reloj (vale hasta el último día de su mes)', async () => {

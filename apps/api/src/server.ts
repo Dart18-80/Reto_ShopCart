@@ -3,6 +3,7 @@ import { registrarApagadoOrdenado } from './apagado.js';
 import { crearApp } from './app.js';
 import { crearTareasDeCarrito } from './modules/carrito/index.js';
 import { crearTareasDeCheckout } from './modules/checkout/index.js';
+import { crearTareasDePedidos } from './modules/pedidos/index.js';
 import { crearTareasDeSistema } from './modules/sistema/index.js';
 import { crearPasarelaSimulada } from './shared/adapters/pasarela-simulada.js';
 import {
@@ -88,6 +89,7 @@ async function iniciar(): Promise<void> {
   const planificador = crearPlanificador(
     [
       ...crearTareasDeCheckout({ pasarela, logger }),
+      ...crearTareasDePedidos({ pasarela, logger }),
       ...crearTareasDeCarrito(),
       ...crearTareasDeSistema(),
     ],

@@ -1,7 +1,7 @@
 import { consultaPaginacionSchema, idEnRutaSchema, idSchema } from '../../shared/http/index.js';
 import { textoNvarchar } from '@shopcart/shared';
 import { z } from '../../shared/openapi/zod.js';
-import { ESTADOS_PEDIDO } from './pedidos.types.js';
+import { ESTADOS_PEDIDO, ESTADOS_REEMBOLSO } from './pedidos.types.js';
 
 export const paramsIdPedidoSchema = z.object({ id: idEnRutaSchema });
 
@@ -34,3 +34,18 @@ export const cambiarEstadoSchema = z
   .openapi('CambiarEstadoPedido');
 
 export type CambiarEstado = z.infer<typeof cambiarEstadoSchema>;
+
+// N-09: el motivo de una cancelación es obligatorio (textoNvarchar no admite solo espacios).
+export const cancelarPedidoSchema = z
+  .object({ motivo: textoNvarchar(250) })
+  .strict()
+  .openapi('CancelarPedido');
+
+export const paramsIdReembolsoSchema = z.object({ id: idEnRutaSchema });
+
+export const listarReembolsosSchema = consultaPaginacionSchema.extend({
+  estado: z.enum(ESTADOS_REEMBOLSO).optional(),
+});
+
+export type CancelarPedido = z.infer<typeof cancelarPedidoSchema>;
+export type ListarReembolsos = z.infer<typeof listarReembolsosSchema>;

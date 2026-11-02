@@ -1,7 +1,14 @@
 import { montoSchema } from '@shopcart/shared';
 import { montoATexto } from '../../shared/dinero/index.js';
 import { z } from '../../shared/openapi/zod.js';
-import type { Pedido, ResumenPedido, ResumenPedidoGestion } from './pedidos.types.js';
+import {
+  ESTADOS_REEMBOLSO,
+  type Cancelacion,
+  type Pedido,
+  type Reembolso,
+  type ResumenPedido,
+  type ResumenPedidoGestion,
+} from './pedidos.types.js';
 
 /** El pedido en JSON (montos como texto, A-21). Lo usan el checkout y las rutas de pedidos. */
 export const pedidoARespuesta = (pedido: Pedido) => ({
@@ -103,3 +110,41 @@ export const resumenPedidoGestionSchema = resumenPedidoSchema
     cliente: z.object({ idUsuario: z.number().int(), nombre: z.string(), correo: z.string() }),
   })
   .openapi('ResumenPedidoGestion');
+
+export const cancelacionARespuesta = ({ pedido, reembolso }: Cancelacion) => ({
+  pedido: pedidoARespuesta(pedido),
+  reembolso,
+});
+
+export const reembolsoARespuesta = (reembolso: Reembolso) => ({
+  ...reembolso,
+  monto: montoATexto(reembolso.monto),
+  fechaProximoIntento: reembolso.fechaProximoIntento?.toISOString() ?? null,
+  fechaCompletado: reembolso.fechaCompletado?.toISOString() ?? null,
+  fechaCreacion: reembolso.fechaCreacion.toISOString(),
+});
+
+export const cancelacionSchema = z
+  .object({
+    pedido: pedidoSchema,
+    reembolso: z.object({ idReembolso: z.number().int(), estado: z.enum(ESTADOS_REEMBOLSO) }),
+  })
+  .openapi('Cancelacion');
+
+export const reembolsoSchema = z
+  .object({
+    idReembolso: z.number().int(),
+    idPedido: z.number().int(),
+    numeroPedido: z.string(),
+    idDevolucion: z.number().int().nullable(),
+    origen: z.enum(['Cancelacion', 'Devolucion']),
+    monto: montoSchema,
+    estado: z.enum(ESTADOS_REEMBOLSO),
+    intentos: z.number().int(),
+    ultimoError: z.string().nullable(),
+    idTransaccionReembolso: z.string().nullable(),
+    fechaProximoIntento: z.iso.datetime().nullable(),
+    fechaCompletado: z.iso.datetime().nullable(),
+    fechaCreacion: z.iso.datetime(),
+  })
+  .openapi('Reembolso');

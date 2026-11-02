@@ -1,12 +1,18 @@
 import type { RequestHandler } from 'express';
 import { manejar, obtenerContexto, paginar } from '../../shared/http/index.js';
+import type { ReembolsosService } from './pedidos.reembolsos.js';
 import {
+  cancelacionARespuesta,
   pedidoARespuesta,
+  reembolsoARespuesta,
   resumenARespuesta,
   resumenGestionARespuesta,
 } from './pedidos.respuesta.js';
 import {
   cambiarEstadoSchema,
+  cancelarPedidoSchema,
+  listarReembolsosSchema,
+  paramsIdReembolsoSchema,
   listarPedidosGestionSchema,
   listarPedidosPropiosSchema,
   paramsIdPedidoSchema,
@@ -18,6 +24,9 @@ export interface PedidosController {
   obtenerPropio: RequestHandler;
   listarGestion: RequestHandler;
   cambiarEstado: RequestHandler;
+  cancelar: RequestHandler;
+  listarReembolsos: RequestHandler;
+  reintentarReembolso: RequestHandler;
 }
 
 // autorizar() ya exigió un rol de gestión: aquí solo se lee del contexto de la petición.
@@ -28,7 +37,10 @@ function rolDeLaPeticion() {
   return rol;
 }
 
-export function crearPedidosController(servicio: PedidosService): PedidosController {
+export function crearPedidosController(
+  servicio: PedidosService,
+  reembolsos: ReembolsosService,
+): PedidosController {
   return {
     listarPropios: manejar({ query: listarPedidosPropiosSchema }, async ({ query }, res) => {
       const { filas, total } = await servicio.listarPropios(query);
@@ -51,5 +63,24 @@ export function crearPedidosController(servicio: PedidosService): PedidosControl
         res.json({ datos: pedidoARespuesta(pedido) });
       },
     ),
+
+    // El Cliente cancela los suyos (uno ajeno responde 404 desde el SP); la gestión, cualquiera.
+    cancelar: manejar(
+      { params: paramsIdPedidoSchema, body: cancelarPedidoSchema },
+      async ({ params, body }, res) => {
+        const cancelacion = await reembolsos.cancelar(params.id, body.motivo);
+        res.json({ datos: cancelacionARespuesta(cancelacion) });
+      },
+    ),
+
+    listarReembolsos: manejar({ query: listarReembolsosSchema }, async ({ query }, res) => {
+      const { filas, total } = await reembolsos.listar(query);
+      res.json(paginar(filas.map(reembolsoARespuesta), total, query));
+    }),
+
+    reintentarReembolso: manejar({ params: paramsIdReembolsoSchema }, async ({ params }, res) => {
+      const estado = await reembolsos.reintentar(params.id);
+      res.json({ datos: { idReembolso: params.id, estado } });
+    }),
   };
 }

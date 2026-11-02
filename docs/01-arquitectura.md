@@ -346,11 +346,17 @@ El puerto impone `TIMEOUT_PASARELA_MS` (10 s) a cada operación: sin respuesta e
 Operador/Cliente ─► SP_Pedidos_Cancelar (1 transacción):
                       estado + historial, ReingresoCancelacion × línea,
                       UsoCupon → Revertido (UsosComprometidos −= 1),
-                      INSERT Reembolso (Pendiente, total + envío)      ── COMMIT
-                 ─► servicio: pasarela.reembolsar(IDTransaccion, monto, llave)
+                      intento Autorizado (captura pendiente) → Anulado con token nuevo,
+                      INSERT Reembolso (Pendiente, total + envío, llave determinista),
+                      MontoReembolsado += total (CHECK ≤ Total)        ── COMMIT
+                 ─► servicio: SP_Pedidos_TomarReembolso (compare-and-set) →
+                      cancelación: consultar(llave del intento): Autorizada → anular · Capturada → reembolsar
+                      devolución: reembolsar(IDTransaccion, monto, llave)
                       ✓ → SP_Pedidos_ActualizarReembolso(Completado)
                       ✗ → queda Pendiente → job cada 5 min (máx. 5 intentos) → Fallido → lista del Admin
 ```
+
+Si el cobro todavía no se capturó (captura pendiente de la conciliación), la cancelación cerca el intento (`Anulado` con un token nuevo) y el dinero se devuelve **anulando** la autorización: la conciliación nunca captura el cobro de un pedido cancelado. Si la conciliación o el pago capturaron justo antes, la consulta a la pasarela lo detecta y se reembolsa. Plan: `docs/planes/E6-H03-cancelacion-con-reembolso.md`.
 
 Es un **outbox simplificado**: la intención de reembolsar se guarda en la misma transacción que la cancelación, y la llamada externa ocurre después. Si la API muere entre ambos pasos, el job encuentra el reembolso `Pendiente` y lo completa.
 

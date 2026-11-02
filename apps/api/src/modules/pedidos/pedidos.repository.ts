@@ -8,10 +8,14 @@ import {
   type ParametrosSP,
 } from '../../shared/db/index.js';
 import { aMonto } from '../../shared/dinero/index.js';
-import type { CambiarEstado, ListarPedidosGestion } from './pedidos.schemas.js';
+import type { CambiarEstado, ListarPedidosGestion, ListarReembolsos } from './pedidos.schemas.js';
 import type {
   CambioDeEstado,
+  EstadoReembolso,
   Pedido,
+  Reembolso,
+  ReembolsoParaProcesar,
+  ResultadoReembolso,
   ResumenPedido,
   ResumenPedidoGestion,
 } from './pedidos.types.js';
@@ -83,6 +87,47 @@ interface FilaResumenGestion extends FilaResumen {
 // El driver entrega un DATE como la medianoche UTC de ese día.
 const LARGO_FECHA = 10;
 const aFecha = (fecha: Date): string => fecha.toISOString().slice(0, LARGO_FECHA);
+
+interface FilaReembolso {
+  IDReembolso: number;
+  IDPedido: number;
+  NumeroPedido: string;
+  IDDevolucion: number | null;
+  Origen: Reembolso['origen'];
+  Monto: number;
+  Estado: EstadoReembolso;
+  Intentos: number;
+  UltimoError: string | null;
+  IDTransaccionReembolso: string | null;
+  FechaProximoIntento: Date | null;
+  FechaCompletado: Date | null;
+  FechaCreacion: Date;
+}
+
+interface FilaParaProcesar {
+  IDReembolso: number;
+  Origen: Reembolso['origen'];
+  Monto: number;
+  LlaveIdempotencia: string;
+  IDTransaccionPasarela: string | null;
+  LlaveIntento: string;
+}
+
+const aReembolso = (fila: FilaReembolso): Reembolso => ({
+  idReembolso: fila.IDReembolso,
+  idPedido: fila.IDPedido,
+  numeroPedido: fila.NumeroPedido,
+  idDevolucion: fila.IDDevolucion,
+  origen: fila.Origen,
+  monto: aMonto(fila.Monto),
+  estado: fila.Estado,
+  intentos: fila.Intentos,
+  ultimoError: fila.UltimoError,
+  idTransaccionReembolso: fila.IDTransaccionReembolso,
+  fechaProximoIntento: fila.FechaProximoIntento,
+  fechaCompletado: fila.FechaCompletado,
+  fechaCreacion: fila.FechaCreacion,
+});
 
 const aCambio = (fila: FilaHistorial): CambioDeEstado => ({
   estadoAnterior: fila.CodigoEstadoAnterior,
@@ -220,6 +265,91 @@ export const pedidosRepository = {
   /** N-08: la tabla de transiciones (la prueba de coincidencia con el mapa del servicio). */
   listarTransiciones(): Promise<{ Origen: string; Destino: string; Rol: string }[]> {
     return ejecutarSP('SP_Pedidos_ListarTransiciones');
+  },
+
+  /** N-09: la transacción de la cancelación; devuelve el reembolso Pendiente que dejó. */
+  async cancelar(idPedido: number, motivo: string): Promise<number> {
+    const [fila] = await ejecutarSP<{ IDReembolso: number }>('SP_Pedidos_Cancelar', {
+      IDPedido: { tipo: sql.Int, valor: idPedido },
+      Motivo: { tipo: sql.NVarChar(250), valor: motivo },
+    });
+    if (fila === undefined) throw new Error('SP_Pedidos_Cancelar no devolvió el reembolso');
+    return fila.IDReembolso;
+  },
+
+  /** null si no está Pendiente o ya lo tomó otro proceso. */
+  async tomarReembolso(
+    idReembolso: number,
+    segundosReclamo: number,
+  ): Promise<ReembolsoParaProcesar | null> {
+    const [fila] = await ejecutarSP<FilaParaProcesar>('SP_Pedidos_TomarReembolso', {
+      IDReembolso: { tipo: sql.Int, valor: idReembolso },
+      SegundosReclamo: { tipo: sql.Int, valor: segundosReclamo },
+    });
+    if (fila === undefined) return null;
+    return {
+      idReembolso: fila.IDReembolso,
+      origen: fila.Origen,
+      monto: aMonto(fila.Monto),
+      llave: fila.LlaveIdempotencia,
+      idTransaccion: fila.IDTransaccionPasarela,
+      llaveIntento: fila.LlaveIntento,
+    };
+  },
+
+  async actualizarReembolso(
+    idReembolso: number,
+    resultado: ResultadoReembolso,
+    reglas: { maxIntentos: number; segundosEntreIntentos: number },
+  ): Promise<EstadoReembolso> {
+    const [fila] = await ejecutarSP<{ Estado: EstadoReembolso }>('SP_Pedidos_ActualizarReembolso', {
+      IDReembolso: { tipo: sql.Int, valor: idReembolso },
+      Exito: { tipo: sql.Bit, valor: resultado.exito },
+      IDTransaccionReembolso: {
+        tipo: sql.VarChar(64),
+        valor: resultado.exito ? resultado.idTransaccionReembolso : null,
+      },
+      Error: { tipo: sql.NVarChar(500), valor: resultado.exito ? null : resultado.error },
+      MaxIntentos: { tipo: sql.TinyInt, valor: reglas.maxIntentos },
+      SegundosEntreIntentos: { tipo: sql.Int, valor: reglas.segundosEntreIntentos },
+    });
+    if (fila === undefined)
+      throw new Error('SP_Pedidos_ActualizarReembolso no devolvió el reembolso');
+    return fila.Estado;
+  },
+
+  /** Job (A-04). null si la otra réplica tenía el sp_getapplock. */
+  async obtenerReembolsosPendientes(maximo: number): Promise<number[] | null> {
+    const [ejecucion, tomados] = await ejecutarSPConjuntos<
+      [{ Ejecutada: boolean }[], { IDReembolso: number }[]]
+    >('SP_Pedidos_ObtenerReembolsosPendientes', {
+      Maximo: { tipo: sql.Int, valor: maximo },
+    });
+    const ejecutada = ejecucion?.[0]?.Ejecutada;
+    if (ejecutada === undefined || tomados === undefined) {
+      throw new Error('SP_Pedidos_ObtenerReembolsosPendientes no devolvió el resultado');
+    }
+    return ejecutada ? tomados.map((t) => t.IDReembolso) : null;
+  },
+
+  async listarReembolsos(filtros: ListarReembolsos): Promise<PaginaSP<Reembolso>> {
+    const { filas, total } = await ejecutarSPPaginado<FilaReembolso>(
+      'SP_Pedidos_ListarReembolsos',
+      {
+        Estado: { tipo: sql.VarChar(10), valor: filtros.estado ?? null },
+        Pagina: { tipo: sql.Int, valor: filtros.pagina },
+        Tamano: { tipo: sql.Int, valor: filtros.tamano },
+      },
+    );
+    return { filas: filas.map(aReembolso), total };
+  },
+
+  /** null si el reembolso no existe. */
+  async reintentarReembolso(idReembolso: number): Promise<EstadoReembolso | null> {
+    const [fila] = await ejecutarSP<{ Estado: EstadoReembolso }>('SP_Pedidos_ReintentarReembolso', {
+      IDReembolso: { tipo: sql.Int, valor: idReembolso },
+    });
+    return fila?.Estado ?? null;
   },
 
   /** RF-01: null si no existe o si es de otro cliente. */

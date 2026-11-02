@@ -68,6 +68,12 @@ BEGIN
             -- RF-06: se captura solo lo que tiene pedido y se anula solo lo que no lo tiene.
             IF @Estado = 'Capturado' AND @TienePedido = 0
                 THROW 50005, N'No se captura un intento de pago sin pedido.', 1;
+            -- Plan E6-H03 §2.6: el cobro de un pedido cancelado nunca se captura (la cancelación ya cercó el
+            -- intento; esto es la última defensa).
+            IF @Estado = 'Capturado' AND EXISTS (SELECT 1 FROM dbo.Pedido AS p
+                                                 JOIN dbo.EstadoPedido AS e ON e.IDEstadoPedido = p.IDEstadoPedido
+                                                 WHERE p.IDIntentoPago = @IDIntentoPago AND e.Codigo = 'Cancelado')
+                THROW 50005, N'No se captura el cobro de un pedido cancelado.', 1;
             IF @Estado IN ('Anulado', 'Fallido', 'Rechazado') AND @TienePedido = 1
                 THROW 50005, N'No se anula un intento de pago con pedido.', 1;
 

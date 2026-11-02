@@ -83,3 +83,42 @@ export interface ResumenPedido {
 export interface ResumenPedidoGestion extends ResumenPedido {
   cliente: { idUsuario: number; nombre: string; correo: string };
 }
+
+/** N-09, N-10: el estado de un reembolso. */
+export const ESTADOS_REEMBOLSO = ['Pendiente', 'Completado', 'Fallido'] as const;
+export type EstadoReembolso = (typeof ESTADOS_REEMBOLSO)[number];
+
+export interface Reembolso {
+  idReembolso: number;
+  idPedido: number;
+  numeroPedido: string;
+  idDevolucion: number | null;
+  origen: 'Cancelacion' | 'Devolucion';
+  monto: Decimal;
+  estado: EstadoReembolso;
+  intentos: number;
+  ultimoError: string | null;
+  idTransaccionReembolso: string | null;
+  fechaProximoIntento: Date | null;
+  fechaCompletado: Date | null;
+  fechaCreacion: Date;
+}
+
+/** Lo que la pasarela necesita para devolver el dinero de un reembolso tomado (plan E6-H03 §3). */
+export interface ReembolsoParaProcesar {
+  idReembolso: number;
+  origen: Reembolso['origen'];
+  monto: Decimal;
+  llave: string;
+  idTransaccion: string | null;
+  llaveIntento: string;
+}
+
+export type ResultadoReembolso =
+  { exito: true; idTransaccionReembolso: string | null } | { exito: false; error: string };
+
+/** N-09: el pedido cancelado con su reembolso. */
+export interface Cancelacion {
+  pedido: Pedido;
+  reembolso: { idReembolso: number; estado: EstadoReembolso };
+}
