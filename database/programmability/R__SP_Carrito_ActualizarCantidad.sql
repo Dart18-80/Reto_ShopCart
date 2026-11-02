@@ -42,7 +42,7 @@ BEGIN
                        WHERE  v.IDVariante = @IDVariante AND v.Activo = 1 AND p.Activo = 1)
             THROW 50402, N'Este producto ya no está disponible: solo puedes eliminarlo del carrito.', 1;
 
-        SELECT @Disponible = d.Disponible FROM dbo.FU_Inventario_Disponible(@IDVariante) AS d;
+        SELECT @Disponible = d.Disponible FROM dbo.FU_Carrito_Disponible(@IDCarrito, @IDVariante) AS d;
 
         IF @Cantidad > @Disponible
         BEGIN

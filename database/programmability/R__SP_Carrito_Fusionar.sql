@@ -95,7 +95,7 @@ BEGIN
             LEFT JOIN dbo.LineaCarrito AS c
                    ON c.IDCarrito = @IDCarritoCliente AND c.IDVariante = g.IDVariante
             LEFT JOIN dbo.PrecioVariante AS pgc ON pgc.IDPrecioVariante = c.IDPrecioVarianteGarantizado
-            CROSS APPLY dbo.FU_Inventario_Disponible(g.IDVariante) AS d
+            CROSS APPLY dbo.FU_Carrito_Disponible(@IDCarritoCliente, g.IDVariante) AS d
             WHERE  g.IDCarrito = @IDCarritoInvitado;
 
             -- N-05: el carrito admite MaxLineasCarrito líneas; las variantes nuevas más recientes no pasan.

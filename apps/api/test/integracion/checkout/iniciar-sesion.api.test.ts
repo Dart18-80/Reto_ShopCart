@@ -10,6 +10,7 @@ import { iniciarSesion, leerSesion } from '../auth/apoyo-auth.js';
 import { usarBaseDePruebas } from '../base-de-pruebas.js';
 import {
   agregar,
+  cambiarCantidad,
   comoCliente,
   comoInvitado,
   leerCarrito,
@@ -336,6 +337,19 @@ describe('reutilizar o reemplazar la sesión (E5-H01, N-02)', () => {
 
     expect(carrito.lineas).toMatchObject([{ estado: 'Disponible' }]);
     expect(ajeno.status).toBe(409);
+  });
+
+  it('con su pago en curso, el cliente puede cambiar la cantidad de una línea que él mismo reservó', async () => {
+    const { IDVariante } = await varianteVendible('20.00', 2);
+    const cliente = await clienteConCarrito(app, [{ idVariante: IDVariante, cantidad: 2 }]);
+    await iniciarPago(app, cliente, estandar);
+    const [linea] = leerCarrito(await verCarrito(app, comoCliente(cliente.token))).lineas;
+
+    const menos = await cambiarCantidad(app, comoCliente(cliente.token), linea?.idLinea ?? 0, 1);
+    const deMas = await cambiarCantidad(app, comoCliente(cliente.token), linea?.idLinea ?? 0, 3);
+
+    expect(menos.status).toBe(200);
+    expect(deMas.status).toBe(409);
   });
 });
 

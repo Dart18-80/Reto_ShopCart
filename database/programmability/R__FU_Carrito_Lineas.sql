@@ -1,4 +1,4 @@
--- depende-de: R__FU_Catalogo_PrecioVigente.sql, R__FU_Inventario_Disponible.sql
+-- depende-de: R__FU_Catalogo_PrecioVigente.sql, R__FU_Carrito_Disponible.sql
 -- RF-04, N-02, N-06: las líneas de un carrito con su precio y su estado, calculados al consultar.
 -- Precio efectivo (01 §6.5): mientras la garantía está vigente, el menor entre el garantizado y el vigente;
 -- vencida, el vigente. Estado: NoDisponible (producto o variante desactivados; solo se elimina), Agotado,
@@ -43,16 +43,7 @@ RETURN
     JOIN    dbo.Producto       AS p  ON p.IDProducto = v.IDProducto
     JOIN    dbo.PrecioVariante AS pg ON pg.IDPrecioVariante = l.IDPrecioVarianteGarantizado
     OUTER APPLY dbo.FU_Catalogo_PrecioVigente(l.IDVariante) AS pv
-    CROSS APPLY dbo.FU_Inventario_Disponible(l.IDVariante)  AS inv
-    -- Las reservas vigentes de la sesión de pago activa de este mismo carrito son suyas: no le restan
-    -- disponible (si no, al iniciar el pago sus propias líneas se verían agotadas).
-    OUTER APPLY (SELECT COALESCE(SUM(r.Cantidad), 0) AS Cantidad
-                 FROM   dbo.Reserva AS r
-                 JOIN   dbo.SesionCheckout AS s ON s.IDSesionCheckout = r.IDSesionCheckout
-                 WHERE  s.IDCarrito = @IDCarrito AND s.Estado = 'Activa'
-                   AND  r.IDVariante = l.IDVariante AND r.Estado = 'Activa'
-                   AND  r.FechaExpiracion > SYSUTCDATETIME()) AS propias
-    CROSS APPLY (SELECT inv.Disponible + propias.Cantidad AS Disponible) AS d
+    CROSS APPLY dbo.FU_Carrito_Disponible(@IDCarrito, l.IDVariante) AS d
     CROSS APPLY (SELECT TOP (1) ps.UmbralUltimasUnidades AS Umbral
                  FROM dbo.ParametroSistema AS ps ORDER BY ps.IDParametroSistema) AS u
     OUTER APPLY (SELECT TOP (1) i.Url

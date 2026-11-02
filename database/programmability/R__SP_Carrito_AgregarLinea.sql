@@ -70,7 +70,7 @@ BEGIN
         IF @IDPrecioVariante IS NULL
             THROW 50001, N'El producto no existe o ya no está disponible.', 1;
 
-        SELECT @Disponible = d.Disponible FROM dbo.FU_Inventario_Disponible(@IDVariante) AS d;
+        SELECT @Disponible = d.Disponible FROM dbo.FU_Carrito_Disponible(@IDCarrito, @IDVariante) AS d;
         SELECT @EnCarrito = l.Cantidad
         FROM   dbo.LineaCarrito AS l
         WHERE  l.IDCarrito = @IDCarrito AND l.IDVariante = @IDVariante;
