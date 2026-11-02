@@ -370,7 +370,7 @@
 ### E4-H01 · Carrito de invitado y de cliente — `Must` · 0.75 h
 **Alcance**
 - `GET /carrito`, `POST /carrito/lineas`, `PATCH /carrito/lineas/:idLinea`, `DELETE /carrito/lineas/:idLinea`. **Nunca se expone el ID del carrito.**
-- Invitado: token aleatorio de 256 bits en la cookie `carrito_invitado` (httpOnly), hash en la base; el carrito se crea al agregar el primer producto; rate limiting de creación.
+- Invitado: token aleatorio de 256 bits en la cookie `carrito_invitado` (httpOnly, Secure, `SameSite=Lax`, `Path=/api/v1`), hash en la base; el carrito se crea al agregar el primer producto; rate limiting de creación.
 - `FU_Carrito_Lineas`: estado por línea (`Disponible`, `CantidadExcedida`, `Agotado`, `NoDisponible`), subtotal, descuento y total.
 - Solo el rol Cliente (o un invitado) tiene carrito; Operador y Admin reciben `403`.
 
@@ -441,6 +441,8 @@
 - [ ] El uso del cupón queda reservado (`UsosComprometidos + 1`) y se respeta el límite por cliente.
 - [ ] Precio, descuento repartido, envío y dirección quedan congelados en la sesión; un cambio de precio posterior no los afecta.
 - [ ] Repetir la petición sin cambios en el carrito devuelve la misma sesión; con cambios, cancela la anterior (liberando reservas y cupón) y crea una nueva.
+
+**Nota (cierre de E4):** `SP_Checkout_CancelarSesionActiva` (creado en E4-H03) libera hoy las reservas y el uso del cupón en línea. En esta historia se crean `SP_Inventario_LiberarReservas` y `SP_Cupones_LiberarUso` (internos) y `SP_Checkout_CancelarSesionActiva` pasa a llamarlos: no queda otra ruta de liberación.
 - [ ] Exige sesión iniciada; un invitado recibe `401`.
 
 **Referencias:** RF-06, N-01, N-02, N-06, A-13.
@@ -474,13 +476,15 @@
 - [ ] Con las dos réplicas corriendo, cada ejecución la procesa una sola (comprobable en los logs).
 - [ ] La tarea es idempotente: ejecutarla dos veces no cambia nada la segunda.
 
+**Nota (cierre de E4):** la expiración libera con `SP_Inventario_LiberarReservas` y `SP_Cupones_LiberarUso` (E5-H01), los mismos que usa `SP_Checkout_CancelarSesionActiva`: no queda otra ruta de liberación.
+
 **Referencias:** A-04, RF-07.
 
 ### E5-H05 · Test de concurrencia — `Must` · 0.75 h
 **Alcance:** `apps/api/test/concurrencia/` contra el entorno levantado con Docker (a través de nginx, para repartir entre réplicas). Escenario 1: 20 clientes intentan pagar la última unidad. Escenario 2: 20 clientes usan un cupón con 1 uso restante. Comando `pnpm test:concurrencia`.
 **CA**
 - [ ] Escenario 1: exactamente **1** pedido creado, 19 rechazos `409 STOCK_INSUFICIENTE` con mensaje claro, existencia final `0` y conciliación vacía.
-- [ ] Escenario 2: exactamente **1** pedido con el cupón; los demás reciben `CUPON_AGOTADO`; `UsosComprometidos = LimiteUsosTotal`.
+- [ ] Escenario 2: exactamente **1** pedido con el cupón; los demás reciben `422 CUPON_AGOTADO` (todos los rechazos de cupón son 422; el 409 queda para conflictos en los que reintentar tiene sentido); `UsosComprometidos = LimiteUsosTotal`.
 - [ ] Las peticiones se repartieron entre `api-1` y `api-2`.
 
 **Referencias:** RNF-3, RF-05, RF-06.

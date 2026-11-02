@@ -96,8 +96,7 @@ export interface Configuracion {
 
 /**
  * Valida las variables de entorno al arrancar: si algo falta, el proceso no inicia.
- * El entorno solo cambia la validación de secretos y, en desarrollo, quita Secure de la cookie del carrito de
- * invitado (N-05, decisión del PO); nunca relaja otra medida de seguridad.
+ * El entorno solo cambia la validación de secretos: nunca relaja otra medida de seguridad.
  */
 export function cargarConfiguracion(entorno: NodeJS.ProcessEnv): Configuracion {
   const resultado = esquema.safeParse(entorno);

@@ -73,7 +73,7 @@ Versión en texto:
 
 **Notas de despliegue:**
 
-- **Un solo origen** (`http://localhost:8080`): la SPA y la API se sirven desde el mismo host, así que las cookies funcionan sin trucos de CORS: `refresh` con `SameSite=Strict` y `carrito_invitado` con `SameSite=Lax` (httpOnly, `Path=/api/v1`, `Secure` fuera de desarrollo). CORS se configura igualmente con una lista explícita de orígenes (requisito del enunciado) para el servidor de desarrollo de Vite.
+- **Un solo origen** (`http://localhost:8080`): la SPA y la API se sirven desde el mismo host, así que las cookies funcionan sin trucos de CORS: `refresh` con `SameSite=Strict` y `carrito_invitado` con `SameSite=Lax` (httpOnly, `Secure` y `Path=/api/v1`). CORS se configura igualmente con una lista explícita de orígenes (requisito del enunciado) para el servidor de desarrollo de Vite.
 - **nginx es el balanceador de carga.** Si una réplica deja de responder, nginx la marca como caída y envía todo el tráfico a la otra. **Escenario de demo:** `docker compose stop api-1` → la tienda sigue funcionando y el header `X-Instancia` muestra que todo lo atiende `api-2`. **Punto único de falla reconocido:** con un solo nginx, si nginx cae, cae todo. En producción se resuelve con un Ingress Controller con réplicas (Kubernetes) o un balanceador administrado (por ejemplo, ALB de AWS).
 - **Health (`GET /api/v1/health`):** responde `200` cuando la réplica puede atender, con `redis: "degradado"` si solo falta Redis (RNF-2: se sigue vendiendo), y `503` cuando la base no responde, para que el healthcheck de Docker y nginx saquen la réplica. Es pública: solo devuelve estados; la versión y la hora de SQL Server van al log.
 - **Redis está detrás de la API, no delante.** Toda petición llega a la API, que valida el token y el rol. Redis evita ir a SQL Server, no evita pasar por el backend. No se usa la caché HTTP de nginx (`proxy_cache`): saltaría la autenticación y no permite la invalidación por eventos que exige el extra (sección 9).
@@ -121,7 +121,7 @@ src/modules/<modulo>/
   <modulo>.repository.ts    # SOLO invoca SPs mediante ejecutarSP(); mapea resultados a tipos
   <modulo>.schemas.ts       # esquemas Zod de entrada y salida (también generan OpenAPI)
   <modulo>.types.ts         # tipos del dominio del módulo
-  <modulo>.errors.ts        # códigos de error de negocio del módulo
+  <modulo>.errors.ts        # solo si el módulo tiene errores propios fuera del catálogo central
   index.ts                  # API pública del módulo (lo único que otros módulos importan)
 ```
 
@@ -364,7 +364,7 @@ En el carrito: **carrito → variantes en orden de `IDVariante`**. Todo SP de ca
 | **`SET XACT_ABORT ON`** + `TRY/CATCH` | Todos los SPs que escriben | Cualquier error revierte toda la transacción: nunca quedan datos a medias |
 | **Reintento ante deadlock** | `ejecutarSP` (error 1205, hasta 3 veces con backoff) | Si a pesar del orden fijo ocurre un deadlock, se reintenta de forma transparente |
 
-**Test de concurrencia (RNF-3):** `apps/api/test/concurrencia/` lanza 20 clientes sembrados contra la API real (a través de nginx, para repartirse entre las dos réplicas) y verifica: exactamente 1 `201`, 19 `409` con `STOCK_INSUFICIENTE` (o `CUPON_AGOTADO`), `ExistenciaFisica = 0` y `VW_Inventario_Conciliacion` vacía.
+**Test de concurrencia (RNF-3):** `apps/api/test/concurrencia/` lanza 20 clientes sembrados contra la API real (a través de nginx, para repartirse entre las dos réplicas) y verifica: exactamente 1 `201`, 19 rechazos: `409 STOCK_INSUFICIENTE` en el escenario de stock y `422 CUPON_AGOTADO` en el de cupón, `ExistenciaFisica = 0` y `VW_Inventario_Conciliacion` vacía.
 
 ---
 

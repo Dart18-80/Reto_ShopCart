@@ -41,7 +41,6 @@ export function dependenciasDePrueba(cambios: Partial<DependenciasApp> = {}): De
       carritoInvitado: SIN_LIMITE,
     },
     versionesSesion: versionesSesionEnMemoria(),
-    cookiesSeguras: true,
     carritoInvitado: crearCarritoDeInvitadoParaSesion(pino({ level: 'silent' })),
     ...cambios,
   };

@@ -17,7 +17,7 @@ apps/api/src/modules/direcciones/
   direcciones.repository.ts   # SOLO ejecutarSP; mapea filas a tipos del dominio
   direcciones.schemas.ts      # esquemas Zod de entrada y salida
   direcciones.types.ts        # tipos del dominio del módulo
-  direcciones.errors.ts       # errores de negocio del módulo
+  direcciones.errors.ts       # SOLO si el módulo tiene errores propios fuera del catálogo central
   index.ts                    # API pública del módulo: lo único que otros importan
 ```
 
@@ -279,6 +279,8 @@ export type ParamsId = z.infer<typeof paramsIdSchema>;
 - Los límites de longitud coinciden con los del SP y la tabla.
 
 ## 9. Errores del módulo
+
+`<modulo>.errors.ts` es opcional: existe solo si el módulo tiene errores propios fuera del catálogo central. Lo normal es que el servicio use directamente `new AppError('NO_ENCONTRADO', { mensaje: 'La dirección no existe.' })` con un código de `catalogo.ts`. El ejemplo siguiente muestra cómo agruparlos cuando un módulo los tiene.
 
 ```ts
 // direcciones.errors.ts

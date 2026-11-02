@@ -17,7 +17,7 @@ BEGIN
 
     DECLARE @IDCliente INT = CASE WHEN @RolActor = 'Cliente' THEN @IDUsuarioActor END;
     IF @IDCliente IS NULL
-        THROW 50003, N'Solo un cliente puede recibir un carrito de invitado.', 1;
+        THROW 50005, N'Solo un cliente puede recibir un carrito de invitado.', 1;
 
     DECLARE @IDCarrito INT;
 

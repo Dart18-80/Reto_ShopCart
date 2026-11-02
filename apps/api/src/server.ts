@@ -61,8 +61,6 @@ async function iniciar(): Promise<void> {
         ...LIMITE_CARRITO_INVITADO,
       }),
     },
-    // N-05: la cookie del carrito de invitado lleva Secure fuera de desarrollo.
-    cookiesSeguras: config.entorno !== 'development',
     carritoInvitado: crearCarritoDeInvitadoParaSesion(logger.child({ modulo: 'carrito' })),
     versionesSesion: crearVersionesSesionRedis(redis, logger),
   });

@@ -10,7 +10,7 @@ BEGIN
     SET NOCOUNT ON;
 
     IF @@TRANCOUNT = 0
-        THROW 50003, N'SP_Checkout_CancelarSesionActiva debe ejecutarse dentro de una transacción.', 1;
+        THROW 50005, N'SP_Checkout_CancelarSesionActiva debe ejecutarse dentro de una transacción.', 1;
 
     DECLARE @IDSesionCheckout INT =
     (

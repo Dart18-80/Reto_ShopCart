@@ -67,22 +67,19 @@ export interface CarritoController {
   quitarCupon: RequestHandler;
 }
 
-export function crearCarritoController(
-  servicio: CarritoService,
-  cookiesSeguras: boolean,
-): CarritoController {
-  // N-05: httpOnly y SameSite=Lax; Secure fuera de desarrollo. El token nunca se registra en logs.
-  const opcionesCookie: CookieOptions = {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: cookiesSeguras,
-    path: RUTA_COOKIE_CARRITO,
-  };
+// N-05: httpOnly, Secure (igual que el refresh) y SameSite=Lax. El token nunca se registra en logs.
+const OPCIONES_COOKIE: CookieOptions = {
+  httpOnly: true,
+  secure: true,
+  sameSite: 'lax',
+  path: RUTA_COOKIE_CARRITO,
+};
 
+export function crearCarritoController(servicio: CarritoService): CarritoController {
   function enviarCarrito(res: Response, carrito: Carrito, tokenNuevo: string | null = null): void {
     if (tokenNuevo !== null) {
       res.cookie(COOKIE_CARRITO, tokenNuevo, {
-        ...opcionesCookie,
+        ...OPCIONES_COOKIE,
         maxAge: DIAS_VIDA_COOKIE * MS_POR_DIA,
       });
     }
@@ -92,7 +89,7 @@ export function crearCarritoController(
   return {
     obtener: manejar({ cookies: cookiesCarritoSchema }, async ({ cookies, cliente }, res) => {
       const consulta = await servicio.obtener(compradorDe(cookies[COOKIE_CARRITO], cliente));
-      if (consulta.cookieObsoleta) res.clearCookie(COOKIE_CARRITO, opcionesCookie);
+      if (consulta.cookieObsoleta) res.clearCookie(COOKIE_CARRITO, OPCIONES_COOKIE);
       enviarCarrito(res, consulta.carrito);
     }),
 

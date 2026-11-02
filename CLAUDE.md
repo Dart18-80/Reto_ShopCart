@@ -23,7 +23,7 @@ Eres el **desarrollador** de ShopCart. Diego es el Product Owner y el arquitecto
 
 ## Reglas de arquitectura
 
-- **Monolito modular** (A-01). Cada módulo vive en `apps/api/src/modules/<modulo>/` con `routes`, `controller`, `service`, `repository`, `schemas`, `types`, `errors` e `index.ts`.
+- **Monolito modular** (A-01). Cada módulo vive en `apps/api/src/modules/<modulo>/` con `routes`, `controller`, `service`, `repository`, `schemas`, `types` e `index.ts`. `<modulo>.errors.ts` existe solo si el módulo tiene errores propios fuera del catálogo central (`shared/errors/catalogo.ts`); si no, el servicio usa `new AppError('<CODIGO>', { mensaje })` directamente.
 - **Dependencias:** `routes → controller → service → repository`. Un módulo solo usa a otro a través de su `index.ts`. El lint lo verifica.
 - **Controladores sin lógica de negocio:** solo traducen HTTP ↔ caso de uso.
 - **Dónde va cada regla (A-02):**

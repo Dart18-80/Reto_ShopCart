@@ -40,6 +40,13 @@ export const CATALOGO = {
     numeroSql: 50004,
     mensaje: 'Ocurrió un error inesperado. Intenta de nuevo más tarde.',
   },
+  // Un SP interno llamado sin lo que exige (transacción, actor o rol). Error de programación: 500, log en
+  // error y mensaje genérico; el detalle del SP queda solo en el log.
+  INVARIANTE_INTERNA: {
+    http: 500,
+    numeroSql: 50005,
+    mensaje: 'Ocurrió un error inesperado. Intenta de nuevo más tarde.',
+  },
 
   // 50100–50199 Auth y usuarios
   CORREO_EN_USO: { http: 409, numeroSql: 50101, mensaje: 'El correo ya está registrado.' },

@@ -48,8 +48,6 @@ export interface DependenciasApp {
   tokensAcceso: TokensAcceso;
   limitadores: Limitadores;
   versionesSesion: VersionesSesion;
-  /** N-05: Secure en la cookie del carrito de invitado (fuera de desarrollo). */
-  cookiesSeguras: boolean;
   /** N-05: fusión o asignación del carrito de invitado al abrir sesión. */
   carritoInvitado: CarritoDeInvitado;
 }
@@ -63,7 +61,6 @@ export function crearApp({
   tokensAcceso,
   limitadores,
   versionesSesion,
-  cookiesSeguras,
   carritoInvitado,
 }: DependenciasApp): Express {
   const app = express();
@@ -114,7 +111,6 @@ export function crearApp({
     crearModuloCarrito({
       autenticar,
       limitadorCreacion: limitadores.carritoInvitado,
-      cookiesSeguras,
     }),
   );
   app.use('/api/v1', v1);

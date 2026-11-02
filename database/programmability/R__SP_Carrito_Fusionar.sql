@@ -21,7 +21,7 @@ BEGIN
 
     DECLARE @IDCliente INT = CASE WHEN @RolActor = 'Cliente' THEN @IDUsuarioActor END;
     IF @IDCliente IS NULL
-        THROW 50003, N'Solo un cliente puede fusionar un carrito de invitado.', 1;
+        THROW 50005, N'Solo un cliente puede fusionar un carrito de invitado.', 1;
 
     DECLARE @Ahora DATETIME2(3) = SYSUTCDATETIME();
     DECLARE @IDCarritoInvitado INT, @IDCarritoCliente INT, @MaxLineas SMALLINT, @ID INT, @Bloqueada INT;

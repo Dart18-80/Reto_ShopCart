@@ -97,7 +97,7 @@ describe('SP_Inventario_RegistrarMovimiento (N-07)', () => {
     });
   });
 
-  it('rechaza con 50003 si el llamador no abrió una transacción, sin escribir nada', async () => {
+  it('rechaza con 50005 INVARIANTE_INTERNA si el llamador no abrió una transacción, sin escribir nada', async () => {
     const { IDVariante, IDUsuario } = await crearVariante();
 
     const intento = comoActor(IDUsuario, 'Operador', () =>
@@ -106,7 +106,7 @@ describe('SP_Inventario_RegistrarMovimiento (N-07)', () => {
       }),
     );
 
-    await expect(intento).rejects.toMatchObject({ codigo: 'PARAMETRO_INVALIDO' });
+    await expect(intento).rejects.toMatchObject({ codigo: 'INVARIANTE_INTERNA' });
     expect(await leerKardex(IDVariante)).toEqual({ ExistenciaFisica: 0, Movimientos: 0 });
   });
 

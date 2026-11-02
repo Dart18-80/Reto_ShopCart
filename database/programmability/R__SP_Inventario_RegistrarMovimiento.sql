@@ -18,13 +18,13 @@ BEGIN
 
     -- Una transacción propia anidada revertiría también la del llamador en un ROLLBACK.
     IF @@TRANCOUNT = 0
-        THROW 50003, N'SP_Inventario_RegistrarMovimiento debe ejecutarse dentro de una transacción.', 1;
+        THROW 50005, N'SP_Inventario_RegistrarMovimiento debe ejecutarse dentro de una transacción.', 1;
 
     DECLARE @IDUsuario INT              = TRY_CONVERT(INT, SESSION_CONTEXT(N'IDUsuario')),
             @RequestId UNIQUEIDENTIFIER = TRY_CONVERT(UNIQUEIDENTIFIER, SESSION_CONTEXT(N'RequestId'));
 
     IF @IDUsuario IS NULL
-        THROW 50003, N'Todo movimiento de inventario necesita un usuario responsable.', 1;
+        THROW 50005, N'Todo movimiento de inventario necesita un usuario responsable.', 1;
     -- Tope técnico por movimiento (el mismo que CANTIDAD_MAXIMA en Zod): lejos del desborde de INT.
     DECLARE @CantidadMaxima INT = 1000000;
 

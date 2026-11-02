@@ -10,18 +10,12 @@ import { crearCarritoDeInvitado, type CarritoDeInvitado } from './carrito.sesion
 interface DependenciasCarrito {
   autenticar: RequestHandler;
   limitadorCreacion: LimitadorIntentos;
-  /** Secure en la cookie del carrito de invitado (fuera de desarrollo). */
-  cookiesSeguras: boolean;
 }
 
 /** Monta /carrito (Cliente o invitado). */
-export function crearModuloCarrito({
-  autenticar,
-  limitadorCreacion,
-  cookiesSeguras,
-}: DependenciasCarrito): Router {
+export function crearModuloCarrito({ autenticar, limitadorCreacion }: DependenciasCarrito): Router {
   const servicio = crearCarritoService({ repositorio: carritoRepository, limitadorCreacion });
-  return crearCarritoRouter(crearCarritoController(servicio, cookiesSeguras), autenticar);
+  return crearCarritoRouter(crearCarritoController(servicio), autenticar);
 }
 
 export { COOKIE_CARRITO, cookiesCarritoSchema } from './carrito.schemas.js';

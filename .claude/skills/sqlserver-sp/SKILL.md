@@ -190,10 +190,11 @@ Ejemplos: `SP_Inventario_RegistrarMovimiento`, `SP_Inventario_ReservarExistencia
 
 ```sql
 IF @@TRANCOUNT = 0
-    THROW 50003, N'SP_Inventario_RegistrarMovimiento debe ejecutarse dentro de una transacción.', 1;
+    THROW 50005, N'SP_Inventario_RegistrarMovimiento debe ejecutarse dentro de una transacción.', 1;
 ```
 
 - No declaran los parámetros estándar: el contexto ya lo estableció el SP que los llama.
+- Lo que exigen al llamador (transacción, actor, rol) es una invariante interna: `THROW 50005` (`INVARIANTE_INTERNA`, HTTP 500), nunca un 400.
 - La API **nunca** los invoca directamente.
 
 > Por qué: una transacción anidada que hace `ROLLBACK` revierte también la del llamador, y el `COMMIT` posterior falla. Con una sola transacción, controlada por el SP de entrada, el comportamiento es predecible.

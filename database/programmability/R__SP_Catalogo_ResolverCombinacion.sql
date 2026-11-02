@@ -14,7 +14,7 @@ BEGIN
     SET NOCOUNT ON;
 
     IF @@TRANCOUNT = 0
-        THROW 50003, N'SP_Catalogo_ResolverCombinacion debe ejecutarse dentro de una transacción.', 1;
+        THROW 50005, N'SP_Catalogo_ResolverCombinacion debe ejecutarse dentro de una transacción.', 1;
 
     DECLARE @LargoMaximo INT = 200;
 
