@@ -228,3 +228,20 @@ describe('fin de línea del repositorio (verificación de entrega)', () => {
     expect(atributos).toContain(`*.${extension} binary`);
   });
 });
+
+describe('imágenes fijadas (verificación de entrega)', () => {
+  const compose = readFileSync(join(RAIZ, 'docker-compose.yml'), 'utf8');
+  const imagenes = [...compose.matchAll(/^\s+image:\s*(\S+)/gm)].map(([, imagen]) => imagen ?? '');
+
+  it('ninguna imagen del compose usa latest', () => {
+    expect(imagenes.filter((imagen) => imagen.includes('latest'))).toEqual([]);
+  });
+
+  it('SQL Server se fija a un CU exacto y a su digest, la versión que pasó las suites', () => {
+    expect(imagenes).toContainEqual(
+      expect.stringMatching(
+        /^mcr\.microsoft\.com\/mssql\/server:2022-CU\d+[\w.-]*@sha256:[0-9a-f]{64}$/,
+      ),
+    );
+  });
+});

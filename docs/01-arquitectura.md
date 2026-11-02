@@ -64,7 +64,7 @@ Versión en texto:
 
 | Servicio | Imagen | Rol | Healthcheck | Depende de |
 |---|---|---|---|---|
-| `sqlserver` | `mcr.microsoft.com/mssql/server:2022-latest` | Fuente de verdad | `sqlcmd -Q "SELECT 1"` | — |
+| `sqlserver` | `mcr.microsoft.com/mssql/server:2022-CU27-GDR1-ubuntu-22.04` fijada con su digest | Fuente de verdad | `sqlcmd -Q "SELECT 1"` | — |
 | `db-migrator` | Propia (Node + scripts) | Ejecuta los scripts numerados y termina | — (one-shot) | `sqlserver` saludable |
 | `redis` | `redis:7-alpine` | Rate limiting, versión de sesión por usuario y caché de reportes | `redis-cli ping` | — |
 | `api-1`, `api-2` | Propia (`apps/api`) | API REST; misma imagen y misma configuración salvo `INSTANCIA_ID` | `GET /api/v1/health` | Migrador completado, `redis` saludable |

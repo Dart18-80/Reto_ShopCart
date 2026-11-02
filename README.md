@@ -88,6 +88,12 @@ SQL Server y Redis solo se publican en `127.0.0.1` (accesibles desde tu máquina
 
 > **Licencia de SQL Server:** el entorno usa la edición **Developer** (`MSSQL_PID=Developer`), gratuita para desarrollo y pruebas pero **no licenciada para producción**.
 
+**Actualizar SQL Server (a propósito).** La imagen está fijada en `docker-compose.yml` al CU que pasó todas las suites: `2022-CU27-GDR1-ubuntu-22.04` (16.0.4305.5), con su digest. Así un `docker compose pull` no cambia el motor. Para pasar a otro CU:
+
+1. Elige la etiqueta en <https://mcr.microsoft.com/v2/mssql/server/tags/list> (por ejemplo `2022-CU28-ubuntu-22.04`) y obtén su digest con `docker pull mcr.microsoft.com/mssql/server:<etiqueta>` y `docker image inspect --format '{{index .RepoDigests 0}}' mcr.microsoft.com/mssql/server:<etiqueta>`.
+2. Reemplaza la etiqueta y el `@sha256:…` en el servicio `sqlserver`.
+3. Corre `docker compose up -d` (la base sigue en su volumen), `pnpm test:integracion`, `pnpm test:concurrencia` y `pnpm test:entorno`, y haz el commit solo con todo en verde.
+
 ---
 
 ## 2. Credenciales de prueba
