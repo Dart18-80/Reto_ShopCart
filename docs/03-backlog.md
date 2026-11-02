@@ -586,6 +586,31 @@
 
 **Referencias:** RNF-1, M-08.
 
+### E7-H04 · Caché de reportes con invalidación — `Must` · 0.75 h
+**Alcance (cambio de alcance aprobado por el PO al cierre de E6 y E7: pasa de F5 a la Fase 1):** caché *cache-aside* en la capa de servicio de reportes, detrás del puerto `Cache` (adaptador de Redis). Llave `reportes:v{version}:{reporte}:{hash de los filtros normalizados}`; la versión vive en Redis y cada escritura que cambia los datos que leen las vistas del dashboard la incrementa en su servicio, **después del commit**. La lista de esas escrituras sale de las vistas y queda en `01-arquitectura.md` §9. TTL corto como constante con nombre (cubre los reportes que dependen de la hora y un incremento fallido). Redis caído o con error: se consulta la base y se registra con el log de cambio de estado.
+**CA**
+- [ ] La segunda consulta con los mismos filtros sale de la caché.
+- [ ] Tras cada escritura de la lista, el reporte muestra el dato nuevo.
+- [ ] Un proceso que leyó datos viejos y los guarda después de la invalidación no los deja visibles.
+- [ ] Las dos réplicas comparten la versión.
+- [ ] Con Redis caído, el reporte responde igual (desde la base).
+
+**Referencias:** A-11 (con el porqué de las llaves con versión: no se borra nada ni se coordinan réplicas), RNF-2, N-11.
+
+### E7-H05 · Exportación asíncrona de reportes (Excel y PDF) — `Must` · 2.5 h ⭐ historia grande
+**Alcance (cambio de alcance aprobado por el PO: pasa de F5 a la Fase 1):** cola de exportaciones en SQL Server (`SolicitudExportacion` con estado de catálogo `Pendiente`/`Procesando`/`Completada`/`Fallida`/`Expirada`, arrendamiento con token de fencing, intentos y expiración), procesada por las dos réplicas como consumidores en competencia (`UPDLOCK, READPAST`), con generación por streaming (exceljs y pdfmake, A-16 y A-24) que reutiliza el servicio de reportes y su caché, y archivos en el puerto `AlmacenArchivos` (volumen de Docker compartido por `api-1` y `api-2`). Endpoints solo para el Admin: `POST /admin/reportes/{reporte}/exportaciones` (202 + `Location`, agrupación de solicitudes iguales, máximo de pendientes por usuario → 429), `GET /admin/exportaciones`, `GET /admin/exportaciones/{id}` (con `Retry-After` mientras no termina) y `GET /admin/exportaciones/{id}/archivo` (descarga por streaming). Purga horaria de los archivos vencidos (24 h). Plan en `docs/planes/E7-H05-exportacion-asincrona.md`.
+**CA**
+- [ ] El POST responde 202 de inmediato y el estado avanza hasta `Completada`.
+- [ ] Una solicitud igual (mismo usuario, reporte, formato y filtros) vigente devuelve la misma; pasar el máximo de pendientes responde 429.
+- [ ] El archivo generado en una réplica se descarga desde la otra.
+- [ ] Una réplica que muere a mitad de un reporte: otra lo retoma al vencer el arrendamiento y queda un solo archivo; la muerta no puede escribir el resultado.
+- [ ] Los totales del Excel y del PDF coinciden al centavo con el reporte JSON; el archivo dice "datos al" con la fecha y hora de Guatemala.
+- [ ] Un texto que empieza con `=`, `+`, `-`, `@`, tabulador o retorno de carro no se interpreta como fórmula en Excel.
+- [ ] La solicitud de otro Admin responde 404; un Operador o un Cliente, 403.
+- [ ] La purga borra los archivos vencidos y marca la solicitud `Expirada`.
+
+**Referencias:** A-24, A-16, RNF-2, A-04, RF-08.
+
 ---
 
 ## E8 · Cierre de la Fase 1
@@ -625,7 +650,7 @@ Se detalla en historias al cerrar la Fase 1.
 | F2 Tienda | Catálogo con búsqueda y filtros, detalle, carrito con avisos, checkout, pago, mis pedidos |
 | F3 Backoffice | Catálogo, precios, inventario y kardex, pedidos y devoluciones, cupones, usuarios, bitácora, configuración |
 | F4 Dashboard | Gráficas de ventas, categorías, top 10 y carritos abandonados |
-| F5 Extras y calidad | Caché de reportes en Redis (en la capa de servicio de reportes y bitácora, A-11), exportación a Excel, observabilidad con Grafana LGTM, script de carga pesada y lo recortado de la Fase 1 (la conciliación de pagos pasó a E5-H04). **Carga pesada (decisión de cierre de E7):** sobre una base nueva, con el número de pedidos como parámetro del generador (`SP_Semilla_GenerarDatosDemo @Pedidos`), porque el generador es idempotente sobre una base que ya tiene los datos demo. Con esa carga se mide también el filtro de carritos abandonados (`VW_Carrito_Abandonados`), que hoy no usa un índice |
+| F5 Extras y calidad | Observabilidad con Grafana LGTM, script de carga pesada y lo recortado de la Fase 1 (la conciliación de pagos pasó a E5-H04). **Carga pesada (decisión de cierre de E7):** sobre una base nueva, con el número de pedidos como parámetro del generador (`SP_Semilla_GenerarDatosDemo @Pedidos`), porque el generador es idempotente sobre una base que ya tiene los datos demo. Con esa carga se mide también el filtro de carritos abandonados (`VW_Carrito_Abandonados`), que hoy no usa un índice |
 | F6 Cierre y defensa | README final, ensayo de la demo (incluida la tolerancia a fallas) y preparación de preguntas de defensa |
 
 ---
@@ -675,6 +700,8 @@ Se detalla en historias al cerrar la Fase 1.
 | E7-H01 | Dashboard | Must | 1.0 | Hecha |
 | E7-H02 | Consulta de la bitácora | Must | 0.25 | Hecha |
 | E7-H03 | Generador de datos demo | Should | 1.25 | Hecha |
+| E7-H04 | Caché de reportes con invalidación | Must | 0.75 | Lista |
+| E7-H05 | Exportación asíncrona de reportes (Excel y PDF) | Must | 2.5 | Lista |
 | E8-H01 | README de la Fase 1 | Must | 0.75 | En revisión |
 | E8-H02 | Revisión contra penalizaciones | Must | 0.5 | En revisión |
 | E8-H03 | Ensayo en máquina limpia | Must | 0.25 | Propuesta |
