@@ -736,6 +736,9 @@ UQ `(IDPedido, IDVariante)`. Índices: `IX_DetallePedido_Variante (IDVariante) I
 | `FU_Carrito_Lineas(@IDCarrito)` | Inline TVF | Por línea: precio vigente, precio efectivo con garantía, estado (`Disponible`/`CantidadExcedida`/`Agotado`/`NoDisponible`), "Ajustar a X" (solo en `CantidadExcedida`), aviso y etiqueta de existencia (la cifra solo en el umbral o por debajo, N-06) |
 | `FU_Cupones_Validar(@IDCupon, @IDUsuario, @IDCarrito)` | Inline TVF | Código de resultado de la validación (cada causa de N-12) y sus datos (p. ej. cuánto falta para el mínimo). La reserva de la sesión de pago del mismo carrito no cuenta como otro uso (ni para el agotado ni para el límite por cliente) |
 | `FU_Cupones_CalculoDescuento(@IDCupon, @IDCarrito)` | Inline TVF | Descuento por línea, repartido proporcionalmente al centavo hacia abajo; el sobrante va a la línea de mayor monto (desempate: menor `IDLineaCarrito`) y, si no le cabe sin pasar de su total, a la siguiente. La suma es exactamente el descuento total (nombre tomado del enunciado) |
+| `FU_Carrito_Activo(@IDCliente, @HashTokenInvitado)` | Inline TVF | El carrito `Activo` de quien pide (cliente o invitado), sin bloqueo |
+| `FU_Envios_EnvioGratis(@Monto)` | Inline TVF | N-04: mínimo de envío gratis, cuánto falta y si se alcanzó, para un monto ya con el cupón |
+| `FU_Envios_Costos(@Monto)` | Inline TVF | N-04: los métodos activos con su costo para ese monto (0 si alcanza el envío gratis); la usan los envíos y el checkout |
 | `VW_Catalogo_ProductosTienda` | Vista | Productos activos con al menos una variante activa con precio vigente: categoría, imagen principal, precio mínimo y si tienen disponible. Lo único que puede leer `shopcart_busqueda` (A-23) |
 | `VW_Inventario_Conciliacion` | Vista | Variantes donde la existencia física ≠ la suma del kardex. **Debe estar vacía** |
 | `VW_Inventario_ExistenciaBodega` | Vista | Física + unidades de pedidos pagados aún no despachados (N-07) |

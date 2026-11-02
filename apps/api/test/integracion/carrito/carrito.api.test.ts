@@ -117,6 +117,7 @@ describe('carrito de invitado (E4-H01, N-05)', () => {
         puedePagar: false,
         cupon: null,
         cuponRetirado: null,
+        envioGratis: null,
       },
     });
   });
@@ -411,6 +412,7 @@ describe('totales (E4-H01, RF-04)', () => {
       puedePagar: true,
       cupon: null,
       cuponRetirado: null,
+      envioGratis: { montoMinimo: '500.00', faltante: '399.71', alcanzado: false },
     });
   });
 });

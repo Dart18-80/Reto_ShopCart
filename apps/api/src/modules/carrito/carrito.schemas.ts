@@ -79,6 +79,13 @@ export const carritoSchema = z
         .object({ codigo: z.string(), motivo: z.string(), mensaje: z.string() })
         .nullable()
         .openapi({ description: 'N-12: el cupón dejó de ser válido y se quitó en esta consulta' }),
+      envioGratis: z
+        .object({ montoMinimo: montoSchema, faltante: montoSchema, alcanzado: z.boolean() })
+        .nullable()
+        .openapi({
+          description:
+            'N-04: cuánto falta para el envío gratis, sobre el total después del cupón; null sin carrito o sin envío gratis',
+        }),
     }),
   })
   .openapi('Carrito');

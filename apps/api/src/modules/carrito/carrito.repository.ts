@@ -53,6 +53,9 @@ interface FilaResumen {
   CuponRetiradoCodigo: string | null;
   CuponRetiradoNumero: number | null;
   CuponRetiradoMensaje: string | null;
+  EnvioGratisMinimo: number | null;
+  EnvioGratisFaltante: number | null;
+  EnvioGratisAlcanzado: boolean | null;
 }
 
 interface FilaAvisoFusion {
@@ -107,8 +110,19 @@ const aCarrito = (lineas: FilaLinea[], resumen: FilaResumen): Carrito => ({
         ? null
         : { codigo: resumen.CodigoCupon, descripcion: resumen.DescripcionCupon },
     cuponRetirado: aCuponRetirado(resumen),
+    envioGratis: aEnvioGratis(resumen),
   },
 });
+
+function aEnvioGratis(resumen: FilaResumen): ResumenCarrito['envioGratis'] {
+  const {
+    EnvioGratisMinimo: minimo,
+    EnvioGratisFaltante: faltante,
+    EnvioGratisAlcanzado: alcanzado,
+  } = resumen;
+  if (minimo === null || faltante === null || alcanzado === null) return null;
+  return { montoMinimo: aMonto(minimo), faltante: aMonto(faltante), alcanzado };
+}
 
 function aCuponRetirado(resumen: FilaResumen): ResumenCarrito['cuponRetirado'] {
   const {

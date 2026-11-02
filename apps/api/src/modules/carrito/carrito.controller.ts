@@ -39,6 +39,14 @@ const aRespuesta = (carrito: Carrito) => ({
     subtotal: montoATexto(carrito.resumen.subtotal),
     descuento: montoATexto(carrito.resumen.descuento),
     total: montoATexto(carrito.resumen.total),
+    envioGratis:
+      carrito.resumen.envioGratis === null
+        ? null
+        : {
+            montoMinimo: montoATexto(carrito.resumen.envioGratis.montoMinimo),
+            faltante: montoATexto(carrito.resumen.envioGratis.faltante),
+            alcanzado: carrito.resumen.envioGratis.alcanzado,
+          },
   },
 });
 

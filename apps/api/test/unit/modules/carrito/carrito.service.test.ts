@@ -20,6 +20,7 @@ const CARRITO: Carrito = {
     puedePagar: true,
     cupon: null,
     cuponRetirado: null,
+    envioGratis: null,
   },
 };
 const LINEA: NuevaLinea = { idVariante: 7, cantidad: 2 };

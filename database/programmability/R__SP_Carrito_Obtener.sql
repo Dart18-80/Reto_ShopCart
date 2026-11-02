@@ -7,6 +7,7 @@
 -- (PrecioAnteriorAviso) hasta que la marque como vista. La garantía no se renueva.
 -- N-12: el cupón se revalida en cada consulta; si dejó de ser válido se quita y el resumen trae el motivo
 -- (solo en esa respuesta). El descuento se reparte por línea con FU_Cupones_CalculoDescuento.
+-- N-04: el resumen indica cuánto falta para el envío gratis, sobre el total después del cupón.
 CREATE OR ALTER PROCEDURE dbo.SP_Carrito_Obtener
     @HashTokenInvitado BINARY(32)       = NULL,
     @IDUsuarioActor    INT              = NULL,
@@ -24,12 +25,8 @@ BEGIN
     DECLARE @IDCarrito INT, @IDCupon INT, @RetiradoNumero INT, @RetiradoMensaje NVARCHAR(200),
             @RetiradoCodigo VARCHAR(30);
 
-    SELECT @IDCarrito = c.IDCarrito, @IDCupon = c.IDCupon
-    FROM   dbo.Carrito AS c
-    WHERE  c.Estado = 'Activo'
-      AND  (   (@IDCliente IS NOT NULL AND c.IDUsuario = @IDCliente AND c.IDUsuario IS NOT NULL)
-            OR (@IDCliente IS NULL AND c.HashTokenInvitado = @HashDelCarrito
-                AND c.HashTokenInvitado IS NOT NULL));
+    SELECT @IDCarrito = a.IDCarrito, @IDCupon = a.IDCupon
+    FROM   dbo.FU_Carrito_Activo(@IDCliente, @HashDelCarrito) AS a;
 
     IF @IDCarrito IS NULL
         RETURN;
@@ -121,11 +118,17 @@ BEGIN
     FROM   @Lineas AS l
     ORDER BY l.FechaAgregado, l.IDLineaCarrito;
 
+    DECLARE @Total DECIMAL(15,2) = (SELECT CONVERT(DECIMAL(15,2), COALESCE(SUM(l.TotalLinea - l.DescuentoLinea), 0))
+                                    FROM @Lineas AS l);
+    DECLARE @EnvioMinimo DECIMAL(12,2), @EnvioFaltante DECIMAL(15,2), @EnvioAlcanzado BIT;
+    SELECT @EnvioMinimo = g.MontoMinimo, @EnvioFaltante = g.Faltante, @EnvioAlcanzado = g.Alcanzado
+    FROM   dbo.FU_Envios_EnvioGratis(@Total) AS g;
+
     SELECT COUNT(*)                                                       AS Lineas,
            COALESCE(SUM(CONVERT(BIGINT, l.Cantidad)), 0)                  AS Unidades,
            CONVERT(DECIMAL(15,2), COALESCE(SUM(l.TotalLinea), 0))         AS Subtotal,
            CONVERT(DECIMAL(15,2), COALESCE(SUM(l.DescuentoLinea), 0))     AS Descuento,
-           CONVERT(DECIMAL(15,2), COALESCE(SUM(l.TotalLinea - l.DescuentoLinea), 0)) AS Total,
+           @Total                                                         AS Total,
            -- N-06: el checkout exige al menos una línea y que todas estén Disponible.
            CONVERT(BIT, CASE WHEN COUNT(*) > 0 AND COUNT(*) = COUNT(CASE WHEN l.Estado = 'Disponible' THEN 1 END)
                              THEN 1 ELSE 0 END)                           AS PuedePagar,
@@ -133,7 +136,10 @@ BEGIN
            (SELECT cu.Descripcion FROM dbo.Cupon AS cu WHERE cu.IDCupon = @IDCupon) AS DescripcionCupon,
            @RetiradoCodigo                                                AS CuponRetiradoCodigo,
            @RetiradoNumero                                                AS CuponRetiradoNumero,
-           @RetiradoMensaje                                               AS CuponRetiradoMensaje
+           @RetiradoMensaje                                               AS CuponRetiradoMensaje,
+           @EnvioMinimo                                                   AS EnvioGratisMinimo,
+           @EnvioFaltante                                                 AS EnvioGratisFaltante,
+           @EnvioAlcanzado                                                AS EnvioGratisAlcanzado
     FROM   @Lineas AS l;
 END
 GO

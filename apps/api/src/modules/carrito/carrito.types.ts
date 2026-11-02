@@ -46,6 +46,8 @@ export interface ResumenCarrito {
   cupon: { codigo: string; descripcion: string } | null;
   /** N-12: el cupón dejó de ser válido y se quitó en esta consulta (solo en esa respuesta). */
   cuponRetirado: { codigo: string; motivo: CodigoError; mensaje: string } | null;
+  /** N-04: cuánto falta para el envío gratis, sobre el total después del cupón; null si no hay. */
+  envioGratis: { montoMinimo: Decimal; faltante: Decimal; alcanzado: boolean } | null;
 }
 
 /** N-05: el carrito nunca expone su ID; se resuelve desde la sesión o la cookie. */

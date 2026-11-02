@@ -634,7 +634,7 @@ Se detalla en historias al cerrar la Fase 1.
 | E4-H03 | Fusión del carrito al iniciar sesión o registrarse | Must | 0.25 | En revisión |
 | E4-H04 | Cupones (administración) | Must | 0.25 | En revisión |
 | E4-H05 | Aplicar cupón en el carrito | Must | 0.5 | En revisión |
-| E4-H06 | Envíos y parámetros | Should | 0.25 | Lista |
+| E4-H06 | Envíos y parámetros | Should | 0.25 | En revisión |
 | E5-H01 | Iniciar la sesión de pago | Must | 1.0 | Propuesta |
 | E5-H02 | Pasarela de pago simulada | Must | 0.5 | Propuesta |
 | E5-H03 | Confirmar el pago y crear el pedido | Must | 1.25 | Propuesta |

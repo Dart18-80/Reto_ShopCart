@@ -43,6 +43,8 @@ const CARRITO_VACIO: Carrito = {
     puedePagar: false,
     cupon: null,
     cuponRetirado: null,
+    // Sin carrito no se consulta el parámetro: el SPA lo muestra al agregar el primer producto.
+    envioGratis: null,
   },
 };
 

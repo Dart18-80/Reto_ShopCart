@@ -51,6 +51,9 @@ export const carritoSchema = z.strictObject({
     cuponRetirado: z
       .strictObject({ codigo: z.string(), motivo: z.string(), mensaje: z.string() })
       .nullable(),
+    envioGratis: z
+      .strictObject({ montoMinimo: z.string(), faltante: z.string(), alcanzado: z.boolean() })
+      .nullable(),
   }),
 });
 
