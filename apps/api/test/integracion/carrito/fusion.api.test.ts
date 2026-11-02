@@ -224,6 +224,7 @@ describe('fusión al iniciar sesión (E4-H03, N-05)', () => {
       }),
     ).toEqual({
       Estado: 'Cancelada',
+      IntentosRechazados: 0,
       EstadoReserva: 'Liberada',
       EstadoUsoCupon: 'Liberado',
       UsosComprometidosCupon: 0,

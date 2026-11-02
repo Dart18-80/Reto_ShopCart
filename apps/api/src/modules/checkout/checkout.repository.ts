@@ -4,9 +4,12 @@ import { aMonto } from '../../shared/dinero/index.js';
 import type {
   CambioIntento,
   DatosInicioPago,
+  IntentoPorConciliar,
   RegistroIntento,
+  ResolucionConciliada,
   SesionIniciada,
   SesionPago,
+  TomaConciliacion,
 } from './checkout.types.js';
 
 interface FilaSesion {
@@ -142,6 +145,32 @@ function aRegistro(fila: FilaRegistro): RegistroIntento {
   }
 }
 
+interface FilaPorConciliar {
+  Ejecutada: boolean;
+  IDIntentoPago: string | number | null;
+  Estado: IntentoPorConciliar['estado'] | null;
+  LlaveIdempotencia: string | null;
+  IDTransaccion: string | null;
+  IDPedido: number | null;
+}
+
+function aToma(fila: FilaPorConciliar): TomaConciliacion {
+  if (!fila.Ejecutada) return { ejecutada: false };
+  if (fila.IDIntentoPago === null) return { ejecutada: true, intento: null };
+  if (fila.Estado === null || fila.LlaveIdempotencia === null)
+    throw new Error('SP_Checkout_TomarIntentosPorConciliar devolvió un intento incompleto');
+  return {
+    ejecutada: true,
+    intento: {
+      idIntento: bigintANumero(fila.IDIntentoPago, 'IDIntentoPago'),
+      estado: fila.Estado,
+      llave: fila.LlaveIdempotencia,
+      idTransaccion: fila.IDTransaccion,
+      idPedido: fila.IDPedido,
+    },
+  };
+}
+
 // RF-01: el cliente sale de @IDUsuarioActor (el token); ni la sesión ni el carrito llegan de la petición.
 export const checkoutRepository = {
   async iniciarSesion(datos: DatosInicioPago): Promise<SesionIniciada> {
@@ -226,6 +255,61 @@ export const checkoutRepository = {
     await ejecutarSP('SP_Checkout_LiberarArrendamiento', {
       IDIntentoPago: { tipo: sql.BigInt, valor: idIntento },
     });
+  },
+
+  // Jobs (A-04): corren con RolActor = 'Sistema'. null si la otra réplica tenía el sp_getapplock.
+  async expirarSesiones(): Promise<number | null> {
+    const [fila] = await ejecutarSP<{ Ejecutada: boolean; SesionesExpiradas: number }>(
+      'SP_Checkout_ExpirarSesiones',
+    );
+    if (fila === undefined) throw new Error('SP_Checkout_ExpirarSesiones no devolvió el resultado');
+    return fila.Ejecutada ? fila.SesionesExpiradas : null;
+  },
+
+  async tomarIntentoPorConciliar(
+    segundosGracia: number,
+    segundosArrendamiento: number,
+  ): Promise<TomaConciliacion> {
+    const [fila] = await ejecutarSP<FilaPorConciliar>('SP_Checkout_TomarIntentosPorConciliar', {
+      SegundosGracia: { tipo: sql.Int, valor: segundosGracia },
+      SegundosArrendamiento: { tipo: sql.Int, valor: segundosArrendamiento },
+    });
+    if (fila === undefined)
+      throw new Error('SP_Checkout_TomarIntentosPorConciliar no devolvió el resultado');
+    return aToma(fila);
+  },
+
+  /** false si el intento ya no estaba como lo tomó la conciliación (otra petición lo resolvió). */
+  async resolverIntentoConciliado(
+    intento: IntentoPorConciliar,
+    resolucion: ResolucionConciliada,
+  ): Promise<boolean> {
+    const [fila] = await ejecutarSP<{ Resuelto: boolean }>(
+      'SP_Checkout_ResolverIntentoConciliado',
+      {
+        IDIntentoPago: { tipo: sql.BigInt, valor: intento.idIntento },
+        EstadoEsperado: { tipo: sql.VarChar(12), valor: intento.estado },
+        Estado: { tipo: sql.VarChar(12), valor: resolucion.estado },
+        IDTransaccion: {
+          tipo: sql.VarChar(64),
+          valor:
+            resolucion.estado === 'Anulado' || resolucion.estado === 'Capturado'
+              ? resolucion.idTransaccion
+              : null,
+        },
+        CodigoRespuesta: {
+          tipo: sql.VarChar(30),
+          valor: resolucion.estado === 'Rechazado' ? resolucion.codigo : null,
+        },
+        MensajeRespuesta: {
+          tipo: sql.NVarChar(200),
+          valor: resolucion.estado === 'Rechazado' ? resolucion.mensaje : null,
+        },
+      },
+    );
+    if (fila === undefined)
+      throw new Error('SP_Checkout_ResolverIntentoConciliado no devolvió el resultado');
+    return fila.Resuelto;
   },
 };
 

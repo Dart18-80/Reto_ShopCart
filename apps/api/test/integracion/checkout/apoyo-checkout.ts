@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { Express } from 'express';
 import sql from 'mssql';
 import request, { type Response } from 'supertest';
@@ -211,4 +212,29 @@ export async function estadoEnPasarela(llave: string): Promise<string | undefine
     LlaveIdempotencia: { tipo: sql.UniqueIdentifier, valor: llave },
   });
   return fila?.Estado;
+}
+
+const DIA_MS = 24 * 60 * 60 * 1000;
+
+export interface LimitesCupon {
+  limiteUsosTotal: number;
+  limiteUsosPorCliente?: number;
+}
+
+/** Un cupón vigente de Q5.00 con los límites dados, creado por el Admin. */
+export async function crearCupon(app: Express, tokenAdmin: string, limites: LimitesCupon) {
+  const codigo = `K${randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase()}`;
+  const respuesta = await request(app)
+    .post('/api/v1/admin/cupones')
+    .set(comoCliente(tokenAdmin))
+    .send({
+      codigo,
+      descripcion: 'Cupón de checkout',
+      tipo: 'MontoFijo',
+      valor: '5.00',
+      fechaInicio: new Date(Date.now() - DIA_MS).toISOString(),
+      fechaFin: new Date(Date.now() + DIA_MS).toISOString(),
+      ...limites,
+    });
+  return { codigo, idCupon: leerDatos(respuesta, z.object({ idCupon: z.number() })).idCupon };
 }

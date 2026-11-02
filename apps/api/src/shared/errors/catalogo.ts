@@ -199,6 +199,13 @@ export const CATALOGO = {
     numeroSql: 50606,
     mensaje: 'No pudimos confirmar tu pago. Puedes reintentar: no se te cobrará dos veces.',
   },
+  // N-03: la conciliación cerró el intento sin cobro (Fallido o Anulado); es la respuesta de un reintento
+  // con la misma llave.
+  PAGO_NO_COMPLETADO: {
+    http: 409,
+    numeroSql: 50607,
+    mensaje: 'Tu pago no se completó y no se hizo ningún cobro. Vuelve a intentarlo.',
+  },
 
   // 50700–50799 Pedidos
   TRANSICION_INVALIDA: {

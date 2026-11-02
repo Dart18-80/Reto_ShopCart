@@ -74,3 +74,22 @@ export interface PagoRealizado {
   /** false si el pedido ya existía (misma llave o sesión ya pagada): la API responde 200. */
   creado: boolean;
 }
+
+/** N-03 (E5-H04): un intento en curso abandonado que la conciliación tomó. */
+export interface IntentoPorConciliar {
+  idIntento: number;
+  estado: 'Pendiente' | 'Autorizado';
+  llave: string;
+  idTransaccion: string | null;
+  /** El pedido creado con este intento, si existe. */
+  idPedido: number | null;
+}
+
+/** ejecutada = false si la otra réplica tenía el sp_getapplock; intento null si no queda ninguno. */
+export type TomaConciliacion =
+  { ejecutada: false } | { ejecutada: true; intento: IntentoPorConciliar | null };
+
+export type ResolucionConciliada =
+  | { estado: 'Fallido' }
+  | { estado: 'Rechazado'; codigo: string; mensaje: string }
+  | { estado: 'Anulado' | 'Capturado'; idTransaccion: string };

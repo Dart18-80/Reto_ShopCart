@@ -231,6 +231,15 @@ export const carritoRepository = {
     });
     return existente(carrito, 'SP_Carrito_EliminarLinea');
   },
+
+  /** Job (A-04, N-05). null si la otra réplica tenía el sp_getapplock. */
+  async expirarInvitados(): Promise<number | null> {
+    const [fila] = await ejecutarSP<{ Ejecutada: boolean; CarritosExpirados: number }>(
+      'SP_Carrito_ExpirarInvitados',
+    );
+    if (fila === undefined) throw new Error('SP_Carrito_ExpirarInvitados no devolvió el resultado');
+    return fila.Ejecutada ? fila.CarritosExpirados : null;
+  },
 };
 
 export type CarritoRepository = typeof carritoRepository;

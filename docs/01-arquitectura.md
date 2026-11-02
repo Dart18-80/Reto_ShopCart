@@ -309,7 +309,7 @@ Cliente          API (CheckoutService)                 Pasarela (puerto)       S
 | `Autorizado` sin pedido, arrendamiento vencido | Se retoma (compare-and-set) → `CrearPedido` |
 | `Autorizado` con pedido, arrendamiento vencido | Se retoma → capturar → pedido |
 | `Capturado` | `200` con el pedido |
-| `Rechazado`, `Anulado` o `Fallido` | El mismo error que se respondió entonces |
+| `Rechazado`, `Anulado` o `Fallido` | El mismo error que se respondió entonces; si lo cerró la conciliación, `409 PAGO_NO_COMPLETADO` (sin cobro) |
 | Sesión ya pagada (con cualquier llave) | `200` con el pedido existente, sin crear intento ni llamar a la pasarela |
 
 Ante un timeout de la pasarela el arrendamiento se libera de inmediato (`ArrendadoHasta = ahora`) y se responde `504 PAGO_SIN_CONFIRMAR`: el reintento con la misma llave lo retoma sin esperar.
@@ -392,7 +392,10 @@ En el carrito: **carrito → variantes en orden de `IDVariante`**. Todo SP de ca
 
 ## 8. Tareas periódicas (A-04)
 
-Se ejecutan **dentro de cada réplica de la API** con un planificador interno. Cada SP toma un `sp_getapplock` exclusivo: si la otra réplica ya lo tiene, retorna sin hacer nada.
+Se ejecutan **dentro de cada réplica de la API** con un planificador interno (`shared/jobs`, lo arranca solo `server.ts`). Cada SP toma un `sp_getapplock` exclusivo: si la otra réplica ya lo tiene, retorna sin hacer nada y el log de esa réplica dice `Tarea omitida`; la que la ejecuta registra `Tarea ejecutada` con sus conteos. Dentro de una réplica una tarea no se superpone consigo misma, y el apagado ordenado espera la ejecución en curso antes de cerrar el pool.
+
+- **Expiración:** bloquea primero todas las sesiones vencidas (por `IDSesionCheckout`) y después libera reservas y cupones, en el mismo orden sesión → cupón que el resto de los SPs.
+- **Conciliación:** `SP_Checkout_TomarIntentosPorConciliar` toma **un** intento por llamada (`UPDLOCK, READPAST`) y lo arrienda lo que tardan consultar y capturar o anular; el servicio llama a la pasarela fuera de toda transacción y `SP_Checkout_ResolverIntentoConciliado` registra el resultado con compare-and-set (si un reintento del cliente ya lo resolvió, no cambia nada). Captura solo lo que tiene pedido y anula solo lo que no lo tiene. Como máximo 50 intentos por ejecución.
 
 | Tarea | Frecuencia | SP |
 |---|---|---|

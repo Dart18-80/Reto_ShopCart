@@ -1,6 +1,9 @@
 import type { Logger } from 'pino';
 import { registrarApagadoOrdenado } from './apagado.js';
 import { crearApp } from './app.js';
+import { crearTareasDeCarrito } from './modules/carrito/index.js';
+import { crearTareasDeCheckout } from './modules/checkout/index.js';
+import { crearTareasDeSistema } from './modules/sistema/index.js';
 import { crearPasarelaSimulada } from './shared/adapters/pasarela-simulada.js';
 import {
   crearClienteRedis,
@@ -16,6 +19,7 @@ import { crearLimitadorRedis } from './shared/adapters/limitador-redis.js';
 import { crearVersionesSesionRedis } from './shared/adapters/versiones-sesion-redis.js';
 import { conectarPool, conexionMssql, configurarBaseDatos } from './shared/db/index.js';
 import { crearTokensAcceso } from './shared/http/index.js';
+import { crearPlanificador } from './shared/jobs/index.js';
 import { crearLogger } from './shared/observability/index.js';
 
 const ESPERA_APAGADO_MS = 10_000;
@@ -39,6 +43,7 @@ async function iniciar(): Promise<void> {
   });
   configurarBaseDatos(conexionMssql(pool), logger);
   const redis = conectarRedis(config.redis, logger);
+  const pasarela = crearPasarelaSimulada();
 
   const app = crearApp({
     logger,
@@ -62,7 +67,7 @@ async function iniciar(): Promise<void> {
       }),
     },
     versionesSesion: crearVersionesSesionRedis(redis, logger),
-    pasarela: crearPasarelaSimulada(),
+    pasarela,
   });
 
   // Express 5 también llama a este callback si listen falla (por ejemplo, puerto ocupado).
@@ -79,10 +84,22 @@ async function iniciar(): Promise<void> {
     logger.error({ err: error }, 'Error del servidor HTTP');
   });
 
+  // A-04: solo el servidor arranca las tareas periódicas; las pruebas usan crearApp sin ellas.
+  const planificador = crearPlanificador(
+    [
+      ...crearTareasDeCheckout({ pasarela, logger }),
+      ...crearTareasDeCarrito(),
+      ...crearTareasDeSistema(),
+    ],
+    logger.child({ modulo: 'jobs' }),
+  );
+  planificador.iniciar();
+
   registrarApagadoOrdenado({
     proceso: process,
     servidor,
-    recursos: [() => pool.close(), () => redis.quit()],
+    // Las tareas en curso terminan antes de cerrar el pool que usan.
+    recursos: [() => planificador.detener().then(() => pool.close()), () => redis.quit()],
     logger,
     salir: (codigo) => process.exit(codigo),
     esperaMaximaMs: ESPERA_APAGADO_MS,

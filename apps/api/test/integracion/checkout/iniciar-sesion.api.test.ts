@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import sql from 'mssql';
 import request from 'supertest';
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -21,6 +20,8 @@ import {
 import { fijarExistencia, unaFila } from '../datos-de-prueba.js';
 import {
   clienteConCarrito,
+  crearCupon,
+  type LimitesCupon,
   iniciarPago,
   leerSesionPago,
   metodoEnvio,
@@ -31,7 +32,6 @@ import {
 usarBaseDePruebas();
 
 const app = crearApp(dependenciasDePrueba());
-const DIA_MS = 24 * 60 * 60 * 1000;
 
 let tokenAdmin: string;
 let tokenOperador: string;
@@ -45,22 +45,7 @@ beforeAll(async () => {
   estandar = await metodoEnvio(app);
 });
 
-async function cupon(limites: { limiteUsosTotal: number; limiteUsosPorCliente?: number }) {
-  const codigo = `K${randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase()}`;
-  const respuesta = await request(app)
-    .post('/api/v1/admin/cupones')
-    .set(comoCliente(tokenAdmin))
-    .send({
-      codigo,
-      descripcion: 'Cupón de checkout',
-      tipo: 'MontoFijo',
-      valor: '5.00',
-      fechaInicio: new Date(Date.now() - DIA_MS).toISOString(),
-      fechaFin: new Date(Date.now() + DIA_MS).toISOString(),
-      ...limites,
-    });
-  return { codigo, idCupon: leerDatos(respuesta, z.object({ idCupon: z.number() })).idCupon };
-}
+const cupon = (limites: LimitesCupon) => crearCupon(app, tokenAdmin, limites);
 
 const usosDe = async (idCupon: number) =>
   leerDatos(
