@@ -58,8 +58,11 @@
 | E4 Carrito, cupones y envíos | 6 | 2.5 | 5 | 1 | — |
 | E5 Checkout y pago | 5 | 4.0 | 5 | — | — |
 | E6 Pedidos y devoluciones | 4 | 3.0 | 4 | 1 parte | — |
-| E7 Reportes, bitácora y datos demo | 3 | 2.5 | 2 | 1 | — |
+| E7 Reportes, bitácora y datos demo | 5 | 5.75 | 4 | 1 | — |
 | E8 Cierre de la Fase 1 | 3 | 1.5 | 3 | — | — |
+| E9 Observabilidad, tiempo real y defensa | 3 | 5.0 | 3 | — | — |
+
+E7-H04, E7-H05 y E9 se agregaron después de este plan (encargos del PO); la tabla muestra el alcance final.
 
 ---
 
@@ -687,7 +690,7 @@ Se detalla en historias al cerrar la Fase 1.
 | F3 Backoffice | Catálogo, precios, inventario y kardex, pedidos y devoluciones, cupones, usuarios, bitácora, configuración |
 | F4 Dashboard | Gráficas de ventas, categorías, top 10 y carritos abandonados |
 | F5 Extras y calidad | Script de carga pesada (la observabilidad con Grafana LGTM pasó a E9-H01) y lo recortado de la Fase 1 (la conciliación de pagos pasó a E5-H04). **Carga pesada (decisión de cierre de E7):** sobre una base nueva, con el número de pedidos como parámetro del generador (`SP_Semilla_GenerarDatosDemo @Pedidos`), porque el generador es idempotente sobre una base que ya tiene los datos demo. Con esa carga se mide también el filtro de carritos abandonados (`VW_Carrito_Abandonados`), que hoy no usa un índice |
-| F6 Cierre y defensa | README final, ensayo de la demo (incluida la tolerancia a fallas) y preparación de preguntas de defensa |
+| F6 Cierre y defensa | README final de la Fase 2 y el ensayo de la demo con el frontend (las preguntas de defensa y el guion de la Fase 1 ya están en `docs/defensa/`, E9-H03) |
 
 ---
 

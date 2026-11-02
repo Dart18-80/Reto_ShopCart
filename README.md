@@ -293,24 +293,24 @@ Cada ambigüedad que encontramos en el enunciado, la postura que se tomó y dón
 
 Cada una con su porqué ([A-16](docs/01-arquitectura.md)); ninguna fuera de esta lista sin aprobación del PO.
 
-| Librería                                     | Para qué                                                                      |
-| -------------------------------------------- | ----------------------------------------------------------------------------- |
-| `express` 5                                  | HTTP; propaga los errores de los handlers `async` al middleware central       |
-| `mssql`                                      | Ejecuta stored procedures con parámetros tipados (nunca texto SQL)            |
-| `zod`                                        | Valida toda entrada y es la única fuente de los tipos de entrada              |
-| `@asteasolutions/zod-to-openapi`             | Genera el OpenAPI 3.1 desde los mismos esquemas Zod                           |
-| `swagger-ui-express`                         | Sirve Swagger en `/api/docs`                                                  |
-| `decimal.js`                                 | Dinero sin errores de punto flotante; nunca `number`                          |
-| `pino`                                       | Logs JSON con `requestId` e instancia, y redacción de datos sensibles         |
-| `helmet`                                     | Encabezados de seguridad HTTP                                                 |
-| `cors`                                       | CORS con la lista de orígenes de `.env`, con credenciales                     |
-| `argon2`                                     | Hash de contraseñas con argon2id (parámetros de OWASP)                        |
-| `jose`                                       | Firma y verificación del JWT con el algoritmo fijado (HS256)                  |
-| `ioredis`                                    | Cliente de Redis para la caché, la versión de sesión y el rate limiting       |
-| `rate-limiter-flexible`                      | Rate limiting compartido por las réplicas en Redis, con respaldo en memoria   |
-| `exceljs`                                    | Excel en modo streaming: escribe fila por fila sin cargar el libro en memoria |
-| `pdfmake`                                    | PDF declarativo con las fuentes estándar: sin archivos de fuente en la imagen |
-| `vitest`, `supertest`, `@vitest/coverage-v8` | Pruebas unitarias, de integración y de API, y cobertura (solo desarrollo)     |
+| Librería                                     | Para qué                                                                                    |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `express` 5                                  | HTTP; propaga los errores de los handlers `async` al middleware central                     |
+| `mssql`                                      | Ejecuta stored procedures con parámetros tipados (nunca texto SQL)                          |
+| `zod`                                        | Valida toda entrada y es la única fuente de los tipos de entrada                            |
+| `@asteasolutions/zod-to-openapi`             | Genera el OpenAPI 3.1 desde los mismos esquemas Zod                                         |
+| `swagger-ui-express`                         | Sirve Swagger en `/api/docs`                                                                |
+| `decimal.js`                                 | Dinero sin errores de punto flotante; nunca `number`                                        |
+| `pino`                                       | Logs JSON con `requestId` e instancia, y redacción de datos sensibles                       |
+| `helmet`                                     | Encabezados de seguridad HTTP                                                               |
+| `cors`                                       | CORS con la lista de orígenes de `.env`, con credenciales                                   |
+| `argon2`                                     | Hash de contraseñas con argon2id (parámetros de OWASP)                                      |
+| `jose`                                       | Firma y verificación del JWT con el algoritmo fijado (HS256)                                |
+| `ioredis`                                    | Cliente de Redis para la caché, la versión de sesión, el rate limiting y el pub/sub del SSE |
+| `rate-limiter-flexible`                      | Rate limiting compartido por las réplicas en Redis, con respaldo en memoria                 |
+| `exceljs`                                    | Excel en modo streaming: escribe fila por fila sin cargar el libro en memoria               |
+| `pdfmake`                                    | PDF declarativo con las fuentes estándar: sin archivos de fuente en la imagen               |
+| `vitest`, `supertest`, `@vitest/coverage-v8` | Pruebas unitarias, de integración y de API, y cobertura (solo desarrollo)                   |
 
 **OpenTelemetry (E9-H01, RNF-4):** solo paquetes de la familia `@opentelemetry`, en el último conjunto con más de dos semanas al instalarlos:
 

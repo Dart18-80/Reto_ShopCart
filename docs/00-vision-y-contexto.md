@@ -32,8 +32,8 @@ El diseño sigue el marco de la skill `engineering:system-design`: requerimiento
 
 1. **Decisiones de negocio y requerimientos** (funcionales, no funcionales y restricciones) ✅ *cerrada el 29 oct*
 2. **Diseño de arquitectura:** componentes, modelo de datos (ER), flujos críticos, contratos de la API, escala y trade-offs ✅ *cerrada el 29 oct*
-3. **Backlog:** ← *estamos aquí* épicas por módulo, cada una con historias que tengan alcance y criterios de aceptación (estilo Jira).
-4. **Desarrollo** historia por historia.
+3. **Backlog:** ✅ épicas por módulo, cada una con historias que tengan alcance y criterios de aceptación (estilo Jira).
+4. **Desarrollo** historia por historia: ✅ Fase 1 (E0 a E9) cerrada el 2 nov; la Fase 2 (frontend) sigue.
 
 ### Reglas
 
@@ -155,7 +155,7 @@ Cada fase se evalúa con el último commit anterior a su fecha límite. No se ac
 | ID | Decisión |
 |---|---|
 | RNF-1 | **Volumen medio de datos, diseño para volumen alto.** La semilla por defecto es de unos 60 productos / 250 variantes, 200 clientes y 1,500 pedidos repartidos en 90 días, para que el entorno arranque rápido y el dashboard tenga datos reales. El diseño asume volumen alto: índices pensados para cada consulta, paginación y filtros en el servidor, y reportes sin escaneos completos. Un **script opcional de carga pesada** (por ejemplo 50k pedidos) demuestra en la defensa que el rendimiento se sostiene. |
-| RNF-2 | **API stateless, lista para varias réplicas.** El ambiente corre **2 réplicas de la API** detrás de nginx como balanceador. **Redis** guarda solo estado que se puede perder (contadores de rate limiting y caché de reportes). Las reglas críticas viven en SQL Server: idempotencia (`UNIQUE`), reservas, stock y refresh tokens. Si Redis cae, el sistema se degrada pero nunca vende de más ni cobra dos veces. El job de liberación de reservas usa `sp_getapplock` para que solo una ejecución avance a la vez, aunque corra en ambas réplicas. |
+| RNF-2 | **API stateless, lista para varias réplicas.** El ambiente corre **2 réplicas de la API** detrás de nginx como balanceador. **Redis** guarda solo estado que se puede perder: contadores de rate limiting, la versión de sesión de cada usuario (A-07), la caché de reportes y el canal pub/sub de avisos del dashboard en tiempo real (A-25). Las reglas críticas viven en SQL Server: idempotencia (`UNIQUE`), reservas, stock y refresh tokens. Si Redis cae, el sistema se degrada pero nunca vende de más ni cobra dos veces. El job de liberación de reservas usa `sp_getapplock` para que solo una ejecución avance a la vez, aunque corra en ambas réplicas. |
 | RNF-3 | **Test de concurrencia automatizado como entregable.** Escenario 1: 20 checkouts simultáneos sobre la última unidad de una variante. Escenario 2: 20 usos simultáneos de un cupón con 1 uso restante. Pasa si hay exactamente 1 éxito, los demás reciben un rechazo claro y el kardex cuadra. |
 | RNF-4 | **Observabilidad con OpenTelemetry y Grafana LGTM** (Loki para logs, Tempo para trazas, Prometheus para métricas, Grafana para visualizar; imagen `grafana/otel-lgtm`, E9-H01). La API emite logs JSON (pino) con `requestId`, `trace_id` y `span_id`, trazas que muestran el recorrido de cada petición (réplica → SPs → pasarela) y métricas HTTP y de negocio. Cada petición lleva un `requestId`, que también llega a los SPs vía `SESSION_CONTEXT` y está en cada span. Endpoint `/health` que verifica la base mediante un SP. El colector se levanta en un **perfil opcional de Docker Compose** (`docker compose --profile observabilidad up -d`): sin él, la API funciona igual y lo registra una sola vez. Se descartan Datadog (requiere cuenta y API key) y ELK (más pesado en RAM). |
 
@@ -212,7 +212,7 @@ Son solo para dar contexto. **Se deciden en la etapa 2**, después de cerrar las
 - **Autenticación:** access token JWT de 15 minutos y refresh token en una cookie httpOnly, con rotación y detección de reúso. Contraseñas con argon2.
 - **Liberación de reservas:** el disponible ignora las reservas vencidas, y un job periódico (protegido con `sp_getapplock`) las marca como liberadas.
 - **Infraestructura:** Docker Compose con SQL Server 2022, un migrador de un solo uso, Redis, 2 réplicas de la API detrás de nginx y el web servido con nginx, usando healthchecks. Perfil opcional `observabilidad` con `grafana/otel-lgtm` (E9-H01).
-- **Extras candidatos:** rate limiting en auth con Redis (Fase 1), exportación a Excel (Fase 2) y, si sobra tiempo, SSE y caché de reportes en Redis (las dos se hicieron: la caché en E7-H04 y SSE en E9-H02, A-25).
+- **Extras candidatos:** rate limiting en auth con Redis, exportación a Excel y, si sobra tiempo, SSE y caché de reportes en Redis. Todos se hicieron en la Fase 1: el rate limiting en E2, la exportación a Excel y PDF en E7-H05, la caché en E7-H04 y SSE en E9-H02 (A-25).
 
 ---
 
@@ -222,5 +222,5 @@ Son solo para dar contexto. **Se deciden en la etapa 2**, después de cerrar las
 |---|---|---|
 | `01-arquitectura.md` ✅ | Componentes, diagrama de despliegue, módulos y flujos críticos (checkout, reservas, idempotencia) | 2 |
 | `02-modelo-datos.md` ✅ | Diagrama ER, tablas, constraints, índices y catálogo de SPs, vistas y funciones | 2 |
-| `03-backlog.md` 🟡 | Épicas por módulo e historias con alcance y criterios de aceptación | 3 |
-| `CLAUDE.md` 🟡 | Instrucciones breves para el desarrollador (Claude Code), apuntando a estos documentos | 3 |
+| `03-backlog.md` ✅ | Épicas por módulo e historias con alcance y criterios de aceptación | 3 |
+| `CLAUDE.md` ✅ | Instrucciones breves para el desarrollador (Claude Code), apuntando a estos documentos | 3 |
