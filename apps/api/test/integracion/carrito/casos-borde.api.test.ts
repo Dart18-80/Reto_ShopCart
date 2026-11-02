@@ -111,6 +111,23 @@ describe('casos borde del carrito (E4, /validar)', () => {
     });
   });
 
+  it('con montos altos las partes del descuento suman exactamente el total y ninguna pasa de su línea', async () => {
+    const precios = ['33333.33', '33333.33', '33333.34', '0.07'];
+    const [primera, ...resto] = await Promise.all(precios.map((p) => varianteVendible(p, 5)));
+    const { token } = await invitadoConCarrito(app, primera?.IDVariante ?? 0);
+    for (const variante of resto) await agregar(app, comoInvitado(token), variante.IDVariante);
+
+    const carrito = leerCarrito(await aplicar(token, await cupon({ valor: '99999.99' })));
+
+    const centavos = (monto: string) => Math.round(Number(monto) * 100);
+    const suma = carrito.lineas.reduce((total, l) => total + centavos(l.descuentoLinea), 0);
+    expect(suma).toBe(centavos(carrito.resumen.descuento));
+    expect(carrito.resumen.descuento).toBe('99999.99');
+    for (const linea of carrito.lineas) {
+      expect(centavos(linea.descuentoLinea)).toBeLessThanOrEqual(centavos(linea.totalLinea));
+    }
+  });
+
   it('agregar la misma variante en dos peticiones simultáneas de un invitado suma ambas', async () => {
     const { IDVariante } = await varianteVendible('5.00', 10);
     const { token } = await invitadoConCarrito(app, IDVariante, 1);
