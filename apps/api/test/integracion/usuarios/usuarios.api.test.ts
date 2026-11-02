@@ -417,6 +417,23 @@ describe('administración de usuarios (E2-H04, N-15)', () => {
     expect((await listar()).status).toBe(401);
   });
 
+  it('N-15: cambiar el rol rechaza al instante el access token anterior, pero no revoca el refresh: el siguiente trae el rol nuevo', async () => {
+    const usuario = await sesionDeCliente();
+
+    await request(app)
+      .patch(`/api/v1/usuarios/${String(usuario.idUsuario)}`)
+      .set(conToken(await tokenDeAdmin()))
+      .send({ rol: 'Operador' });
+    const anterior = await request(app).get('/api/v1/usuarios/me').set(conToken(usuario.token));
+    const refresh = await request(app)
+      .post('/api/v1/auth/refresh')
+      .set('Cookie', `refresh=${encodeURIComponent(usuario.refresh)}`);
+
+    expect(anterior.status).toBe(401);
+    expect(refresh.status).toBe(200);
+    expect(leerSesion(refresh).usuario.rol).toBe('Operador');
+  });
+
   it('A-07: dos réplicas ven la misma versión: lo que cambia en una corta el token en la otra', async () => {
     const redisReplica = crearClienteRedis(cargarConfiguracion(process.env).redis);
     redisReplica.on('error', () => undefined);
