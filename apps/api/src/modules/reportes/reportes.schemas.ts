@@ -1,26 +1,18 @@
 import { montoSchema } from '@shopcart/shared';
-import { consultaPaginacionSchema } from '../../shared/http/index.js';
+import { rangoDeFechasSchema, consultaPaginacionSchema } from '../../shared/http/index.js';
 import { z } from '../../shared/openapi/zod.js';
 import { AGRUPACIONES } from './reportes.types.js';
 
 // A-12: días de Guatemala (FechaPagoLocal / FechaLocal); sin rango, los últimos 30 días.
-const rangoBase = z.object({ desde: z.iso.date().optional(), hasta: z.iso.date().optional() });
-const rangoValido = ({ desde, hasta }: { desde?: string; hasta?: string }) =>
-  desde === undefined || hasta === undefined || desde <= hasta;
-const MENSAJE_RANGO = {
-  message: 'La fecha inicial no puede ser posterior a la final.',
-  path: ['desde'],
-};
+export const consultaRangoSchema = rangoDeFechasSchema;
 
-export const consultaRangoSchema = rangoBase.refine(rangoValido, MENSAJE_RANGO);
+export const consultaVentasSchema = rangoDeFechasSchema.safeExtend({
+  agrupacion: z.enum(AGRUPACIONES).default('dia'),
+});
 
-export const consultaVentasSchema = rangoBase
-  .extend({ agrupacion: z.enum(AGRUPACIONES).default('dia') })
-  .refine(rangoValido, MENSAJE_RANGO);
-
-export const consultaCarritosSchema = rangoBase
-  .extend(consultaPaginacionSchema.shape)
-  .refine(rangoValido, MENSAJE_RANGO);
+export const consultaCarritosSchema = rangoDeFechasSchema.safeExtend(
+  consultaPaginacionSchema.shape,
+);
 
 export type ConsultaRango = z.infer<typeof consultaRangoSchema>;
 export type ConsultaVentas = z.infer<typeof consultaVentasSchema>;

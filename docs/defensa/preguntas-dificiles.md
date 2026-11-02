@@ -138,7 +138,7 @@ No: los spans de SQL llevan el nombre del SP y no sus parámetros, los de Redis 
 
 Un token en la URL queda en el log de nginx, en el historial del navegador y en el `Referer`. El stream exige `Authorization` y el cliente usa `fetch` con el cuerpo como stream (A-25). Hoy lo consumen las pruebas y `curl -N`; el dashboard web es de la Fase 2.
 
-**Muéstralo en:** [reportes.schemas.ts:82](../../apps/api/src/modules/reportes/reportes.schemas.ts#L82 "authorization: z.string().optional()"). Detalle: [reportes](modulos/reportes.md).
+**Muéstralo en:** [reportes.schemas.ts:74](../../apps/api/src/modules/reportes/reportes.schemas.ts#L74 "authorization: z.string().optional()"). Detalle: [reportes](modulos/reportes.md).
 
 ## Réplicas y fallas
 

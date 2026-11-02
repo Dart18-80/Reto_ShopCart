@@ -16,6 +16,7 @@ export {
 } from './paginacion.js';
 export { idEnRutaSchema, idSchema } from './identificadores.js';
 export { booleanoConsultaSchema } from './consulta.js';
+export { rangoDeFechasSchema } from './rango-fechas.js';
 export {
   ENCABEZADO_IDEMPOTENCIA,
   encabezadoIdempotenciaOpcionalSchema,
