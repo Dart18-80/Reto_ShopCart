@@ -2,7 +2,7 @@
 -- N-12, RF-05: valida un cupón para un carrito. Una fila: NumeroError NULL si es válido; si no, el código de
 -- la primera causa de rechazo (cada una con su número y su mensaje) y, para el mínimo, cuánto falta.
 -- Orden: no existe, inactivo, aún no vigente, vencido, agotado, límite por cliente, mínimo no alcanzado
--- (sobre el subtotal de todo el carrito) y sin productos de la categoría.
+-- (sobre el subtotal comprable de todo el carrito, N-12) y sin productos comprables de la categoría.
 -- El límite por cliente cuenta usos confirmados más reservados vigentes (@IDUsuario NULL = invitado: no
 -- aplica; el checkout exige sesión). La reserva de la sesión de pago de este mismo carrito no cuenta como
 -- otro uso, ni para el límite por cliente ni para el agotado: volver al carrito no quita el cupón.
@@ -24,8 +24,8 @@ RETURN
             CASE WHEN n.NumeroError = 50507 THEN m.Faltante END AS Faltante
     FROM    (VALUES (1)) AS base (Uno)
     LEFT JOIN dbo.Cupon AS c ON c.IDCupon = @IDCupon
-    OUTER APPLY (SELECT CONVERT(DECIMAL(15,2), SUM(l.TotalLinea)) AS Subtotal,
-                        COUNT(CASE WHEN p.IDCategoria = cc.IDCategoria THEN 1 END) AS LineasCategoria
+    OUTER APPLY (SELECT CONVERT(DECIMAL(15,2), SUM(l.TotalComprable)) AS Subtotal,
+                        COUNT(CASE WHEN p.IDCategoria = cc.IDCategoria AND l.TotalComprable > 0 THEN 1 END) AS LineasCategoria
                  FROM   dbo.FU_Carrito_Lineas(@IDCarrito) AS l
                  JOIN   dbo.Producto AS p ON p.IDProducto = l.IDProducto
                  LEFT JOIN dbo.Cupon AS cc ON cc.IDCupon = @IDCupon) AS t

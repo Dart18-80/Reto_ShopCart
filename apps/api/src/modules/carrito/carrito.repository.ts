@@ -31,6 +31,7 @@ interface FilaLinea {
   Cantidad: number;
   PrecioUnitario: number;
   TotalLinea: number;
+  TotalComprable: number;
   DescuentoLinea: number;
   Estado: EstadoLinea;
   AjustarA: number | null;
@@ -91,6 +92,7 @@ const aCarrito = (lineas: FilaLinea[], resumen: FilaResumen): Carrito => ({
     cantidad: fila.Cantidad,
     precioUnitario: aMonto(fila.PrecioUnitario),
     totalLinea: aMonto(fila.TotalLinea),
+    totalComprable: aMonto(fila.TotalComprable),
     descuentoLinea: aMonto(fila.DescuentoLinea),
     estado: fila.Estado,
     ajustarA: fila.AjustarA,

@@ -25,6 +25,7 @@ export const lineaSchema = z.strictObject({
   cantidad: z.number(),
   precioUnitario: z.string(),
   totalLinea: z.string(),
+  totalComprable: z.string(),
   descuentoLinea: z.string(),
   estado: z.enum(['Disponible', 'CantidadExcedida', 'Agotado', 'NoDisponible']),
   ajustarA: z.number().nullable(),

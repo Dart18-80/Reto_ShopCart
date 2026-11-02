@@ -337,7 +337,7 @@ garantiaActiva = FechaGarantiaHasta > ahora
 precioEfectivo = garantiaActiva ? MIN(precioGarantizado, precioVigente) : precioVigente
 aviso          = garantiaActiva y precioVigente > precioGarantizado → "Precio garantizado hasta …"
                  precioVigente < precioGarantizado                  → "¡Bajó de precio!"
-                 garantía vencida y el precio cambió               → alerta "cambió de Q… a Q…" (se guarda hasta que el cliente la vea)
+                 garantía vencida y el precio registrado difiere del vigente (suba o baje) → alerta "cambió de Q… a Q…" (se guarda hasta que el cliente la vea)
 ```
 
 Al vencer la garantía, la línea se re-ancla a la versión de precio vigente.

@@ -3,6 +3,9 @@
 -- Precio efectivo (01 §6.5): mientras la garantía está vigente, el menor entre el garantizado y el vigente;
 -- vencida, el vigente. Estado: NoDisponible (producto o variante desactivados; solo se elimina), Agotado,
 -- CantidadExcedida (con "Ajustar a X") o Disponible. La cantidad nunca se corrige sola.
+-- N-12: CantidadComprable y TotalComprable son lo que se puede comprar ahora (Disponible: la cantidad;
+-- CantidadExcedida: el disponible; Agotado y NoDisponible: 0). Subtotal, cupón, mínimo y envío gratis se
+-- calculan sobre eso; la línea sigue mostrando su cantidad y su estado.
 -- Aviso (N-02): CambioDePrecio (alerta guardada al vencer la garantía, hasta que el cliente la vea),
 -- PrecioGarantizado (garantía vigente y el precio subió) o BajoDePrecio (el vigente es menor que el garantizado).
 -- N-06: la existencia solo se muestra como etiqueta; la cifra, en el umbral o por debajo.
@@ -20,6 +23,8 @@ RETURN
             l.Cantidad,
             pr.PrecioEfectivo      AS PrecioUnitario,
             CONVERT(DECIMAL(15,2), pr.PrecioEfectivo * l.Cantidad) AS TotalLinea,
+            co.CantidadComprable,
+            CONVERT(DECIMAL(15,2), pr.PrecioEfectivo * co.CantidadComprable) AS TotalComprable,
             est.Estado,
             CASE WHEN est.Estado = 'CantidadExcedida' THEN d.Disponible END AS AjustarA,
             CASE WHEN d.Disponible <= 0                THEN 'Agotado'
@@ -49,6 +54,9 @@ RETURN
                              WHEN d.Disponible <= 0                                THEN 'Agotado'
                              WHEN l.Cantidad > d.Disponible                        THEN 'CantidadExcedida'
                              ELSE 'Disponible' END AS Estado) AS est
+    CROSS APPLY (SELECT CASE est.Estado WHEN 'Disponible'       THEN l.Cantidad
+                                        WHEN 'CantidadExcedida' THEN d.Disponible
+                                        ELSE 0 END AS CantidadComprable) AS co
     CROSS APPLY (SELECT CASE WHEN l.PrecioAnteriorAviso IS NOT NULL                      THEN 'CambioDePrecio'
                              WHEN l.FechaGarantiaHasta > SYSUTCDATETIME() AND pv.Precio > pg.Precio
                                                                                      THEN 'PrecioGarantizado'

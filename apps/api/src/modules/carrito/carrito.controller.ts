@@ -23,6 +23,7 @@ const aRespuesta = (carrito: Carrito) => ({
     ...linea,
     precioUnitario: montoATexto(linea.precioUnitario),
     totalLinea: montoATexto(linea.totalLinea),
+    totalComprable: montoATexto(linea.totalComprable),
     descuentoLinea: montoATexto(linea.descuentoLinea),
     garantiaHasta: linea.garantiaHasta.toISOString(),
     aviso:

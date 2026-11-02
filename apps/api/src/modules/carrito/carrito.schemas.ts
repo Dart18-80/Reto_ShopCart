@@ -50,6 +50,10 @@ const lineaCarritoSchema = z
     cantidad: z.number().int(),
     precioUnitario: montoSchema,
     totalLinea: montoSchema,
+    totalComprable: montoSchema.openapi({
+      description:
+        'N-12: lo que la línea puede comprar ahora; es lo que suman el subtotal y el descuento',
+    }),
     descuentoLinea: montoSchema,
     estado: z.enum(ESTADOS_LINEA),
     ajustarA: z.number().int().nullable(),

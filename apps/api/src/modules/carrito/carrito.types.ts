@@ -26,6 +26,8 @@ export interface LineaCarrito {
   cantidad: number;
   precioUnitario: Decimal;
   totalLinea: Decimal;
+  /** N-12: lo que la línea puede comprar ahora; es lo que suman el subtotal y el descuento. */
+  totalComprable: Decimal;
   /** N-02: la parte del descuento del cupón que le toca a la línea. */
   descuentoLinea: Decimal;
   estado: EstadoLinea;

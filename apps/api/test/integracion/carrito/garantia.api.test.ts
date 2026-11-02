@@ -137,13 +137,30 @@ describe('garantía de precio (E4-H02, N-02)', () => {
     });
   });
 
-  it('vencida con una baja de precio: toma el vigente sin alerta', async () => {
+  it('vencida con una baja de precio: toma el vigente y avisa el cambio hasta marcarlo como visto', async () => {
     const { IDVariante, token, linea } = await lineaGarantizada();
     await cambiarPrecio(IDVariante, '70.00');
 
     await vencerGarantia(linea.idLinea);
+    const consultada = await consultar(token);
+    const vistos = primeraLinea(leerCarrito(await marcarAvisosVistos(app, comoInvitado(token))));
 
-    expect(await consultar(token)).toMatchObject({ precioUnitario: '70.00', aviso: null });
+    expect(consultada).toMatchObject({
+      precioUnitario: '70.00',
+      aviso: { tipo: 'CambioDePrecio', precioAnterior: '100.00' },
+    });
+    expect(vistos).toMatchObject({ precioUnitario: '70.00', aviso: null });
+  });
+
+  it('vencida con una alerta sin ver: si el precio vuelve al registrado, la alerta desaparece', async () => {
+    const { IDVariante, token, linea } = await lineaGarantizada();
+    await cambiarPrecio(IDVariante, '120.00');
+    await vencerGarantia(linea.idLinea);
+    await consultar(token);
+
+    await cambiarPrecio(IDVariante, '100.00');
+
+    expect(await consultar(token)).toMatchObject({ precioUnitario: '100.00', aviso: null });
   });
 
   it('vencida sin cambio de precio: nada cambia ni avisa', async () => {

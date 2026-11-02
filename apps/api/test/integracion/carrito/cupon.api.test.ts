@@ -9,6 +9,7 @@ import { leerDatos, leerError } from '../../unit/respuestas.js';
 import { dependenciasDePrueba } from '../../app-de-prueba.js';
 import { CONTRASENA, correoUnico, iniciarSesion, leerSesion } from '../auth/apoyo-auth.js';
 import { usarBaseDePruebas } from '../base-de-pruebas.js';
+import { fijarExistencia } from '../datos-de-prueba.js';
 import {
   agregar,
   clienteNuevo,
@@ -329,5 +330,66 @@ describe('revalidación y retiro del cupón (E4-H05, N-12)', () => {
 
     const carrito = leerCarrito(await verCarrito(app, comoCliente(sesion.accessToken)));
     expect(carrito.resumen).toMatchObject({ cupon: { codigo }, descuento: '10.00' });
+  });
+});
+
+describe('subtotal sobre lo que se puede comprar ahora (E4-H05, N-12)', () => {
+  it('CantidadExcedida suma solo el disponible y Agotado no suma; cada línea conserva su cantidad', async () => {
+    const excedida = await varianteVendible('10.00', 10);
+    const agotada = await varianteVendible('7.00', 10);
+    const disponible = await varianteVendible('5.00', 10);
+    const { token } = await invitadoConCarrito(app, excedida.IDVariante, 4);
+    await agregar(app, comoInvitado(token), agotada.IDVariante, 2);
+    await agregar(app, comoInvitado(token), disponible.IDVariante, 1);
+    await fijarExistencia(excedida.IDVariante, 2);
+    await fijarExistencia(agotada.IDVariante, 0);
+
+    const carrito = leerCarrito(await verCarrito(app, comoInvitado(token)));
+
+    expect(
+      carrito.lineas.map((l) => [l.estado, l.cantidad, l.totalLinea, l.totalComprable]),
+    ).toEqual([
+      ['CantidadExcedida', 4, '40.00', '20.00'],
+      ['Agotado', 2, '14.00', '0.00'],
+      ['Disponible', 1, '5.00', '5.00'],
+    ]);
+    expect(carrito.resumen).toMatchObject({ subtotal: '25.00', total: '25.00', unidades: 7 });
+  });
+
+  it('el descuento no se reparte a una línea agotada', async () => {
+    const disponible = await varianteVendible('30.00', 10);
+    const agotada = await varianteVendible('30.00', 10);
+    const { token } = await invitadoConCarrito(app, disponible.IDVariante);
+    await agregar(app, comoInvitado(token), agotada.IDVariante);
+    await fijarExistencia(agotada.IDVariante, 0);
+
+    const carrito = leerCarrito(
+      await aplicar(comoInvitado(token), (await cupon({ valor: '10.00' })).codigo),
+    );
+
+    expect(carrito.lineas.map((l) => l.descuentoLinea)).toEqual(['10.00', '0.00']);
+    expect(carrito.resumen).toMatchObject({
+      subtotal: '30.00',
+      descuento: '10.00',
+      total: '20.00',
+    });
+  });
+
+  it('un cupón cuyo mínimo solo se alcanzaba con una línea agotada se quita con aviso', async () => {
+    const disponible = await varianteVendible('30.00', 10);
+    const agotada = await varianteVendible('40.00', 10);
+    const { token } = await invitadoConCarrito(app, disponible.IDVariante);
+    await agregar(app, comoInvitado(token), agotada.IDVariante);
+    const { codigo } = await cupon({ montoMinimoCompra: '60.00' });
+    expect((await aplicar(comoInvitado(token), codigo)).status).toBe(200);
+
+    await fijarExistencia(agotada.IDVariante, 0);
+    const carrito = leerCarrito(await verCarrito(app, comoInvitado(token)));
+
+    expect(carrito.resumen).toMatchObject({
+      cupon: null,
+      subtotal: '30.00',
+      cuponRetirado: { codigo, motivo: 'CUPON_MINIMO_NO_ALCANZADO' },
+    });
   });
 });
