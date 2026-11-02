@@ -2,12 +2,12 @@ import type { RequestHandler } from 'express';
 import type { Decimal } from 'decimal.js';
 import { montoATexto } from '../../shared/dinero/index.js';
 import { manejar, paginar } from '../../shared/http/index.js';
-import type { ReportesRepository } from './reportes.repository.js';
 import {
   consultaCarritosSchema,
   consultaRangoSchema,
   consultaVentasSchema,
 } from './reportes.schemas.js';
+import type { ReportesService } from './reportes.service.js';
 
 export interface ReportesController {
   resumen: RequestHandler;
@@ -22,12 +22,10 @@ const conVentasEnTexto = <T extends { ventas: Decimal }>(fila: T) => ({
   ventas: montoATexto(fila.ventas),
 });
 
-// Los reportes no tienen reglas propias: el SP agrega sobre la definición única de venta (M-07). Sin
-// servicio intermedio que solo reenvíe (KISS): el controlador traduce HTTP ↔ repositorio.
-export function crearReportesController(repositorio: ReportesRepository): ReportesController {
+export function crearReportesController(servicio: ReportesService): ReportesController {
   return {
     resumen: manejar({ query: consultaRangoSchema }, async ({ query }, res) => {
-      const resumen = await repositorio.resumen(query);
+      const resumen = await servicio.resumen(query);
       res.json({
         datos: {
           ...resumen,
@@ -41,19 +39,19 @@ export function crearReportesController(repositorio: ReportesRepository): Report
     }),
 
     ventas: manejar({ query: consultaVentasSchema }, async ({ query }, res) => {
-      res.json({ datos: (await repositorio.ventasPorPeriodo(query)).map(conVentasEnTexto) });
+      res.json({ datos: (await servicio.ventasPorPeriodo(query)).map(conVentasEnTexto) });
     }),
 
     ventasPorCategoria: manejar({ query: consultaRangoSchema }, async ({ query }, res) => {
-      res.json({ datos: (await repositorio.ventasPorCategoria(query)).map(conVentasEnTexto) });
+      res.json({ datos: (await servicio.ventasPorCategoria(query)).map(conVentasEnTexto) });
     }),
 
     topProductos: manejar({ query: consultaRangoSchema }, async ({ query }, res) => {
-      res.json({ datos: (await repositorio.topProductos(query)).map(conVentasEnTexto) });
+      res.json({ datos: (await servicio.topProductos(query)).map(conVentasEnTexto) });
     }),
 
     carritosAbandonados: manejar({ query: consultaCarritosSchema }, async ({ query }, res) => {
-      const { filas, total } = await repositorio.carritosAbandonados(query);
+      const { filas, total } = await servicio.carritosAbandonados(query);
       const datos = filas.map((carrito) => ({
         ...carrito,
         fechaUltimaActividad: carrito.fechaUltimaActividad.toISOString(),
