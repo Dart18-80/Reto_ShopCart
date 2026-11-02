@@ -14,6 +14,7 @@ const INTERNOS = new Set([
   'R__SP_Cupones_ReservarUso.sql',
   'R__SP_Cupones_RevertirUso.sql',
   'R__SP_Inventario_LiberarReservas.sql',
+  'R__SP_Inventario_ReservarExistencia.sql',
   'R__SP_Sistema_BuscarSolicitudIdempotente.sql',
   'R__SP_Sistema_GuardarSolicitudIdempotente.sql',
 ]);

@@ -6,8 +6,8 @@
 -- Fencing (N-03): solo la petición dueña del arrendamiento vigente (@TokenArrendamiento) crea el pedido; si otro
 -- proceso lo retomó (la conciliación o un reintento), 50602 y nada se escribe.
 -- La sesión debe estar Activa (si el job la expiró: 50601); una que venció durante este pago, con el
--- arrendamiento vivo, se acepta: las reservas se revalidan bajo bloqueo. Una reserva vencida se vuelve a validar
--- bajo el bloqueo de la variante; si no alcanza, 50301 y nada se escribe.
+-- arrendamiento vivo, se acepta: una reserva vencida se vuelve a reservar con SP_Inventario_ReservarExistencia,
+-- que valida bajo el bloqueo de la variante; si no alcanza, 50301 y nada se escribe.
 -- Escribe en una sola transacción: pedido (copias de M-04, IVA de N-18, FechaPagoLocal de A-12), detalle,
 -- SalidaVenta en el kardex (SP_Inventario_RegistrarMovimiento, N-07), reservas Consumida, uso del cupón
 -- Confirmado, sesión Pagada, carrito Convertido e historial (ninguno) → Pagado. Devuelve el pedido.
@@ -28,7 +28,8 @@ BEGIN
     DECLARE @IDSesion INT, @Dueno INT, @IDCarrito INT, @ID INT, @Bloqueada INT, @EstadoSesion VARCHAR(10),
             @EstadoIntento VARCHAR(12), @IDTransaccion VARCHAR(64), @IDPedido INT, @IDCupon INT,
             @Ahora DATETIME2(3) = SYSUTCDATETIME(), @FechaLocal DATE, @IDEstadoPagado INT, @Numero VARCHAR(20),
-            @Cantidad INT, @Error NVARCHAR(2048), @TokenVigente UNIQUEIDENTIFIER;
+            @Cantidad INT, @TokenVigente UNIQUEIDENTIFIER, @Vencidas NVARCHAR(MAX), @MinutosReserva SMALLINT,
+            @Vence DATETIME2(3);
 
     SELECT @IDSesion = s.IDSesionCheckout, @Dueno = s.IDUsuario, @IDCarrito = s.IDCarrito
     FROM   dbo.IntentoPago AS i
@@ -78,25 +79,21 @@ BEGIN
             IF @EstadoSesion <> 'Activa'
                 THROW 50601, N'Tu sesión de pago venció. Vuelve a iniciar el pago.', 1;
 
-            -- N-06: una reserva vencida (o liberada) se vuelve a validar bajo el bloqueo de la variante.
-            IF EXISTS (SELECT 1
-                       FROM   dbo.LineaSesionCheckout AS l
-                       CROSS APPLY dbo.FU_Inventario_Disponible(l.IDVariante) AS d
-                       WHERE  l.IDSesionCheckout = @IDSesion
-                         AND  NOT EXISTS (SELECT 1 FROM dbo.Reserva AS r
-                                          WHERE r.IDSesionCheckout = @IDSesion AND r.IDVariante = l.IDVariante
-                                            AND r.Estado = 'Activa' AND r.FechaExpiracion > @Ahora)
-                         AND  d.Disponible < l.Cantidad)
+            -- N-06: las líneas cuya reserva venció se vuelven a reservar bajo el bloqueo de la variante.
+            SET @Vencidas = (SELECT l.IDVariante AS idVariante, l.Cantidad AS cantidad
+                             FROM   dbo.LineaSesionCheckout AS l
+                             WHERE  l.IDSesionCheckout = @IDSesion
+                               AND  NOT EXISTS (SELECT 1 FROM dbo.Reserva AS r
+                                                WHERE r.IDSesionCheckout = @IDSesion AND r.IDVariante = l.IDVariante
+                                                  AND r.Estado = 'Activa' AND r.FechaExpiracion > @Ahora)
+                             ORDER BY l.IDVariante FOR JSON PATH);
+            IF @Vencidas IS NOT NULL
             BEGIN
-                SET @Error = (SELECT N'Tu reserva venció y ya no hay existencia suficiente para algunos productos.' AS mensaje,
-                                     JSON_QUERY((SELECT l.IDVariante AS idVariante, l.Cantidad AS cantidad,
-                                                        IIF(d.Disponible < 0, 0, d.Disponible) AS disponible
-                                                 FROM dbo.LineaSesionCheckout AS l
-                                                 CROSS APPLY dbo.FU_Inventario_Disponible(l.IDVariante) AS d
-                                                 WHERE l.IDSesionCheckout = @IDSesion AND d.Disponible < l.Cantidad
-                                                 ORDER BY l.IDVariante FOR JSON PATH)) AS detalles
-                              FOR JSON PATH, WITHOUT_ARRAY_WRAPPER);
-                THROW 50301, @Error, 1;
+                SELECT TOP (1) @MinutosReserva = ps.MinutosReserva FROM dbo.ParametroSistema AS ps
+                ORDER BY ps.IDParametroSistema;
+                SET @Vence = DATEADD(MINUTE, @MinutosReserva, @Ahora);
+                EXEC dbo.SP_Inventario_ReservarExistencia @IDSesion, @Vencidas, @Vence,
+                     N'Tu reserva venció y ya no hay existencia suficiente para algunos productos.';
             END
 
             SELECT @FechaLocal = f.FechaLocal FROM dbo.FU_Sistema_FechaLocal(@Ahora) AS f;

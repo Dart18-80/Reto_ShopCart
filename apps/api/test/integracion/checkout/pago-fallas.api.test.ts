@@ -27,6 +27,7 @@ import {
   moverArrendamiento,
   pagar,
   pagoDe,
+  reservasDe,
   TARJETA_APROBADA,
 } from './apoyo-checkout.js';
 
@@ -248,6 +249,8 @@ describe('reservas vencidas (E5-H03, N-06)', () => {
 
     expect(respuesta.status).toBe(201);
     expect((await pagoDe(idSesion)).SalidasKardex).toBe(1);
+    // Se renovó y se consumió en su misma fila: SP_Inventario_ReservarExistencia no inserta otra.
+    expect(await reservasDe(idSesion)).toEqual([{ IDVariante, Cantidad: 2, Estado: 'Consumida' }]);
   });
 
   it('si la reserva venció y otro tomó la existencia, 409 STOCK_INSUFICIENTE sin cobro', async () => {

@@ -6,9 +6,10 @@
 -- 2. Si la sesión Activa tiene el mismo hash y no venció, se devuelve tal cual (Creada = 0, la API responde
 --    200). Si no, se cancela por la única ruta de liberación (SP_Checkout_CancelarSesionActiva; con un pago
 --    en curso responde 50602).
--- 3. Todo o nada: líneas NoDisponible → 50402; disponible < cantidad en alguna línea → 50301 con todas las que
---    fallan. Después: sesión, líneas congeladas (M-04), una reserva por línea que vence en MinutosReserva y,
---    si hay cupón, su uso reservado (SP_Cupones_ReservarUso). Creada = 1 (201).
+-- 3. Todo o nada: líneas NoDisponible → 50402. Después: sesión, líneas congeladas (M-04), las reservas por
+--    SP_Inventario_ReservarExistencia (vencen en MinutosReserva; disponible < cantidad en alguna línea → 50301
+--    con todas las que fallan y se revierte todo) y, si hay cupón, su uso reservado (SP_Cupones_ReservarUso).
+--    Creada = 1 (201).
 -- Devuelve Creada y la sesión (SP_Checkout_ObtenerSesion).
 CREATE OR ALTER PROCEDURE dbo.SP_Checkout_IniciarSesion
     @IDDireccion    INT,
@@ -33,8 +34,8 @@ BEGIN
             @Departamento NVARCHAR(50), @DireccionLinea NVARCHAR(200), @Referencia NVARCHAR(200),
             @NombreMetodo NVARCHAR(50), @DiasMin TINYINT, @DiasMax TINYINT, @CostoEnvio DECIMAL(12,2),
             @Subtotal DECIMAL(15,2), @Descuento DECIMAL(15,2), @Hash BINARY(32), @IDSesion INT,
-            @HashActiva BINARY(32), @ExpiraActiva DATETIME2(3), @MinutosReserva SMALLINT,
-            @Creada BIT = 0, @Error NVARCHAR(2048);
+            @HashActiva BINARY(32), @ExpiraActiva DATETIME2(3), @MinutosReserva SMALLINT, @Vence DATETIME2(3),
+            @Reservas NVARCHAR(MAX), @Creada BIT = 0, @Error NVARCHAR(2048);
     DECLARE @Lineas TABLE (
         IDVariante       INT           NOT NULL PRIMARY KEY,
         IDLineaCarrito   INT           NOT NULL,
@@ -132,24 +133,9 @@ BEGIN
                 THROW 50402, @Error, 1;
             END
 
-            -- N-06: todo o nada, bajo el bloqueo de las variantes y sin las reservas de la sesión cancelada.
-            IF EXISTS (SELECT 1 FROM @Lineas AS l CROSS APPLY dbo.FU_Inventario_Disponible(l.IDVariante) AS d
-                       WHERE d.Disponible < l.Cantidad)
-            BEGIN
-                SET @Error = (SELECT N'No hay existencia suficiente para algunos productos.' AS mensaje,
-                                     JSON_QUERY((SELECT l.IDVariante AS idVariante, l.Producto AS producto,
-                                                        l.Cantidad AS cantidad,
-                                                        IIF(d.Disponible < 0, 0, d.Disponible) AS disponible
-                                                 FROM @Lineas AS l
-                                                 CROSS APPLY dbo.FU_Inventario_Disponible(l.IDVariante) AS d
-                                                 WHERE d.Disponible < l.Cantidad
-                                                 ORDER BY l.IDVariante FOR JSON PATH)) AS detalles
-                              FOR JSON PATH, WITHOUT_ARRAY_WRAPPER);
-                THROW 50301, @Error, 1;
-            END
-
             SELECT TOP (1) @MinutosReserva = ps.MinutosReserva FROM dbo.ParametroSistema AS ps
             ORDER BY ps.IDParametroSistema;
+            SET @Vence = DATEADD(MINUTE, @MinutosReserva, @Ahora);
 
             INSERT INTO dbo.SesionCheckout (
                 IDUsuario, IDCarrito, Estado, HashContenido, NombreRecibe, TelefonoRecibe, IDMunicipio,
@@ -159,7 +145,7 @@ BEGIN
                 @IDCliente, @IDCarrito, 'Activa', @Hash, @NombreRecibe, @TelefonoRecibe, @IDMunicipio,
                 @Departamento, @Municipio, @DireccionLinea, @Referencia, @IDMetodoEnvio, @NombreMetodo, @DiasMin,
                 @DiasMax, @IDCupon, @CodigoCupon, @Subtotal, @Descuento, @CostoEnvio,
-                @Subtotal - @Descuento + @CostoEnvio, DATEADD(MINUTE, @MinutosReserva, @Ahora));
+                @Subtotal - @Descuento + @CostoEnvio, @Vence);
             SET @IDSesion = SCOPE_IDENTITY();
 
             -- N-02: lo que se cobra queda congelado en la sesión.
@@ -169,9 +155,10 @@ BEGIN
                    l.PrecioUnitario * l.Cantidad - l.DescuentoLinea
             FROM   @Lineas AS l;
 
-            INSERT INTO dbo.Reserva (IDSesionCheckout, IDVariante, Cantidad, Estado, FechaExpiracion)
-            SELECT @IDSesion, l.IDVariante, l.Cantidad, 'Activa', DATEADD(MINUTE, @MinutosReserva, @Ahora)
-            FROM   @Lineas AS l;
+            -- N-06: todo o nada, sin las reservas de la sesión cancelada; un 50301 revierte la sesión y sus líneas.
+            SET @Reservas = (SELECT l.IDVariante AS idVariante, l.Cantidad AS cantidad FROM @Lineas AS l
+                             ORDER BY l.IDVariante FOR JSON PATH);
+            EXEC dbo.SP_Inventario_ReservarExistencia @IDSesion, @Reservas, @Vence;
 
             -- 01 §6.6: el cupón es lo último que se bloquea.
             IF @IDCupon IS NOT NULL

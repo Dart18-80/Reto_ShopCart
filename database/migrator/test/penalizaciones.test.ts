@@ -245,3 +245,25 @@ describe('imágenes fijadas (verificación de entrega)', () => {
     );
   });
 });
+
+describe('reservas de existencia (N-06, nombre del enunciado)', () => {
+  const programabilidad = scripts.filter(({ archivo }) => archivo.startsWith('programmability/'));
+  const insertaReserva = /INSERT\s+INTO\s+dbo\.Reserva\b/i;
+
+  it('SP_Inventario_ReservarExistencia es el único que inserta en Reserva', () => {
+    expect(
+      programabilidad
+        .filter(({ codigo }) => insertaReserva.test(codigo))
+        .map(({ archivo }) => archivo),
+    ).toEqual(['programmability/R__SP_Inventario_ReservarExistencia.sql']);
+  });
+
+  it.each(['R__SP_Checkout_IniciarSesion.sql', 'R__SP_Pedidos_CrearPedido.sql'])(
+    '%s reserva a través de él',
+    (nombre) => {
+      const script = programabilidad.find(({ archivo }) => archivo === `programmability/${nombre}`);
+
+      expect(script?.codigo).toMatch(/EXEC\s+dbo\.SP_Inventario_ReservarExistencia\b/i);
+    },
+  );
+});
