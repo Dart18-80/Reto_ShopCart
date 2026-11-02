@@ -567,15 +567,15 @@ UQ `(IDSesionCheckout, IDVariante)`. **Invariante (lo valida el SP):** `SUM(Desc
 | LlaveIdempotencia | UNIQUEIDENTIFIER | **UQ** |
 | HashSolicitud | BINARY(32) | Para detectar "misma llave, otro contenido" → 422 |
 | Monto | DECIMAL(12,2) | CK > 0 |
-| Estado | VARCHAR(12) | CK `IN ('Pendiente','Autorizado','Capturado','Rechazado','Anulado','Fallido','Error')` (`Fallido`: la conciliación confirmó que la pasarela nunca autorizó; V012) |
+| Estado | VARCHAR(12) | CK `IN ('Pendiente','Autorizado','Capturado','Rechazado','Anulado','Fallido','Error')` (`Fallido`: la conciliación confirmó que la pasarela nunca autorizó; V013) |
 | IDTransaccionPasarela | VARCHAR(64) *NULL* | |
 | CodigoRespuesta | VARCHAR(30) *NULL* | p. ej. `FONDOS_INSUFICIENTES` |
 | MensajeRespuesta | NVARCHAR(200) *NULL* | |
 | MarcaTarjeta | VARCHAR(20) *NULL* | |
 | UltimosDigitos | CHAR(4) *NULL* | CK: 4 dígitos |
-| ArrendadoHasta | DATETIME2(3) *NULL* | V012, N-03: hasta cuándo una petición tiene tomado el intento en curso; `NULL` cuando ya no está en curso |
+| ArrendadoHasta | DATETIME2(3) *NULL* | V013, N-03: hasta cuándo una petición tiene tomado el intento en curso; `NULL` cuando ya no está en curso |
 
-Índices: **`UX_IntentoPago_EnCursoPorSesion`** UNIQUE `(IDSesionCheckout) WHERE Estado IN ('Pendiente','Autorizado')` (**un solo intento en curso por sesión, garantizado por la BD** → 409, N-03), `UX_IntentoPago_Transaccion` UNIQUE `(IDTransaccionPasarela) WHERE IDTransaccionPasarela IS NOT NULL` e `IX_IntentoPago_PorConciliar (ArrendadoHasta) INCLUDE (Estado, IDSesionCheckout) WHERE Estado IN ('Pendiente','Autorizado')` (V012: la conciliación busca los intentos en curso con el arrendamiento vencido).
+Índices: **`UX_IntentoPago_EnCursoPorSesion`** UNIQUE `(IDSesionCheckout) WHERE Estado IN ('Pendiente','Autorizado')` (**un solo intento en curso por sesión, garantizado por la BD** → 409, N-03), `UX_IntentoPago_Transaccion` UNIQUE `(IDTransaccionPasarela) WHERE IDTransaccionPasarela IS NOT NULL` e `IX_IntentoPago_PorConciliar (ArrendadoHasta) INCLUDE (Estado, IDSesionCheckout) WHERE Estado IN ('Pendiente','Autorizado')` (V013: la conciliación busca los intentos en curso con el arrendamiento vencido).
 
 **`PasarelaAutorizacion`** y **`PasarelaReembolso`** (V012, N-03): el estado propio de la pasarela simulada, como si fuera la base de un sistema externo. Solo las usa su adaptador, por `SP_Pasarela_*`, y nunca dentro de una transacción del checkout.
 
@@ -584,7 +584,7 @@ UQ `(IDSesionCheckout, IDVariante)`. **Invariante (lo valida el SP):** `SUM(Desc
 | `PasarelaAutorizacion` | `IDPasarelaAutorizacion` INT PK, `LlaveIdempotencia` UNIQUEIDENTIFIER, `IDTransaccion` VARCHAR(64), `Monto` DECIMAL(12,2), `Marca` VARCHAR(20), `UltimosDigitos` CHAR(4), `Estado` VARCHAR(12), `CodigoRespuesta` VARCHAR(30) *NULL*, `MensajeRespuesta` NVARCHAR(200) *NULL*, fechas | **UQ** llave (misma llave → misma respuesta) y **UQ** `IDTransaccion`; CK `Estado IN ('Autorizada','Rechazada','Capturada','Anulada')`, CK monto > 0 |
 | `PasarelaReembolso` | `IDPasarelaReembolso` INT PK, `LlaveIdempotencia` UNIQUEIDENTIFIER, `IDTransaccion` VARCHAR(64) FK → `PasarelaAutorizacion`, `IDReembolso` VARCHAR(64), `Monto` DECIMAL(12,2), fecha | **UQ** llave y **UQ** `IDReembolso`; CK monto > 0 |
 
-**`SolicitudIdempotente`** (V012, E5-H03): las llaves de idempotencia de las operaciones que no son pagos (entradas y ajustes de inventario).
+**`SolicitudIdempotente`** (V013, E5-H03): las llaves de idempotencia de las operaciones que no son pagos (entradas y ajustes de inventario).
 
 | Columna | Tipo | Reglas |
 |---|---|---|
@@ -794,7 +794,7 @@ Los SPs marcados **(interno)** solo los invocan otros SPs, nunca la API. Así ha
 `SP_Cupones_Listar` · `SP_Cupones_Obtener` · `SP_Cupones_Crear` · `SP_Cupones_Actualizar` (un cupón usado, con al menos una fila en `UsoCupon`, solo cambia vigencia, límites y estado; `detalles.campo` dice cuál no se puede cambiar; cada `CK_Cupon_*` se traduce a 50003 con su campo) · `SP_Cupones_CambiarEstado` · `SP_Cupones_ReservarUso` **(interno)** · `SP_Cupones_LiberarUso` **(interno)** · `SP_Envios_ListarMetodos` · `SP_Envios_ActualizarMetodo` · `SP_Configuracion_Obtener` · `SP_Configuracion_Actualizar`
 
 ### Checkout
-`SP_Checkout_IniciarSesion` · `SP_Checkout_ObtenerSesion` · `SP_Checkout_CancelarSesion` · `SP_Checkout_CancelarSesionActiva` **(interno)** · `SP_Checkout_RegistrarIntentoPago` (llave, hash, arrendamiento y compare-and-set) · `SP_Checkout_ActualizarIntentoPago` (autorizado, rechazado, anulado, capturado; cancela la sesión al llegar al máximo de rechazos) · `SP_Checkout_LiberarArrendamiento` (timeout de la pasarela) · `SP_Checkout_ExpirarSesiones` (job; no vence sesiones con un pago con el arrendamiento vivo) · `SP_Checkout_TomarIntentosPorConciliar` (job, `sp_getapplock`: toma los intentos con el arrendamiento vencido hace más de 2 min) · `SP_Checkout_ResolverIntentoConciliado` (job) · `SP_Inventario_LiberarReservas` **(interno)** · `SP_Cupones_ReservarUso` **(interno)** · `SP_Cupones_LiberarUso` **(interno)** · `SP_Pasarela_Autorizar` · `SP_Pasarela_Capturar` · `SP_Pasarela_Anular` · `SP_Pasarela_Reembolsar` · `SP_Pasarela_Consultar` (solo el adaptador de la pasarela simulada) · `SP_Sistema_PurgarSolicitudesIdempotentes` (job)
+`SP_Checkout_IniciarSesion` · `SP_Checkout_ObtenerSesion` · `SP_Checkout_CancelarSesion` · `SP_Checkout_CancelarSesionActiva` **(interno)** · `SP_Checkout_RegistrarIntentoPago` (llave, hash, arrendamiento y compare-and-set) · `SP_Checkout_ActualizarIntentoPago` (autorizado, rechazado, anulado, capturado; cancela la sesión al llegar al máximo de rechazos) · `SP_Checkout_LiberarArrendamiento` (timeout de la pasarela) · `SP_Checkout_ExpirarSesiones` (job; no vence sesiones con un pago con el arrendamiento vivo) · `SP_Checkout_TomarIntentosPorConciliar` (job, `sp_getapplock`: toma los intentos con el arrendamiento vencido hace más de 2 min) · `SP_Checkout_ResolverIntentoConciliado` (job) · `SP_Inventario_LiberarReservas` **(interno)** · `SP_Cupones_ReservarUso` **(interno)** · `SP_Cupones_LiberarUso` **(interno)** · `SP_Pasarela_Autorizar` · `SP_Pasarela_CambiarEstado` (captura o anula) · `SP_Pasarela_Reembolsar` · `SP_Pasarela_Consultar` (solo el adaptador de la pasarela simulada) · `SP_Sistema_PurgarSolicitudesIdempotentes` (job)
 
 ### Pedidos
 `SP_Pedidos_CrearPedido` (la transacción atómica de RF-06) · `SP_Pedidos_ListarPropios` · `SP_Pedidos_ObtenerDetalle` (con `@IDUsuario` si el rol es Cliente) · `SP_Pedidos_Listar` (gestión: filtros por estado, cliente y fechas, paginado) · `SP_Pedidos_CambiarEstado` · `SP_Pedidos_Cancelar` · `SP_Pedidos_RegistrarDevolucion` · `SP_Pedidos_ListarReembolsos` · `SP_Pedidos_ObtenerReembolsosPendientes` (job) · `SP_Pedidos_ActualizarReembolso` · `SP_Pedidos_ListarTransiciones` (para el test de coincidencia de N-08)
