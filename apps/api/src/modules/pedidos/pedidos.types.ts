@@ -122,3 +122,10 @@ export interface Cancelacion {
   pedido: Pedido;
   reembolso: { idReembolso: number; estado: EstadoReembolso };
 }
+
+/** N-10: la devolución registrada con su reembolso. */
+export interface DevolucionRegistrada {
+  pedido: Pedido;
+  devolucion: { idDevolucion: number; montoReembolso: Decimal };
+  reembolso: { idReembolso: number; estado: EstadoReembolso };
+}

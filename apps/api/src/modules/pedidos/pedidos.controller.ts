@@ -3,6 +3,7 @@ import { manejar, obtenerContexto, paginar } from '../../shared/http/index.js';
 import type { ReembolsosService } from './pedidos.reembolsos.js';
 import {
   cancelacionARespuesta,
+  devolucionARespuesta,
   pedidoARespuesta,
   reembolsoARespuesta,
   resumenARespuesta,
@@ -16,8 +17,11 @@ import {
   listarPedidosGestionSchema,
   listarPedidosPropiosSchema,
   paramsIdPedidoSchema,
+  registrarDevolucionSchema,
 } from './pedidos.schemas.js';
 import type { PedidosService } from './pedidos.service.js';
+
+const HTTP_CREADO = 201;
 
 export interface PedidosController {
   listarPropios: RequestHandler;
@@ -25,6 +29,7 @@ export interface PedidosController {
   listarGestion: RequestHandler;
   cambiarEstado: RequestHandler;
   cancelar: RequestHandler;
+  registrarDevolucion: RequestHandler;
   listarReembolsos: RequestHandler;
   reintentarReembolso: RequestHandler;
 }
@@ -70,6 +75,14 @@ export function crearPedidosController(
       async ({ params, body }, res) => {
         const cancelacion = await reembolsos.cancelar(params.id, body.motivo);
         res.json({ datos: cancelacionARespuesta(cancelacion) });
+      },
+    ),
+
+    registrarDevolucion: manejar(
+      { params: paramsIdPedidoSchema, body: registrarDevolucionSchema },
+      async ({ params, body }, res) => {
+        const devolucion = await reembolsos.registrarDevolucion(params.id, body);
+        res.status(HTTP_CREADO).json({ datos: devolucionARespuesta(devolucion) });
       },
     ),
 

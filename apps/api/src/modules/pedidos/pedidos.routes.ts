@@ -5,6 +5,7 @@ import { z } from '../../shared/openapi/zod.js';
 import type { PedidosController } from './pedidos.controller.js';
 import {
   cancelacionSchema,
+  devolucionRegistradaSchema,
   pedidoSchema,
   reembolsoSchema,
   resumenPedidoGestionSchema,
@@ -19,6 +20,7 @@ import {
   listarPedidosGestionSchema,
   listarPedidosPropiosSchema,
   paramsIdPedidoSchema,
+  registrarDevolucionSchema,
 } from './pedidos.schemas.js';
 
 const seguridad = [{ bearer: [] }];
@@ -154,6 +156,23 @@ registroOpenApi.registerPath({
   },
 });
 
+registroOpenApi.registerPath({
+  method: 'post',
+  path: '/api/v1/admin/pedidos/{id}/devoluciones',
+  tags: ['Pedidos'],
+  summary:
+    'Registra una devolución por línea (Entregado o DevueltoParcial, dentro de 30 días): reingreso al inventario, estado derivado y reembolso proporcional sin envío (N-10)',
+  security: seguridad,
+  request: { params: paramsIdPedidoSchema, body: json(registrarDevolucionSchema) },
+  responses: {
+    201: {
+      description: 'Devolución registrada; el reembolso queda Completado o Pendiente para el job',
+      ...json(z.object({ datos: devolucionRegistradaSchema })),
+    },
+    ...respuestasError(400, 401, 403, 404, 409, 422),
+  },
+});
+
 export function crearPedidosRouter(
   controller: PedidosController,
   autenticar: RequestHandler,
@@ -169,6 +188,7 @@ export function crearPedidosRouter(
   router.post('/admin/pedidos/:id/estado', ...gestion, controller.cambiarEstado);
   router.post('/pedidos/:id/cancelar', ...soloCliente, controller.cancelar);
   router.post('/admin/pedidos/:id/cancelar', ...gestion, controller.cancelar);
+  router.post('/admin/pedidos/:id/devoluciones', ...gestion, controller.registrarDevolucion);
   router.get('/admin/reembolsos', ...soloAdmin, controller.listarReembolsos);
   router.post('/admin/reembolsos/:id/reintentar', ...soloAdmin, controller.reintentarReembolso);
   return router;

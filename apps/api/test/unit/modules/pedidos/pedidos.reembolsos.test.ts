@@ -23,6 +23,9 @@ const CANCELACION: ReembolsoParaProcesar = {
 function preparar(tomado: ReembolsoParaProcesar | null, enPasarela: EstadoEnPasarela) {
   const repositorio = {
     cancelar: vi.fn(() => Promise.resolve(3)),
+    registrarDevolucion: vi.fn(() =>
+      Promise.resolve({ idDevolucion: 1, idReembolso: 3, montoReembolso: new Decimal('10.00') }),
+    ),
     obtener: vi.fn((): Promise<Pedido | null> => Promise.resolve(null)),
     tomarReembolso: vi.fn(() => Promise.resolve(tomado)),
     actualizarReembolso: vi.fn(

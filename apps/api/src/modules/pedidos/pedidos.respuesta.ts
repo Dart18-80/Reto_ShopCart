@@ -4,6 +4,7 @@ import { z } from '../../shared/openapi/zod.js';
 import {
   ESTADOS_REEMBOLSO,
   type Cancelacion,
+  type DevolucionRegistrada,
   type Pedido,
   type Reembolso,
   type ResumenPedido,
@@ -148,3 +149,17 @@ export const reembolsoSchema = z
     fechaCreacion: z.iso.datetime(),
   })
   .openapi('Reembolso');
+
+export const devolucionARespuesta = ({ pedido, devolucion, reembolso }: DevolucionRegistrada) => ({
+  pedido: pedidoARespuesta(pedido),
+  devolucion: { ...devolucion, montoReembolso: montoATexto(devolucion.montoReembolso) },
+  reembolso,
+});
+
+export const devolucionRegistradaSchema = z
+  .object({
+    pedido: pedidoSchema,
+    devolucion: z.object({ idDevolucion: z.number().int(), montoReembolso: montoSchema }),
+    reembolso: z.object({ idReembolso: z.number().int(), estado: z.enum(ESTADOS_REEMBOLSO) }),
+  })
+  .openapi('DevolucionRegistrada');

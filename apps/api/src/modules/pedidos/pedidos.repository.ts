@@ -7,8 +7,14 @@ import {
   type PaginaSP,
   type ParametrosSP,
 } from '../../shared/db/index.js';
+import type { Decimal } from 'decimal.js';
 import { aMonto } from '../../shared/dinero/index.js';
-import type { CambiarEstado, ListarPedidosGestion, ListarReembolsos } from './pedidos.schemas.js';
+import type {
+  CambiarEstado,
+  ListarPedidosGestion,
+  ListarReembolsos,
+  RegistrarDevolucion,
+} from './pedidos.schemas.js';
 import type {
   CambioDeEstado,
   EstadoReembolso,
@@ -275,6 +281,29 @@ export const pedidosRepository = {
     });
     if (fila === undefined) throw new Error('SP_Pedidos_Cancelar no devolvió el reembolso');
     return fila.IDReembolso;
+  },
+
+  /** N-10: la transacción de la devolución; devuelve la devolución y su reembolso Pendiente. */
+  async registrarDevolucion(
+    idPedido: number,
+    datos: RegistrarDevolucion,
+  ): Promise<{ idDevolucion: number; idReembolso: number; montoReembolso: Decimal }> {
+    const [fila] = await ejecutarSP<{
+      IDDevolucion: number;
+      IDReembolso: number;
+      MontoReembolso: number;
+    }>('SP_Pedidos_RegistrarDevolucion', {
+      IDPedido: { tipo: sql.Int, valor: idPedido },
+      Motivo: { tipo: sql.NVarChar(250), valor: datos.motivo },
+      Lineas: { tipo: sql.NVarChar(sql.MAX), valor: JSON.stringify(datos.lineas) },
+    });
+    if (fila === undefined)
+      throw new Error('SP_Pedidos_RegistrarDevolucion no devolvió la devolución');
+    return {
+      idDevolucion: fila.IDDevolucion,
+      idReembolso: fila.IDReembolso,
+      montoReembolso: aMonto(fila.MontoReembolso),
+    };
   },
 
   /** null si no está Pendiente o ya lo tomó otro proceso. */

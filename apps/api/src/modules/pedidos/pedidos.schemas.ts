@@ -49,3 +49,30 @@ export const listarReembolsosSchema = consultaPaginacionSchema.extend({
 
 export type CancelarPedido = z.infer<typeof cancelarPedidoSchema>;
 export type ListarReembolsos = z.infer<typeof listarReembolsosSchema>;
+
+// N-10: el SP valida contra lo vendido bajo bloqueo; aquí solo la forma (líneas únicas, cantidades > 0).
+const MAX_LINEAS_DEVOLUCION = 50;
+const CANTIDAD_MAXIMA = 1_000_000;
+export const registrarDevolucionSchema = z
+  .object({
+    motivo: textoNvarchar(250),
+    lineas: z
+      .array(
+        z
+          .object({
+            idDetallePedido: idSchema,
+            cantidad: z.number().int().min(1).max(CANTIDAD_MAXIMA),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(MAX_LINEAS_DEVOLUCION)
+      .refine(
+        (lineas) => new Set(lineas.map((l) => l.idDetallePedido)).size === lineas.length,
+        'Una línea aparece más de una vez en la devolución.',
+      ),
+  })
+  .strict()
+  .openapi('RegistrarDevolucion');
+
+export type RegistrarDevolucion = z.infer<typeof registrarDevolucionSchema>;

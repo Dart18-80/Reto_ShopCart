@@ -4,9 +4,10 @@ import { AppError } from '../../shared/errors/index.js';
 import type { ResultadoTarea } from '../../shared/jobs/index.js';
 import { TIMEOUT_PASARELA_MS, type PasarelaPago } from '../../shared/pasarela/index.js';
 import type { PedidosRepository } from './pedidos.repository.js';
-import type { ListarReembolsos } from './pedidos.schemas.js';
+import type { ListarReembolsos, RegistrarDevolucion } from './pedidos.schemas.js';
 import type {
   Cancelacion,
+  DevolucionRegistrada,
   EstadoReembolso,
   Reembolso,
   ReembolsoParaProcesar,
@@ -27,6 +28,7 @@ interface Dependencias {
   repositorio: Pick<
     PedidosRepository,
     | 'cancelar'
+    | 'registrarDevolucion'
     | 'obtener'
     | 'tomarReembolso'
     | 'actualizarReembolso'
@@ -126,6 +128,25 @@ export function crearReembolsosService({ repositorio, pasarela, logger }: Depend
       const pedido = await repositorio.obtener(idPedido);
       if (pedido === null) throw new Error(`El pedido ${String(idPedido)} cancelado no existe`);
       return { pedido, reembolso: { idReembolso, estado } };
+    },
+
+    async registrarDevolucion(
+      idPedido: number,
+      datos: RegistrarDevolucion,
+    ): Promise<DevolucionRegistrada> {
+      const { idDevolucion, idReembolso, montoReembolso } = await repositorio.registrarDevolucion(
+        idPedido,
+        datos,
+      );
+      // La devolución ya se confirmó: si la pasarela falla, el reembolso queda Pendiente para el job.
+      const estado = (await procesar(idReembolso)) ?? 'Pendiente';
+      const pedido = await repositorio.obtener(idPedido);
+      if (pedido === null) throw new Error(`El pedido ${String(idPedido)} devuelto no existe`);
+      return {
+        pedido,
+        devolucion: { idDevolucion, montoReembolso },
+        reembolso: { idReembolso, estado },
+      };
     },
 
     listar: (filtros: ListarReembolsos): Promise<PaginaSP<Reembolso>> =>
