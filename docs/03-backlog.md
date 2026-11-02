@@ -655,7 +655,7 @@ Se detalla en historias al cerrar la Fase 1.
 | E5-H02 | Pasarela de pago simulada | Must | 0.5 | En revisión |
 | E5-H03 | Confirmar el pago y crear el pedido | Must | 1.25 | En revisión |
 | E5-H04 | Planificador de tareas y expiración de sesiones | Must | 0.5 | En revisión |
-| E5-H05 | Test de concurrencia | Must | 0.75 | Lista |
+| E5-H05 | Test de concurrencia | Must | 0.75 | En revisión |
 | E6-H01 | Consulta de pedidos | Must | 0.5 | Propuesta |
 | E6-H02 | Cambios de estado | Must | 0.75 | Propuesta |
 | E6-H03 | Cancelación con reembolso | Must | 1.0 | Propuesta |

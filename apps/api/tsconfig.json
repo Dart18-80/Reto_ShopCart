@@ -11,6 +11,7 @@
     "test",
     "vitest.config.ts",
     "vitest.integracion.config.ts",
-    "vitest.humo.config.ts"
+    "vitest.humo.config.ts",
+    "vitest.concurrencia.config.ts"
   ]
 }

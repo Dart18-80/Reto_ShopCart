@@ -85,6 +85,8 @@ Las semillas cargan los catálogos fijos, los 22 departamentos y 340 municipios 
 | `cliente@shopcart.gt`  | `Cliente2026!`  | Cliente                                                         |
 | `cliente2@shopcart.gt` | `Cliente2026!`  | Cliente (para demostrar que un cliente no ve los datos de otro) |
 
+Los clientes `concurrencia01@shopcart.gt` a `concurrencia20@shopcart.gt` (contraseña `Concurrencia2026!`) son los de la prueba de concurrencia (`pnpm test:concurrencia`).
+
 La variante `DEMO-CONCURRENCIA` es la única con una sola unidad: sirve para la demo de compra simultánea (RF-06).
 
 ### API (desarrollo, desde el host)
@@ -101,7 +103,10 @@ pnpm --filter @shopcart/api start      # http://localhost:3000/api/v1/health · 
 ```bash
 pnpm test                # unitarias: servicios y middlewares con puertos falsos, sin infraestructura
 pnpm test:integracion    # contra SQL Server real (requiere `docker compose up -d sqlserver`)
+pnpm test:concurrencia   # RNF-3: contra el entorno completo (requiere `docker compose up -d`)
 ```
+
+`pnpm test:concurrencia` lanza 20 clientes a la vez contra `http://localhost:8080` (nginx, que reparte entre `api-1` y `api-2`; otra URL con `SHOPCART_URL`). Escenario 1: la última unidad de una variante, que termina en 1 pedido y 19 × `409 STOCK_INSUFICIENTE`. Escenario 2: el último uso de un cupón, que termina en 1 pedido y 19 × `422 CUPON_AGOTADO`. Además verifica la existencia final, la conciliación de inventario vacía, el contador del cupón y que respondieron las dos réplicas. Crea sus propios datos con la API y vacía los carritos de los clientes antes de cada escenario, así que se puede repetir sin reiniciar nada. Usa los clientes `concurrencia01@shopcart.gt` a `concurrencia20@shopcart.gt` (contraseña `Concurrencia2026!`, semilla `S005`). Cada corrida inicia sesión una vez por cliente, y el login admite 5 intentos por minuto por IP y correo (A-07), así que no conviene repetirla más de unas 4 veces por minuto.
 
 `pnpm test:integracion` recrea la base `shopcart_test` desde cero en cada corrida (las tablas ledger no admiten `DELETE`), aplica todos los scripts y, solo en esa base, los SPs de `database/test/`. Las pruebas no escriben SQL: preparan sus datos con esos `SP_Pruebas_*`, y cada prueba crea datos únicos en lugar de borrar los de otras.
 
