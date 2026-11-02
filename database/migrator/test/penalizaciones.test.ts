@@ -214,3 +214,18 @@ describe('sin SQL en el backend (E8-H02, enunciado §08)', () => {
     }
   });
 });
+
+describe('fin de línea del repositorio (verificación de entrega)', () => {
+  // Un evaluador en Windows clona con core.autocrlf=true: sin estas reglas, los scripts y el SQL que corren en
+  // contenedores Linux llegarían con CRLF, y los binarios se corromperían.
+  const atributos = readFileSync(join(RAIZ, '.gitattributes'), 'utf8').split(/?
+/);
+
+  it('fuerza LF en todo el texto', () => {
+    expect(atributos).toContain('* text=auto eol=lf');
+  });
+
+  it.each(['png', 'pdf', 'xlsx'])('trata *.%s como binario', (extension) => {
+    expect(atributos).toContain(`*.${extension} binary`);
+  });
+});

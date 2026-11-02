@@ -2,6 +2,11 @@
 * text=auto eol=lf
 
 *.png binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.pdf binary
+*.xlsx binary
 *.jpg binary
 *.ico binary
 *.woff2 binary
