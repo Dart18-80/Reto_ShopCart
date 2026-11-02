@@ -1,5 +1,5 @@
 import { createWriteStream } from 'node:fs';
-import { mkdir, open, rename, rm, stat } from 'node:fs/promises';
+import { mkdir, open, readdir, rename, rm, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -53,6 +53,25 @@ export function crearAlmacenEnDisco(directorio: string): AlmacenArchivos {
 
     async borrar(nombre: string) {
       await rm(ruta(nombre), { force: true });
+    },
+
+    async listar() {
+      let nombres: string[];
+      try {
+        nombres = await readdir(directorio);
+      } catch (error) {
+        if (noExiste(error)) return [];
+        throw error;
+      }
+      const archivos = await Promise.all(
+        nombres
+          .filter((nombre) => NOMBRE_VALIDO.test(nombre))
+          .map(async (nombre) => ({
+            nombre,
+            modificado: (await stat(join(directorio, nombre))).mtime,
+          })),
+      );
+      return archivos;
     },
   };
 }

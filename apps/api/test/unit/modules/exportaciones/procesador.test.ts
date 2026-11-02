@@ -40,6 +40,9 @@ function almacenEnMemoria() {
       archivos.delete(nombre);
       return Promise.resolve();
     }),
+    listar: vi.fn(() =>
+      Promise.resolve([...archivos.keys()].map((nombre) => ({ nombre, modificado: new Date() }))),
+    ),
   } satisfies AlmacenArchivos;
   return { almacen, archivos };
 }

@@ -12,6 +12,8 @@ export interface AlmacenArchivos {
   leer(nombre: string): Promise<Readable>;
   /** Idempotente: borrar un archivo que ya no existe no falla. */
   borrar(nombre: string): Promise<void>;
+  /** Los archivos guardados (solo los nombres que genera el servidor) con su fecha de modificación. */
+  listar(): Promise<{ nombre: string; modificado: Date }[]>;
 }
 
 export class ArchivoNoEncontrado extends Error {

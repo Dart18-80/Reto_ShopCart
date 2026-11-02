@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { mkdtemp, readdir } from 'node:fs/promises';
+import { mkdtemp, readdir, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
@@ -391,6 +391,34 @@ describe('exportación asíncrona de reportes (E7-H05, A-24)', () => {
       .set(comoCliente(admin));
     expect(archivo.status).toBe(410);
     expect(leerError(archivo)).toMatchObject({ codigo: 'EXPORTACION_EXPIRADA' });
+  });
+
+  it('la purga borra un archivo sin referencia de más de 24 h, nunca uno referenciado', async () => {
+    const solicitada = leerDatos(
+      await solicitar(replica1, 'ventas', { formato: 'pdf', filtros: { agrupacion: 'semana' } }),
+      exportacionSchema,
+    );
+    await hastaQueTermine(solicitada.idExportacion);
+    const referenciado = (await readdir(directorio)).find((a) =>
+      a.startsWith(`${String(solicitada.idExportacion)}-`),
+    );
+    if (referenciado === undefined) throw new Error('No se generó el archivo');
+    const huerfano = `999999-${randomUUID()}.xlsx`;
+    await writeFile(join(directorio, huerfano), 'sin referencia');
+    const haceDosDias = new Date(Date.now() - 48 * 3_600_000);
+    await utimes(join(directorio, huerfano), haceDosDias, haceDosDias);
+    await utimes(join(directorio, referenciado), haceDosDias, haceDosDias);
+    const purga = crearTareasDeExportaciones({
+      procesador: procesador1,
+      almacen,
+      logger: silencioso,
+    }).find((t) => t.nombre === 'Exportaciones.Purgar');
+
+    await purga?.ejecutar();
+    const quedan = await readdir(directorio);
+
+    expect(quedan).not.toContain(huerfano);
+    expect(quedan).toContain(referenciado);
   });
 
   it('pasar el máximo de exportaciones en curso responde 429', async () => {

@@ -1,4 +1,4 @@
-import { mkdtemp, readdir } from 'node:fs/promises';
+import { mkdtemp, readdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
@@ -52,5 +52,18 @@ describe('almacén en disco (E7-H05, A-24)', () => {
     await almacen.borrar('3-abc.pdf');
 
     await expect(almacen.leer('3-abc.pdf')).rejects.toBeInstanceOf(ArchivoNoEncontrado);
+  });
+
+  it('listar devuelve solo los archivos del servidor, con su fecha; sin directorio, ninguno', async () => {
+    const { almacen, directorio } = await preparar();
+    await almacen.guardar('4-abc.xlsx', Readable.from(['x']));
+    await writeFile(join(directorio, 'ajeno.txt'), 'no es nuestro');
+
+    const archivos = await almacen.listar();
+    const vacio = await crearAlmacenEnDisco(join(directorio, 'no-existe')).listar();
+
+    expect(archivos.map((a) => a.nombre)).toEqual(['4-abc.xlsx']);
+    expect(archivos[0]?.modificado).toBeInstanceOf(Date);
+    expect(vacio).toEqual([]);
   });
 });

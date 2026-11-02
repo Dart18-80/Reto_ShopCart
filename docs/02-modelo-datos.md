@@ -839,7 +839,7 @@ Los SPs marcados **(interno)** solo los invocan otros SPs, nunca la API. Así ha
 ### Exportaciones (E7-H05, A-24)
 - **Administrador:** `SP_Exportaciones_Solicitar` bloquea la fila del usuario, agrupa una solicitud igual vigente y aplica el máximo de pendientes (50801). `SP_Exportaciones_Obtener` y `SP_Exportaciones_Listar` devuelven solo las propias.
 - **Sistema (procesador):** `SP_Exportaciones_Tomar` (`UPDLOCK, READPAST`, arrendamiento con token), `SP_Exportaciones_Completar` y `SP_Exportaciones_RegistrarFallo`, estos dos con compare-and-set del token.
-- **Sistema (job con `sp_getapplock`):** `SP_Exportaciones_Expirar` y `SP_Exportaciones_QuitarArchivo`.
+- **Sistema (job con `sp_getapplock`):** `SP_Exportaciones_Expirar` y `SP_Exportaciones_QuitarArchivo`. Para el barrido de los huérfanos, `SP_Exportaciones_ReferenciasExistentes`: de una lista JSON de nombres (A-22), los que alguna solicitud todavía referencia (V022: `IX_SolicitudExportacion_Referencia`).
 - **Vista:** `VW_Exportaciones_Solicitudes`, la solicitud con el código de su estado y sin el token.
 
 ### Dashboard, bitácora y sistema

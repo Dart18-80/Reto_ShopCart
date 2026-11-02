@@ -182,6 +182,15 @@ export const exportacionesRepository = {
     }));
   },
 
+  /** De los nombres dados, los que alguna solicitud todavía referencia (A-22: la lista viaja como JSON). */
+  async referenciasExistentes(nombres: string[]): Promise<Set<string>> {
+    const filas = await ejecutarSP<{ ReferenciaArchivo: string }>(
+      'SP_Exportaciones_ReferenciasExistentes',
+      { Referencias: { tipo: sql.NVarChar(sql.MAX), valor: JSON.stringify(nombres) } },
+    );
+    return new Set(filas.map((f) => f.ReferenciaArchivo));
+  },
+
   async quitarArchivo(idExportacion: number): Promise<void> {
     await ejecutarSP('SP_Exportaciones_QuitarArchivo', {
       IDSolicitudExportacion: { tipo: sql.Int, valor: idExportacion },

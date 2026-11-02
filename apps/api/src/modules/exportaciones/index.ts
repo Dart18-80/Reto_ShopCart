@@ -76,10 +76,14 @@ export const crearTareasDeExportaciones = ({
   procesador,
   almacen,
   logger,
-}: Pick<DependenciasExportaciones, 'procesador' | 'almacen' | 'logger'>): Tarea[] =>
+  reloj = relojDelSistema,
+}: Pick<DependenciasExportaciones, 'procesador' | 'almacen' | 'logger'> & {
+  reloj?: Reloj;
+}): Tarea[] =>
   tareasExportaciones({
     procesador,
     repositorio: exportacionesRepository,
     almacen,
     logger: logger.child({ modulo: 'exportaciones', tarea: 'purga' }),
+    reloj,
   });
