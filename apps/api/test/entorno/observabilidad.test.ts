@@ -42,6 +42,11 @@ const lineasDeLog = async (servicio: string) =>
         .parse(JSON.parse(linea)),
     );
 
+// Los logs del contenedor acumulan cada arranque (otras pruebas de entorno detienen y levantan la réplica):
+// solo cuenta el proceso actual, lo que viene después del último apagado.
+const delProcesoActual = <T extends { msg?: string | undefined }>(lineas: T[]): T[] =>
+  lineas.slice(lineas.findLastIndex((l) => l.msg === 'API detenida') + 1);
+
 const grafana = async (ruta: string, consulta: Record<string, string> = {}) => {
   const respuesta = await fetch(`${GRAFANA}${ruta}?${new URLSearchParams(consulta).toString()}`);
   return { status: respuesta.status, cuerpo: (await respuesta.json()) as unknown };
@@ -57,15 +62,21 @@ describe('observabilidad en el entorno real (E9-H01)', () => {
   it('sin el perfil, la API atiende y cada señal registra una sola advertencia, no una por lote', async (contexto) => {
     if (perfilActivo) contexto.skip();
     const salud = await fetch(`${URL_BASE}/api/v1/health`);
-
-    const lineas = await lineasDeLog('api-1');
+    const avisosDe = async (senal: string) => {
+      const avisos = delProcesoActual(await lineasDeLog('api-1')).filter((l) => l.senal === senal);
+      return {
+        caidas: avisos.filter((l) => l.msg?.includes('no está disponible')).length,
+        vueltas: avisos.filter((l) => l.msg?.includes('disponible otra vez')).length,
+      };
+    };
+    // Si otra prueba acaba de levantar la réplica, su primera exportación (métricas: cada 15 s) aún no ocurrió.
+    for (const senal of SENALES) {
+      await esperar(async () => (await avisosDe(senal)).caidas >= 1, `la advertencia de ${senal}`);
+    }
 
     expect(salud.status).toBe(200);
     for (const senal of SENALES) {
-      const avisos = lineas.filter((l) => l.senal === senal);
-      const caidas = avisos.filter((l) => l.msg?.includes('no está disponible')).length;
-      const vueltas = avisos.filter((l) => l.msg?.includes('disponible otra vez')).length;
-      expect(caidas).toBeGreaterThanOrEqual(1);
+      const { caidas, vueltas } = await avisosDe(senal);
       expect(caidas).toBeLessThanOrEqual(vueltas + 1);
     }
   });
