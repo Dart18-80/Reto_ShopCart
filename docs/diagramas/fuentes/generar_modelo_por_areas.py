@@ -11,8 +11,8 @@ def esc(s): return s.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;"
 badge={"PK":("#1F2937","#FFFFFF","PK"),"PF":("#1F2937","#FFFFFF","PK·FK"),"FK":("#DCE3EC","#1F2937","FK"),"UQ":("#FFF1C2","#7A5A00","UQ")}
 AREAS={
  "A":("Área A — Usuarios, direcciones, catálogo e inventario",["seg","dir","cat","inv"],"TB"),
- "B":("Área B — Carrito, cupones y checkout",["car","chk"],"LR"),
- "C":("Área C — Pedidos, devoluciones y bitácora",["ped","bit"],"LR"),
+ "B":("Área B — Carrito, cupones, checkout y pasarela simulada",["car","chk","pas"],"LR"),
+ "C":("Área C — Pedidos, devoluciones, bitácora, exportaciones y sistema",["ped","bit","sis"],"LR"),
 }
 AREA_OF={k:a for a,(_,ms,_) in AREAS.items() for k in ms}
 def table_html(name, ghost=False):

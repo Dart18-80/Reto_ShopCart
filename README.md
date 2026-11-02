@@ -227,7 +227,10 @@ Las transiciones viven en la tabla `TransicionEstadoPedido` (por rol) y en el ma
 
 ## 6. Diagrama entidad-relación
 
-Vista general de las entidades y sus relaciones. Las columnas, los tipos, las constraints y los índices de cada tabla están en [docs/02-modelo-datos.md](docs/02-modelo-datos.md) (§2 por áreas y §3 tabla por tabla), con los diagramas en imagen en [docs/diagramas/](docs/diagramas/).
+Vista general de las entidades y sus relaciones. Las columnas, los tipos, las constraints y los índices de cada tabla están en [docs/02-modelo-datos.md](docs/02-modelo-datos.md) (§2 por áreas y §3 tabla por tabla). Los diagramas en imagen, generados desde [docs/diagramas/fuentes/](docs/diagramas/fuentes/):
+
+- [Arquitectura y despliegue](docs/diagramas/arquitectura.svg): réplicas, nginx, SQL Server, Redis, el volumen de exportaciones, las tareas periódicas y los puertos con sus adaptadores.
+- Modelo por áreas: [A · usuarios, catálogo e inventario](docs/diagramas/modelo-datos-area-a.svg), [B · carrito, cupones, checkout y pasarela simulada](docs/diagramas/modelo-datos-area-b.svg), [C · pedidos, devoluciones, bitácora, exportaciones y sistema](docs/diagramas/modelo-datos-area-c.svg).
 
 ```mermaid
 erDiagram
@@ -278,9 +281,13 @@ erDiagram
     Pedido ||--o{ MovimientoKardex : "referencia"
 
     Usuario ||--o{ Bitacora : "actúa"
+    Usuario ||--o{ SolicitudIdempotente : "repite con la misma llave"
+    Usuario ||--o{ SolicitudExportacion : "pide"
+    EstadoExportacion ||--o{ SolicitudExportacion : "está en"
+    PasarelaAutorizacion ||--o{ PasarelaReembolso : "se reembolsa en"
 ```
 
-Además: `ParametroSistema` (configuración tipada de una sola fila), `SolicitudIdempotente` (llaves de idempotencia de 24 h) y las tablas propias de la pasarela simulada (`PasarelaAutorizacion`, `PasarelaReembolso`), que simulan la base de un sistema externo.
+Además: `ParametroSistema` (configuración tipada de una sola fila) y `HistorialMigracion` (los scripts aplicados por el migrador, con su checksum). `PasarelaAutorizacion` y `PasarelaReembolso` son las tablas propias de la pasarela simulada: simulan la base de un sistema externo y no tienen FK hacia el checkout.
 
 **Nomenclatura del enunciado:** `SP_Modulo_Proceso`, `VW_Modulo_Proceso`, `FU_Modulo_Proceso`, PK `IDTabla`; extensión propia `TR_`, `PK_`, `FK_`, `UQ_`, `CK_`, `DF_`, `IX_`, `UX_`. Montos `DECIMAL(12,2)`, porcentajes `DECIMAL(5,2)`, fechas `DATETIME2(3)` en UTC; nunca `FLOAT`, `REAL` ni `MONEY`.
 

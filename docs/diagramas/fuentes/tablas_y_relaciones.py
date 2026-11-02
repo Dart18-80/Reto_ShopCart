@@ -10,6 +10,8 @@ mods = {
  "chk":  ("Checkout y pago",      "#FDEBF3", "#B8417A"),
  "ped":  ("Pedidos y devoluciones","#FDECEA", "#C2412D"),
  "bit":  ("Bitácora",             "#EEF0F2", "#5B6470"),
+ "pas":  ("Pasarela simulada",    "#FCEFE6", "#B05A1E"),
+ "sis":  ("Sistema y exportaciones","#E9EEF7", "#3F5A8A"),
 }
 T = {}  # name -> (mod, cols)
 def t(mod, name, *cols): T[name] = (mod, cols)
@@ -48,6 +50,12 @@ t("ped","HistorialEstadoPedido","PK:IDHistorialEstadoPedido:bigint","FK:IDPedido
 t("ped","Devolucion","PK:IDDevolucion:int","FK:IDPedido:int","FK:IDUsuario:int",":MontoReembolso:decimal(12,2)",":FechaLocal:date")
 t("ped","DetalleDevolucion","PK:IDDetalleDevolucion:int","FK:IDDevolucion:int","FK:IDDetallePedido:int",":Cantidad:int > 0")
 t("ped","Reembolso","PK:IDReembolso:int","FK:IDPedido:int","FK:IDDevolucion:int NULL",":Origen:varchar(12)",":Monto:decimal(12,2)",":Estado:varchar(10)","UQ:LlaveIdempotencia:uniqueidentifier")
+t("pas","PasarelaAutorizacion","PK:IDPasarelaAutorizacion:int","UQ:LlaveIdempotencia:uniqueidentifier","UQ:IDTransaccion:varchar(64)",":Monto:decimal(12,2)",":Marca · UltimosDigitos:varchar · char(4)",":Estado:varchar(12)")
+t("pas","PasarelaReembolso","PK:IDPasarelaReembolso:int","UQ:LlaveIdempotencia:uniqueidentifier","FK:IDTransaccion:varchar(64)","UQ:IDReembolso:varchar(64)",":Monto:decimal(12,2)")
+t("sis","SolicitudIdempotente","PK:IDSolicitudIdempotente:bigint","FK:IDUsuario:int","UQ:LlaveIdempotencia:(IDUsuario, llave)",":Operacion:varchar(40)",":HashSolicitud:binary(32)",":Respuesta:JSON")
+t("sis","EstadoExportacion","PK:IDEstadoExportacion:tinyint 1–5","UQ:Codigo:varchar(12)")
+t("sis","SolicitudExportacion","PK:IDSolicitudExportacion:int","FK:IDUsuario:int",":Reporte · Formato:varchar",":Filtros:JSON",":HashFiltros:binary(32)","FK:IDEstadoExportacion:tinyint",":TokenArrendamiento · ArrendadoHasta:fencing",":ReferenciaArchivo:varchar(100) NULL",":FechaExpiracion:datetime2 NULL")
+t("sis","HistorialMigracion","PK:IDHistorialMigracion:int",":Script:nvarchar(260)",":Tipo:char(1) V · R · S",":Checksum:binary(32)")
 t("bit","Bitacora","PK:IDBitacora:bigint",":Modulo · Entidad:varchar",":IDEntidad:varchar(50)",":Accion:varchar(20)",":ValorAnterior / Nuevo:JSON","FK:IDUsuario:int NULL",":RequestId:uniqueidentifier")
 
 # relations: parent, child, parent_card ('1' or '01'), child_card ('n0' zero-many, 'n1' one-many, '01' zero-one)
@@ -70,6 +78,9 @@ R = [
  ("Pedido","Reembolso","1","n0"),("Devolucion","Reembolso","01","01"),
  ("Pedido","MovimientoKardex","01","n0"),("Devolucion","MovimientoKardex","01","n0"),
  ("Usuario","Bitacora","01","n0"),
+ ("PasarelaAutorizacion","PasarelaReembolso","1","n0"),
+ ("Usuario","SolicitudIdempotente","1","n0"),
+ ("Usuario","SolicitudExportacion","1","n0"),("EstadoExportacion","SolicitudExportacion","1","n0"),
 ]
 def esc(s): return s.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
 L=[]

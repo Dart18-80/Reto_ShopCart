@@ -56,8 +56,8 @@ El modelo se divide en **tres áreas temáticas** para que se pueda leer. En cad
 | Área | Contenido | Imagen |
 |---|---|---|
 | A | Usuarios, direcciones, catálogo e inventario | ![Área A](./diagramas/modelo-datos-area-a.svg) |
-| B | Carrito, cupones y checkout | ![Área B](./diagramas/modelo-datos-area-b.svg) |
-| C | Pedidos, devoluciones y bitácora | ![Área C](./diagramas/modelo-datos-area-c.svg) |
+| B | Carrito, cupones, checkout y pasarela simulada | ![Área B](./diagramas/modelo-datos-area-b.svg) |
+| C | Pedidos, devoluciones, bitácora, exportaciones y sistema | ![Área C](./diagramas/modelo-datos-area-c.svg) |
 
 Las imágenes se regeneran desde `diagramas/fuentes/`. Las tablas y relaciones se editan en `tablas_y_relaciones.py`; después se ejecuta `python generar_modelo_por_areas.py` y `dot -Tsvg ../modelo-datos-area-a.dot -o ../modelo-datos-area-a.svg`, y lo mismo para b y c. A continuación, una versión simplificada en Mermaid, que GitHub renderiza directamente.
 
@@ -121,7 +121,7 @@ erDiagram
     }
 ```
 
-### 2.2 Carrito, cupones y checkout
+### 2.2 Carrito, cupones, checkout y pasarela simulada
 
 ```mermaid
 erDiagram
@@ -142,6 +142,7 @@ erDiagram
     SesionCheckout |o--o| UsoCupon : "reserva"
     Cupon ||--o{ UsoCupon : "se consume en"
     Usuario ||--o{ UsoCupon : "usa"
+    PasarelaAutorizacion ||--o{ PasarelaReembolso : "se reembolsa en"
 
     Carrito {
         int IDCarrito PK
@@ -186,9 +187,30 @@ erDiagram
         uniqueidentifier LlaveIdempotencia UK
         varchar Estado
     }
+    ParametroSistema {
+        int IDParametroSistema PK
+        tinyint DiasGarantiaPrecio
+        smallint MinutosReserva
+        decimal MontoEnvioGratis
+        smallint HorasCarritoAbandonado
+    }
+    PasarelaAutorizacion {
+        int IDPasarelaAutorizacion PK
+        uniqueidentifier LlaveIdempotencia UK
+        varchar IDTransaccion UK
+        decimal Monto
+        varchar Estado
+    }
+    PasarelaReembolso {
+        int IDPasarelaReembolso PK
+        uniqueidentifier LlaveIdempotencia UK
+        varchar IDTransaccion FK
+        varchar IDReembolso UK
+        decimal Monto
+    }
 ```
 
-### 2.3 Pedidos, devoluciones y bitácora
+### 2.3 Pedidos, devoluciones, bitácora, exportaciones y sistema
 
 ```mermaid
 erDiagram
@@ -209,6 +231,9 @@ erDiagram
     Devolucion |o--o| Reembolso : "origina"
     Pedido ||--o{ MovimientoKardex : "referencia"
     Usuario ||--o{ Bitacora : "actúa"
+    Usuario ||--o{ SolicitudIdempotente : "repite con la misma llave"
+    Usuario ||--o{ SolicitudExportacion : "pide"
+    EstadoExportacion ||--o{ SolicitudExportacion : "está en"
 
     Pedido {
         int IDPedido PK
@@ -245,6 +270,32 @@ erDiagram
         varchar Modulo
         varchar Entidad
         varchar Accion
+    }
+    SolicitudIdempotente {
+        bigint IDSolicitudIdempotente PK
+        int IDUsuario FK
+        uniqueidentifier LlaveIdempotencia
+        varchar Operacion
+        binary HashSolicitud
+    }
+    EstadoExportacion {
+        tinyint IDEstadoExportacion PK
+        varchar Codigo UK
+    }
+    SolicitudExportacion {
+        int IDSolicitudExportacion PK
+        int IDUsuario FK
+        varchar Reporte
+        varchar Formato
+        tinyint IDEstadoExportacion FK
+        varchar ReferenciaArchivo
+        datetime2 FechaExpiracion
+    }
+    HistorialMigracion {
+        int IDHistorialMigracion PK
+        nvarchar Script
+        char Tipo
+        binary Checksum
     }
 ```
 
