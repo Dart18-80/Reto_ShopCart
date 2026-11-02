@@ -81,19 +81,24 @@ BEGIN
                    TokenArrendamiento = NEWID(), FechaActualizacion = SYSUTCDATETIME()
             WHERE  IDIntentoPago = @IDIntento;
 
-        -- N-09: un reembolso por cancelación por pedido (UX_Reembolso_CancelacionPorPedido); su llave es
-        -- determinista, así la petición, el Admin y el job envían siempre la misma a la pasarela.
-        INSERT INTO dbo.Reembolso (IDPedido, IDDevolucion, Origen, Monto, Estado, LlaveIdempotencia,
-                                   FechaProximoIntento)
-        VALUES (@IDPedido, NULL, 'Cancelacion', @Total - @Reembolsado, 'Pendiente',
-                CONVERT(UNIQUEIDENTIFIER, HASHBYTES('MD5', CONCAT(N'Reembolso|', @IDPedido, N'|Cancelacion'))),
-                SYSUTCDATETIME());
-        SET @IDReembolso = SCOPE_IDENTITY();
+        -- Decisión del PO (cierre de la Fase 1): con el pago en revisión (V019) la autorización ya no existe en la
+        -- pasarela: no hay cobro que devolver, así que no se crea reembolso (IDReembolso NULL).
+        IF @EstadoIntento <> 'EnRevision'
+        BEGIN
+            -- N-09: un reembolso por cancelación por pedido (UX_Reembolso_CancelacionPorPedido); su llave es
+            -- determinista, así la petición, el Admin y el job envían siempre la misma a la pasarela.
+            INSERT INTO dbo.Reembolso (IDPedido, IDDevolucion, Origen, Monto, Estado, LlaveIdempotencia,
+                                       FechaProximoIntento)
+            VALUES (@IDPedido, NULL, 'Cancelacion', @Total - @Reembolsado, 'Pendiente',
+                    CONVERT(UNIQUEIDENTIFIER, HASHBYTES('MD5', CONCAT(N'Reembolso|', @IDPedido, N'|Cancelacion'))),
+                    SYSUTCDATETIME());
+            SET @IDReembolso = SCOPE_IDENTITY();
 
-        -- A-13: el contador con CHECK (MontoReembolsado BETWEEN 0 AND Total) es la última defensa.
-        UPDATE dbo.Pedido
-        SET    MontoReembolsado = MontoReembolsado + (@Total - @Reembolsado)
-        WHERE  IDPedido = @IDPedido;
+            -- A-13: el contador con CHECK (MontoReembolsado BETWEEN 0 AND Total) es la última defensa.
+            UPDATE dbo.Pedido
+            SET    MontoReembolsado = MontoReembolsado + (@Total - @Reembolsado)
+            WHERE  IDPedido = @IDPedido;
+        END
 
         COMMIT;
     END TRY

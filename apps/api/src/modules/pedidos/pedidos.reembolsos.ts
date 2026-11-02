@@ -189,10 +189,14 @@ export function crearReembolsosService({ repositorio, pasarela, logger, reportes
 
     async cancelar(idPedido: number, motivo: string): Promise<Cancelacion> {
       const idReembolso = await reportes.tras(repositorio.cancelar(idPedido, motivo));
-      const estado = await procesarTrasConfirmar(idReembolso, { idPedido });
+      // Con el pago en revisión no hay reembolso: la autorización ya no existe en la pasarela.
+      const reembolso =
+        idReembolso === null
+          ? null
+          : { idReembolso, estado: await procesarTrasConfirmar(idReembolso, { idPedido }) };
       const pedido = await repositorio.obtener(idPedido);
       if (pedido === null) throw new Error(`El pedido ${String(idPedido)} cancelado no existe`);
-      return { pedido, reembolso: { idReembolso, estado } };
+      return { pedido, reembolso };
     },
 
     async registrarDevolucion(

@@ -300,14 +300,15 @@ export function crearPagoService({
         mensaje: null,
       });
     } else if (enPasarela.estado === 'Capturada') {
-      // Sin pedido no puede haber captura: no se toca el cobro ni se dice que no hubo cobro; la conciliación
-      // lo deja EnRevision para revisión manual.
-      logger.error(
+      // Sin pedido no puede haber captura: no se toca el cobro ni se dice que no hubo cobro. La conciliación lo
+      // deja EnRevision y lo registra en error una sola vez; aquí basta una advertencia por petición.
+      logger.warn(
         { idIntento: arrendamiento.idIntento },
         'Cobro capturado en una sesión vencida sin pedido; queda para la conciliación',
       );
-      throw new AppError('INVARIANTE_INTERNA', {
-        mensaje: 'No pudimos confirmar el estado de tu pago. Contáctanos antes de volver a pagar.',
+      throw new AppError('PAGO_EN_REVISION', {
+        mensaje:
+          'Tu pago está en verificación: no vuelvas a pagar. Te contactaremos para resolverlo.',
       });
     } else {
       await actualizar(arrendamiento, {

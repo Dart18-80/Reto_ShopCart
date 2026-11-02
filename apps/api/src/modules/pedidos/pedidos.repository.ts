@@ -17,6 +17,7 @@ import type {
 } from './pedidos.schemas.js';
 import type {
   CambioDeEstado,
+  EstadoPago,
   EstadoReembolso,
   Pedido,
   Reembolso,
@@ -31,6 +32,7 @@ interface FilaPedido {
   IDPedido: number;
   NumeroPedido: string;
   Estado: string;
+  EstadoPago: EstadoPago;
   Subtotal: number;
   Descuento: number;
   CostoEnvio: number;
@@ -79,6 +81,7 @@ interface FilaResumen {
   IDPedido: number;
   NumeroPedido: string;
   Estado: string;
+  EstadoPago: EstadoPago;
   Total: number;
   Articulos: number;
   FechaPago: Date;
@@ -149,6 +152,7 @@ const aResumen = (fila: FilaResumen): ResumenPedido => ({
   idPedido: fila.IDPedido,
   numeroPedido: fila.NumeroPedido,
   estado: fila.Estado,
+  estadoPago: fila.EstadoPago,
   total: aMonto(fila.Total),
   articulos: fila.Articulos,
   fechaPago: fila.FechaPago,
@@ -168,6 +172,7 @@ const aPedido = (
   idPedido: fila.IDPedido,
   numeroPedido: fila.NumeroPedido,
   estado: fila.Estado,
+  estadoPago: fila.EstadoPago,
   subtotal: aMonto(fila.Subtotal),
   descuento: aMonto(fila.Descuento),
   costoEnvio: aMonto(fila.CostoEnvio),
@@ -271,8 +276,9 @@ export const pedidosRepository = {
   },
 
   /** N-09: la transacción de la cancelación; devuelve el reembolso Pendiente que dejó. */
-  async cancelar(idPedido: number, motivo: string): Promise<number> {
-    const [fila] = await ejecutarSP<{ IDReembolso: number }>('SP_Pedidos_Cancelar', {
+  /** El reembolso creado; null si el pago estaba en revisión (no hay cobro que devolver). */
+  async cancelar(idPedido: number, motivo: string): Promise<number | null> {
+    const [fila] = await ejecutarSP<{ IDReembolso: number | null }>('SP_Pedidos_Cancelar', {
       IDPedido: { tipo: sql.Int, valor: idPedido },
       Motivo: { tipo: sql.NVarChar(250), valor: motivo },
     });

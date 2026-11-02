@@ -26,6 +26,7 @@ const PEDIDO: Pedido = {
   idPedido: 99,
   numeroPedido: 'SC-000099',
   estado: 'Pagado',
+  estadoPago: 'Confirmado',
   subtotal: CERO,
   descuento: CERO,
   costoEnvio: CERO,
@@ -354,7 +355,7 @@ describe('checkout.pago (E5-H03)', () => {
     );
   });
 
-  it('Cerrar con el cobro Capturado y sin pedido es una invariante rota: no toca el intento ni dice "sin cobro"', async () => {
+  it('Cerrar con el cobro Capturado y sin pedido responde PAGO_EN_REVISION: no toca el intento ni dice "sin cobro"', async () => {
     const { servicio, repositorio, pasarela } = preparar({ accion: 'Cerrar', ...ARRENDAMIENTO });
     pasarela.consultar.mockResolvedValueOnce({
       estado: 'Capturada',
@@ -365,7 +366,8 @@ describe('checkout.pago (E5-H03)', () => {
 
     const error = await servicio.pagar(SOLICITUD).catch((e: unknown) => e);
 
-    expect(error).toMatchObject({ codigo: 'INVARIANTE_INTERNA', status: 500 });
+    expect(error).toMatchObject({ codigo: 'PAGO_EN_REVISION', status: 409 });
+    expect(error).toHaveProperty('message', expect.stringContaining('no vuelvas a pagar'));
     expect(repositorio.actualizarIntento).not.toHaveBeenCalled();
     expect(pasarela.anular).not.toHaveBeenCalled();
   });

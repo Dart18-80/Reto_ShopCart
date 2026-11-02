@@ -5,6 +5,7 @@ import request from 'supertest';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { crearApp } from '../../../src/app.js';
+import { checkoutRepository } from '../../../src/modules/checkout/checkout.repository.js';
 import { crearTareasDeCarrito } from '../../../src/modules/carrito/index.js';
 import { crearTareasDeCheckout } from '../../../src/modules/checkout/index.js';
 import { crearTareasDePedidos, pedidosParaCheckout } from '../../../src/modules/pedidos/index.js';
@@ -348,6 +349,26 @@ describe('conciliación de pagos (E5-H04, N-03)', () => {
     expect(await intentosDe(idSesion)).toMatchObject([{ Estado: 'EnRevision', Arrendado: false }]);
     expect(segunda).toMatchObject({ EnRevision: 0 });
     expect((await pagoDe(idSesion)).Pedidos).toBe(1);
+  });
+
+  it('un cobro en revisión sin pedido: el reintento con la misma llave responde PAGO_EN_REVISION con un mensaje claro', async () => {
+    const { cliente, idSesion } = await sesionDePago();
+    const llave = randomUUID();
+    await pagar(app, cliente.token, llave, TARJETA_TIEMPO_AGOTADO);
+    await abandonarIntento(idSesion);
+    const toma = await checkoutRepository.tomarIntentoPorConciliar(120, 60);
+    if (!toma.ejecutada || toma.intento === null)
+      throw new Error('La conciliación no tomó el intento');
+    await checkoutRepository.resolverIntentoConciliado(toma.intento, { estado: 'EnRevision' });
+
+    const reintento = await pagar(app, cliente.token, llave, TARJETA_TIEMPO_AGOTADO);
+
+    expect(reintento.status).toBe(409);
+    expect(leerError(reintento)).toMatchObject({
+      codigo: 'PAGO_EN_REVISION',
+      mensaje: expect.stringContaining('no vuelvas a pagar') as unknown,
+    });
+    expect(await intentosDe(idSesion)).toMatchObject([{ Estado: 'EnRevision' }]);
   });
 
   it('no toca un intento cuyo arrendamiento venció hace menos de 2 minutos', async () => {

@@ -17,7 +17,10 @@ BEGIN
     SELECT p.IDPedido, p.NumeroPedido, e.Codigo AS Estado, p.Subtotal, p.Descuento, p.CostoEnvio, p.Total,
            p.BaseImponible, p.IVA, p.MontoReembolsado, p.CodigoCupon, p.NombreMetodoEnvio, p.FechaEstimadaEntrega,
            p.FechaPago, p.FechaPagoLocal, p.MarcaTarjeta, p.UltimosDigitos, p.NombreRecibe, p.TelefonoRecibe,
-           p.Departamento, p.Municipio, p.DireccionLinea, p.Referencia
+           p.Departamento, p.Municipio, p.DireccionLinea, p.Referencia,
+           -- El cobro de un pedido con el intento en revisión manual (V019) se muestra "en verificación".
+           IIF(EXISTS (SELECT 1 FROM dbo.IntentoPago AS i WHERE i.IDIntentoPago = p.IDIntentoPago AND i.Estado = 'EnRevision'),
+               'EnVerificacion', 'Confirmado') AS EstadoPago
     FROM   dbo.Pedido AS p
     JOIN   dbo.EstadoPedido AS e ON e.IDEstadoPedido = p.IDEstadoPedido
     WHERE  p.IDPedido = @IDPedido;

@@ -28,10 +28,15 @@ export interface LineaPedido {
 }
 
 /** RF-06, M-04: el pedido con las copias congeladas al confirmar el pago. */
+/** El cobro de un pedido: EnVerificacion si su intento quedó en revisión manual (V019). */
+export const ESTADOS_PAGO = ['Confirmado', 'EnVerificacion'] as const;
+export type EstadoPago = (typeof ESTADOS_PAGO)[number];
+
 export interface Pedido {
   idPedido: number;
   numeroPedido: string;
   estado: string;
+  estadoPago: EstadoPago;
   subtotal: Decimal;
   descuento: Decimal;
   costoEnvio: Decimal;
@@ -73,6 +78,7 @@ export interface ResumenPedido {
   idPedido: number;
   numeroPedido: string;
   estado: string;
+  estadoPago: EstadoPago;
   total: Decimal;
   articulos: number;
   fechaPago: Date;
@@ -122,7 +128,8 @@ export type ResultadoReembolso =
 /** N-09: el pedido cancelado con su reembolso. */
 export interface Cancelacion {
   pedido: Pedido;
-  reembolso: { idReembolso: number; estado: EstadoReembolso };
+  /** null si el pago estaba en revisión: la autorización ya no existe y no hay cobro que devolver. */
+  reembolso: { idReembolso: number; estado: EstadoReembolso } | null;
 }
 
 /** N-10: la devolución registrada con su reembolso. */

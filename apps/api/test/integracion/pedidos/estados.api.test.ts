@@ -1,5 +1,6 @@
 import sql from 'mssql';
 import request from 'supertest';
+import { z } from 'zod';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { crearApp } from '../../../src/app.js';
 import {
@@ -7,7 +8,7 @@ import {
   type Transicion,
 } from '../../../src/modules/pedidos/pedidos.transiciones.js';
 import { ejecutarSP } from '../../../src/shared/db/index.js';
-import { leerError } from '../../unit/respuestas.js';
+import { leerDatos, leerError } from '../../unit/respuestas.js';
 import { dependenciasDePrueba } from '../../app-de-prueba.js';
 import { iniciarSesion, leerSesion } from '../auth/apoyo-auth.js';
 import { usarBaseDePruebas } from '../base-de-pruebas.js';
@@ -225,5 +226,40 @@ describe('el mapa del servicio coincide con TransicionEstadoPedido (E6-H02, N-08
     const sinUnRol = [{ ...primera, roles: primera.roles.slice(1) }, ...resto];
 
     expect(aFilas(sinUnRol)).not.toEqual(await tabla());
+  });
+});
+
+describe('pedido con el pago en revisión (cierre de la Fase 1)', () => {
+  it('no puede avanzar de estado: 409 PAGO_EN_REVISION y el cliente lo ve "EnVerificacion"', async () => {
+    const { cliente, pedido } = await pedidoPagado(app, estandar);
+    await ejecutarSP('SP_Pruebas_PonerPagoEnRevision', {
+      IDPedido: { tipo: sql.Int, valor: pedido.idPedido },
+    });
+
+    const respuesta = await cambiar(pedido.idPedido, 'Pagado', 'EnPreparacion');
+    const detalle = await request(app)
+      .get(`/api/v1/pedidos/${String(pedido.idPedido)}`)
+      .set(comoCliente(cliente.token));
+    const lista = await request(app).get('/api/v1/pedidos').set(comoCliente(cliente.token));
+
+    expect(respuesta.status).toBe(409);
+    expect(leerError(respuesta)).toMatchObject({ codigo: 'PAGO_EN_REVISION' });
+    expect(leerDatos(detalle, z.object({ estadoPago: z.string(), estado: z.string() }))).toEqual({
+      estadoPago: 'EnVerificacion',
+      estado: 'Pagado',
+    });
+    expect(
+      leerDatos(lista, z.array(z.object({ idPedido: z.number(), estadoPago: z.string() }))),
+    ).toContainEqual({ idPedido: pedido.idPedido, estadoPago: 'EnVerificacion' });
+  });
+
+  it('un pedido con el pago confirmado se ve "Confirmado"', async () => {
+    const { cliente, pedido } = await pedidoPagado(app, estandar);
+
+    const detalle = await request(app)
+      .get(`/api/v1/pedidos/${String(pedido.idPedido)}`)
+      .set(comoCliente(cliente.token));
+
+    expect(leerDatos(detalle, z.object({ estadoPago: z.string() })).estadoPago).toBe('Confirmado');
   });
 });

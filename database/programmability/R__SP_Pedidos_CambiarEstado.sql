@@ -42,6 +42,10 @@ BEGIN
         SELECT @IDActual = p.IDEstadoPedido FROM dbo.Pedido AS p WITH (UPDLOCK, ROWLOCK) WHERE p.IDPedido = @IDPedido;
         IF @IDActual IS NULL
             THROW 50001, N'El pedido no existe.', 1;
+        -- Decisión del PO (cierre de la Fase 1): con el pago en revisión manual (V019), el pedido no avanza.
+        IF EXISTS (SELECT 1 FROM dbo.Pedido AS p JOIN dbo.IntentoPago AS i ON i.IDIntentoPago = p.IDIntentoPago
+                   WHERE p.IDPedido = @IDPedido AND i.Estado = 'EnRevision')
+            THROW 50706, N'El pago de este pedido está en verificación: no puede avanzar hasta resolverlo.', 1;
 
         -- sqlserver-sp §9.4: concurrencia optimista sobre el estado.
         UPDATE dbo.Pedido

@@ -31,7 +31,9 @@ BEGIN
 
     SELECT p.IDPedido, p.NumeroPedido, e.Codigo AS Estado, p.Total, p.FechaPago, p.FechaPagoLocal,
            (SELECT SUM(d.Cantidad) FROM dbo.DetallePedido AS d WHERE d.IDPedido = p.IDPedido) AS Articulos,
-           u.IDUsuario AS IDCliente, u.Nombre AS NombreCliente, u.Correo AS CorreoCliente
+           u.IDUsuario AS IDCliente, u.Nombre AS NombreCliente, u.Correo AS CorreoCliente,
+           IIF(EXISTS (SELECT 1 FROM dbo.IntentoPago AS i WHERE i.IDIntentoPago = p.IDIntentoPago AND i.Estado = 'EnRevision'),
+               'EnVerificacion', 'Confirmado') AS EstadoPago
     FROM   dbo.Pedido AS p
     JOIN   dbo.EstadoPedido AS e ON e.IDEstadoPedido = p.IDEstadoPedido
     JOIN   dbo.Usuario AS u ON u.IDUsuario = p.IDUsuario

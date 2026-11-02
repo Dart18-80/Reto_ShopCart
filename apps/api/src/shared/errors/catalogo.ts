@@ -229,6 +229,12 @@ export const CATALOGO = {
     numeroSql: 50705,
     mensaje: 'El reembolso excede el total pagado.',
   },
+  // Decisión del PO (cierre de la Fase 1): el pago está en revisión manual (V019).
+  PAGO_EN_REVISION: {
+    http: 409,
+    numeroSql: 50706,
+    mensaje: 'El pago de este pedido está en verificación.',
+  },
 
   // Exportaciones (50800–50899, E7-H05). Las dos últimas nacen en la API.
   EXPORTACIONES_PENDIENTES_MAXIMAS: {

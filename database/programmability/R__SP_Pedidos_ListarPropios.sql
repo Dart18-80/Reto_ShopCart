@@ -16,7 +16,9 @@ BEGIN
         THROW 50003, N'Los parámetros de paginación no son válidos.', 1;
 
     SELECT p.IDPedido, p.NumeroPedido, e.Codigo AS Estado, p.Total, p.FechaPago, p.FechaPagoLocal,
-           (SELECT SUM(d.Cantidad) FROM dbo.DetallePedido AS d WHERE d.IDPedido = p.IDPedido) AS Articulos
+           (SELECT SUM(d.Cantidad) FROM dbo.DetallePedido AS d WHERE d.IDPedido = p.IDPedido) AS Articulos,
+           IIF(EXISTS (SELECT 1 FROM dbo.IntentoPago AS i WHERE i.IDIntentoPago = p.IDIntentoPago AND i.Estado = 'EnRevision'),
+               'EnVerificacion', 'Confirmado') AS EstadoPago
     FROM   dbo.Pedido AS p
     JOIN   dbo.EstadoPedido AS e ON e.IDEstadoPedido = p.IDEstadoPedido
     WHERE  p.IDUsuario = @IDUsuarioActor

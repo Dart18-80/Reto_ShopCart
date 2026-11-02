@@ -424,3 +424,25 @@ describe('cancelación con reembolso (E6-H03, N-09)', () => {
     await expect(exceso).rejects.toThrow(/CK_Pedido_MontoReembolsado/);
   });
 });
+
+describe('cancelar un pedido con el pago en revisión (cierre de la Fase 1)', () => {
+  it('se cancela y reintegra la existencia, pero no se reembolsa: el cobro ya se anuló', async () => {
+    const { cliente, pedido } = await pedidoPagado(app, estandar);
+    await ejecutarSP('SP_Pruebas_PonerPagoEnRevision', {
+      IDPedido: { tipo: sql.Int, valor: pedido.idPedido },
+    });
+
+    const respuesta = await cancelarComoCliente(app, cliente.token, pedido.idPedido);
+    const { pedido: guardado, reembolsos } = await cancelacionDe(pedido.idPedido);
+
+    expect(respuesta.status).toBe(200);
+    expect(
+      leerDatos(
+        respuesta,
+        z.object({ reembolso: z.null(), pedido: z.looseObject({ estado: z.string() }) }),
+      ),
+    ).toMatchObject({ reembolso: null, pedido: { estado: 'Cancelado' } });
+    expect(guardado).toMatchObject({ Estado: 'Cancelado', MontoReembolsado: 0 });
+    expect(reembolsos).toEqual([]);
+  });
+});

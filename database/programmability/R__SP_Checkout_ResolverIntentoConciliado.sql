@@ -7,7 +7,7 @@
 --   Capturado   Pendiente o Autorizado con su pedido → se capturó
 --   EnRevision  Pago inconsistente con la pasarela, terminal y para revisión manual (V019): un pedido cuya
 --               autorización ya no existe (anulada o desconocida), o un cobro capturado sin pedido. Un reintento
---               con la misma llave responde el pedido o, sin pedido, INVARIANTE_INTERNA
+--               con la misma llave responde el pedido o, sin pedido, PAGO_EN_REVISION
 -- Compare-and-set: si el intento ya no está en @EstadoEsperado o su arrendamiento ya no es el de esta toma
 -- (@TokenArrendamiento: otro proceso lo retomó), no cambia nada y devuelve Resuelto = 0. Fallido y Anulado guardan PAGO_NO_COMPLETADO: es la respuesta que
 -- recibe un reintento con la misma llave. Solo el rol Sistema (los jobs).
@@ -85,12 +85,12 @@ BEGIN
                    IDTransaccionPasarela = COALESCE(@IDTransaccion, IDTransaccionPasarela),
                    CodigoRespuesta       = CASE WHEN @Estado IN ('Fallido', 'Anulado') THEN 'PAGO_NO_COMPLETADO'
                                                 WHEN @Estado = 'Rechazado' THEN @CodigoRespuesta
-                                                WHEN @Estado = 'EnRevision' THEN 'INVARIANTE_INTERNA'
+                                                WHEN @Estado = 'EnRevision' THEN 'PAGO_EN_REVISION'
                                                 ELSE CodigoRespuesta END,
                    MensajeRespuesta      = CASE WHEN @Estado IN ('Fallido', 'Anulado') THEN NULL
                                                 WHEN @Estado = 'Rechazado' THEN @MensajeRespuesta
                                                 WHEN @Estado = 'EnRevision'
-                                                THEN N'No pudimos confirmar el estado de tu pago. Contáctanos antes de volver a pagar.'
+                                                THEN N'Tu pago está en verificación: no vuelvas a pagar. Te contactaremos para resolverlo.'
                                                 ELSE MensajeRespuesta END,
                    ArrendadoHasta        = NULL,
                    FechaActualizacion    = SYSUTCDATETIME()

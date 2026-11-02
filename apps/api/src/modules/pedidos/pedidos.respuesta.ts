@@ -2,6 +2,7 @@ import { montoSchema } from '@shopcart/shared';
 import { montoATexto } from '../../shared/dinero/index.js';
 import { z } from '../../shared/openapi/zod.js';
 import {
+  ESTADOS_PAGO,
   ESTADOS_REEMBOLSO,
   type Cancelacion,
   type DevolucionRegistrada,
@@ -47,6 +48,7 @@ export const pedidoSchema = z
     idPedido: z.number().int(),
     numeroPedido: z.string(),
     estado: z.string(),
+    estadoPago: z.enum(ESTADOS_PAGO),
     subtotal: montoSchema,
     descuento: montoSchema,
     costoEnvio: montoSchema,
@@ -99,6 +101,7 @@ export const resumenPedidoSchema = z
     idPedido: z.number().int(),
     numeroPedido: z.string(),
     estado: z.string(),
+    estadoPago: z.enum(ESTADOS_PAGO),
     total: montoSchema,
     articulos: z.number().int(),
     fechaPago: z.iso.datetime(),
@@ -128,7 +131,9 @@ export const reembolsoARespuesta = (reembolso: Reembolso) => ({
 export const cancelacionSchema = z
   .object({
     pedido: pedidoSchema,
-    reembolso: z.object({ idReembolso: z.number().int(), estado: z.enum(ESTADOS_REEMBOLSO) }),
+    reembolso: z
+      .object({ idReembolso: z.number().int(), estado: z.enum(ESTADOS_REEMBOLSO) })
+      .nullable(),
   })
   .openapi('Cancelacion');
 

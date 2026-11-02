@@ -30,7 +30,7 @@ function preparar(
   logger: Logger = pino({ level: 'silent' }),
 ) {
   const repositorio = {
-    cancelar: vi.fn(() => Promise.resolve(3)),
+    cancelar: vi.fn((): Promise<number | null> => Promise.resolve(3)),
     registrarDevolucion: vi.fn(() =>
       Promise.resolve({ idDevolucion: 1, idReembolso: 3, montoReembolso: new Decimal('10.00') }),
     ),
@@ -68,6 +68,7 @@ const PEDIDO_CANCELADO: Pedido = {
   idPedido: 10,
   numeroPedido: 'SC-000010',
   estado: 'Cancelado',
+  estadoPago: 'Confirmado',
   subtotal: new Decimal(0),
   descuento: new Decimal(0),
   costoEnvio: new Decimal(0),
@@ -241,5 +242,19 @@ describe('reembolsos: caché de reportes (E7-H04, A-11)', () => {
     await servicio.cancelar(10, 'Ya no lo necesito').catch(() => undefined);
 
     expect(invalidaciones).not.toHaveBeenCalled();
+  });
+});
+
+describe('cancelación con el pago en revisión (cierre de la Fase 1)', () => {
+  it('sin reembolso del SP (la autorización ya no existe), responde reembolso null y no llama a la pasarela', async () => {
+    const { servicio, repositorio, pasarela } = preparar(CANCELACION, CAPTURADA);
+    repositorio.cancelar.mockResolvedValueOnce(null);
+    repositorio.obtener.mockResolvedValueOnce(PEDIDO_CANCELADO);
+
+    const cancelacion = await servicio.cancelar(10, 'Ya no lo necesito');
+
+    expect(cancelacion.reembolso).toBeNull();
+    expect(repositorio.tomarReembolso).not.toHaveBeenCalled();
+    expect(pasarela.reembolsar).not.toHaveBeenCalled();
   });
 });
