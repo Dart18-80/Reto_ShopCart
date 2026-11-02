@@ -1,7 +1,10 @@
 import { Router, type RequestHandler } from 'express';
 import { autorizar } from '../../shared/http/index.js';
-import { registroOpenApi, respuestasError } from '../../shared/openapi/index.js';
-import { z } from '../../shared/openapi/zod.js';
+import {
+  registroOpenApi,
+  respuestaPaginadaSchema,
+  respuestasError,
+} from '../../shared/openapi/index.js';
 import type { BitacoraController } from './bitacora.controller.js';
 import { consultaBitacoraSchema, registroBitacoraSchema } from './bitacora.schemas.js';
 
@@ -18,15 +21,7 @@ registroOpenApi.registerPath({
       description: 'Página de la bitácora',
       content: {
         'application/json': {
-          schema: z.object({
-            datos: z.array(registroBitacoraSchema),
-            paginacion: z.object({
-              pagina: z.number().int(),
-              tamano: z.number().int(),
-              total: z.number().int(),
-              totalPaginas: z.number().int(),
-            }),
-          }),
+          schema: respuestaPaginadaSchema(registroBitacoraSchema),
         },
       },
     },

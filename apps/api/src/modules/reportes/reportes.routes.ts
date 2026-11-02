@@ -1,6 +1,10 @@
 import { Router, type RequestHandler } from 'express';
 import { autorizar } from '../../shared/http/index.js';
-import { registroOpenApi, respuestasError } from '../../shared/openapi/index.js';
+import {
+  registroOpenApi,
+  respuestaPaginadaSchema,
+  respuestasError,
+} from '../../shared/openapi/index.js';
 import { z } from '../../shared/openapi/zod.js';
 import type { ReportesController } from './reportes.controller.js';
 import {
@@ -74,15 +78,7 @@ reporte(
   '/carritos-abandonados',
   'Carritos abandonados (N-13) cuya última actividad cae en el periodo, con su monto potencial perdido',
   consultaCarritosSchema,
-  z.object({
-    datos: z.array(carritoAbandonadoSchema),
-    paginacion: z.object({
-      pagina: z.number().int(),
-      tamano: z.number().int(),
-      total: z.number().int(),
-      totalPaginas: z.number().int(),
-    }),
-  }),
+  respuestaPaginadaSchema(carritoAbandonadoSchema),
   'Página de carritos',
 );
 

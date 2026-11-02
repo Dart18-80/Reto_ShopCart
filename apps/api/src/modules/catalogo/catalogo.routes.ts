@@ -1,6 +1,10 @@
 import { Router, type RequestHandler } from 'express';
 import { autorizar } from '../../shared/http/index.js';
-import { registroOpenApi, respuestasError } from '../../shared/openapi/index.js';
+import {
+  registroOpenApi,
+  respuestaPaginadaSchema,
+  respuestasError,
+} from '../../shared/openapi/index.js';
 import { z } from '../../shared/openapi/zod.js';
 import type { CatalogoController } from './catalogo.controller.js';
 import {
@@ -87,15 +91,9 @@ registroOpenApi.registerPath({
   summary: 'Categorías activas de la tienda (público)',
   responses: { 200: datos('Categorías', z.array(categoriaPublicaSchema)) },
 });
-const paginacionSchema = z.object({
-  pagina: z.number().int(),
-  tamano: z.number().int(),
-  total: z.number().int(),
-  totalPaginas: z.number().int(),
-});
 const listado = (descripcion: string, schema: z.ZodType) => ({
   description: descripcion,
-  ...json(z.object({ datos: z.array(schema), paginacion: paginacionSchema })),
+  ...json(respuestaPaginadaSchema(schema)),
 });
 
 registroOpenApi.registerPath({

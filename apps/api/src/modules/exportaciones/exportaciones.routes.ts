@@ -5,7 +5,11 @@ import {
   obtenerContexto,
   type LimitadorIntentos,
 } from '../../shared/http/index.js';
-import { registroOpenApi, respuestasError } from '../../shared/openapi/index.js';
+import {
+  registroOpenApi,
+  respuestaPaginadaSchema,
+  respuestasError,
+} from '../../shared/openapi/index.js';
 import { z } from '../../shared/openapi/zod.js';
 import type { ExportacionesController } from './exportaciones.controller.js';
 import {
@@ -91,17 +95,7 @@ registroOpenApi.registerPath({
   responses: {
     200: {
       description: 'Página de exportaciones',
-      ...json(
-        z.object({
-          datos: z.array(exportacionSchema),
-          paginacion: z.object({
-            pagina: z.number().int(),
-            tamano: z.number().int(),
-            total: z.number().int(),
-            totalPaginas: z.number().int(),
-          }),
-        }),
-      ),
+      ...json(respuestaPaginadaSchema(exportacionSchema)),
     },
     ...respuestasError(400, 401, 403),
   },

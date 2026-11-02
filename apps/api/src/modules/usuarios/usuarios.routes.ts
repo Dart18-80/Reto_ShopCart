@@ -7,7 +7,11 @@ import {
   ROLES_DE_USUARIO,
   type LimitadorIntentos,
 } from '../../shared/http/index.js';
-import { registroOpenApi, respuestasError } from '../../shared/openapi/index.js';
+import {
+  registroOpenApi,
+  respuestaPaginadaSchema,
+  respuestasError,
+} from '../../shared/openapi/index.js';
 import { z } from '../../shared/openapi/zod.js';
 import type { UsuariosController } from './usuarios.controller.js';
 import {
@@ -74,15 +78,7 @@ registroOpenApi.registerPath({
       description: 'Página de usuarios',
       content: {
         'application/json': {
-          schema: z.object({
-            datos: z.array(usuarioSchema),
-            paginacion: z.object({
-              pagina: z.number(),
-              tamano: z.number(),
-              total: z.number(),
-              totalPaginas: z.number(),
-            }),
-          }),
+          schema: respuestaPaginadaSchema(usuarioSchema),
         },
       },
     },

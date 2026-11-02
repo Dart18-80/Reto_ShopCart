@@ -1,6 +1,10 @@
 import { Router, type RequestHandler } from 'express';
 import { autorizar } from '../../shared/http/index.js';
-import { registroOpenApi, respuestasError } from '../../shared/openapi/index.js';
+import {
+  registroOpenApi,
+  respuestaPaginadaSchema,
+  respuestasError,
+} from '../../shared/openapi/index.js';
 import { z } from '../../shared/openapi/zod.js';
 import type { InventarioController } from './inventario.controller.js';
 import {
@@ -17,15 +21,9 @@ import {
 const RUTA = '/api/v1/inventario';
 const seguridad = [{ bearer: [] }];
 const json = (schema: z.ZodType) => ({ content: { 'application/json': { schema } } });
-const paginacionSchema = z.object({
-  pagina: z.number().int(),
-  tamano: z.number().int(),
-  total: z.number().int(),
-  totalPaginas: z.number().int(),
-});
 const listado = (descripcion: string, schema: z.ZodType) => ({
   description: descripcion,
-  ...json(z.object({ datos: z.array(schema), paginacion: paginacionSchema })),
+  ...json(respuestaPaginadaSchema(schema)),
 });
 const movimiento = (descripcion: string) => ({
   description: descripcion,

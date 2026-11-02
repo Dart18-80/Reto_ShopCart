@@ -1,6 +1,10 @@
 import { Router, type RequestHandler } from 'express';
 import { autorizar } from '../../shared/http/index.js';
-import { registroOpenApi, respuestasError } from '../../shared/openapi/index.js';
+import {
+  registroOpenApi,
+  respuestaPaginadaSchema,
+  respuestasError,
+} from '../../shared/openapi/index.js';
 import { z } from '../../shared/openapi/zod.js';
 import type { PedidosController } from './pedidos.controller.js';
 import {
@@ -25,18 +29,7 @@ import {
 
 const seguridad = [{ bearer: [] }];
 const json = (schema: z.ZodType) => ({ content: { 'application/json': { schema } } });
-const pagina = (schema: z.ZodType) =>
-  json(
-    z.object({
-      datos: z.array(schema),
-      paginacion: z.object({
-        pagina: z.number().int(),
-        tamano: z.number().int(),
-        total: z.number().int(),
-        totalPaginas: z.number().int(),
-      }),
-    }),
-  );
+const pagina = (schema: z.ZodType) => json(respuestaPaginadaSchema(schema));
 
 registroOpenApi.registerPath({
   method: 'get',
