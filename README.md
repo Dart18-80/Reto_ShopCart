@@ -19,8 +19,11 @@ Tienda en línea de una cadena guatemalteca de ropa, calzado y accesorios: catá
 
 ### Requisitos
 
-- **Docker Desktop** (en Windows, con el backend de WSL2) y **Git**.
+- **Docker Desktop** (en Windows, con el backend de WSL2) con **Compose v2** (el comando `docker compose`, no el antiguo `docker-compose`), y **Git**. Probado con Docker Engine 27.0 y Compose 2.28.
 - Para correr las pruebas desde el host: **Node.js 24 LTS** y **pnpm 10** (`corepack enable` lo activa).
+- **Memoria:** mínimo **4 GB asignados a Docker** (SQL Server exige 2 GB y no arranca con menos). Uso medido con el entorno en reposo: ~1.9 GB (SQL Server 1.7 GB, cada réplica de la API ~90 MB, Redis y nginx ~10 MB cada uno). Para construir las imágenes y correr las pruebas a la vez hace falta más margen (en Windows, la recomendación para WSL2 de abajo).
+- **Disco:** unos 3 GB para las imágenes (SQL Server ocupa 1.7 GB) más la base.
+- **Mac con Apple Silicon (M1 o posterior):** la imagen de SQL Server solo existe para `amd64`. En Docker Desktop, activa **Settings → General → "Use Rosetta for x86_64/amd64 emulation on Apple Silicon"** antes del primer `docker compose up`. Sin Rosetta, SQL Server se cae al arrancar. Con la emulación, el primer arranque y las consultas son más lentos que en una máquina x86.
 
 **Memoria para WSL2 (Windows).** SQL Server queda limitado a 2 GB, pero el entorno completo (SQL Server, Redis, dos réplicas de la API y nginx) necesita margen. Se recomienda asignar **10 GB** a WSL2 en `%UserProfile%\.wslconfig`, y después ejecutar `wsl --shutdown` y volver a abrir Docker Desktop:
 
@@ -49,7 +52,10 @@ docker compose up -d              # SQL Server, Redis, migrador, api-1, api-2 y 
 docker compose ps                 # todo "healthy"; db-migrator "Exited (0)"
 ```
 
-El primer arranque descarga las imágenes y construye la API (unos minutos). El migrador crea la base, los logins y aplica todos los scripts de `database/`, incluidos los datos demo; cuando termina, las réplicas quedan `healthy`.
+El primer arranque descarga las imágenes y construye la API y la web. El migrador crea la base y los logins, y aplica todos los scripts de `database/`, incluidos los datos demo. Cuando termina, las réplicas quedan `healthy`.
+
+- **Con las imágenes base ya descargadas:** cerca de **1.5 minutos** desde un clon nuevo, construcción incluida (medido: 92 s).
+- **La primera vez en una máquina:** se suman unos 2 GB de descarga (SQL Server, Node, nginx y Redis); con 50 Mbps son unos 5 minutos más.
 
 | URL                                           | Qué es                                                |
 | --------------------------------------------- | ----------------------------------------------------- |
@@ -64,6 +70,17 @@ Para empezar de cero (borra la base): `docker compose down -v && docker compose 
 ### Variables de entorno
 
 Cada valor tiene una sola fuente en `.env`: Compose, el migrador y la API leen las mismas variables (`.env.example` documenta cada una). `.env` está en `.gitignore`: el repositorio no tiene credenciales reales.
+
+**Puertos del host.** Si alguno está ocupado, cámbialo en `.env` y vuelve a levantar con `docker compose up -d`:
+
+| Puerto | Servicio                              | Variable en `.env` | Publicado en                     |
+| ------ | ------------------------------------- | ------------------ | -------------------------------- |
+| 8080   | nginx: la tienda, la API y Swagger    | `WEB_PUERTO`       | `WEB_IP` (por defecto 127.0.0.1) |
+| 1433   | SQL Server (SSMS y las pruebas)       | `DB_PORT`          | 127.0.0.1                        |
+| 6379   | Redis (las pruebas)                   | `REDIS_PORT`       | 127.0.0.1                        |
+| 3000   | La API (solo dentro de la red Docker) | `PUERTO`           | no se publica                    |
+
+Con otro `WEB_PUERTO`, las URLs pasan a `http://localhost:<WEB_PUERTO>`, y las pruebas de entorno y de concurrencia la leen de `SHOPCART_URL`. `DB_PORT` y `REDIS_PORT` cambian el puerto dentro y fuera del contenedor a la vez, y la API y el migrador leen las mismas variables.
 
 SQL Server y Redis solo se publican en `127.0.0.1` (accesibles desde tu máquina para SSMS o las pruebas, no desde la red). nginx se publica en `WEB_IP` (por defecto `127.0.0.1`). Los contenedores viven en una subred fija (`RED_PREFIJO`, por defecto `172.28.10`) con una IP por servicio; si choca con otra red de tu máquina, cámbiala y vuelve a levantar.
 
@@ -279,6 +296,7 @@ pnpm lint && pnpm typecheck
 pnpm test                # unitarias: servicios y middlewares con puertos falsos, sin infraestructura
 pnpm test:integracion    # contra SQL Server real: recrea la base shopcart_test en cada corrida
 pnpm test:concurrencia   # RNF-3: 20 clientes a la vez contra http://localhost:8080 (las dos réplicas)
+pnpm test:entorno        # seguridad HTTP en respuestas reales de nginx (pausa SQL Server unos 15 s)
 ```
 
 - **Integración:** `pnpm test:integracion` recrea `shopcart_test` desde cero (las tablas ledger no admiten `DELETE`), aplica todos los scripts y, solo en esa base, los SPs de `database/test/`. Las pruebas no escriben SQL: preparan sus datos con esos `SP_Pruebas_*` y cada una crea datos únicos. Nunca tocan la base `ShopCart` del entorno.

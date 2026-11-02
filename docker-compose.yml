@@ -142,14 +142,14 @@ services:
       shopcart:
         ipv4_address: ${RED_PREFIJO:-172.28.10}.22
 
-  # Balanceador y único origen: http://localhost:8080 (/api/* → api-1 y api-2; / → estáticos).
+  # Balanceador y único origen: http://localhost:8080, o el WEB_PUERTO de .env (/api/* → api-1 y api-2; / → estáticos).
   web:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
     image: shopcart-web:local
     ports:
-      - '${WEB_IP:-127.0.0.1}:8080:80'
+      - '${WEB_IP:-127.0.0.1}:${WEB_PUERTO:-8080}:80'
     depends_on:
       api-1:
         condition: service_healthy
