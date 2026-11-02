@@ -441,9 +441,9 @@
 - [ ] El uso del cupón queda reservado (`UsosComprometidos + 1`) y se respeta el límite por cliente.
 - [ ] Precio, descuento repartido, envío y dirección quedan congelados en la sesión; un cambio de precio posterior no los afecta.
 - [ ] Repetir la petición sin cambios en el carrito devuelve la misma sesión; con cambios, cancela la anterior (liberando reservas y cupón) y crea una nueva.
+- [ ] Exige sesión iniciada; un invitado recibe `401`.
 
 **Nota (cierre de E4):** `SP_Checkout_CancelarSesionActiva` (creado en E4-H03) libera hoy las reservas y el uso del cupón en línea. En esta historia se crean `SP_Inventario_LiberarReservas` y `SP_Cupones_LiberarUso` (internos) y `SP_Checkout_CancelarSesionActiva` pasa a llamarlos: no queda otra ruta de liberación.
-- [ ] Exige sesión iniciada; un invitado recibe `401`.
 
 **Referencias:** RF-06, N-01, N-02, N-06, A-13.
 
