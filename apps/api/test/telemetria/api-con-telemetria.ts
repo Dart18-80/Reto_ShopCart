@@ -136,6 +136,8 @@ export async function esperar(
  * shopcart_test y la base de Redis de las pruebas, exportando al receptor.
  */
 export async function levantarApiConTelemetria(endpoint: string) {
+  // Como el Dockerfile: la API importa el `dist` de @shopcart/shared, que un clon nuevo todavía no tiene.
+  await ejecutar('pnpm', ['--filter', '@shopcart/shared', 'build'], { cwd: RAIZ_API, shell: true });
   await ejecutar('npx', ['tsc', '-p', 'tsconfig.build.json'], { cwd: RAIZ_API, shell: true });
   const puerto = await puertoLibre();
   const proceso: ChildProcess = spawn(
