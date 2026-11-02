@@ -45,9 +45,9 @@ describe('Bitácora (E1-H04, RF-09)', () => {
     expect(JSON.parse(fila.ValorAnterior ?? '{}')).toMatchObject({
       IDPrecioVariante: idAnterior,
       IDVariante,
-      Precio: 100,
+      Precio: '100.00',
     });
-    expect(JSON.parse(fila.ValorNuevo ?? '{}')).toMatchObject({ IDVariante, Precio: 120 });
+    expect(JSON.parse(fila.ValorNuevo ?? '{}')).toMatchObject({ IDVariante, Precio: '120.00' });
   });
 
   it('el primer precio de una variante queda como Crear con su propio IDPrecioVariante', async () => {

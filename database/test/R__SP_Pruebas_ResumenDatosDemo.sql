@@ -10,6 +10,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
+    DECLARE @IDAdmin INT = (SELECT u.IDUsuario FROM dbo.Usuario AS u WHERE u.Correo = N'admin@shopcart.gt');
     DECLARE @Demo TABLE (IDPedido INT PRIMARY KEY, FechaPago DATETIME2(3), Estado VARCHAR(20));
     INSERT INTO @Demo (IDPedido, FechaPago, Estado)
     SELECT p.IDPedido, p.FechaPago, e.Codigo
@@ -51,6 +52,22 @@ BEGIN
                               WHERE pr.LlaveIdempotencia = r.LlaveIdempotencia
                                 AND pr.IDReembolso = r.IDTransaccionReembolso
                                 AND pr.Monto = r.Monto)) AS ReembolsosFueraDeLaPasarela,
+           -- Autoría: cada acción a quien la registraría en la operación real.
+           (SELECT COUNT(*) FROM dbo.MovimientoKardex AS m
+            JOIN dbo.TipoMovimiento AS t ON t.IDTipoMovimiento = m.IDTipoMovimiento
+            JOIN @Demo AS d ON d.IDPedido = m.IDPedido
+            JOIN dbo.Pedido AS p ON p.IDPedido = m.IDPedido
+            LEFT JOIN dbo.Devolucion AS dv ON dv.IDDevolucion = m.IDDevolucion
+            WHERE m.IDUsuario <> CASE WHEN t.Codigo = 'ReingresoDevolucion' THEN dv.IDUsuario ELSE p.IDUsuario END)
+         + (SELECT COUNT(*) FROM dbo.MovimientoKardex AS m
+            WHERE m.Motivo = N'Inventario inicial de los datos demo' AND m.IDUsuario <> @IDAdmin) AS KardexConOtroAutor,
+           (SELECT COUNT(*) FROM dbo.Bitacora AS b
+            JOIN dbo.Usuario AS u ON b.Entidad = 'Usuario' AND b.IDEntidad = CONVERT(VARCHAR(50), u.IDUsuario)
+            WHERE u.Correo LIKE N'demo[0-9][0-9][0-9]@shopcart.gt' AND b.Accion = 'Crear'
+              AND b.IDUsuario IS NULL) AS AltasDeClientesSinActor,
+           (SELECT COUNT(*) FROM dbo.Bitacora AS b
+            JOIN dbo.Cupon AS c ON b.Entidad = 'Cupon' AND b.IDEntidad = CONVERT(VARCHAR(50), c.IDCupon)
+            WHERE c.Codigo LIKE 'DEMO%' AND b.Accion = 'Crear' AND b.IDUsuario = @IDAdmin) AS CuponesDelAdmin,
            (SELECT COUNT(*) FROM dbo.VW_Carrito_Abandonados AS a
             JOIN dbo.Usuario AS u ON u.IDUsuario = a.IDUsuario
             WHERE u.Correo LIKE N'demo[0-9][0-9][0-9]@shopcart.gt') AS CarritosAbandonados,

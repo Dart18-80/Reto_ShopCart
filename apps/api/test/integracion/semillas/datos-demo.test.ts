@@ -37,6 +37,9 @@ interface ResumenDemo {
   HistorialFueraDeFecha: number;
   HistorialEnElFuturo: number;
   CobrosFueraDeLaPasarela: number;
+  KardexConOtroAutor: number;
+  AltasDeClientesSinActor: number;
+  CuponesDelAdmin: number;
   ReembolsosFueraDeLaPasarela: number;
   CarritosAbandonados: number;
   FilasConciliacion: number;
@@ -71,6 +74,27 @@ describe('datos demo de S006 (E7-H03, RNF-1)', () => {
     const resumen = await unaFila<ResumenDemo>('SP_Pruebas_ResumenDatosDemo');
 
     expect(resumen).toMatchObject({ CobrosFueraDeLaPasarela: 0, ReembolsosFueraDeLaPasarela: 0 });
+  });
+
+  it('atribuye cada acción a quien la registraría: compras a su cliente, entradas y cupones al Admin, altas sin actor', async () => {
+    const resumen = await unaFila<ResumenDemo>('SP_Pruebas_ResumenDatosDemo');
+
+    expect(resumen).toMatchObject({
+      KardexConOtroAutor: 0,
+      AltasDeClientesSinActor: 200,
+      CuponesDelAdmin: 8,
+    });
+  });
+
+  it('N-07: en toda la base, el kardex ordenado por fecha o por ID da el mismo orden y los mismos saldos', async () => {
+    const kardex = await unaFila<{
+      Movimientos: number;
+      FueraDeOrden: number;
+      SaldosDistintos: number;
+    }>('SP_Pruebas_KardexFueraDeOrden');
+
+    expect(kardex.Movimientos).toBeGreaterThan(1500);
+    expect(kardex).toMatchObject({ FueraDeOrden: 0, SaldosDistintos: 0 });
   });
 
   it('el dashboard muestra los últimos 90 días desde el primer arranque', async () => {
@@ -133,8 +157,9 @@ describe('datos demo de S006 (E7-H03, RNF-1)', () => {
 });
 
 describe('fecha propia de un movimiento de inventario (E7-H03, N-07)', () => {
-  const movimientoConFecha = async (rol: string, fecha: Date) => {
-    const { IDVariante } = await varianteVendible('10.00', 5);
+  // Sin existencia inicial, la variante no tiene movimientos previos que acoten la fecha.
+  const movimientoConFecha = async (rol: string, fecha: Date, existencia = 0) => {
+    const { IDVariante } = await varianteVendible('10.00', existencia);
     return ejecutarSP<{ Fecha: Date }>('SP_Pruebas_MovimientoConFecha', {
       IDVariante: { tipo: sql.Int, valor: IDVariante },
       FechaMovimiento: { tipo: sql.DateTime2(3), valor: fecha },
@@ -159,6 +184,14 @@ describe('fecha propia de un movimiento de inventario (E7-H03, N-07)', () => {
       codigo: 'INVARIANTE_INTERNA',
     });
     await expect(movimientoConFecha('Sistema', futuro)).rejects.toMatchObject({
+      codigo: 'PARAMETRO_INVALIDO',
+    });
+  });
+
+  it('una fecha anterior al último movimiento de la variante se rechaza (las fechas nunca retroceden)', async () => {
+    const antesDeLaEntrada = new Date('2026-01-15T10:00:00.000Z');
+
+    await expect(movimientoConFecha('Sistema', antesDeLaEntrada, 5)).rejects.toMatchObject({
       codigo: 'PARAMETRO_INVALIDO',
     });
   });

@@ -2,8 +2,9 @@
 -- Interno: lo llaman otros SPs (entradas, ajustes, pedidos, cancelaciones, devoluciones) y la semilla,
 -- siempre dentro de su transacción. El actor y el RequestId salen de SESSION_CONTEXT (A-18).
 -- @IDMovimientoKardex devuelve el movimiento registrado, para que el llamador no tenga que buscarlo.
--- @FechaMovimiento (N-07, E7-H03): solo cuando el rol del contexto es Sistema (el generador de datos demo, para
--- que kardex, pedidos e historial coincidan en el tiempo) y nunca en el futuro; si no, la fecha es la actual.
+-- @FechaMovimiento (N-07, E7-H03): solo cuando el rol del contexto es Sistema (las semillas, para que kardex,
+-- pedidos e historial coincidan en el tiempo), nunca en el futuro ni antes del último movimiento de la variante;
+-- si no, la fecha es la actual.
 CREATE OR ALTER PROCEDURE dbo.SP_Inventario_RegistrarMovimiento
     @IDVariante   INT,
     @CodigoTipo   VARCHAR(30),
@@ -57,6 +58,13 @@ BEGIN
 
     IF @ExistenciaAnterior IS NULL
         THROW 50001, N'La variante no existe.', 1;
+
+    -- N-07: dentro de una variante las fechas del kardex nunca retroceden, así ordenarlo por fecha o por ID da el
+    -- mismo orden y los mismos saldos. La fecha actual nunca queda antes de una pasada; una fecha propia se
+    -- compara con el último movimiento bajo el bloqueo de la variante.
+    IF @FechaMovimiento < (SELECT TOP (1) m.Fecha FROM dbo.MovimientoKardex AS m
+                           WHERE m.IDVariante = @IDVariante ORDER BY m.IDMovimientoKardex DESC)
+        THROW 50003, N'Un movimiento de inventario no puede tener fecha anterior al último de su variante.', 1;
 
     DECLARE @ExistenciaResultante INT = @ExistenciaAnterior + @Signo * @Cantidad;
 

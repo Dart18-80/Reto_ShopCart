@@ -5,6 +5,7 @@ ON dbo.Cupon
 AFTER INSERT, UPDATE, DELETE
 AS
 BEGIN
+    -- A-21: las columnas de dinero se registran como texto ("149.90"), igual que en la API.
     SET NOCOUNT ON;
 
     -- A-18: toda escritura auditada declara quién la hace (los jobs y el migrador, Rol = 'Sistema').
@@ -25,11 +26,15 @@ BEGIN
                 ELSE 'Modificar'
             END,
             CASE WHEN d.IDCupon IS NULL THEN NULL ELSE
-                (SELECT d.Codigo, d.Descripcion, d.Tipo, d.Valor, d.MontoMaximoDescuento, d.MontoMinimoCompra,
+                (SELECT d.Codigo, d.Descripcion, d.Tipo, CONVERT(VARCHAR(20), d.Valor) AS Valor,
+                        CONVERT(VARCHAR(20), d.MontoMaximoDescuento) AS MontoMaximoDescuento,
+                        CONVERT(VARCHAR(20), d.MontoMinimoCompra) AS MontoMinimoCompra,
                         d.IDCategoria, d.FechaInicio, d.FechaFin, d.LimiteUsosTotal, d.LimiteUsosPorCliente, d.Activo
                  FOR JSON PATH, WITHOUT_ARRAY_WRAPPER) END,
             CASE WHEN i.IDCupon IS NULL THEN NULL ELSE
-                (SELECT i.Codigo, i.Descripcion, i.Tipo, i.Valor, i.MontoMaximoDescuento, i.MontoMinimoCompra,
+                (SELECT i.Codigo, i.Descripcion, i.Tipo, CONVERT(VARCHAR(20), i.Valor) AS Valor,
+                        CONVERT(VARCHAR(20), i.MontoMaximoDescuento) AS MontoMaximoDescuento,
+                        CONVERT(VARCHAR(20), i.MontoMinimoCompra) AS MontoMinimoCompra,
                         i.IDCategoria, i.FechaInicio, i.FechaFin, i.LimiteUsosTotal, i.LimiteUsosPorCliente, i.Activo
                  FOR JSON PATH, WITHOUT_ARRAY_WRAPPER) END,
             @IDUsuario, @RequestId

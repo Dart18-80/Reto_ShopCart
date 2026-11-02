@@ -11,6 +11,9 @@
 --   entrada inicial antes del periodo, la salida de cada venta en su fecha de pago y los reingresos en la fecha de
 --   la cancelación o la devolución, en orden cronológico. Así kardex, pedidos e historial coinciden en el tiempo y
 --   VW_Inventario_Conciliacion queda vacía.
+--   Autoría: cada acción se atribuye a quien la registraría en la operación real (las altas de clientes como el
+--   registro público, sin actor; cupones y entradas al Admin; cada compra y su cancelación a su cliente; las
+--   devoluciones al Operador). El rol sigue siendo Sistema, que es el único que puede fechar en el pasado (N-07).
 CREATE OR ALTER PROCEDURE dbo.SP_Semilla_GenerarDatosDemo
     @Pedidos        INT              = 1500,
     @Dias           INT              = 90,
@@ -36,9 +39,6 @@ BEGIN
             @IDRolCliente INT  = (SELECT r.IDRol FROM dbo.Rol AS r WHERE r.Codigo = 'Cliente');
     IF @IDAdmin IS NULL OR @IDOperador IS NULL OR @IDClienteDemo IS NULL
         THROW 50005, N'Faltan los usuarios demo de S003.', 1;
-
-    -- El kardex necesita un responsable (el Admin) y solo acepta fechas propias con el rol Sistema (N-07).
-    EXEC dbo.SP_Sistema_EstablecerContexto @IDAdmin, 'Sistema', @RequestId;
 
     DECLARE @Clientes INT = 200, @CarritosAbandonados INT = 40, @SaltoVariante INT = 7,
             @SegundosPorDia INT = 86400, @MargenExistencia INT = 20,
@@ -101,7 +101,8 @@ BEGIN
         ORDER BY m.IDMunicipio;
         DECLARE @TotalMunicipios INT = (SELECT COUNT(*) FROM @Municipios);
 
-        -- Clientes demo.
+        -- Clientes demo, como los registra SP_Auth_RegistrarCliente: sin actor.
+        EXEC dbo.SP_Sistema_EstablecerContexto NULL, 'Sistema', @RequestId;
         INSERT INTO dbo.Usuario (Correo, HashContrasena, Nombre, IDRol, FechaCreacion)
         SELECT CONCAT(N'demo', RIGHT(CONCAT('00', n.N + 1), 3), N'@shopcart.gt'), @HashDemo,
                CONCAT(N'Cliente Demo ', n.N + 1), @IDRolCliente, DATEADD(DAY, -@Dias - 5, @Ahora)
@@ -114,6 +115,7 @@ BEGIN
         ORDER BY u.IDUsuario;
 
         -- RF-05: un cupón por cada mensaje de rechazo, más uno vigente.
+        EXEC dbo.SP_Sistema_EstablecerContexto @IDAdmin, 'Sistema', @RequestId;
         DECLARE @IDCategoriaCupon INT = (SELECT MIN(c.IDCategoria) FROM dbo.Categoria AS c WHERE c.Activo = 1);
         INSERT INTO dbo.Cupon (Codigo, Descripcion, Tipo, Valor, MontoMaximoDescuento, MontoMinimoCompra, IDCategoria,
                                FechaInicio, FechaFin, LimiteUsosTotal, LimiteUsosPorCliente, Activo)
@@ -178,6 +180,8 @@ BEGIN
                    @IDMunicipioN = p.IDMunicipioN, @Lineas = p.Lineas, @Base = p.Base, @Suerte = p.Suerte,
                    @Cupon = p.Cupon
             FROM   @Plan AS p WHERE p.Orden = @Orden;
+            -- La compra (y el uso del cupón) la registra su cliente.
+            EXEC dbo.SP_Sistema_EstablecerContexto @IDUsuario, 'Sistema', @RequestId;
 
             SET @Edad = DATEDIFF(SECOND, @FechaPago, @Ahora) / @SegundosPorDia;
             -- 6 % cancelados; con más de 8 días, 4 % con devolución (uno total, tres parciales); el resto avanza por
@@ -374,7 +378,7 @@ BEGIN
         GROUP BY d.IDVariante;
 
         -- N-07: el kardex en orden cronológico, cada movimiento con la fecha de su evento.
-        DECLARE @Tipo VARCHAR(12), @IDVariante INT, @Cantidad INT, @CodigoMovimiento VARCHAR(30);
+        DECLARE @Tipo VARCHAR(12), @IDVariante INT, @Cantidad INT, @CodigoMovimiento VARCHAR(30), @Actor INT;
         DECLARE @Orden2 TABLE (Posicion INT PRIMARY KEY, IDEvento INT NOT NULL);
         INSERT INTO @Orden2 (Posicion, IDEvento)
         SELECT ROW_NUMBER() OVER (ORDER BY e.Fecha, e.ID), e.ID FROM @Eventos AS e;
@@ -387,6 +391,10 @@ BEGIN
             FROM   @Orden2 AS o JOIN @Eventos AS e ON e.ID = o.IDEvento
             WHERE  o.Posicion = @Posicion;
             SET @Numero = (SELECT p.NumeroPedido FROM dbo.Pedido AS p WHERE p.IDPedido = @IDPedido);
+            SET @Actor = CASE @Tipo WHEN 'Entrada' THEN @IDAdmin
+                                    WHEN 'Devolucion' THEN @IDOperador
+                                    ELSE (SELECT p.IDUsuario FROM dbo.Pedido AS p WHERE p.IDPedido = @IDPedido) END;
+            EXEC dbo.SP_Sistema_EstablecerContexto @Actor, 'Sistema', @RequestId;
             SET @CodigoMovimiento = CASE @Tipo WHEN 'Venta' THEN 'SalidaVenta'
                                                WHEN 'Cancelacion' THEN 'ReingresoCancelacion'
                                                ELSE 'ReingresoDevolucion' END;

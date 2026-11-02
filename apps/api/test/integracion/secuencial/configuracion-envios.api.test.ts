@@ -99,7 +99,7 @@ describe('parámetros del sistema (E4-H06, A-14, RF-09)', () => {
       });
       expect(JSON.parse(fila?.ValorNuevo ?? '{}')).toMatchObject({
         UmbralUltimasUnidades: 7,
-        MontoEnvioGratis: 750,
+        MontoEnvioGratis: '750.00',
       });
     } finally {
       await cambiarConfiguracion({

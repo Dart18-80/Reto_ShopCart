@@ -4,6 +4,7 @@ ON dbo.ParametroSistema
 AFTER INSERT, UPDATE
 AS
 BEGIN
+    -- A-21: las columnas de dinero se registran como texto ("149.90"), igual que en la API.
     SET NOCOUNT ON;
 
     -- A-18: toda escritura auditada declara quién la hace (los jobs y el migrador, Rol = 'Sistema').
@@ -19,12 +20,12 @@ BEGIN
             CASE WHEN d.IDParametroSistema IS NULL THEN 'Crear' ELSE 'Modificar' END,
             CASE WHEN d.IDParametroSistema IS NULL THEN NULL ELSE
                 (SELECT d.DiasGarantiaPrecio, d.MinutosReserva, d.HorasCarritoAbandonado, d.DiasExpiracionCarritoInvitado,
-                        d.UmbralUltimasUnidades, d.MontoEnvioGratis, d.MaxIntentosPagoRechazados, d.DiasPlazoDevolucion,
-                        d.MaxLineasCarrito
+                        d.UmbralUltimasUnidades, CONVERT(VARCHAR(20), d.MontoEnvioGratis) AS MontoEnvioGratis,
+                        d.MaxIntentosPagoRechazados, d.DiasPlazoDevolucion, d.MaxLineasCarrito
                  FOR JSON PATH, WITHOUT_ARRAY_WRAPPER) END,
             (SELECT i.DiasGarantiaPrecio, i.MinutosReserva, i.HorasCarritoAbandonado, i.DiasExpiracionCarritoInvitado,
-                    i.UmbralUltimasUnidades, i.MontoEnvioGratis, i.MaxIntentosPagoRechazados, i.DiasPlazoDevolucion,
-                    i.MaxLineasCarrito
+                    i.UmbralUltimasUnidades, CONVERT(VARCHAR(20), i.MontoEnvioGratis) AS MontoEnvioGratis,
+                    i.MaxIntentosPagoRechazados, i.DiasPlazoDevolucion, i.MaxLineasCarrito
              FOR JSON PATH, WITHOUT_ARRAY_WRAPPER),
             @IDUsuario, @RequestId
     FROM    inserted AS i

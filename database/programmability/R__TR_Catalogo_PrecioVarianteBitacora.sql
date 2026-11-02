@@ -5,6 +5,7 @@ ON dbo.PrecioVariante
 AFTER INSERT
 AS
 BEGIN
+    -- A-21: las columnas de dinero se registran como texto ("149.90"), igual que en la API.
     SET NOCOUNT ON;
 
     -- A-18: toda escritura auditada declara quién la hace (los jobs y el migrador, Rol = 'Sistema').
@@ -21,9 +22,10 @@ BEGIN
     SELECT  'Catalogo', 'PrecioVariante', CONVERT(VARCHAR(50), i.IDPrecioVariante),
             CASE WHEN anterior.IDPrecioVariante IS NULL THEN 'Crear' ELSE 'Modificar' END,
             CASE WHEN anterior.IDPrecioVariante IS NULL THEN NULL ELSE
-                (SELECT anterior.IDPrecioVariante, i.IDVariante, anterior.Precio
+                (SELECT anterior.IDPrecioVariante, i.IDVariante, CONVERT(VARCHAR(20), anterior.Precio) AS Precio
                  FOR JSON PATH, WITHOUT_ARRAY_WRAPPER) END,
-            (SELECT i.IDPrecioVariante, i.IDVariante, i.Precio, i.VigenteDesde FOR JSON PATH, WITHOUT_ARRAY_WRAPPER),
+            (SELECT i.IDPrecioVariante, i.IDVariante, CONVERT(VARCHAR(20), i.Precio) AS Precio, i.VigenteDesde
+             FOR JSON PATH, WITHOUT_ARRAY_WRAPPER),
             @IDUsuario, @RequestId
     FROM    inserted AS i
     OUTER APPLY (

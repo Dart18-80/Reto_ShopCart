@@ -108,11 +108,11 @@ describe('precios versionados (E3-H04, N-02)', () => {
     expect(fila).toMatchObject({ Modulo: 'Catalogo', Accion: 'Modificar' });
     expect(JSON.parse(fila?.ValorAnterior ?? '{}')).toMatchObject({
       IDVariante: idVariante,
-      Precio: 100,
+      Precio: '100.00',
     });
     expect(JSON.parse(fila?.ValorNuevo ?? '{}')).toMatchObject({
       IDVariante: idVariante,
-      Precio: 120,
+      Precio: '120.00',
     });
   });
 

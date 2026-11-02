@@ -2,11 +2,14 @@
 -- Precios en quetzales con IVA incluido. Las variantes nacen sin existencia y toda existencia inicial
 -- entra con SP_Inventario_RegistrarMovimiento, así VW_Inventario_Conciliacion queda vacía (N-07).
 -- La semilla actúa como el administrador demo: el kardex y la bitácora lo registran como autor.
+-- N-07: las entradas iniciales llevan una fecha anterior al periodo de los datos demo (S006, 90 días), para que
+-- dentro de cada variante las fechas del kardex nunca retrocedan; la fecha propia exige el rol Sistema.
 -- El migrador corre el script dentro de una transacción, que es la que exige el SP interno.
 
 DECLARE @IDAdmin INT = (SELECT IDUsuario FROM dbo.Usuario WHERE CorreoNormalizado = N'admin@shopcart.gt');
 DECLARE @FechaInicial DATETIME2(3) = DATEADD(DAY, -90, SYSUTCDATETIME());
 DECLARE @FechaCambioPrecio DATETIME2(3) = DATEADD(DAY, -20, SYSUTCDATETIME());
+DECLARE @FechaInventarioInicial DATETIME2(3) = DATEADD(DAY, -120, SYSUTCDATETIME());
 
 EXEC dbo.SP_Sistema_EstablecerContexto @IDUsuarioActor = @IDAdmin, @RolActor = 'Administrador';
 
@@ -264,6 +267,8 @@ JOIN   dbo.Variante AS dv ON dv.SKU = v.SKU
 WHERE  v.Existencia > 0
   AND  NOT EXISTS (SELECT 1 FROM dbo.MovimientoKardex WHERE IDVariante = dv.IDVariante);
 
+EXEC dbo.SP_Sistema_EstablecerContexto @IDUsuarioActor = @IDAdmin, @RolActor = 'Sistema';
+
 DECLARE @IDVariante INT, @Cantidad INT;
 SELECT TOP (1) @IDVariante = IDVariante, @Cantidad = Cantidad FROM @Entrada ORDER BY IDVariante;
 WHILE @IDVariante IS NOT NULL
@@ -271,7 +276,7 @@ BEGIN
     EXEC dbo.SP_Inventario_RegistrarMovimiento
          @IDVariante = @IDVariante, @CodigoTipo = 'EntradaCompra', @Cantidad = @Cantidad,
          @Motivo = N'Inventario inicial', @Referencia = N'S004__catalogo_demo',
-         @IDPedido = NULL, @IDDevolucion = NULL;
+         @IDPedido = NULL, @IDDevolucion = NULL, @FechaMovimiento = @FechaInventarioInicial;
 
     DELETE FROM @Entrada WHERE IDVariante = @IDVariante;
     SET @IDVariante = NULL;

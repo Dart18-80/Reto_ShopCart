@@ -48,8 +48,8 @@ describe('triggers de bitácora sin prueba hasta ahora (R4)', () => {
     const filas = await leerBitacora('MetodoEnvio', IDMetodoEnvio);
     expect(filas.map((fila) => fila.Accion)).toEqual(['Eliminar', 'Modificar', 'Crear']);
     expect(filas.every((fila) => fila.Modulo === 'Envios')).toBe(true);
-    expect(valores(filas[1]?.ValorAnterior ?? null)).toMatchObject({ Costo: 40 });
-    expect(valores(filas[1]?.ValorNuevo ?? null)).toMatchObject({ Costo: 45 });
+    expect(valores(filas[1]?.ValorAnterior ?? null)).toMatchObject({ Costo: '40.00' });
+    expect(valores(filas[1]?.ValorNuevo ?? null)).toMatchObject({ Costo: '45.00' });
   });
 
   it('ParametroSistema registra cada cambio en Configuración con el valor anterior y el nuevo', async () => {

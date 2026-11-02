@@ -4,6 +4,7 @@ ON dbo.MetodoEnvio
 AFTER INSERT, UPDATE, DELETE
 AS
 BEGIN
+    -- A-21: las columnas de dinero se registran como texto ("149.90"), igual que en la API.
     SET NOCOUNT ON;
 
     -- A-18: toda escritura auditada declara quién la hace (los jobs y el migrador, Rol = 'Sistema').
@@ -24,9 +25,9 @@ BEGIN
                 ELSE 'Modificar'
             END,
             CASE WHEN d.IDMetodoEnvio IS NULL THEN NULL ELSE
-                (SELECT d.Codigo, d.Nombre, d.Costo, d.DiasMin, d.DiasMax, d.Activo FOR JSON PATH, WITHOUT_ARRAY_WRAPPER) END,
+                (SELECT d.Codigo, d.Nombre, CONVERT(VARCHAR(20), d.Costo) AS Costo, d.DiasMin, d.DiasMax, d.Activo FOR JSON PATH, WITHOUT_ARRAY_WRAPPER) END,
             CASE WHEN i.IDMetodoEnvio IS NULL THEN NULL ELSE
-                (SELECT i.Codigo, i.Nombre, i.Costo, i.DiasMin, i.DiasMax, i.Activo FOR JSON PATH, WITHOUT_ARRAY_WRAPPER) END,
+                (SELECT i.Codigo, i.Nombre, CONVERT(VARCHAR(20), i.Costo) AS Costo, i.DiasMin, i.DiasMax, i.Activo FOR JSON PATH, WITHOUT_ARRAY_WRAPPER) END,
             @IDUsuario, @RequestId
     FROM    inserted AS i
     FULL OUTER JOIN deleted AS d ON d.IDMetodoEnvio = i.IDMetodoEnvio

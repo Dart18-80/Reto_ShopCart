@@ -410,9 +410,11 @@ UQ `(IDTipoMovimiento, Signo)`, destino de la FK compuesta del kardex.
 | IDDevolucion | INT *NULL* | FK → Devolucion |
 | IDUsuario | INT | FK → Usuario |
 | RequestId | UNIQUEIDENTIFIER *NULL* | Correlación con las trazas |
-| Fecha | DATETIME2(3) | DF `SYSUTCDATETIME()` |
+| Fecha | DATETIME2(3) | DF `SYSUTCDATETIME()`. Una fecha propia solo con el rol `Sistema`, nunca futura ni anterior al último movimiento de la variante (N-07) |
 
 Índices: `IX_MovimientoKardex_Variante (IDVariante, IDMovimientoKardex DESC)` e `IX_MovimientoKardex_Fecha (Fecha)`.
+
+**Invariante (N-07):** dentro de una variante, las fechas del kardex nunca retroceden. Ordenarlo por `Fecha` o por `IDMovimientoKardex` da el mismo orden y los mismos saldos. Lo garantiza `SP_Inventario_RegistrarMovimiento` bajo el bloqueo de la variante: la fecha actual nunca queda antes de una pasada, y una fecha propia se compara con la del último movimiento (`50003` si es anterior). Por eso S004 registra las entradas iniciales con fecha anterior al periodo de los datos demo (S006).
 
 **Invariante que verifica `VW_Inventario_Conciliacion`:** para cada variante, `ExistenciaFisica = SUM(Signo * Cantidad)` = `ExistenciaResultante` del último movimiento.
 
@@ -735,7 +737,7 @@ UQ `(IDPedido, IDVariante)`. Índices: `IX_DetallePedido_Variante (IDVariante) I
 
 Índices: `IX_Bitacora_Modulo (Modulo, Fecha DESC)` (filtro de RF-09) e `IX_Bitacora_Entidad (Entidad, IDEntidad, Fecha DESC)`.
 
-**Triggers que la alimentan** (`AFTER INSERT, UPDATE, DELETE`, serializando `inserted`/`deleted` con `FOR JSON PATH`):
+**Triggers que la alimentan** (`AFTER INSERT, UPDATE, DELETE`, serializando `inserted`/`deleted` con `FOR JSON PATH`). Las columnas de dinero (`Precio`, `Costo`, `Valor`, `MontoMaximoDescuento`, `MontoMinimoCompra`, `MontoEnvioGratis`) se serializan como texto (`"149.90"`), igual que en la API (A-21):
 
 | Tabla | Qué se registra | Módulo |
 |---|---|---|
@@ -805,7 +807,7 @@ Los SPs marcados **(interno)** solo los invocan otros SPs, nunca la API. Así ha
 `SP_Dashboard_Resumen` (ventas, pedidos, ticket promedio, carritos abandonados) · `SP_Dashboard_VentasPorPeriodo` (`@Agrupacion` = día, semana o mes) · `SP_Dashboard_VentasPorCategoria` · `SP_Dashboard_TopProductos` (top 10) · `SP_Dashboard_CarritosAbandonados` · `SP_Bitacora_Listar` (filtro por módulo, entidad y días de Guatemala; paginado; `IX_Bitacora_Modulo`, `IX_Bitacora_Entidad` e `IX_Bitacora_Fecha` de V017 sin filtros) · `SP_Sistema_Health` · `SP_Sistema_EstablecerContexto` **(interno: fija `SESSION_CONTEXT` a partir de los parámetros estándar)**
 
 ### Datos semilla y carga
-`SP_Semilla_GenerarDatosDemo (@Pedidos, @Dias, @Semilla)` (solo rol `Sistema`, determinista e idempotente) genera clientes, carritos y pedidos **consistentes** (detalle, kardex, historial y devoluciones) con fechas **relativas a hoy**, para que el dashboard siempre muestre los últimos 90 días. Termina verificando que `VW_Inventario_Conciliacion` esté vacía. La semilla normal usa `@Pedidos = 1500`; la carga pesada de la defensa, `@Pedidos = 50000`.
+`SP_Semilla_GenerarDatosDemo (@Pedidos, @Dias, @Semilla)` (solo rol `Sistema`, determinista e idempotente) genera clientes, carritos y pedidos **consistentes** (detalle, kardex, historial, devoluciones y su estado en la pasarela simulada) con fechas **relativas a hoy**, para que el dashboard siempre muestre los últimos 90 días. El kardex se registra en orden cronológico con la fecha de cada evento (N-07). Cada acción se atribuye a quien la registraría en la operación real: las altas de clientes sin actor, como el registro público; cupones y entradas al Admin; cada compra y su cancelación a su cliente; las devoluciones al Operador. Termina verificando que `VW_Inventario_Conciliacion` esté vacía para las variantes que vendió. La semilla normal usa `@Pedidos = 1500`. La carga pesada (50,000 pedidos) queda para la Fase 5, sobre una base nueva y con el número de pedidos como parámetro.
 
 ---
 
@@ -834,7 +836,7 @@ Los SPs marcados **(interno)** solo los invocan otros SPs, nunca la API. Así ha
 | `S001__catalogos.sql` | Roles, estados de pedido, transiciones, tipos de movimiento, métodos de envío y la fila de `ParametroSistema` |
 | `S002__geografia_gt.sql` | 22 departamentos y 340 municipios de Guatemala |
 | `S003__usuarios_demo.sql` | `admin@shopcart.gt`, `operador@shopcart.gt` y `cliente@shopcart.gt`, con hashes argon2 ya calculados. Las credenciales de prueba se documentan en el README, como pide el enunciado |
-| `S004__catalogo_demo.sql` | ~8 categorías, ~60 productos, ~250 variantes con atributos, precios con historial, imágenes locales y entradas de inventario iniciales (con su kardex) |
+| `S004__catalogo_demo.sql` | ~8 categorías, ~60 productos, ~250 variantes con atributos, precios con historial, imágenes locales y entradas de inventario iniciales (con su kardex, fechadas 120 días atrás con el rol `Sistema`, antes del periodo de S006: N-07) |
 | `S005__clientes_concurrencia.sql` | Los 20 clientes de la prueba de concurrencia (E5-H05) |
 | `S006__datos_demo.sql` | `EXEC SP_Semilla_GenerarDatosDemo @Pedidos = 1500, @Dias = 90, @Semilla = 2026`: ~200 clientes (`demo001@shopcart.gt`…), 1,500 pedidos con cancelaciones y devoluciones, carritos abandonados y cupones de ejemplo, uno por cada mensaje de RF-05: `DEMO10` (vigente), `DEMOVENCIDO`, `DEMOFUTURO`, `DEMOINACTIVO`, `DEMOAGOTADO`, `DEMOUNAVEZ` (ya usado por `cliente@shopcart.gt`), `DEMOMINIMO` y `DEMOCATEGORIA` |
 | `database/load/L001__carga_pesada.sql` | Opcional: `@Pedidos = 50000` |
