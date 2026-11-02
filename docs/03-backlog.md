@@ -455,6 +455,7 @@
 
 ### E5-H03 · Confirmar el pago y crear el pedido — `Must` · 1.25 h
 **Alcance:** `POST /checkout/sesion/pagos` con header `Idempotency-Key` obligatorio. Flujo de `01-arquitectura.md` §6.2: registrar intento → autorizar → `SP_Pedidos_CrearPedido` (transacción atómica) → capturar, o anular si la creación falla. Límite de 5 rechazos por sesión.
+- El manejo de `Idempotency-Key` se construye reutilizable: `POST /inventario/entradas` y `POST /inventario/ajustes` (E3-H06) también deben aceptarlo, para que un reintento tras un error de red no registre dos veces el mismo movimiento.
 **CA**
 - [ ] **Doble clic con la misma llave → un solo pedido y un solo cobro** (criterio de RF-06).
 - [ ] Misma llave con otro contenido → `422`; una llave nueva mientras otro intento está en curso → `409`; sesión ya pagada → devuelve el pedido existente.
@@ -622,12 +623,12 @@ Se detalla en historias al cerrar la Fase 1.
 | E2-H03 | Autenticación, autorización y revocación | Must | 0.5 | Hecha |
 | E2-H04 | Gestión de usuarios y perfil | Should | 0.5 | Hecha |
 | E2-H05 | Direcciones y catálogo geográfico | Must | 0.25 | Hecha |
-| E3-H01 | Categorías | Must | 0.25 | En revisión |
-| E3-H02 | Atributos y valores | Must | 0.25 | En revisión |
-| E3-H03 | Productos, imágenes y variantes | Must | 1.0 | En revisión |
-| E3-H04 | Precios versionados | Must | 0.5 | En revisión |
-| E3-H05 | Búsqueda y filtros del catálogo | Must | 0.75 | En revisión |
-| E3-H06 | Inventario y kardex | Must | 0.75 | En revisión |
+| E3-H01 | Categorías | Must | 0.25 | Hecha |
+| E3-H02 | Atributos y valores | Must | 0.25 | Hecha |
+| E3-H03 | Productos, imágenes y variantes | Must | 1.0 | Hecha |
+| E3-H04 | Precios versionados | Must | 0.5 | Hecha |
+| E3-H05 | Búsqueda y filtros del catálogo | Must | 0.75 | Hecha |
+| E3-H06 | Inventario y kardex | Must | 0.75 | Hecha |
 | E4-H01 | Carrito de invitado y de cliente | Must | 0.75 | Propuesta |
 | E4-H02 | Garantía de precio de 3 días | Must | 0.5 | Propuesta |
 | E4-H03 | Fusión del carrito al iniciar sesión o registrarse | Must | 0.25 | Propuesta |
