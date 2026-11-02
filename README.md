@@ -89,6 +89,17 @@ Los clientes `concurrencia01@shopcart.gt` a `concurrencia20@shopcart.gt` (contra
 
 La variante `DEMO-CONCURRENCIA` es la única con una sola unidad: sirve para la demo de compra simultánea (RF-06).
 
+### Definiciones de los reportes (N-11, N-13)
+
+El dashboard (`/api/v1/dashboard/*`, solo Admin) agrega siempre sobre una única definición de venta (`VW_Dashboard_HechosVenta`):
+
+- **Venta:** un pedido no cancelado, contado en su día de pago de Guatemala (`FechaPagoLocal`, UTC−6).
+- **Monto de ventas:** productos neto de descuento, con IVA incluido y **sin envío**; el envío se reporta aparte.
+- **Devoluciones:** se restan en el día en que ocurren (su `FechaLocal`), no en el de la venta: un periodo ya reportado no cambia.
+- **Ticket promedio:** monto neto de ventas / número de pedidos del periodo.
+- **Carrito abandonado:** carrito activo con productos y sin cambios en 24 horas (configurable); se cuenta en el día de su última actividad, con el monto potencial perdido a precio vigente.
+- Sin rango (`desde`, `hasta`), los reportes muestran los últimos 30 días.
+
 ### API (desarrollo, desde el host)
 
 Requiere SQL Server y Redis levantados y la base migrada:
