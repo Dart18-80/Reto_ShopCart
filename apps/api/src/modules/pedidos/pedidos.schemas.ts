@@ -47,7 +47,6 @@ export const listarReembolsosSchema = consultaPaginacionSchema.extend({
   estado: z.enum(ESTADOS_REEMBOLSO).optional(),
 });
 
-export type CancelarPedido = z.infer<typeof cancelarPedidoSchema>;
 export type ListarReembolsos = z.infer<typeof listarReembolsosSchema>;
 
 // N-10: el SP valida contra lo vendido bajo bloqueo; aquí solo la forma (líneas únicas, cantidades > 0).

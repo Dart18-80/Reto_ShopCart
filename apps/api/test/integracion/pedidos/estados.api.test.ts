@@ -128,6 +128,26 @@ describe('cambios de estado (E6-H02, N-08)', () => {
     });
   });
 
+  it('segunda capa (SP): desde Entregado tampoco se alcanzan DevueltoParcial ni Devuelto por este SP', async () => {
+    const { pedido } = await pedidoPagado(app, estandar);
+    await cambiar(pedido.idPedido, 'Pagado', 'EnPreparacion');
+    await cambiar(pedido.idPedido, 'EnPreparacion', 'Despachado');
+    await cambiar(pedido.idPedido, 'Despachado', 'Entregado');
+    const llamar = (nuevo: string) =>
+      comoActor(operador.idUsuario, 'Operador', () =>
+        ejecutarSP('SP_Pedidos_CambiarEstado', {
+          IDPedido: { tipo: sql.Int, valor: pedido.idPedido },
+          EstadoEsperado: { tipo: sql.VarChar(20), valor: 'Entregado' },
+          EstadoNuevo: { tipo: sql.VarChar(20), valor: nuevo },
+        }),
+      );
+
+    await expect(llamar('DevueltoParcial')).rejects.toMatchObject({
+      codigo: 'TRANSICION_INVALIDA',
+    });
+    await expect(llamar('Devuelto')).rejects.toMatchObject({ codigo: 'TRANSICION_INVALIDA' });
+  });
+
   it('tercera defensa (trigger): un UPDATE directo con una transición inválida se revierte', async () => {
     const { pedido } = await pedidoPagado(app, estandar);
 

@@ -105,6 +105,10 @@ BEGIN
                                    WHEN @Estado = 'Pendiente' THEN 'Autorizar'
                                    ELSE 'CrearPedido' END;
             END
+            -- Revisión de E6: un intento con pedido que ya no está en curso (por ejemplo, Anulado por la
+            -- cancelación del pedido) responde el pedido, igual que uno Capturado.
+            ELSE IF @IDPedido IS NOT NULL
+                SET @Accion = 'Pedido';
             ELSE IF @Estado = 'Rechazado'
                 SET @Accion = 'Rechazado';
             ELSE

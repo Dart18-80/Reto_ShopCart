@@ -1,6 +1,7 @@
 -- N-09: el Admin reintenta un reembolso Fallido: vuelve a Pendiente con sus intentos en cero y disponible ya;
--- después el servicio lo procesa con la misma llave (la pasarela nunca reembolsa dos veces). Un Pendiente queda
--- disponible ya; uno Completado no cambia. Devuelve el reembolso; ninguna fila si no existe.
+-- después el servicio lo procesa con la misma llave (la pasarela nunca reembolsa dos veces). Un Pendiente que
+-- espera su próximo intento queda disponible ya; uno que otro proceso tiene tomado (reclamo vigente) no se toca,
+-- y uno Completado tampoco. Devuelve el reembolso; ninguna fila si no existe.
 CREATE OR ALTER PROCEDURE dbo.SP_Pedidos_ReintentarReembolso
     @IDReembolso    INT,
     @IDUsuarioActor INT              = NULL,
@@ -22,7 +23,9 @@ BEGIN
         UPDATE dbo.Reembolso
         SET    Estado = 'Pendiente', Intentos = IIF(Estado = 'Fallido', 0, Intentos),
                FechaProximoIntento = SYSUTCDATETIME(), FechaActualizacion = SYSUTCDATETIME()
-        WHERE  IDReembolso = @IDReembolso AND Estado IN ('Pendiente', 'Fallido');
+        WHERE  IDReembolso = @IDReembolso
+          AND  (Estado = 'Fallido'
+                OR (Estado = 'Pendiente' AND (TokenReclamo IS NULL OR FechaProximoIntento <= SYSUTCDATETIME())));
 
         COMMIT;
     END TRY

@@ -115,6 +115,7 @@ interface FilaParaProcesar {
   Origen: Reembolso['origen'];
   Monto: number;
   LlaveIdempotencia: string;
+  TokenReclamo: string;
   IDTransaccionPasarela: string | null;
   LlaveIntento: string;
 }
@@ -268,11 +269,6 @@ export const pedidosRepository = {
     return pedido;
   },
 
-  /** N-08: la tabla de transiciones (la prueba de coincidencia con el mapa del servicio). */
-  listarTransiciones(): Promise<{ Origen: string; Destino: string; Rol: string }[]> {
-    return ejecutarSP('SP_Pedidos_ListarTransiciones');
-  },
-
   /** N-09: la transacción de la cancelación; devuelve el reembolso Pendiente que dejó. */
   async cancelar(idPedido: number, motivo: string): Promise<number> {
     const [fila] = await ejecutarSP<{ IDReembolso: number }>('SP_Pedidos_Cancelar', {
@@ -321,13 +317,14 @@ export const pedidosRepository = {
       origen: fila.Origen,
       monto: aMonto(fila.Monto),
       llave: fila.LlaveIdempotencia,
+      tokenReclamo: fila.TokenReclamo,
       idTransaccion: fila.IDTransaccionPasarela,
       llaveIntento: fila.LlaveIntento,
     };
   },
 
   async actualizarReembolso(
-    idReembolso: number,
+    { idReembolso, tokenReclamo }: Pick<ReembolsoParaProcesar, 'idReembolso' | 'tokenReclamo'>,
     resultado: ResultadoReembolso,
     reglas: { maxIntentos: number; segundosEntreIntentos: number },
   ): Promise<EstadoReembolso> {
@@ -339,6 +336,7 @@ export const pedidosRepository = {
         valor: resultado.exito ? resultado.idTransaccionReembolso : null,
       },
       Error: { tipo: sql.NVarChar(500), valor: resultado.exito ? null : resultado.error },
+      TokenReclamo: { tipo: sql.UniqueIdentifier, valor: tokenReclamo },
       MaxIntentos: { tipo: sql.TinyInt, valor: reglas.maxIntentos },
       SegundosEntreIntentos: { tipo: sql.Int, valor: reglas.segundosEntreIntentos },
     });

@@ -28,7 +28,7 @@ BEGIN
 
         UPDATE r
         SET    r.FechaProximoIntento = DATEADD(SECOND, @SegundosReclamo, SYSUTCDATETIME()),
-               r.FechaActualizacion = SYSUTCDATETIME()
+               r.TokenReclamo = NEWID(), r.FechaActualizacion = SYSUTCDATETIME()
         FROM   dbo.Reembolso AS r WITH (UPDLOCK, ROWLOCK)
         JOIN   dbo.Pedido AS p ON p.IDPedido = r.IDPedido
         WHERE  r.IDReembolso = @IDReembolso AND r.Estado = 'Pendiente'
@@ -43,7 +43,7 @@ BEGIN
         THROW;
     END CATCH
 
-    SELECT r.IDReembolso, r.Origen, r.Monto, r.LlaveIdempotencia, i.IDTransaccionPasarela,
+    SELECT r.IDReembolso, r.Origen, r.Monto, r.LlaveIdempotencia, r.TokenReclamo, i.IDTransaccionPasarela,
            i.LlaveIdempotencia AS LlaveIntento
     FROM   dbo.Reembolso AS r
     JOIN   dbo.Pedido AS p ON p.IDPedido = r.IDPedido

@@ -48,8 +48,9 @@ export async function pedidoPagado(
       .send({ codigo: codigoCupon });
   }
   leerSesionPago(await iniciarPago(app, comprador, idMetodoEnvio));
-  const pedido = leerPedido(await pagar(app, comprador.token, randomUUID()));
-  return { cliente: comprador, pedido, variantes };
+  const llave = randomUUID();
+  const pedido = leerPedido(await pagar(app, comprador.token, llave));
+  return { cliente: comprador, pedido, variantes, llave };
 }
 
 /** Lleva el pedido a un día de pago de Guatemala (FechaPagoLocal) dado. */

@@ -16,6 +16,7 @@ const CANCELACION: ReembolsoParaProcesar = {
   origen: 'Cancelacion',
   monto: new Decimal('135.00'),
   llave: 'llave-reembolso',
+  tokenReclamo: 'reclamo-1',
   idTransaccion: 'txn-1',
   llaveIntento: 'llave-intento',
 };
@@ -29,7 +30,7 @@ function preparar(tomado: ReembolsoParaProcesar | null, enPasarela: EstadoEnPasa
     obtener: vi.fn((): Promise<Pedido | null> => Promise.resolve(null)),
     tomarReembolso: vi.fn(() => Promise.resolve(tomado)),
     actualizarReembolso: vi.fn(
-      (_id: number, resultado: ResultadoReembolso): Promise<EstadoReembolso> =>
+      (_reembolso: unknown, resultado: ResultadoReembolso): Promise<EstadoReembolso> =>
         Promise.resolve(resultado.exito ? 'Completado' : 'Pendiente'),
     ),
     obtenerReembolsosPendientes: vi.fn((): Promise<number[] | null> => Promise.resolve([])),
@@ -50,6 +51,34 @@ function preparar(tomado: ReembolsoParaProcesar | null, enPasarela: EstadoEnPasa
   });
   return { servicio, repositorio, pasarela };
 }
+
+const PEDIDO_CANCELADO: Pedido = {
+  idPedido: 10,
+  numeroPedido: 'SC-000010',
+  estado: 'Cancelado',
+  subtotal: new Decimal(0),
+  descuento: new Decimal(0),
+  costoEnvio: new Decimal(0),
+  total: new Decimal(0),
+  baseImponible: new Decimal(0),
+  iva: new Decimal(0),
+  montoReembolsado: new Decimal(0),
+  codigoCupon: null,
+  envio: { nombre: 'Estándar', fechaEstimadaEntrega: '2026-11-05' },
+  fechaPago: new Date('2026-11-01T12:00:00Z'),
+  fechaPagoLocal: '2026-11-01',
+  tarjeta: TARJETA,
+  direccion: {
+    nombreRecibe: 'Ana',
+    telefonoRecibe: '55551234',
+    departamento: 'Guatemala',
+    municipio: 'Guatemala',
+    direccionLinea: 'Zona 1',
+    referencia: null,
+  },
+  lineas: [],
+  historial: [],
+};
 
 const resultadoDe = (repositorio: ReturnType<typeof preparar>['repositorio']) =>
   repositorio.actualizarReembolso.mock.calls[0]?.[1];
@@ -117,6 +146,32 @@ describe('pedidos.reembolsos (E6-H03, N-09)', () => {
     expect(await servicio.procesar(3)).toBeNull();
     expect(pasarela.consultar).not.toHaveBeenCalled();
     expect(repositorio.actualizarReembolso).not.toHaveBeenCalled();
+  });
+
+  it('una falla de la base después del COMMIT de la cancelación responde el reembolso Pendiente', async () => {
+    const { servicio, repositorio } = preparar(CANCELACION, { estado: 'NoExiste' });
+    repositorio.tomarReembolso.mockRejectedValueOnce(new Error('base caída'));
+    repositorio.obtener.mockResolvedValueOnce(PEDIDO_CANCELADO);
+
+    const cancelacion = await servicio.cancelar(10, 'Ya no lo quiero');
+
+    expect(cancelacion.reembolso).toEqual({ idReembolso: 3, estado: 'Pendiente' });
+  });
+
+  it('registra el fallo con el reclamo de la toma (un proceso desplazado no suma intentos)', async () => {
+    const { servicio, repositorio, pasarela } = preparar(CANCELACION, {
+      estado: 'Capturada',
+      idTransaccion: 'txn-1',
+      ...TARJETA,
+    });
+    pasarela.reembolsar.mockRejectedValueOnce(new Error('pasarela caída'));
+
+    await servicio.procesar(3);
+
+    expect(repositorio.actualizarReembolso.mock.calls[0]?.[0]).toMatchObject({
+      idReembolso: 3,
+      tokenReclamo: 'reclamo-1',
+    });
   });
 
   it('el job devuelve null si la otra réplica tiene el bloqueo', async () => {

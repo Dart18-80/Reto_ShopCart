@@ -110,6 +110,8 @@ export interface ReembolsoParaProcesar {
   origen: Reembolso['origen'];
   monto: Decimal;
   llave: string;
+  /** El reclamo de esta toma: un fallo solo se registra si sigue vigente. */
+  tokenReclamo: string;
   idTransaccion: string | null;
   llaveIntento: string;
 }

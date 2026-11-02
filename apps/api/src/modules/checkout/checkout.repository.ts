@@ -275,6 +275,19 @@ export const checkoutRepository = {
     });
   },
 
+  /** N-03 (fencing): renueva el arrendamiento solo si el token sigue vigente; false si otro lo retomó. */
+  async renovarArrendamiento(
+    { idIntento, token }: Arrendamiento,
+    segundosArrendamiento: number,
+  ): Promise<boolean> {
+    const [fila] = await ejecutarSP<{ Vigente: boolean }>('SP_Checkout_RenovarArrendamiento', {
+      IDIntentoPago: { tipo: sql.BigInt, valor: idIntento },
+      TokenArrendamiento: { tipo: sql.UniqueIdentifier, valor: token },
+      SegundosArrendamiento: { tipo: sql.Int, valor: segundosArrendamiento },
+    });
+    return fila?.Vigente === true;
+  },
+
   // Jobs (A-04): corren con RolActor = 'Sistema'. null si la otra réplica tenía el sp_getapplock.
   async expirarSesiones(): Promise<number | null> {
     const [fila] = await ejecutarSP<{ Ejecutada: boolean; SesionesExpiradas: number }>(

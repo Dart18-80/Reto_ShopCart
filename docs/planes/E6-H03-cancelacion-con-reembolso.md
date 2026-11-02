@@ -42,6 +42,8 @@ El servicio `procesarReembolso(idReembolso)` se usa en tres lugares: la petició
    - Falla → `Intentos + 1` y `UltimoError`; al quinto intento → `Fallido`.
 4. Si la pasarela falla, **la cancelación se mantiene** y el reembolso queda `Pendiente`.
 
+**Revisión de la épica:** cada toma genera un `TokenReclamo` (V016). Un fallo solo se registra con el reclamo vigente, así un proceso desplazado no suma intentos. Un éxito de la pasarela deja el reembolso `Completado` aunque ya estuviera `Fallido`. El reintento del Admin no toca un `Pendiente` que otro proceso tiene tomado. Si la base falla después del commit, la respuesta refleja la cancelación o la devolución con el reembolso `Pendiente`.
+
 ## 4. Job (Should, incluido)
 
 `Pedidos.ReintentarReembolsos` cada 5 min:

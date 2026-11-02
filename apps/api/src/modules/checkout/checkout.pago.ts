@@ -7,6 +7,7 @@ import {
   PasarelaSinRespuesta,
   TIMEOUT_PASARELA_MS,
   ultimosDigitos,
+  type EstadoEnPasarela,
   type PasarelaPago,
   type ResultadoAutorizacion,
   type TarjetaPago,
@@ -26,7 +27,7 @@ const ESPERA_BASE_ANULACION_MS = 100;
 interface Dependencias {
   repositorio: Pick<
     CheckoutRepository,
-    'registrarIntento' | 'actualizarIntento' | 'liberarArrendamiento'
+    'registrarIntento' | 'actualizarIntento' | 'liberarArrendamiento' | 'renovarArrendamiento'
   >;
   pedidos: PedidosParaCheckout;
   pasarela: PasarelaPago;
@@ -98,6 +99,13 @@ export function crearPagoService({
         logger.info({ idIntento, idTransaccion, codigo }, 'Autorización anulada: no hay pedido');
         return;
       } catch (error) {
+        if (esArrendamientoPerdido(error)) {
+          logger.error(
+            { err: error, idIntento, idTransaccion },
+            'La autorización se anuló pero otro proceso tomó el intento; lo resuelve quien lo tiene',
+          );
+          return;
+        }
         logger.warn({ err: error, idIntento, idTransaccion, intento }, 'La anulación falló');
         if (intento === INTENTOS_ANULACION) {
           // Queda Autorizado sin pedido: la conciliación lo anula.
@@ -120,8 +128,9 @@ export function crearPagoService({
     idTransaccion: string,
   ): Promise<Pedido> {
     const { idIntento } = arrendamiento;
-    // N-03 (fencing): otro proceso retomó el arrendamiento; esta petición ya no toca el cobro.
-    if (causa instanceof AppError && causa.codigo === 'PAGO_EN_CURSO') throw causa;
+    // N-03 (fencing): si otro proceso retomó el arrendamiento, esta petición ya no toca el cobro. Renovarlo
+    // antes de anular impide además que, mientras tanto, un reintento retome el intento y cree el pedido.
+    if (esArrendamientoPerdido(causa) || !(await sigueSiendoDueno(arrendamiento))) throw causa;
     let pedido: Pedido | null;
     try {
       pedido = await pedidos.obtenerDeIntento(idIntento);
@@ -142,6 +151,23 @@ export function crearPagoService({
       'El pedido se confirmó aunque la petición falló; se continúa con la captura',
     );
     return pedido;
+  }
+
+  async function sigueSiendoDueno(arrendamiento: Arrendamiento): Promise<boolean> {
+    try {
+      if (await repositorio.renovarArrendamiento(arrendamiento, SEGUNDOS_ARRENDAMIENTO))
+        return true;
+      logger.warn(
+        { idIntento: arrendamiento.idIntento },
+        'Otro proceso retomó el pago; esta petición no toca el cobro',
+      );
+    } catch (error) {
+      logger.error(
+        { err: error, idIntento: arrendamiento.idIntento },
+        'No se pudo renovar el arrendamiento; el cobro queda para quien tenga el intento',
+      );
+    }
+    return false;
   }
 
   async function crearPedidoYCapturar(
@@ -211,12 +237,23 @@ export function crearPagoService({
    * se cierra sin cobro; la respuesta es SESION_VENCIDA.
    */
   async function cerrarSinCobro(arrendamiento: Arrendamiento, llave: string): Promise<never> {
-    const enPasarela = await pasarela.consultar(llave);
+    let enPasarela: EstadoEnPasarela;
+    try {
+      enPasarela = await pasarela.consultar(llave);
+    } catch (error) {
+      return liberarTrasFalla(arrendamiento, error);
+    }
     const vencida = new AppError('SESION_VENCIDA', {
       mensaje: 'Tu sesión de pago venció y no se hizo ningún cobro. Vuelve a iniciar el pago.',
     });
     if (enPasarela.estado === 'Autorizada') {
       await anular(arrendamiento, enPasarela.idTransaccion, vencida);
+    } else if (enPasarela.estado === 'Anulada') {
+      await repositorio.actualizarIntento(arrendamiento, {
+        estado: 'Anulado',
+        codigo: vencida.codigo,
+        mensaje: null,
+      });
     } else if (enPasarela.estado === 'Capturada') {
       // Imposible sin pedido: no se toca el cobro y lo revisa la conciliación.
       logger.error(
@@ -273,6 +310,9 @@ export function crearPagoService({
     },
   };
 }
+
+const esArrendamientoPerdido = (error: unknown): boolean =>
+  error instanceof AppError && error.codigo === 'PAGO_EN_CURSO';
 
 const arrendamientoDe = ({ idIntento, token }: Arrendamiento): Arrendamiento => ({
   idIntento,

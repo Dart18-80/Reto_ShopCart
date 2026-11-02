@@ -2,7 +2,11 @@ import type { Logger } from 'pino';
 import type { PaginaSP } from '../../shared/db/index.js';
 import { AppError } from '../../shared/errors/index.js';
 import type { ResultadoTarea } from '../../shared/jobs/index.js';
-import { TIMEOUT_PASARELA_MS, type PasarelaPago } from '../../shared/pasarela/index.js';
+import {
+  PasarelaSinRespuesta,
+  TIMEOUT_PASARELA_MS,
+  type PasarelaPago,
+} from '../../shared/pasarela/index.js';
 import type { PedidosRepository } from './pedidos.repository.js';
 import type { ListarReembolsos, RegistrarDevolucion } from './pedidos.schemas.js';
 import type {
@@ -92,9 +96,12 @@ export function crearReembolsosService({ repositorio, pasarela, logger }: Depend
         idTransaccionReembolso: await reembolsar(reembolso, reembolso.idTransaccion),
       };
     } catch (error) {
-      logger.warn(
+      // Un timeout es transitorio; cualquier otro error (cobro inexistente, llave rechazada, un bug) se
+      // registra como error desde el primer intento.
+      const nivel = error instanceof PasarelaSinRespuesta ? 'warn' : 'error';
+      logger[nivel](
         { err: error, idReembolso: reembolso.idReembolso },
-        'La pasarela no devolvió el dinero; el reembolso queda para reintentar',
+        'No se devolvió el dinero del reembolso; queda para reintentar',
       );
       return { exito: false, error: error instanceof Error ? error.message : 'Error desconocido' };
     }
@@ -105,11 +112,16 @@ export function crearReembolsosService({ repositorio, pasarela, logger }: Depend
     const reembolso = await repositorio.tomarReembolso(idReembolso, SEGUNDOS_RECLAMO);
     if (reembolso === null) return null;
     const resultado = await devolver(reembolso);
-    const estado = await repositorio.actualizarReembolso(idReembolso, resultado, {
+    const estado = await repositorio.actualizarReembolso(reembolso, resultado, {
       maxIntentos: MAX_INTENTOS,
       segundosEntreIntentos: SEGUNDOS_ENTRE_INTENTOS,
     });
-    if (estado === 'Fallido') {
+    if (resultado.exito && estado !== 'Completado') {
+      logger.error(
+        { idReembolso, idTransaccionReembolso: resultado.idTransaccionReembolso, estado },
+        'La pasarela devolvió el dinero pero el reembolso no quedó Completado',
+      );
+    } else if (estado === 'Fallido') {
       logger.error(
         { idReembolso },
         'Reembolso Fallido tras 5 intentos: requiere resolución manual',
@@ -118,13 +130,31 @@ export function crearReembolsosService({ repositorio, pasarela, logger }: Depend
     return estado;
   }
 
+  /**
+   * La cancelación o la devolución ya se confirmaron: cualquier falla al devolver el dinero (de la pasarela
+   * o de la base) deja el reembolso Pendiente para el job, y la respuesta refleja lo confirmado.
+   */
+  async function procesarTrasConfirmar(
+    idReembolso: number,
+    contexto: Record<string, number>,
+  ): Promise<EstadoReembolso> {
+    try {
+      return (await procesar(idReembolso)) ?? 'Pendiente';
+    } catch (error) {
+      logger.error(
+        { err: error, idReembolso, ...contexto },
+        'Operación confirmada; su reembolso queda Pendiente para el job',
+      );
+      return 'Pendiente';
+    }
+  }
+
   return {
     procesar,
 
     async cancelar(idPedido: number, motivo: string): Promise<Cancelacion> {
       const idReembolso = await repositorio.cancelar(idPedido, motivo);
-      // La cancelación ya se confirmó: si la pasarela falla, el reembolso queda Pendiente para el job.
-      const estado = (await procesar(idReembolso)) ?? 'Pendiente';
+      const estado = await procesarTrasConfirmar(idReembolso, { idPedido });
       const pedido = await repositorio.obtener(idPedido);
       if (pedido === null) throw new Error(`El pedido ${String(idPedido)} cancelado no existe`);
       return { pedido, reembolso: { idReembolso, estado } };
@@ -138,8 +168,7 @@ export function crearReembolsosService({ repositorio, pasarela, logger }: Depend
         idPedido,
         datos,
       );
-      // La devolución ya se confirmó: si la pasarela falla, el reembolso queda Pendiente para el job.
-      const estado = (await procesar(idReembolso)) ?? 'Pendiente';
+      const estado = await procesarTrasConfirmar(idReembolso, { idPedido, idDevolucion });
       const pedido = await repositorio.obtener(idPedido);
       if (pedido === null) throw new Error(`El pedido ${String(idPedido)} devuelto no existe`);
       return {

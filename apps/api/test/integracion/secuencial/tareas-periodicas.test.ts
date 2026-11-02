@@ -442,6 +442,16 @@ describe('cierre de E5: vigencia y fencing (N-03)', () => {
 });
 
 describe('reintento de reembolsos y cancelaciones (E6-H03, N-09)', () => {
+  const intentosDeLlave = (llave: string) =>
+    ejecutarSP<{
+      IDIntentoPago: string;
+      IDSesionCheckout: number;
+      Estado: string;
+      CodigoRespuesta: string | null;
+      TokenArrendamiento: string | null;
+    }>('SP_Pruebas_LeerIntentosPago', {
+      LlaveIdempotencia: { tipo: sql.UniqueIdentifier, valor: llave },
+    });
   const reembolsosDe = async (idPedido: number) => {
     const [, reembolsos] = await ejecutarSPConjuntos<
       [unknown[], { IDReembolso: number; Estado: string; Intentos: number }[]]
@@ -531,18 +541,54 @@ describe('reintento de reembolsos y cancelaciones (E6-H03, N-09)', () => {
         pasarela: pasarelaCon({ capturar: () => Promise.reject(new Error('pasarela caída')) }),
       }),
     );
-    const { cliente, pedido } = await pedidoPagado(capturaCaida, estandar);
-    const [intento] = await ejecutarSPConjuntos<[{ LlaveIntento: string }[]]>(
-      'SP_Pruebas_LeerCancelacion',
-      {
-        IDPedido: { tipo: sql.Int, valor: pedido.idPedido },
-      },
-    ).then(([filas]) => filas ?? []);
-    await cancelar(app, cliente.token, pedido.idPedido);
+    const anulacionCaida = crearApp(
+      dependenciasDePrueba({
+        pasarela: pasarelaCon({ anular: () => Promise.reject(new Error('pasarela caída')) }),
+      }),
+    );
+    const { cliente, pedido, llave } = await pedidoPagado(capturaCaida, estandar);
+    const idSesion = (await intentosDeLlave(llave))[0]?.IDSesionCheckout ?? 0;
+    // La cancelación no logra anular: la autorización sigue viva en la pasarela y el reembolso Pendiente.
+    await cancelar(anulacionCaida, cliente.token, pedido.idPedido);
+    await abandonarIntento(idSesion);
 
     await conciliar();
 
-    expect(await estadoEnPasarela(intento?.LlaveIntento ?? '')).toBe('Anulada');
+    expect(await estadoEnPasarela(llave)).toBe('Autorizada');
+    expect(await intentosDeLlave(llave)).toMatchObject([
+      { Estado: 'Anulado', CodigoRespuesta: 'PEDIDO_CANCELADO' },
+    ]);
+    const [reembolso] = await reembolsosDe(pedido.idPedido);
+    await adelantar(reembolso?.IDReembolso ?? 0);
+    await tareaReembolsos(crearPasarelaSimulada()).ejecutar();
+    expect(await estadoEnPasarela(llave)).toBe('Anulada');
+    expect(await reembolsosDe(pedido.idPedido)).toMatchObject([{ Estado: 'Completado' }]);
+  });
+
+  it('Resolver con un token que ya no es el vigente no cambia el intento (Resuelto = 0)', async () => {
+    const capturaCaida = crearApp(
+      dependenciasDePrueba({
+        pasarela: pasarelaCon({ capturar: () => Promise.reject(new Error('pasarela caída')) }),
+      }),
+    );
+    const { llave } = await pedidoPagado(capturaCaida, estandar);
+    const [intento] = await intentosDeLlave(llave);
+    if (intento === undefined) throw new Error('Falta el intento');
+
+    const [fila] = await ejecutarSP<{ Resuelto: boolean }>(
+      'SP_Checkout_ResolverIntentoConciliado',
+      {
+        IDIntentoPago: { tipo: sql.BigInt, valor: intento.IDIntentoPago },
+        EstadoEsperado: { tipo: sql.VarChar(12), valor: 'Autorizado' },
+        Estado: { tipo: sql.VarChar(12), valor: 'Capturado' },
+        TokenArrendamiento: { tipo: sql.UniqueIdentifier, valor: randomUUID() },
+      },
+    );
+
+    expect(fila?.Resuelto).toBe(false);
+    expect(await intentosDeLlave(llave)).toMatchObject([
+      { Estado: 'Autorizado', TokenArrendamiento: intento.TokenArrendamiento },
+    ]);
   });
 });
 

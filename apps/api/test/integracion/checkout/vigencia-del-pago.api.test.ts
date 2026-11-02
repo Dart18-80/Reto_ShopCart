@@ -10,6 +10,7 @@ import { leerError } from '../../unit/respuestas.js';
 import { dependenciasDePrueba } from '../../app-de-prueba.js';
 import { usarBaseDePruebas } from '../base-de-pruebas.js';
 import { comoCliente, varianteVendible } from '../carrito/apoyo-carrito.js';
+import { checkoutRepository } from '../../../src/modules/checkout/checkout.repository.js';
 import { comoActor } from '../datos-de-prueba.js';
 import {
   clienteConCarrito,
@@ -154,6 +155,51 @@ describe('el pago empieza dentro de la vigencia de la sesión (cierre de E5, N-0
   });
 });
 
+describe('fencing de los SPs que escriben el intento (cierre de E5, revisión de E6)', () => {
+  it('con un token que otro proceso ya reemplazó, ni se actualiza, ni se libera, ni se renueva el intento', async () => {
+    const { cliente, idSesion } = await sesionDePago();
+    const llave = randomUUID();
+    await pagar(app, cliente.token, llave, TARJETA_TIEMPO_AGOTADO);
+    const [viejo] = await intentosDe(idSesion);
+    if (viejo?.TokenArrendamiento == null) throw new Error('Falta el intento');
+    // Otra petición retoma el intento (sin llamar a la pasarela): token nuevo y arrendamiento vivo.
+    const retoma = await comoActor(cliente.idUsuario, 'Cliente', () =>
+      checkoutRepository.registrarIntento({
+        llave,
+        marca: 'Visa',
+        ultimosDigitos: '0119',
+        segundosArrendamiento: 60,
+      }),
+    );
+    expect(retoma.accion).toBe('Autorizar');
+    const zombi = { idIntento: Number(viejo.IDIntentoPago), token: viejo.TokenArrendamiento };
+
+    const actualizar = comoActor(cliente.idUsuario, 'Cliente', () =>
+      checkoutRepository.actualizarIntento(zombi, {
+        estado: 'Rechazado',
+        codigo: 'FONDOS_INSUFICIENTES',
+        mensaje: 'Fondos insuficientes.',
+      }),
+    );
+    await expect(actualizar).rejects.toMatchObject({ codigo: 'PAGO_EN_CURSO' });
+    await comoActor(cliente.idUsuario, 'Cliente', () =>
+      checkoutRepository.liberarArrendamiento(zombi),
+    );
+    const renovado = await comoActor(cliente.idUsuario, 'Cliente', () =>
+      checkoutRepository.renovarArrendamiento(zombi, 60),
+    );
+
+    expect(renovado).toBe(false);
+    expect(await intentosDe(idSesion)).toMatchObject([
+      {
+        Estado: 'Pendiente',
+        Arrendado: true,
+        TokenArrendamiento: expect.not.stringMatching(viejo.TokenArrendamiento) as unknown,
+      },
+    ]);
+  });
+});
+
 describe('tarjeta vencida (cierre de E5)', () => {
   it('una fecha de vencimiento pasada responde 400 en el campo, sin llegar a la pasarela', async () => {
     const { pasarela, autorizaciones } = pasarelaQueCuenta();
@@ -179,12 +225,29 @@ describe('tarjeta vencida (cierre de E5)', () => {
 });
 
 describe('los SPs de los jobs solo corren como Sistema (cierre de E5, A-18)', () => {
-  it.each(['SP_Checkout_ExpirarSesiones', 'SP_Carrito_ExpirarInvitados'] as const)(
-    '%s llamado por un Cliente → INVARIANTE_INTERNA',
-    async (nombre) => {
-      const resultado = comoActor(1, 'Cliente', () => ejecutarSP(nombre));
+  it.each([
+    ['SP_Checkout_ExpirarSesiones', {}],
+    ['SP_Carrito_ExpirarInvitados', {}],
+    [
+      'SP_Checkout_TomarIntentosPorConciliar',
+      {
+        SegundosGracia: { tipo: sql.Int, valor: 120 },
+        SegundosArrendamiento: { tipo: sql.Int, valor: 60 },
+      },
+    ],
+    [
+      'SP_Checkout_ResolverIntentoConciliado',
+      {
+        IDIntentoPago: { tipo: sql.BigInt, valor: 1 },
+        EstadoEsperado: { tipo: sql.VarChar(12), valor: 'Autorizado' },
+        Estado: { tipo: sql.VarChar(12), valor: 'Capturado' },
+      },
+    ],
+    ['SP_Sistema_PurgarSolicitudesIdempotentes', { Horas: { tipo: sql.Int, valor: 24 } }],
+    ['SP_Pedidos_ObtenerReembolsosPendientes', { Maximo: { tipo: sql.Int, valor: 10 } }],
+  ] as const)('%s llamado por un Cliente → INVARIANTE_INTERNA', async (nombre, parametros) => {
+    const resultado = comoActor(1, 'Cliente', () => ejecutarSP(nombre, parametros));
 
-      await expect(resultado).rejects.toMatchObject({ codigo: 'INVARIANTE_INTERNA' });
-    },
-  );
+    await expect(resultado).rejects.toMatchObject({ codigo: 'INVARIANTE_INTERNA' });
+  });
 });

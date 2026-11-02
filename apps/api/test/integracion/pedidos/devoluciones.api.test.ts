@@ -211,6 +211,12 @@ describe('devoluciones (E6-H04, N-10)', () => {
     ]);
 
     expect(respuestas.map((r) => r.status).sort()).toEqual([201, 422]);
+    const rechazo = respuestas.find((r) => r.status === 422);
+    expect(rechazo === undefined ? null : leerError(rechazo).codigo).toBe(
+      'DEVOLUCION_EXCEDE_VENDIDO',
+    );
+    expect((await devolucionesDe(pedido.idPedido)).devoluciones).toHaveLength(1);
+    expect((await detalleDe(cliente, pedido.idPedido)).montoReembolsado).toBe('100.00');
     const devuelta = (await detalleDe(cliente, pedido.idPedido)).lineas.find(
       (l) => l.idDetallePedido === linea.idDetallePedido,
     );

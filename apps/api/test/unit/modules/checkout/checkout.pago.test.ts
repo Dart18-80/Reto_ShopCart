@@ -68,6 +68,9 @@ function preparar(registro: RegistroIntento) {
       Promise.resolve({ intentosRestantes: 4, sesionCancelada: false }),
     ),
     liberarArrendamiento: vi.fn((_arrendamiento: Arrendamiento) => Promise.resolve()),
+    renovarArrendamiento: vi.fn((_arrendamiento: Arrendamiento, _segundos: number) =>
+      Promise.resolve(true),
+    ),
   };
   const pedidos = {
     crearDeIntento: vi.fn(() => Promise.resolve(PEDIDO)),
@@ -198,6 +201,50 @@ describe('checkout.pago (E5-H03)', () => {
     expect(repositorio.actualizarIntento).toHaveBeenLastCalledWith(ARRENDAMIENTO, {
       estado: 'Capturado',
     });
+  });
+
+  it('si al fallar el pedido el arrendamiento ya es de otro proceso, no toca el cobro (fencing)', async () => {
+    const { servicio, repositorio, pedidos, pasarela } = preparar(AUTORIZAR);
+    const causa = new Error('timeout de CrearPedido');
+    pedidos.crearDeIntento.mockRejectedValueOnce(causa);
+    repositorio.renovarArrendamiento.mockResolvedValueOnce(false);
+
+    const error = await servicio.pagar(SOLICITUD).catch((e: unknown) => e);
+
+    expect(error).toBe(causa);
+    expect(repositorio.renovarArrendamiento).toHaveBeenCalledWith(ARRENDAMIENTO, 15);
+    expect(pedidos.obtenerDeIntento).not.toHaveBeenCalled();
+    expect(pasarela.anular).not.toHaveBeenCalled();
+  });
+
+  it('Cerrar con la autorización ya anulada en la pasarela: el intento queda Anulado, SESION_VENCIDA', async () => {
+    const { servicio, repositorio, pasarela } = preparar({ accion: 'Cerrar', ...ARRENDAMIENTO });
+    pasarela.consultar.mockResolvedValueOnce({
+      estado: 'Anulada',
+      idTransaccion: ID_TRANSACCION,
+      marca: 'Visa',
+      ultimosDigitos: '4242',
+    });
+
+    const error = await servicio.pagar(SOLICITUD).catch((e: unknown) => e);
+
+    expect(error).toMatchObject({ codigo: 'SESION_VENCIDA' });
+    expect(pasarela.anular).not.toHaveBeenCalled();
+    expect(repositorio.actualizarIntento).toHaveBeenCalledWith(ARRENDAMIENTO, {
+      estado: 'Anulado',
+      codigo: 'SESION_VENCIDA',
+      mensaje: null,
+    });
+  });
+
+  it('Cerrar sin respuesta de la pasarela libera el arrendamiento y responde PAGO_SIN_CONFIRMAR', async () => {
+    const { servicio, repositorio, pasarela } = preparar({ accion: 'Cerrar', ...ARRENDAMIENTO });
+    pasarela.consultar.mockRejectedValueOnce(new PasarelaSinRespuesta('consultar'));
+
+    const error = await servicio.pagar(SOLICITUD).catch((e: unknown) => e);
+
+    expect(error).toMatchObject({ codigo: 'PAGO_SIN_CONFIRMAR', status: 504 });
+    expect(repositorio.liberarArrendamiento).toHaveBeenCalledWith(ARRENDAMIENTO);
   });
 
   it('si otro proceso retomó el arrendamiento (fencing), no anula ni consulta el pedido', async () => {

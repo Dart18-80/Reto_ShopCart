@@ -229,6 +229,64 @@ describe('cancelación con reembolso (E6-H03, N-09)', () => {
     expect((await enPasarela(guardado.LlaveIntento)).reembolsos).toHaveLength(1);
   });
 
+  it('si la pasarela reembolsó pero la respuesta se perdió, el reintento usa la misma llave: un solo reembolso', async () => {
+    const real = crearPasarelaSimulada();
+    const respuestaPerdida = crearApp(
+      dependenciasDePrueba({
+        pasarela: pasarelaCon({
+          reembolsar: async (solicitud) => {
+            await real.reembolsar(solicitud);
+            throw new Error('la respuesta se perdió');
+          },
+        }),
+      }),
+    );
+    const { cliente, pedido } = await pedidoPagado(app, estandar);
+    const { reembolso } = leerDatos(
+      await cancelarComoCliente(respuestaPerdida, cliente.token, pedido.idPedido),
+      cancelacionSchema,
+    );
+    expect(reembolso.estado).toBe('Pendiente');
+
+    await request(app)
+      .post(`/api/v1/admin/reembolsos/${String(reembolso.idReembolso)}/reintentar`)
+      .set(comoCliente(tokenAdmin));
+
+    const { pedido: guardado, reembolsos } = await cancelacionDe(pedido.idPedido);
+    expect(reembolsos).toMatchObject([{ Estado: 'Completado', Intentos: 1 }]);
+    const enLaPasarela = await enPasarela(guardado.LlaveIntento);
+    expect(enLaPasarela.reembolsos).toHaveLength(1);
+    expect(reembolsos[0]?.IDTransaccionReembolso).toBe(enLaPasarela.reembolsos[0]?.IDReembolso);
+  });
+
+  it('reintentar el pago con su llave después de cancelar responde el pedido (200), no un error', async () => {
+    const capturaCaida = crearApp(
+      dependenciasDePrueba({
+        pasarela: pasarelaCon({ capturar: () => Promise.reject(new Error('pasarela caída')) }),
+      }),
+    );
+    const { cliente, pedido, llave } = await pedidoPagado(capturaCaida, estandar);
+    await cancelarComoCliente(app, cliente.token, pedido.idPedido);
+
+    const reintento = await request(app)
+      .post('/api/v1/checkout/sesion/pagos')
+      .set({ ...comoCliente(cliente.token), 'Idempotency-Key': llave })
+      .send({
+        numeroTarjeta: '4242424242424242',
+        mesVencimiento: 12,
+        anioVencimiento: 2030,
+        cvv: '731',
+      });
+
+    expect(reintento.status).toBe(200);
+    expect(
+      leerDatos(reintento, z.looseObject({ idPedido: z.number(), estado: z.string() })),
+    ).toMatchObject({
+      idPedido: pedido.idPedido,
+      estado: 'Cancelado',
+    });
+  });
+
   it('repetir la cancelación responde 409 y no genera un segundo reembolso', async () => {
     const { cliente, pedido } = await pedidoPagado(app, estandar);
     await cancelarComoCliente(app, cliente.token, pedido.idPedido);
