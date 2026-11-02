@@ -67,6 +67,8 @@ El primer arranque descarga las imágenes y construye la API y la web. El migrad
 
 Para empezar de cero (borra la base): `docker compose down -v && docker compose up -d`.
 
+Redis corre con el usuario `redis`, no como root. Un entorno levantado antes de ese cambio puede tener en `/data` un `dump.rdb` de root que impide arrancar a Redis. Se recrea sin perder nada importante, porque Redis solo guarda lo que se puede perder: `docker compose rm -sfv redis && docker compose up -d redis`.
+
 ### Variables de entorno
 
 Cada valor tiene una sola fuente en `.env`: Compose, el migrador y la API leen las mismas variables (`.env.example` documenta cada una). `.env` está en `.gitignore`: el repositorio no tiene credenciales reales.

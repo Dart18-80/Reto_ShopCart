@@ -105,6 +105,9 @@ services:
 
   redis:
     image: redis:7-alpine
+    # El entrypoint oficial solo baja a "redis" cuando el comando empieza con redis-server; con sh -c correría
+    # como root. /data ya pertenece a redis en la imagen.
+    user: redis
     environment:
       REDIS_CONTRASENA: ${REDIS_CONTRASENA:?Define REDIS_CONTRASENA en .env (ver .env.example)}
       REDIS_PORT: ${REDIS_PORT:-6379}
