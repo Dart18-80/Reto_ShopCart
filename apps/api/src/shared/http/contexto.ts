@@ -16,6 +16,14 @@ export function ejecutarConContexto<T>(contexto: ContextoPeticion, funcion: () =
   return almacen.run(contexto, funcion);
 }
 
+/**
+ * Ejecuta fuera de la petición en curso, aunque se llame desde un handler: ejecutarSP lo trata como un job
+ * (rol Sistema, A-18). Lo usa el trabajo en segundo plano que dispara una petición (E7-H05).
+ */
+export function fueraDeLaPeticion<T>(funcion: () => T): T {
+  return almacen.exit(funcion);
+}
+
 /** undefined en un job o fuera de una petición. */
 // Solo lectura: el usuario de la petición solo lo cambia establecerUsuario (RF-01).
 export function obtenerContexto(): Readonly<ContextoPeticion> | undefined {

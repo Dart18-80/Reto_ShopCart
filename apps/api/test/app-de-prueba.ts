@@ -2,6 +2,10 @@ import { pino } from 'pino';
 import type { DependenciasApp } from '../src/app.js';
 import { crearPasarelaSimulada } from '../src/shared/adapters/pasarela-simulada.js';
 import type { Cache } from '../src/shared/cache/index.js';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { crearAlmacenEnDisco } from '../src/shared/adapters/almacen-disco.js';
+import { crearProcesadorExportaciones } from '../src/modules/exportaciones/index.js';
 import {
   crearTokensAcceso,
   type LimitadorIntentos,
@@ -9,6 +13,9 @@ import {
 } from '../src/shared/http/index.js';
 
 export const SECRETO_JWT_DE_PRUEBA = 'secreto-de-prueba-de-al-menos-32-caracteres';
+
+/** A-24: el almacén de exportaciones de las pruebas, fuera del repositorio. */
+export const DIRECTORIO_ALMACEN_DE_PRUEBA = join(tmpdir(), 'shopcart-pruebas', 'exportaciones');
 
 /** Un limitador que nunca rechaza: las pruebas que no prueban el rate limiting no se cruzan con él. */
 export const SIN_LIMITE: LimitadorIntentos = {
@@ -40,6 +47,7 @@ export const SIN_CACHE: Cache = {
 
 /** Dependencias de crearApp para pruebas; cada prueba reemplaza solo lo que le importa. */
 export function dependenciasDePrueba(cambios: Partial<DependenciasApp> = {}): DependenciasApp {
+  const almacen = cambios.almacen ?? crearAlmacenEnDisco(DIRECTORIO_ALMACEN_DE_PRUEBA);
   return {
     logger: pino({ level: 'silent' }),
     instancia: 'api-prueba',
@@ -51,10 +59,17 @@ export function dependenciasDePrueba(cambios: Partial<DependenciasApp> = {}): De
       registro: SIN_LIMITE,
       cambioContrasena: SIN_LIMITE,
       carritoInvitado: SIN_LIMITE,
+      exportaciones: SIN_LIMITE,
     },
     versionesSesion: versionesSesionEnMemoria(),
     pasarela: crearPasarelaSimulada(),
     cache: SIN_CACHE,
+    almacen,
+    exportaciones: crearProcesadorExportaciones({
+      almacen,
+      cache: SIN_CACHE,
+      logger: pino({ level: 'silent' }),
+    }),
     ...cambios,
   };
 }

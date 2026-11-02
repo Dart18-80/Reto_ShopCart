@@ -29,15 +29,19 @@ export function crearInvalidadorReportes(cache: Cache): InvalidadorReportes {
   };
 }
 
-/** Los filtros sin los ausentes y con las claves ordenadas: dos consultas iguales dan la misma llave. */
-export function hashDeFiltros(filtros: object): string {
-  const normalizados = Object.fromEntries(
+/** Los filtros sin los ausentes y con las claves ordenadas: dos consultas iguales dan el mismo objeto. */
+export const normalizarFiltros = (filtros: object): Record<string, unknown> =>
+  Object.fromEntries(
     Object.entries(filtros)
       .filter(([, valor]) => valor !== undefined)
       .sort(([a], [b]) => a.localeCompare(b)),
   );
-  return createHash('sha256').update(JSON.stringify(normalizados)).digest('hex');
-}
+
+/** El SHA-256 (hex) de los filtros normalizados: dos consultas iguales dan la misma llave. */
+export const hashDeFiltros = (filtros: object): string =>
+  createHash('sha256')
+    .update(JSON.stringify(normalizarFiltros(filtros)))
+    .digest('hex');
 
 export const claveDeReporte = (version: number, reporte: string, filtros: object): string =>
   `reportes:v${String(version)}:${reporte}:${hashDeFiltros(filtros)}`;

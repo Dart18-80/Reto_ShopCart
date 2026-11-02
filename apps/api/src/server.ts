@@ -4,6 +4,11 @@ import { crearApp } from './app.js';
 import { crearTareasDeCarrito } from './modules/carrito/index.js';
 import { crearInvalidadorReportes } from './modules/reportes/index.js';
 import { crearCacheRedis } from './shared/adapters/cache-redis.js';
+import { crearAlmacenEnDisco } from './shared/adapters/almacen-disco.js';
+import {
+  crearProcesadorExportaciones,
+  crearTareasDeExportaciones,
+} from './modules/exportaciones/index.js';
 import { crearTareasDeCheckout } from './modules/checkout/index.js';
 import { crearTareasDePedidos } from './modules/pedidos/index.js';
 import { crearTareasDeSistema } from './modules/sistema/index.js';
@@ -32,6 +37,7 @@ const LIMITE_LOGIN = { intentos: 5, ventanaSeg: 60 };
 const LIMITE_REGISTRO = { intentos: 3, ventanaSeg: 60 };
 const LIMITE_CAMBIO_CONTRASENA = { intentos: 5, ventanaSeg: 60 };
 const LIMITE_CARRITO_INVITADO = { intentos: 20, ventanaSeg: 60 };
+const LIMITE_EXPORTACIONES = { intentos: 10, ventanaSeg: 60 };
 
 type ClienteRedis = ReturnType<typeof crearClienteRedis>;
 
@@ -49,6 +55,8 @@ async function iniciar(): Promise<void> {
   const pasarela = crearPasarelaSimulada();
   const cache = crearCacheRedis(redis, logger);
   const reportes = crearInvalidadorReportes(cache);
+  const almacen = crearAlmacenEnDisco(config.directorioAlmacen);
+  const exportaciones = crearProcesadorExportaciones({ almacen, cache, logger });
 
   const app = crearApp({
     logger,
@@ -70,10 +78,16 @@ async function iniciar(): Promise<void> {
         prefijo: 'limite:carrito',
         ...LIMITE_CARRITO_INVITADO,
       }),
+      exportaciones: crearLimitadorRedis(redis, logger, {
+        prefijo: 'limite:exportaciones',
+        ...LIMITE_EXPORTACIONES,
+      }),
     },
     versionesSesion: crearVersionesSesionRedis(redis, logger),
     pasarela,
     cache,
+    almacen,
+    exportaciones,
   });
 
   // Express 5 también llama a este callback si listen falla (por ejemplo, puerto ocupado).
@@ -96,6 +110,7 @@ async function iniciar(): Promise<void> {
       ...crearTareasDeCheckout({ pasarela, logger }),
       ...crearTareasDePedidos({ pasarela, logger, reportes }),
       ...crearTareasDeCarrito(reportes),
+      ...crearTareasDeExportaciones({ procesador: exportaciones, almacen, logger }),
       ...crearTareasDeSistema(),
     ],
     logger.child({ modulo: 'jobs' }),

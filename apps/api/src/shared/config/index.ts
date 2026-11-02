@@ -52,6 +52,8 @@ const esquema = z.object({
   REDIS_BASE_DATOS: z.coerce.number().int().min(0).max(ULTIMA_BASE_REDIS).default(0),
 
   JWT_SECRETO: z.string().min(LARGO_MINIMO_SECRETO_JWT),
+  // A-24: directorio del almacén de exportaciones; en Docker, el volumen compartido por las réplicas.
+  ALMACEN_DIR: z.string().min(1).default('.almacen/exportaciones'),
 
   CORS_ORIGINS: z
     .string()
@@ -92,6 +94,7 @@ export interface Configuracion {
   redis: ConfiguracionRedis;
   origenesCors: string[];
   secretoJwt: string;
+  directorioAlmacen: string;
 }
 
 /**
@@ -129,6 +132,7 @@ export function cargarConfiguracion(entorno: NodeJS.ProcessEnv): Configuracion {
     },
     origenesCors: variables.CORS_ORIGINS,
     secretoJwt: variables.JWT_SECRETO,
+    directorioAlmacen: variables.ALMACEN_DIR,
   };
 }
 

@@ -23,6 +23,8 @@ x-api-entorno: &api-entorno
   REDIS_PORT: ${REDIS_PORT:-6379}
   REDIS_CONTRASENA: ${REDIS_CONTRASENA:?Define REDIS_CONTRASENA en .env (ver .env.example)}
   JWT_SECRETO: ${JWT_SECRETO:?Define JWT_SECRETO en .env (ver .env.example)}
+  # A-24: el almacén de exportaciones, en el volumen compartido por las dos réplicas.
+  ALMACEN_DIR: /var/lib/shopcart/exportaciones
 
 # A-03, RNF-2: dos réplicas idénticas de la API; solo cambia el nombre de la réplica.
 x-api: &api
@@ -43,6 +45,10 @@ x-api: &api
     - 'redis:${RED_PREFIJO:-172.28.10}.11'
     # Reservada para el colector de OpenTelemetry (Fase 2), para que su nombre tampoco salga al DNS.
     - 'otel-lgtm:${RED_PREFIJO:-172.28.10}.40'
+  # A-24: el archivo que genera una réplica se descarga desde la otra. En producción, S3 o Azure Blob (otro
+  # adaptador del puerto AlmacenArchivos), sin volumen.
+  volumes:
+    - exportaciones:/var/lib/shopcart/exportaciones
   restart: unless-stopped
 
 services:
@@ -171,3 +177,4 @@ networks:
 
 volumes:
   sqlserver-datos:
+  exportaciones:

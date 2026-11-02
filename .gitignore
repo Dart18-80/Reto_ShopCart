@@ -26,3 +26,6 @@ Thumbs.db
 # generadores de diagramas (Python)
 __pycache__/
 .venv/
+
+# A-24: el almacén de exportaciones de la API corriendo fuera de Docker
+.almacen/

@@ -30,6 +30,7 @@ const DESCRIPCIONES: Record<number, string> = {
   403: 'El rol no tiene permiso',
   404: 'No existe o pertenece a otro cliente',
   409: 'Conflicto de estado',
+  410: 'Ya no está disponible',
   422: 'Regla de negocio incumplida',
   429: 'Demasiadas peticiones',
   500: 'Error inesperado',

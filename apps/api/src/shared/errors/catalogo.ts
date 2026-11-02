@@ -229,6 +229,15 @@ export const CATALOGO = {
     numeroSql: 50705,
     mensaje: 'El reembolso excede el total pagado.',
   },
+
+  // Exportaciones (50800–50899, E7-H05). Las dos últimas nacen en la API.
+  EXPORTACIONES_PENDIENTES_MAXIMAS: {
+    http: 429,
+    numeroSql: 50801,
+    mensaje: 'Ya tienes el máximo de exportaciones en curso. Espera a que terminen.',
+  },
+  EXPORTACION_NO_LISTA: { http: 409, mensaje: 'La exportación todavía no está lista.' },
+  EXPORTACION_EXPIRADA: { http: 410, mensaje: 'La exportación expiró. Vuelve a solicitarla.' },
 } as const satisfies Record<string, EntradaCatalogo>;
 
 export type CodigoError = keyof typeof CATALOGO;

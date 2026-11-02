@@ -1,6 +1,7 @@
 export {
   ejecutarConContexto,
   establecerUsuario,
+  fueraDeLaPeticion,
   obtenerContexto,
   type ContextoPeticion,
   type Rol,

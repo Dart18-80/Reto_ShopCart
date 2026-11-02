@@ -30,6 +30,11 @@ import { registrarPeticiones } from './shared/observability/index.js';
 import type { PasarelaPago } from './shared/pasarela/index.js';
 import { relojDelSistema, type Reloj } from './shared/reloj/index.js';
 import type { Cache } from './shared/cache/index.js';
+import type { AlmacenArchivos } from './shared/almacen/index.js';
+import {
+  crearModuloExportaciones,
+  type ProcesadorExportaciones,
+} from './modules/exportaciones/index.js';
 import { generarDocumentoOpenApi } from './shared/openapi/index.js';
 
 const LIMITE_CUERPO_JSON = '100kb';
@@ -40,6 +45,8 @@ export interface Limitadores extends LimitadoresAuth {
   cambioContrasena: LimitadorIntentos;
   /** 01 §5.3: 20 carritos de invitado nuevos por minuto por IP. */
   carritoInvitado: LimitadorIntentos;
+  /** A-24: solicitudes de exportación por Administrador. */
+  exportaciones: LimitadorIntentos;
 }
 
 export interface DependenciasApp {
@@ -54,6 +61,10 @@ export interface DependenciasApp {
   pasarela: PasarelaPago;
   /** A-11: la caché de reportes (Redis); nunca lanza. */
   cache: Cache;
+  /** A-24: el almacén de los archivos exportados (compartido por las réplicas). */
+  almacen: AlmacenArchivos;
+  /** A-24: el consumidor de la cola de exportaciones de esta réplica (el mismo que usan las tareas). */
+  exportaciones: ProcesadorExportaciones;
   /** La hora actual (las pruebas la fijan). */
   reloj?: Reloj;
 }
@@ -69,6 +80,8 @@ export function crearApp({
   versionesSesion,
   pasarela,
   cache,
+  almacen,
+  exportaciones,
   reloj = relojDelSistema,
 }: DependenciasApp): Express {
   const reportes = crearInvalidadorReportes(cache);
@@ -121,6 +134,15 @@ export function crearApp({
   v1.use(crearModuloPedidos({ autenticar, pasarela, logger, reportes }));
   v1.use(crearModuloReportes({ autenticar, cache }));
   v1.use(crearModuloBitacora({ autenticar }));
+  v1.use(
+    crearModuloExportaciones({
+      autenticar,
+      almacen,
+      procesador: exportaciones,
+      limitador: limitadores.exportaciones,
+      logger,
+    }),
+  );
   v1.use(
     crearModuloCarrito({
       autenticar,

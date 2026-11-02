@@ -748,6 +748,39 @@ UQ `(IDPedido, IDVariante)`. Índices: `IX_DetallePedido_Variante (IDVariante) I
 | `MetodoEnvio`, `ParametroSistema` | Cambios de tarifas y parámetros (N-04) | Envios / Configuracion |
 | `Usuario` | Rol y activación, **nunca `HashContrasena`** | Usuarios |
 
+### 3.11 Exportaciones (V021, E7-H05, A-24)
+
+**`EstadoExportacion`** (catálogo, A-15) con IDs fijos, porque los `CHECK` de coherencia los usan: 1 `Pendiente`, 2 `Procesando`, 3 `Completada`, 4 `Fallida` (final) y 5 `Expirada` (final).
+
+**`SolicitudExportacion`** — la cola de exportaciones que consumen las dos réplicas.
+
+| Columna | Tipo | Notas |
+|---|---|---|
+| IDSolicitudExportacion | INT IDENTITY | PK |
+| IDUsuario | INT | FK → Usuario (el Administrador que la pidió) |
+| Reporte | VARCHAR(30) | CK: los cinco reportes del dashboard |
+| Formato | VARCHAR(5) | CK `IN ('xlsx','pdf')` |
+| Filtros | NVARCHAR(1000) | CK `ISJSON = 1`: los filtros ya validados y normalizados |
+| HashFiltros | BINARY(32) | SHA-256 de los filtros normalizados (agrupación) |
+| IDEstadoExportacion | TINYINT | FK → EstadoExportacion, DF 1 |
+| Intentos | TINYINT | DF 0, CK 0–10 |
+| TokenArrendamiento, ArrendadoHasta | UNIQUEIDENTIFIER, DATETIME2(3) *NULL* | Fencing, como `IntentoPago` |
+| UltimoError | NVARCHAR(500) *NULL* | La causa que ve el Admin |
+| ReferenciaArchivo | VARCHAR(100) *NULL* | El nombre en el almacén, generado por el servidor |
+| TamanoBytes | INT *NULL* | CK ≥ 0 |
+| FechaCreacion, FechaFinalizacion, FechaExpiracion, FechaActualizacion | DATETIME2(3) | |
+
+`CHECK` de coherencia por estado:
+- `Procesando` ⇒ token y arrendamiento;
+- `Completada` ⇒ archivo, tamaño, finalización y expiración;
+- `Fallida` ⇒ error y finalización.
+
+Índices:
+- `IX_SolicitudExportacion_Cola (IDEstadoExportacion, ArrendadoHasta, IDSolicitudExportacion)`, para la toma;
+- `IX_SolicitudExportacion_Agrupacion (IDUsuario, Reporte, Formato, HashFiltros) INCLUDE (IDEstadoExportacion, FechaExpiracion)`;
+- `IX_SolicitudExportacion_Usuario (IDUsuario, FechaCreacion DESC, IDSolicitudExportacion DESC)`, para el listado;
+- `IX_SolicitudExportacion_Vencimiento (FechaExpiracion) WHERE IDEstadoExportacion = 3`, para la purga.
+
 ---
 
 ## 4. Vistas y funciones
@@ -803,6 +836,12 @@ Los SPs marcados **(interno)** solo los invocan otros SPs, nunca la API. Así ha
 ### Pedidos
 `SP_Pedidos_CrearPedido` (la transacción atómica de RF-06) · `SP_Pedidos_ListarPropios` (`IX_Pedido_Cliente`) · `SP_Pedidos_ObtenerDetalle` (con `@IDUsuario` si el rol es Cliente) · `SP_Pedidos_ObtenerDeIntento` (el pedido de un intento de pago; lo usa el pago antes de anular tras una falla) · `SP_Pedidos_Listar` (gestión: filtros por estado, cliente y días de Guatemala sobre `FechaPagoLocal`, igual que los reportes; paginado; un índice por filtro: `IX_Pedido_Gestion`, `IX_Pedido_Cliente`, `IX_Pedido_Reportes` y, sin filtros, `IX_Pedido_FechaPago` de V015) · `SP_Pedidos_CambiarEstado` · `SP_Pedidos_Cancelar` (N-09, plan E6-H03) · `SP_Pedidos_TomarReembolso` (compare-and-set antes de llamar a la pasarela, con `Reembolso.TokenReclamo` de V016: un fallo solo cuenta si el reclamo sigue vigente y un éxito de la pasarela siempre deja el reembolso `Completado`) · `SP_Pedidos_ReintentarReembolso` (Admin) · `SP_Pedidos_RegistrarDevolucion` (N-10: líneas bloqueadas por `IDDetallePedido`, plazo desde la primera entrada a `Entregado` del historial, reembolso por unidad al centavo con el residuo en la devolución que completa la línea, sin envío, y estado derivado `DevueltoParcial`/`Devuelto`) · `SP_Pedidos_ListarReembolsos` · `SP_Pedidos_ObtenerReembolsosPendientes` (job) · `SP_Pedidos_ActualizarReembolso` · `SP_Pedidos_ListarTransiciones` (para el test de coincidencia de N-08)
 
+### Exportaciones (E7-H05, A-24)
+- **Administrador:** `SP_Exportaciones_Solicitar` bloquea la fila del usuario, agrupa una solicitud igual vigente y aplica el máximo de pendientes (50801). `SP_Exportaciones_Obtener` y `SP_Exportaciones_Listar` devuelven solo las propias.
+- **Sistema (procesador):** `SP_Exportaciones_Tomar` (`UPDLOCK, READPAST`, arrendamiento con token), `SP_Exportaciones_Completar` y `SP_Exportaciones_RegistrarFallo`, estos dos con compare-and-set del token.
+- **Sistema (job con `sp_getapplock`):** `SP_Exportaciones_Expirar` y `SP_Exportaciones_QuitarArchivo`.
+- **Vista:** `VW_Exportaciones_Solicitudes`, la solicitud con el código de su estado y sin el token.
+
 ### Dashboard, bitácora y sistema
 `SP_Dashboard_Resumen` (ventas, pedidos, ticket promedio, carritos abandonados) · `SP_Dashboard_VentasPorPeriodo` (`@Agrupacion` = día, semana o mes) · `SP_Dashboard_VentasPorCategoria` · `SP_Dashboard_TopProductos` (top 10) · `SP_Dashboard_CarritosAbandonados` · `SP_Bitacora_Listar` (filtro por módulo, entidad y días de Guatemala; paginado; `IX_Bitacora_Modulo`, `IX_Bitacora_Entidad` e `IX_Bitacora_Fecha` de V017 sin filtros) · `SP_Sistema_Health` · `SP_Sistema_EstablecerContexto` **(interno: fija `SESSION_CONTEXT` a partir de los parámetros estándar)**
 
@@ -856,6 +895,7 @@ Rangos por módulo para `THROW`. El catálogo completo, con su código estable y
 | 50400–50499 | Carrito | 50401 `LIMITE_LINEAS` (422) · 50402 `LINEAS_NO_DISPONIBLES` (409) · 50403 `CARRITO_VACIO` (422) |
 | 50500–50599 | Cupones | 50501 `CUPON_NO_EXISTE` · 50502 `CUPON_INACTIVO` · 50503 `CUPON_NO_VIGENTE_AUN` · 50504 `CUPON_VENCIDO` · 50505 `CUPON_AGOTADO` · 50506 `CUPON_LIMITE_CLIENTE` · 50507 `CUPON_MINIMO_NO_ALCANZADO` · 50508 `CUPON_SIN_PRODUCTOS_CATEGORIA` (todos 422) · 50509 `CUPON_USADO_NO_EDITABLE` (409) · 50510 `CUPON_CODIGO_DUPLICADO` (409) · 50511 `CUPON_LIMITE_BAJO_USOS` (422, traduce `CK_Cupon_UsosComprometidos`; `detalles.usosComprometidos`) |
 | 50600–50699 | Checkout y pago | 50601 `SESION_VENCIDA` (409) · 50602 `PAGO_EN_CURSO` (409, con `Retry-After` si es la misma llave) · 50603 `LLAVE_REUTILIZADA` (422) · 50604 `PAGO_RECHAZADO` (402) · 50605 `MAX_INTENTOS` (409) · 50606 `PAGO_SIN_CONFIRMAR` (504: la pasarela no respondió; se puede reintentar con la misma llave y no se cobra dos veces) · 50607 `PAGO_NO_COMPLETADO` (409: la conciliación cerró el intento sin cobro, `Fallido` o `Anulado`; lo recibe un reintento con esa llave) |
+| 50800–50899 | Exportaciones | 50801 `EXPORTACIONES_PENDIENTES_MAXIMAS` (429). Nacen en la API: `EXPORTACION_NO_LISTA` (409) y `EXPORTACION_EXPIRADA` (410) |
 | 50700–50799 | Pedidos | 50701 `TRANSICION_INVALIDA` (409) · 50702 `NO_CANCELABLE` (409) · 50703 `DEVOLUCION_EXCEDE_VENDIDO` (422) · 50704 `PLAZO_DEVOLUCION_VENCIDO` (422) · 50705 `REEMBOLSO_EXCEDE_TOTAL` (422) |
 | — (error del motor) | Ledger | **37359**: SQL Server rechaza `UPDATE`/`DELETE` sobre una tabla ledger append-only. Se produce al **compilar** un SP que lo intente, así que nunca llega a la API y no se mapea a HTTP |
 | — (sin número SQL) | API | `VALIDACION_FALLIDA` (400) · `JSON_INVALIDO` (400) · `CUERPO_DEMASIADO_GRANDE` (413) · `CONTENIDO_NO_SOPORTADO` (415) · `CREDENCIALES_INVALIDAS` (401, el mismo mensaje para correo inexistente y contraseña incorrecta) · `NO_AUTENTICADO` (401) · `SIN_PERMISO` (403) · `DEMASIADAS_PETICIONES` (429) · `NO_ENCONTRADO` (404, también para rutas inexistentes) · `ERROR_INTERNO` (500). Nacen en la API, no en un SP |

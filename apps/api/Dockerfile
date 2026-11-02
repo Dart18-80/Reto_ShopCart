@@ -25,6 +25,8 @@ WORKDIR /app
 COPY --from=build /prod/api/package.json ./
 COPY --from=build /prod/api/node_modules ./node_modules
 COPY --from=build /prod/api/dist ./dist
+# A-24: el punto de montaje del volumen de exportaciones. Docker copia su dueño (node) al volumen la primera vez.
+RUN mkdir -p /var/lib/shopcart/exportaciones && chown node:node /var/lib/shopcart/exportaciones
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \
