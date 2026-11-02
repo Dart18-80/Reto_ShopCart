@@ -11,7 +11,9 @@ export type NombreConsulta =
   | 'adquirir-bloqueo'
   | 'leer-historial'
   | 'registrar-script'
-  | 'establecer-contexto-sistema';
+  | 'establecer-contexto-sistema'
+  | 'generar-digest-ledger'
+  | 'verificar-ledger';
 
 const leidas = new Map<NombreConsulta, Promise<string>>();
 

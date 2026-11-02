@@ -29,3 +29,6 @@ __pycache__/
 
 # A-24: el almacén de exportaciones de la API corriendo fuera de Docker
 .almacen/
+
+# M-01: los digests del ledger que guarda `pnpm ledger:verificar` (fuera de la base y del repositorio)
+.ledger/

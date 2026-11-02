@@ -93,8 +93,8 @@ Sí: una prueba de integración intenta `UPDATE` y `DELETE` sobre las tres tabla
 
 ### ¿Un administrador de la base puede deshabilitar eso como un trigger?
 
-No: append-only es una propiedad de la tabla, no un objeto que se deshabilite; por eso se descartó el trigger `INSTEAD OF` (M-01). La base queda lista para verificar con `sys.sp_verify_database_ledger` (el migrador activa `ALLOW_SNAPSHOT_ISOLATION`), pero ningún script lo ejecuta: en la demo se corre a mano.
-**Muéstralo en:** [preparar-servidor.sql:25](../../../database/migrator/sql/preparar-servidor.sql#L25 "sp_verify_database_ledger exige ALLOW_SNAPSHOT_ISOLATION")
+No: append-only es una propiedad de la tabla, no un objeto que se deshabilite; por eso se descartó el trigger `INSTEAD OF` (M-01). Además, `pnpm ledger:verificar` guarda el digest fuera de la base y verifica el ledger contra todos los digests guardados: si alguien cambiara un bloque, la verificación fallaría.
+**Muéstralo en:** [verificar-ledger.sql:4](../../../database/migrator/sql/verificar-ledger.sql#L4 "EXEC sys.sp_verify_database_ledger @digests = @Digests;") y [ledger.test.ts:45](../../../database/migrator/test/integracion/ledger.test.ts#L45 "si un digest guardado no corresponde a la base, la verificación falla")
 
 ### ¿Cómo sabe el trigger quién hizo el cambio si la API se conecta con un solo login?
 

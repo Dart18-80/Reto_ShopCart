@@ -916,7 +916,7 @@ Los SPs marcados **(interno)** solo los invocan otros SPs, nunca la API. Así ha
 **Defensa en capas:**
 
 1. **Tablas ledger de solo inserción** (`WITH (LEDGER = ON (APPEND_ONLY = ON))`). El motor rechaza cualquier `UPDATE` o `DELETE`, incluso de un administrador. Un `DROP TABLE` tampoco borra los datos: SQL Server conserva la tabla renombrada y oculta.
-2. **Verificación criptográfica:** `sys.sp_generate_database_ledger_digest` genera el digest y `sys.sp_verify_database_ledger` confirma que ninguna fila fue alterada. Es una demostración para la defensa.
+2. **Verificación criptográfica:** `pnpm ledger:verificar` (el migrador, con su SQL en `database/migrator/sql/`) genera el digest con `sys.sp_generate_database_ledger_digest`, lo guarda fuera de la base (`.ledger/`, un archivo por base y fecha de creación) y verifica con `sys.sp_verify_database_ledger` contra todos los digests guardados: un cambio en una fila o en un bloque posterior a cualquiera de ellos hace fallar la verificación. En producción el archivo iría a un almacenamiento inmutable.
 3. **La aplicación no tiene permisos** directos sobre ninguna tabla: solo `EXECUTE` sobre los SPs, y ningún SP actualiza ni borra estas tablas.
 
 **Consecuencias para el desarrollo:** no se puede usar `TRUNCATE` ni corregir filas a mano (en desarrollo se recrea la base completa con Docker); solo se pueden agregar columnas `NULL` y no se puede cambiar el tipo de una columna. Por eso el diseño de estas tres tablas se cierra antes de crearlas.

@@ -11,7 +11,7 @@ Ocho pasos con los comandos exactos y lo que debe aparecer. Cada comando se ensa
 | 5:30 | 5. Una réplica se cae | La tienda sigue atendiendo desde la otra (RNF-2) |
 | 6:30 | 6. Dashboard en tiempo real | Un cambio en una réplica llega al stream abierto en la otra (A-25) |
 | 8:00 | 7. La compra en Grafana | La traza del pago: réplica, SPs y pasarela (RNF-4) |
-| 9:30 | 8. Bitácora | Quién cambió qué y en qué petición (`requestId`, el mismo de su traza) (RF-09, A-18) |
+| 9:30 | 8. Bitácora y ledger | Quién cambió qué y en qué petición (`requestId`, el mismo de su traza), y que nadie la alteró (RF-09, A-18, M-01) |
 
 ## Antes de empezar (no cuenta en los 10 minutos)
 
@@ -169,7 +169,7 @@ En Grafana: **Explore** → fuente **Tempo** → **TraceQL**:
 
 La traza muestra la petición `POST /api/v1/checkout/sesion/pagos` en su réplica (`service.instance.id`), los SPs en orden (`EXECUTE SP_…`, con el nombre del SP y sin los valores de sus parámetros) y el span `pasarela.autorizar`. En cualquier span, **Logs for this span** abre en Loki las líneas de esa petición con el mismo `trace_id`. **Dashboards → ShopCart** muestra latencia y errores por endpoint, peticiones por réplica y pagos por resultado (el `PAGO_SIN_CONFIRMAR` del paso 2 incluido). Detalles: [observabilidad](transversal/observabilidad.md).
 
-## 8. Bitácora (9:30)
+## 8. Bitácora y ledger (9:30)
 
 Terminal 2 (la que tiene el token del Admin en `TA`):
 
@@ -179,6 +179,14 @@ curl -s "$API/bitacora?modulo=Inventario&tamano=1" -H "Authorization: Bearer $TA
 ```
 
 Salida esperada: el último movimiento de inventario, con quién lo hizo y el `requestId` de esa petición (en mayúsculas, como lo guarda SQL Server). **Di:** los triggers de bitácora escriben en una tabla ledger append-only, con el usuario y el `requestId` que cada SP fija en `SESSION_CONTEXT`; ni el propio sistema puede editarla ([base de datos](transversal/base-de-datos.md)).
+
+Y la prueba criptográfica (M-01), en cualquiera de las dos terminales:
+
+```bash
+pnpm ledger:verificar
+```
+
+Salida esperada: una línea de log con `"msg":"Ledger verificado: ninguna tabla ledger cambió desde los digests guardados"` y cuántos digests hay en `.ledger/`. **Di:** el digest del ledger se guarda fuera de la base y SQL Server recalcula los hashes de la bitácora, el kardex y el historial contra todos los guardados; un cambio a cualquier bloque anterior haría fallar la verificación ([verificar-ledger.sql:4](../../database/migrator/sql/verificar-ledger.sql#L4 "EXEC sys.sp_verify_database_ledger @digests = @Digests;")).
 
 ## Si algo falla durante la demo
 

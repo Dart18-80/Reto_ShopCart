@@ -7,6 +7,7 @@
     "migrar": "node --env-file-if-exists=../../.env src/index.ts",
     "typecheck": "tsc --noEmit",
     "migrar:pruebas": "node --env-file-if-exists=../../.env src/index.ts --pruebas",
+    "ledger:verificar": "node --env-file-if-exists=../../.env src/verificar-ledger.ts",
     "test": "vitest run",
     "test:integracion": "vitest run --config vitest.integracion.config.ts",
     "test:cobertura": "vitest run --coverage"

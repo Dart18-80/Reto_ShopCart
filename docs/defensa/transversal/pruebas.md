@@ -28,10 +28,10 @@ Los SPs de prueba son 84 `R__SP_Pruebas_*` y 3 triggers `R__TR_Pruebas_*` en [da
 | `pnpm lint` | ESLint (incluidas las fronteras entre módulos) y Prettier | [package.json:11](../../../package.json#L11 "eslint . && prettier --check .") |
 | `pnpm typecheck` | `tsc --noEmit` en cada paquete | [package.json:13](../../../package.json#L13 "pnpm -r --if-present typecheck") |
 | `pnpm test` | Unitarias de la API y del migrador | [package.json:14](../../../package.json#L14 "pnpm -r --if-present test") |
-| `pnpm test:integracion` | Integración del migrador, luego recrea y migra `shopcart_test`, luego integración de la API | [package.json:17](../../../package.json#L17 "migrar:pruebas") |
-| `pnpm test:concurrencia` | RNF-3 contra el entorno levantado | [package.json:18](../../../package.json#L18 "test:concurrencia") |
-| `pnpm test:entorno` | Verificación de entrega contra Docker | [package.json:19](../../../package.json#L19 "test:entorno") |
-| `pnpm test:humo` | Construye la imagen y prueba lo que lleva | [package.json:20](../../../package.json#L20 "docker compose build api-1") |
+| `pnpm test:integracion` | Integración del migrador, luego recrea y migra `shopcart_test`, luego integración de la API | [package.json:18](../../../package.json#L18 "migrar:pruebas") |
+| `pnpm test:concurrencia` | RNF-3 contra el entorno levantado | [package.json:19](../../../package.json#L19 "test:concurrencia") |
+| `pnpm test:entorno` | Verificación de entrega contra Docker | [package.json:20](../../../package.json#L20 "test:entorno") |
+| `pnpm test:humo` | Construye la imagen y prueba lo que lleva | [package.json:21](../../../package.json#L21 "docker compose build api-1") |
 | `pnpm --filter @shopcart/api test:cobertura` | Unitarias con cobertura v8 | [package.json:12](../../../apps/api/package.json#L12 "vitest run --coverage") |
 
 ## Unitarias: servicios con puertos falsos
@@ -156,7 +156,7 @@ Dos peticiones con la misma `Idempotency-Key`: un solo pedido, un solo cobro y e
 
 ### ¿Qué pasa si una prueba de integración deja datos basura?
 No importa: cada `pnpm test:integracion` borra y recrea `shopcart_test`, y Redis de pruebas usa la base 1 y se vacía al arrancar.
-**Muéstralo en:** [package.json:17](../../../package.json#L17 "migrar:pruebas")
+**Muéstralo en:** [package.json:18](../../../package.json#L18 "migrar:pruebas")
 
 ### ¿Por qué la cobertura unitaria es tan baja en ramas?
 Las ramas de los repositorios y de los SPs se ejercitan en integración contra SQL Server; la cobertura configurada solo mide las unitarias.

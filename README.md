@@ -448,6 +448,8 @@ docker compose stop api-1         # la tienda sigue respondiendo, todo desde api
 docker compose start api-1        # nginx la reincorpora sola
 ```
 
+**Verificar el ledger (M-01).** Con el entorno levantado, `pnpm ledger:verificar` genera el digest del ledger de la base (`sys.sp_generate_database_ledger_digest`), lo agrega a `.ledger/<base>-<fecha de creación>.jsonl` (fuera de la base; git lo ignora) y verifica la bitácora, el kardex y el historial de pedidos con `sys.sp_verify_database_ledger` contra todos los digests guardados. Termina con `Ledger verificado` o con código 1 si algo cambió. Otro directorio: `LEDGER_DIGESTS_DIR`. En producción los digests irían a un almacenamiento inmutable.
+
 **Migraciones.** `db-migrator` aplica `migrations/V###` → `programmability/R__*` → `seeds/S###` y termina. Tras agregar scripts: `docker compose up -d --build db-migrator`. Un `V###` o `S###` aplicado **no se edita**: si cambia, el migrador falla; se crea el siguiente número.
 
 **La API fuera de Docker** (con SQL Server y Redis levantados y la base migrada): `pnpm --filter @shopcart/api build && pnpm --filter @shopcart/api start` → <http://localhost:3000/api/docs>. La API usa timeouts explícitos hacia SQL Server (`DB_TIMEOUT_CONEXION_MS`, por defecto 2000; `DB_TIMEOUT_CONSULTA_MS`, por defecto 15000): con la base caída, el health responde `503` en unos 2 s.
