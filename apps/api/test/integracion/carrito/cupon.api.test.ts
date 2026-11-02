@@ -174,11 +174,12 @@ describe('causas de rechazo (E4-H05, N-12)', () => {
   }
 
   it.each([
-    ['inactivo', 'CUPON_INACTIVO', { activo: false }],
+    ['inactivo', 'CUPON_INACTIVO', { activo: false }, 'El cupón no está activo.'],
     [
       'aún no vigente',
       'CUPON_NO_VIGENTE_AUN',
       { fechaInicio: new Date(Date.now() + DIA_MS).toISOString() },
+      'El cupón todavía no es válido.',
     ],
     [
       'vencido',
@@ -187,9 +188,15 @@ describe('causas de rechazo (E4-H05, N-12)', () => {
         fechaInicio: new Date(Date.now() - 2 * DIA_MS).toISOString(),
         fechaFin: new Date(Date.now() - DIA_MS).toISOString(),
       },
+      'El cupón ya venció.',
     ],
-    ['de otra categoría', 'CUPON_SIN_PRODUCTOS_CATEGORIA', {}],
-  ])('%s responde %s (422) con su mensaje', async (_caso, codigoError, cambios) => {
+    [
+      'de otra categoría',
+      'CUPON_SIN_PRODUCTOS_CATEGORIA',
+      {},
+      'El carrito no tiene productos de la categoría del cupón.',
+    ],
+  ])('%s responde %s (422) con su mensaje', async (_caso, codigoError, cambios, mensaje) => {
     const extra =
       codigoError === 'CUPON_SIN_PRODUCTOS_CATEGORIA'
         ? { idCategoria: await categoriaDe((await varianteVendible()).IDProducto) }
@@ -198,7 +205,7 @@ describe('causas de rechazo (E4-H05, N-12)', () => {
     const respuesta = await rechazo({ ...cambios, ...extra });
 
     expect(respuesta.status).toBe(422);
-    expect(leerError(respuesta).codigo).toBe(codigoError);
+    expect(leerError(respuesta)).toMatchObject({ codigo: codigoError, mensaje });
   });
 
   it('un código que no existe responde CUPON_NO_EXISTE', async () => {
@@ -220,7 +227,10 @@ describe('causas de rechazo (E4-H05, N-12)', () => {
       }),
     );
 
-    expect(leerError(respuesta).codigo).toBe('CUPON_AGOTADO');
+    expect(leerError(respuesta)).toMatchObject({
+      codigo: 'CUPON_AGOTADO',
+      mensaje: 'El cupón alcanzó su límite de usos.',
+    });
   });
 
   it('el mínimo no alcanzado indica cuánto falta', async () => {
@@ -228,6 +238,7 @@ describe('causas de rechazo (E4-H05, N-12)', () => {
 
     expect(leerError(respuesta)).toMatchObject({
       codigo: 'CUPON_MINIMO_NO_ALCANZADO',
+      mensaje: 'El carrito no alcanza la compra mínima del cupón.',
       detalles: { faltante: '70.00' },
     });
   });
@@ -246,7 +257,10 @@ describe('causas de rechazo (E4-H05, N-12)', () => {
     const delCliente = await aplicar(comoCliente(cliente.token), codigo);
     const delInvitado = await aplicar(comoInvitado(invitado.token), codigo);
 
-    expect(leerError(delCliente).codigo).toBe('CUPON_LIMITE_CLIENTE');
+    expect(leerError(delCliente)).toMatchObject({
+      codigo: 'CUPON_LIMITE_CLIENTE',
+      mensaje: 'Ya usaste este cupón el máximo de veces permitido.',
+    });
     expect(delInvitado.status).toBe(200);
   });
 

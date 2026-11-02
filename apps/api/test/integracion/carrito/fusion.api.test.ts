@@ -1,9 +1,11 @@
+import { randomUUID } from 'node:crypto';
+import { Writable } from 'node:stream';
 import sql from 'mssql';
 import request, { type Response } from 'supertest';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { crearApp } from '../../../src/app.js';
-import type { CarritoDeInvitado } from '../../../src/modules/auth/index.js';
+import { crearLogger } from '../../../src/shared/observability/index.js';
 import { leerDatos } from '../../unit/respuestas.js';
 import { dependenciasDePrueba } from '../../app-de-prueba.js';
 import { CONTRASENA, correoUnico, iniciarSesion, leerSesion } from '../auth/apoyo-auth.js';
@@ -19,6 +21,8 @@ import {
   hashDe,
   invitadoConCarrito,
   leerCarrito,
+  primeraLinea,
+  vencerGarantia,
   varianteVendible,
   verCarrito,
 } from './apoyo-carrito.js';
@@ -160,6 +164,43 @@ describe('fusión al iniciar sesión (E4-H03, N-05)', () => {
     expect((await lineaDe(cliente.accessToken, IDVariante))?.precioUnitario).toBe('90.00');
   });
 
+  it('la garantía vencida del cliente pierde contra la vigente del invitado, aunque esta sea más alta', async () => {
+    const { IDVariante } = await varianteVendible('100.00', 10);
+    const cliente = await clienteRegistrado();
+    const delCliente = primeraLinea(
+      leerCarrito(await agregar(app, comoCliente(cliente.accessToken), IDVariante)),
+    );
+    await vencerGarantia(delCliente.idLinea);
+    await cambiarPrecio(IDVariante, '120.00');
+    const invitado = await invitadoConCarrito(app, IDVariante);
+
+    await login(cliente.correo, invitado.token);
+
+    const linea = await lineaDe(cliente.accessToken, IDVariante);
+    expect(linea).toMatchObject({ cantidad: 2, precioUnitario: '120.00', aviso: null });
+    expect(Date.parse(linea?.garantiaHasta ?? '')).toBeGreaterThan(Date.now());
+  });
+
+  it('con las dos garantías vencidas se conserva la del cliente y se avisa el cambio de precio', async () => {
+    const { IDVariante } = await varianteVendible('100.00', 10);
+    const cliente = await clienteRegistrado();
+    const delCliente = primeraLinea(
+      leerCarrito(await agregar(app, comoCliente(cliente.accessToken), IDVariante)),
+    );
+    await cambiarPrecio(IDVariante, '110.00');
+    const invitado = await invitadoConCarrito(app, IDVariante);
+    await vencerGarantia(delCliente.idLinea);
+    await vencerGarantia(primeraLinea(invitado.carrito).idLinea);
+    await cambiarPrecio(IDVariante, '120.00');
+
+    await login(cliente.correo, invitado.token);
+
+    expect(await lineaDe(cliente.accessToken, IDVariante)).toMatchObject({
+      precioUnitario: '120.00',
+      aviso: { tipo: 'CambioDePrecio', precioAnterior: '100.00' },
+    });
+  });
+
   it('cancela la sesión de checkout activa del cliente y libera sus reservas y el uso del cupón', async () => {
     const { IDVariante } = await varianteVendible('10.00', 10);
     const cliente = await clienteRegistrado();
@@ -270,22 +311,101 @@ describe('carrito de invitado al registrarse (E4-H03, N-05)', () => {
   });
 });
 
-describe('si la fusión falla (E4-H03, N-05)', () => {
-  it('el login responde igual y la cookie queda para no perder el carrito de invitado', async () => {
-    const fallida: CarritoDeInvitado = {
-      fusionar: () => Promise.resolve(null),
-      asignar: () => Promise.resolve(false),
-    };
-    const conFalla = crearApp(dependenciasDePrueba({ carritoInvitado: fallida }));
-    const cliente = await clienteRegistrado();
+describe('si pasar el carrito de invitado falla dentro del SP (E4-H03, N-05)', () => {
+  const pendienteSchema = z.object({
+    avisosCarrito: z.array(
+      z.strictObject({ tipo: z.literal('FusionPendiente'), mensaje: z.string() }),
+    ),
+  });
 
-    const respuesta = await request(conFalla)
+  /** TR_Pruebas_FallarPaseDeCarrito hace fallar el SP si el carrito tiene un SKU 'FALLA-…'. */
+  const cambiarSku = (idVariante: number, sku: string) =>
+    request(app)
+      .patch(`/api/v1/admin/variantes/${String(idVariante)}`)
+      .set(comoCliente(tokenAdmin))
+      .send({ sku });
+
+  async function invitadoQueFalla() {
+    const { IDVariante: normal } = await varianteVendible('10.00', 10);
+    const { IDVariante: conFalla } = await varianteVendible('10.00', 10);
+    const skuFalla = `FALLA-${randomUUID().slice(0, 8)}`;
+    expect((await cambiarSku(conFalla, skuFalla)).status).toBe(200);
+    const invitado = await invitadoConCarrito(app, normal, 2);
+    await agregar(app, comoInvitado(invitado.token), conFalla, 1);
+    return { ...invitado, conFalla };
+  }
+
+  it('el login responde 200 con FusionPendiente, conserva la cookie y la base queda como estaba', async () => {
+    const lineas: string[] = [];
+    const destino = new Writable({
+      write(fragmento: Buffer, _codificacion, listo) {
+        lineas.push(fragmento.toString());
+        listo();
+      },
+    });
+    const conLogs = crearApp(dependenciasDePrueba({ logger: crearLogger({ destino }) }));
+    const { IDVariante: delCliente } = await varianteVendible('10.00', 10);
+    const cliente = await clienteRegistrado();
+    await agregar(app, comoCliente(cliente.accessToken), delCliente);
+    const { IDSesionCheckout } = await unaFila<{ IDSesionCheckout: number }>(
+      'SP_Pruebas_CrearSesionConReserva',
+      {
+        IDUsuario: { tipo: sql.Int, valor: cliente.usuario.idUsuario },
+        IDVariante: { tipo: sql.Int, valor: delCliente },
+        Cantidad: { tipo: sql.Int, valor: 1 },
+      },
+    );
+    const invitado = await invitadoQueFalla();
+
+    const respuesta = await request(conLogs)
       .post('/api/v1/auth/login')
-      .set(comoInvitado('y'.repeat(43)))
+      .set(comoInvitado(invitado.token))
       .send({ correo: cliente.correo, contrasena: CONTRASENA });
 
     expect(respuesta.status).toBe(200);
     expect(leerSesion(respuesta).accessToken.length).toBeGreaterThan(0);
+    expect(leerDatos(respuesta, pendienteSchema).avisosCarrito).toHaveLength(1);
     expect(cookieCarrito(respuesta)).toBeUndefined();
+    expect(await carritosConHash(hashDe(invitado.token))).toMatchObject([
+      { Estado: 'Activo', Lineas: 2 },
+    ]);
+    expect(await carritosDelCliente(cliente.usuario.idUsuario)).toMatchObject([
+      { Estado: 'Activo', Lineas: 1 },
+    ]);
+    expect(
+      await unaFila('SP_Pruebas_LeerSesionCheckout', {
+        IDSesionCheckout: { tipo: sql.Int, valor: IDSesionCheckout },
+      }),
+    ).toMatchObject({ Estado: 'Activa', EstadoReserva: 'Activa' });
+    const log = lineas.join('');
+    expect(log).toContain('No se pudo pasar el carrito de invitado al cliente');
+    expect(log).toContain('Falla simulada al pasar el carrito de invitado');
+    expect(log).not.toContain(invitado.token);
+  });
+
+  it('la fusión se reintenta en el siguiente inicio de sesión', async () => {
+    const cliente = await clienteRegistrado();
+    const invitado = await invitadoQueFalla();
+    await login(cliente.correo, invitado.token);
+    await cambiarSku(invitado.conFalla, `OK-${randomUUID().slice(0, 8)}`);
+
+    const reintento = await login(cliente.correo, invitado.token);
+
+    expect(cookieCarrito(reintento)).toMatch(COOKIE_BORRADA);
+    expect(await carritosDelCliente(cliente.usuario.idUsuario)).toMatchObject([{ Lineas: 2 }]);
+  });
+
+  it('al registrarse responde 201 con FusionPendiente y el carrito de invitado sigue siendo del invitado', async () => {
+    const invitado = await invitadoQueFalla();
+
+    const respuesta = await request(app)
+      .post('/api/v1/auth/registro')
+      .set(comoInvitado(invitado.token))
+      .send({ correo: correoUnico(), contrasena: CONTRASENA, nombre: 'Cliente nuevo' });
+
+    expect(respuesta.status).toBe(201);
+    expect(leerDatos(respuesta, pendienteSchema).avisosCarrito).toHaveLength(1);
+    expect(cookieCarrito(respuesta)).toBeUndefined();
+    expect(await carritosConHash(hashDe(invitado.token))).toMatchObject([{ Estado: 'Activo' }]);
   });
 });

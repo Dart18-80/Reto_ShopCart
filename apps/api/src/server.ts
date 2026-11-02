@@ -1,7 +1,6 @@
 import type { Logger } from 'pino';
 import { registrarApagadoOrdenado } from './apagado.js';
 import { crearApp } from './app.js';
-import { crearCarritoDeInvitadoParaSesion } from './modules/carrito/index.js';
 import {
   crearClienteRedis,
   crearVerificadorRedis,
@@ -61,7 +60,6 @@ async function iniciar(): Promise<void> {
         ...LIMITE_CARRITO_INVITADO,
       }),
     },
-    carritoInvitado: crearCarritoDeInvitadoParaSesion(logger.child({ modulo: 'carrito' })),
     versionesSesion: crearVersionesSesionRedis(redis, logger),
   });
 

@@ -76,6 +76,11 @@ const OPCIONES_COOKIE: CookieOptions = {
   path: RUTA_COOKIE_CARRITO,
 };
 
+/** N-05: el carrito de invitado ya es de un cliente (o la cookie no tenía carrito): la cookie deja de servir. */
+export function borrarCookieCarrito(res: Response): void {
+  res.clearCookie(COOKIE_CARRITO, OPCIONES_COOKIE);
+}
+
 export function crearCarritoController(servicio: CarritoService): CarritoController {
   function enviarCarrito(res: Response, carrito: Carrito, tokenNuevo: string | null = null): void {
     if (tokenNuevo !== null) {
@@ -90,7 +95,7 @@ export function crearCarritoController(servicio: CarritoService): CarritoControl
   return {
     obtener: manejar({ cookies: cookiesCarritoSchema }, async ({ cookies, cliente }, res) => {
       const consulta = await servicio.obtener(compradorDe(cookies[COOKIE_CARRITO], cliente));
-      if (consulta.cookieObsoleta) res.clearCookie(COOKIE_CARRITO, OPCIONES_COOKIE);
+      if (consulta.cookieObsoleta) borrarCookieCarrito(res);
       enviarCarrito(res, consulta.carrito);
     }),
 

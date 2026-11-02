@@ -5,7 +5,21 @@ import { hashearContrasena } from '../../../../src/modules/auth/auth.contrasenas
 import type { AuthRepository } from '../../../../src/modules/auth/auth.repository.js';
 import { crearAuthService } from '../../../../src/modules/auth/auth.service.js';
 import type { Credenciales } from '../../../../src/modules/auth/auth.types.js';
-import { crearTokensAcceso } from '../../../../src/shared/http/index.js';
+import {
+  asignarCarritoDeInvitado,
+  fusionarCarritoDeInvitado,
+} from '../../../../src/modules/carrito/index.js';
+import {
+  crearTokensAcceso,
+  ejecutarConContexto,
+  obtenerContexto,
+} from '../../../../src/shared/http/index.js';
+
+// El servicio usa el carrito por su index.ts: aquí se reemplaza para probar la política de N-05.
+vi.mock('../../../../src/modules/carrito/index.js', () => ({
+  fusionarCarritoDeInvitado: vi.fn(),
+  asignarCarritoDeInvitado: vi.fn(),
+}));
 
 const tokens = crearTokensAcceso(
   'secreto-de-prueba-de-al-menos-32-caracteres',
@@ -53,7 +67,10 @@ function repositorioFalso(guardadas: Credenciales | null) {
     ),
     revocarSesion: vi.fn<AuthRepository['revocarSesion']>(() => Promise.resolve()),
   };
-  return { repositorio, servicio: crearAuthService({ repositorio, tokens }) };
+  return {
+    repositorio,
+    servicio: crearAuthService({ repositorio, tokens, logger: pino({ level: 'silent' }) }),
+  };
 }
 
 describe('iniciarSesion (E2-H01, N-15)', () => {
@@ -88,7 +105,7 @@ describe('iniciarSesion (E2-H01, N-15)', () => {
   it('con credenciales válidas emite un access token con sub, rol y jti verificable', async () => {
     const { servicio } = repositorioFalso(await credenciales({ rol: 'Operador' }));
 
-    const sesion = await servicio.iniciarSesion(
+    const { sesion } = await servicio.iniciarSesion(
       { correo: 'ana@x.gt', contrasena: CONTRASENA },
       CLIENTE,
     );
@@ -105,7 +122,7 @@ describe('iniciarSesion (E2-H01, N-15)', () => {
   it('guarda solo el SHA-256 del refresh token, con 7 días de vigencia y la IP del cliente', async () => {
     const { servicio, repositorio } = repositorioFalso(await credenciales());
 
-    const sesion = await servicio.iniciarSesion(
+    const { sesion } = await servicio.iniciarSesion(
       { correo: 'ana@x.gt', contrasena: CONTRASENA },
       CLIENTE,
     );
@@ -139,7 +156,7 @@ describe('registrar (E2-H01, N-15)', () => {
   it('abre la sesión del nuevo cliente', async () => {
     const { servicio } = repositorioFalso(null);
 
-    const sesion = await servicio.registrar(
+    const { sesion } = await servicio.registrar(
       { correo: 'nuevo@x.gt', contrasena: CONTRASENA, nombre: 'Nuevo' },
       CLIENTE,
     );
@@ -208,5 +225,83 @@ describe('cerrarSesion (E2-H02, A-07)', () => {
     await servicio.cerrarSesion(undefined);
 
     expect(repositorio.revocarSesion).not.toHaveBeenCalled();
+  });
+});
+
+describe('carrito de invitado al abrir sesión (E4-H03, N-05)', () => {
+  const TOKEN_INVITADO = 'z'.repeat(43);
+  const AJUSTE = {
+    tipo: 'CantidadAjustada' as const,
+    idVariante: 1,
+    producto: 'Camiseta',
+    cantidadSolicitada: 6,
+    cantidadFinal: 5,
+  };
+  const enPeticion = <T>(accion: () => Promise<T>) =>
+    ejecutarConContexto({ requestId: 'r-1', idUsuario: null, rol: null }, accion);
+  const login = (servicio: ReturnType<typeof repositorioFalso>['servicio'], token?: string) =>
+    enPeticion(() =>
+      servicio.iniciarSesion({ correo: 'ana@x.gt', contrasena: CONTRASENA }, CLIENTE, token),
+    );
+
+  it('al iniciar sesión fusiona como el cliente (solo durante esa llamada) y consume la cookie', async () => {
+    const { servicio } = repositorioFalso(await credenciales());
+    let contextoDeLaFusion: unknown;
+    vi.mocked(fusionarCarritoDeInvitado).mockImplementationOnce(() => {
+      contextoDeLaFusion = obtenerContexto();
+      return Promise.resolve([AJUSTE]);
+    });
+
+    const { carrito } = await login(servicio, TOKEN_INVITADO);
+
+    expect(carrito).toEqual({ cookieConsumida: true, avisos: [AJUSTE] });
+    expect(fusionarCarritoDeInvitado).toHaveBeenCalledWith(TOKEN_INVITADO);
+    expect(contextoDeLaFusion).toMatchObject({ requestId: 'r-1', idUsuario: 7, rol: 'Cliente' });
+  });
+
+  it('si la fusión falla, la sesión se abre, la cookie se conserva y la respuesta avisa FusionPendiente', async () => {
+    const { servicio } = repositorioFalso(await credenciales());
+    vi.mocked(fusionarCarritoDeInvitado).mockRejectedValueOnce(new Error('deadlock simulado'));
+
+    const { sesion, carrito } = await login(servicio, TOKEN_INVITADO);
+
+    expect(sesion.accessToken.length).toBeGreaterThan(0);
+    expect(carrito.cookieConsumida).toBe(false);
+    expect(carrito.avisos).toMatchObject([{ tipo: 'FusionPendiente' }]);
+  });
+
+  it('sin cookie o con un rol distinto de Cliente no toca el carrito', async () => {
+    vi.mocked(fusionarCarritoDeInvitado).mockClear();
+    const cliente = repositorioFalso(await credenciales());
+    const operador = repositorioFalso(await credenciales({ rol: 'Operador' }));
+
+    const sinCookie = await login(cliente.servicio);
+    const conOtroRol = await login(operador.servicio, TOKEN_INVITADO);
+
+    expect([sinCookie.carrito, conOtroRol.carrito]).toEqual([
+      { cookieConsumida: false, avisos: [] },
+      { cookieConsumida: false, avisos: [] },
+    ]);
+    expect(fusionarCarritoDeInvitado).not.toHaveBeenCalled();
+  });
+
+  it('al registrarse asigna el carrito; si falla, también avisa FusionPendiente', async () => {
+    const registro = { correo: 'nuevo@x.gt', contrasena: CONTRASENA, nombre: 'Nuevo' };
+    vi.mocked(asignarCarritoDeInvitado)
+      .mockResolvedValueOnce()
+      .mockRejectedValueOnce(new Error('índice único'));
+
+    const asignado = await enPeticion(() =>
+      repositorioFalso(null).servicio.registrar(registro, CLIENTE, TOKEN_INVITADO),
+    );
+    const fallido = await enPeticion(() =>
+      repositorioFalso(null).servicio.registrar(registro, CLIENTE, TOKEN_INVITADO),
+    );
+
+    expect(asignado.carrito).toEqual({ cookieConsumida: true, avisos: [] });
+    expect(fallido.carrito).toMatchObject({
+      cookieConsumida: false,
+      avisos: [{ tipo: 'FusionPendiente' }],
+    });
   });
 });

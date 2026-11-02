@@ -51,9 +51,9 @@ beforeAll(async () => {
 const metodos = async (comprador: Comprador) =>
   leerDatos(await request(app).get('/api/v1/envios/metodos').set(comprador), metodosSchema);
 
-async function cuponDeMontoFijo(valor: string): Promise<string> {
+async function cuponDeMontoFijo(valor: string): Promise<{ codigo: string; idCupon: number }> {
   const codigo = `E${randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase()}`;
-  await request(app)
+  const respuesta = await request(app)
     .post('/api/v1/admin/cupones')
     .set(comoCliente(tokenAdmin))
     .send({
@@ -65,7 +65,7 @@ async function cuponDeMontoFijo(valor: string): Promise<string> {
       fechaFin: new Date(Date.now() + DIA_MS).toISOString(),
       limiteUsosTotal: 5,
     });
-  return codigo;
+  return { codigo, idCupon: leerDatos(respuesta, z.object({ idCupon: z.number() })).idCupon };
 }
 
 describe('métodos de envío para el carrito (E4-H06, N-04)', () => {
@@ -94,7 +94,7 @@ describe('métodos de envío para el carrito (E4-H06, N-04)', () => {
       await request(app)
         .put('/api/v1/carrito/cupon')
         .set(comoInvitado(token))
-        .send({ codigo: await cuponDeMontoFijo('30.00') }),
+        .send({ codigo: (await cuponDeMontoFijo('30.00')).codigo }),
     );
     const despues = await metodos(comoInvitado(token));
 
@@ -106,6 +106,23 @@ describe('métodos de envío para el carrito (E4-H06, N-04)', () => {
     });
     expect(despues.metodos.every((m) => m.costo === m.tarifa && !m.envioGratis)).toBe(true);
     expect(despues.envioGratis).toMatchObject({ faltante: '10.00', alcanzado: false });
+  });
+
+  it('un cupón que dejó de ser válido no cuenta para el envío gratis', async () => {
+    const { IDVariante } = await varianteVendible('520.00', 5);
+    const { token } = await invitadoConCarrito(app, IDVariante);
+    const { codigo, idCupon } = await cuponDeMontoFijo('30.00');
+    await request(app).put('/api/v1/carrito/cupon').set(comoInvitado(token)).send({ codigo });
+    const conCupon = await metodos(comoInvitado(token));
+
+    await request(app)
+      .post(`/api/v1/admin/cupones/${String(idCupon)}/desactivar`)
+      .set(comoCliente(tokenAdmin));
+    const sinCupon = await metodos(comoInvitado(token));
+
+    expect(conCupon.envioGratis).toMatchObject({ faltante: '10.00', alcanzado: false });
+    expect(sinCupon.envioGratis).toMatchObject({ faltante: '0.00', alcanzado: true });
+    expect(sinCupon.metodos.every((m) => m.costo === '0.00')).toBe(true);
   });
 
   it('con sesión de cliente usa su carrito', async () => {

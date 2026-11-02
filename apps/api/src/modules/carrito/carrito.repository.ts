@@ -10,7 +10,7 @@ import { aMonto } from '../../shared/dinero/index.js';
 import { codigoPorNumeroSql } from '../../shared/errors/index.js';
 import type { EstadoExistencia } from '../catalogo/index.js';
 import type {
-  AvisoFusion,
+  AjusteFusion,
   AvisoPrecio,
   Carrito,
   CookieInvitado,
@@ -62,15 +62,15 @@ interface FilaResumen {
 interface FilaAvisoFusion {
   IDVariante: number;
   Producto: string;
-  Tipo: AvisoFusion['tipo'];
+  Tipo: AjusteFusion['tipo'];
   CantidadSolicitada: number;
   CantidadFinal: number;
 }
 
-const aAvisoFusion = (fila: FilaAvisoFusion): AvisoFusion => ({
+const aAjusteFusion = (fila: FilaAvisoFusion): AjusteFusion => ({
+  tipo: fila.Tipo,
   idVariante: fila.IDVariante,
   producto: fila.Producto,
-  tipo: fila.Tipo,
   cantidadSolicitada: fila.CantidadSolicitada,
   cantidadFinal: fila.CantidadFinal,
 });
@@ -199,11 +199,11 @@ export const carritoRepository = {
   },
 
   /** N-05: el carrito del invitado se fusiona con el del cliente de la petición. */
-  async fusionar(hash: Buffer): Promise<AvisoFusion[]> {
+  async fusionar(hash: Buffer): Promise<AjusteFusion[]> {
     const filas = await ejecutarSP<FilaAvisoFusion>('SP_Carrito_Fusionar', {
       HashTokenInvitado: hashInvitado(hash),
     });
-    return filas.map(aAvisoFusion);
+    return filas.map(aAjusteFusion);
   },
 
   /** N-05: el carrito del invitado pasa a ser del cliente nuevo de la petición. */

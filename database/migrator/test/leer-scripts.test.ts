@@ -149,6 +149,24 @@ describe('leerScripts', () => {
     ]);
   });
 
+  it('en database/test/ admite SPs y triggers de prueba; cualquier otro nombre se rechaza', async () => {
+    await mkdir(join(directorio, 'test'));
+    await escribir('test/R__SP_Pruebas_Preparar.sql');
+    await escribir('test/R__TR_Pruebas_Fallar.sql');
+    await escribir('migrations/V001__uno.sql');
+
+    expect(nombres(await leerScripts(directorio, carpetasPara(BASE_PRUEBAS)))).toEqual([
+      'V001__uno.sql',
+      'R__SP_Pruebas_Preparar.sql',
+      'R__TR_Pruebas_Fallar.sql',
+    ]);
+
+    await escribir('test/R__FU_Pruebas_Otra.sql');
+    await expect(leerScripts(directorio, carpetasPara(BASE_PRUEBAS))).rejects.toThrow(
+      /Nombres inválidos en test\/: R__FU_Pruebas_Otra\.sql/,
+    );
+  });
+
   it('un GO <n> se reporta con el nombre del script', async () => {
     await escribir('migrations/V001__repetido.sql', 'SELECT 1;\nGO 3\n');
 

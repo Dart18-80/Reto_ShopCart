@@ -1,5 +1,6 @@
 import { telefonoSchema, textoNvarchar } from '@shopcart/shared';
 import { ROLES_DE_USUARIO } from '../../shared/http/index.js';
+import { avisoFusionSchema } from '../carrito/index.js';
 import { z } from '../../shared/openapi/zod.js';
 
 // N-15: mínimo 8 caracteres con letras y números. El máximo evita que un cuerpo enorme se vuelva trabajo
@@ -45,21 +46,10 @@ export const sesionSchema = z
       nombre: z.string(),
       rol: z.enum(ROLES_DE_USUARIO),
     }),
-    avisosCarrito: z
-      .array(
-        z.object({
-          idVariante: z.number().int(),
-          producto: z.string(),
-          tipo: z.enum(['CantidadAjustada', 'NoFusionada']),
-          cantidadSolicitada: z.number().int(),
-          cantidadFinal: z.number().int(),
-        }),
-      )
-      .optional()
-      .openapi({
-        description:
-          'Solo al iniciar sesión o registrarse: líneas del carrito de invitado que no pasaron completas al fusionarlo (N-05)',
-      }),
+    avisosCarrito: z.array(avisoFusionSchema).optional().openapi({
+      description:
+        'Solo al iniciar sesión o registrarse (N-05): líneas del carrito de invitado que no pasaron completas, o FusionPendiente si no se pudo pasar (la cookie se conserva)',
+    }),
   })
   .openapi('Sesion');
 

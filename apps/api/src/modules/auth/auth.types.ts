@@ -1,3 +1,4 @@
+import type { AvisoFusion } from '../carrito/index.js';
 import type { RolDeUsuario } from '../../shared/http/index.js';
 
 export interface UsuarioSesion {
@@ -25,20 +26,15 @@ export interface Sesion {
   usuario: UsuarioSesion;
 }
 
-/** N-05: una línea del invitado que no pasó completa al carrito del cliente al iniciar sesión. */
-export interface AvisoFusionCarrito {
-  idVariante: number;
-  producto: string;
-  tipo: 'CantidadAjustada' | 'NoFusionada';
-  cantidadSolicitada: number;
-  cantidadFinal: number;
+/** N-05: lo que pasó con el carrito de la cookie al abrir sesión. */
+export interface CarritoAlAbrirSesion {
+  /** El carrito de invitado ya es del cliente (o la cookie no tenía carrito): la cookie se borra. */
+  cookieConsumida: boolean;
+  avisos: AvisoFusion[];
 }
 
-/**
- * Puerto (N-05): el carrito de invitado al abrir sesión. Lo implementa el módulo carrito y se inyecta en
- * app.ts. Si falla, devuelve null o false: el carrito de invitado queda intacto y el error ya se registró.
- */
-export interface CarritoDeInvitado {
-  fusionar(tokenInvitado: string): Promise<AvisoFusionCarrito[] | null>;
-  asignar(tokenInvitado: string): Promise<boolean>;
+/** Lo que obtiene quien inicia sesión o se registra. */
+export interface SesionAbierta {
+  sesion: Sesion;
+  carrito: CarritoAlAbrirSesion;
 }

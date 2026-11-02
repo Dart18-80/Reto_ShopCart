@@ -1,8 +1,11 @@
 import { randomUUID } from 'node:crypto';
+import type { Logger } from 'pino';
 import { AppError } from '../../shared/errors/index.js';
 import {
+  ejecutarConContexto,
   generarTokenOpaco,
   hashearTokenOpaco,
+  obtenerContexto,
   VIGENCIA_ACCESO_SEG,
   type ClienteHttp,
   type TokensAcceso,
@@ -11,7 +14,14 @@ import { hashearContrasena, verificarContrasena } from './auth.contrasenas.js';
 import { DIAS_VIGENCIA_REFRESH } from './auth.refresh.js';
 import type { AuthRepository } from './auth.repository.js';
 import type { DatosLogin, DatosRegistro } from './auth.schemas.js';
-import type { IdentidadSesion, Sesion } from './auth.types.js';
+import { asignarCarritoDeInvitado, fusionarCarritoDeInvitado } from '../carrito/index.js';
+import type {
+  CarritoAlAbrirSesion,
+  IdentidadSesion,
+  Sesion,
+  SesionAbierta,
+  UsuarioSesion,
+} from './auth.types.js';
 
 interface Dependencias {
   repositorio: Pick<
@@ -23,9 +33,57 @@ interface Dependencias {
     | 'revocarSesion'
   >;
   tokens: TokensAcceso;
+  logger: Logger;
 }
 
-export function crearAuthService({ repositorio, tokens }: Dependencias) {
+// Fábricas y no constantes: nunca se comparte un objeto mutable entre peticiones.
+const sinCambiosEnElCarrito = (): CarritoAlAbrirSesion => ({ cookieConsumida: false, avisos: [] });
+const fusionPendiente = (): CarritoAlAbrirSesion => ({
+  cookieConsumida: false,
+  avisos: [
+    {
+      tipo: 'FusionPendiente',
+      mensaje:
+        'No pudimos pasar los productos de tu carrito de invitado. Lo intentaremos de nuevo la próxima vez que inicies sesión.',
+    },
+  ],
+});
+
+export function crearAuthService({ repositorio, tokens, logger }: Dependencias) {
+  // A-18: los SPs del carrito toman al cliente del contexto. Solo esa llamada corre como él; el resto de la
+  // petición sigue siendo anónima (el login no lleva token).
+  function comoCliente<T>(usuario: UsuarioSesion, accion: () => Promise<T>): Promise<T> {
+    const contexto = obtenerContexto();
+    if (contexto === undefined) throw new Error('La sesión se abrió fuera de una petición');
+    return ejecutarConContexto(
+      { requestId: contexto.requestId, idUsuario: usuario.idUsuario, rol: usuario.rol },
+      accion,
+    );
+  }
+
+  /**
+   * N-05: con la cookie de invitado, el carrito pasa al cliente (fusión al iniciar sesión, asignación al
+   * registrarse). Solo el Cliente tiene carrito. Si falla, la sesión se abre igual, la cookie se conserva
+   * para reintentar en el siguiente inicio de sesión, el error se registra y la respuesta lo avisa.
+   */
+  async function pasarCarritoDeInvitado(
+    usuario: UsuarioSesion,
+    tokenInvitado: string | undefined,
+    pasar: (token: string) => Promise<CarritoAlAbrirSesion['avisos']>,
+  ): Promise<CarritoAlAbrirSesion> {
+    if (tokenInvitado === undefined || usuario.rol !== 'Cliente') return sinCambiosEnElCarrito();
+    try {
+      const avisos = await comoCliente(usuario, () => pasar(tokenInvitado));
+      return { cookieConsumida: true, avisos };
+    } catch (error) {
+      logger.error(
+        { err: error, idUsuario: usuario.idUsuario },
+        'No se pudo pasar el carrito de invitado al cliente',
+      );
+      return fusionPendiente();
+    }
+  }
+
   // A-07: la versión de sesión viaja en el access token; la respuesta solo lleva la identidad pública.
   async function armarSesion(
     { versionSesion, ...usuario }: IdentidadSesion,
@@ -57,17 +115,31 @@ export function crearAuthService({ repositorio, tokens }: Dependencias) {
     abrirSesion,
 
     // N-15: el registro público solo crea Clientes (lo garantiza el SP) y deja la sesión abierta.
-    async registrar(datos: DatosRegistro, cliente: ClienteHttp): Promise<Sesion> {
+    async registrar(
+      datos: DatosRegistro,
+      cliente: ClienteHttp,
+      tokenInvitado?: string,
+    ): Promise<SesionAbierta> {
       const usuario = await repositorio.registrarCliente({
         correo: datos.correo,
         hashContrasena: await hashearContrasena(datos.contrasena),
         nombre: datos.nombre,
         telefono: datos.telefono ?? null,
       });
-      return abrirSesion(usuario, cliente);
+      const sesion = await abrirSesion(usuario, cliente);
+      // Al registrarse no hay nada que ajustar: el carrito de invitado pasa completo.
+      const carrito = await pasarCarritoDeInvitado(sesion.usuario, tokenInvitado, async (token) => {
+        await asignarCarritoDeInvitado(token);
+        return [];
+      });
+      return { sesion, carrito };
     },
 
-    async iniciarSesion({ correo, contrasena }: DatosLogin, cliente: ClienteHttp): Promise<Sesion> {
+    async iniciarSesion(
+      { correo, contrasena }: DatosLogin,
+      cliente: ClienteHttp,
+      tokenInvitado?: string,
+    ): Promise<SesionAbierta> {
       const credenciales = await repositorio.obtenerCredenciales(correo);
       // N-15: correo inexistente y contraseña incorrecta responden igual (y tardan lo mismo).
       const valida = await verificarContrasena(credenciales?.hashContrasena, contrasena);
@@ -76,10 +148,16 @@ export function crearAuthService({ repositorio, tokens }: Dependencias) {
       if (!credenciales.activo) throw new AppError('USUARIO_INACTIVO');
 
       const { idUsuario, correo: correoGuardado, nombre, rol, versionSesion } = credenciales;
-      return abrirSesion(
+      const sesion = await abrirSesion(
         { idUsuario, correo: correoGuardado, nombre, rol, versionSesion },
         cliente,
       );
+      const carrito = await pasarCarritoDeInvitado(
+        sesion.usuario,
+        tokenInvitado,
+        fusionarCarritoDeInvitado,
+      );
+      return { sesion, carrito };
     },
 
     // A-07: rotación por familia. El SP marca el token como usado y guarda el nuevo bajo bloqueo; un

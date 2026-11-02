@@ -36,11 +36,12 @@ const CARPETAS: readonly Carpeta[] = [
   { tipo: 'S', carpeta: 'seeds', patron: /^S(\d{3})__[A-Za-z0-9_]+\.sql$/, obligatoria: false },
 ];
 
-// Solo en shopcart_test y al final: SPs que preparan datos de prueba, para que las pruebas no escriban SQL.
+// Solo en shopcart_test y al final: SPs que preparan datos de prueba, para que las pruebas no escriban SQL,
+// y triggers que provocan una falla real dentro de una transacción (por ejemplo, la fusión del carrito).
 const CARPETA_PRUEBAS: Carpeta = {
   tipo: 'R',
   carpeta: 'test',
-  patron: /^R__SP_Pruebas_[A-Za-z0-9_]+\.sql$/,
+  patron: /^R__(?:SP|TR)_Pruebas_[A-Za-z0-9_]+\.sql$/,
   obligatoria: false,
 };
 

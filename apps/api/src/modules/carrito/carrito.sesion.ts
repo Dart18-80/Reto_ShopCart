@@ -1,42 +1,17 @@
-import type { Logger } from 'pino';
 import { hashearTokenOpaco } from '../../shared/http/index.js';
-import type { CarritoRepository } from './carrito.repository.js';
-import type { AvisoFusion } from './carrito.types.js';
-
-interface Dependencias {
-  repositorio: Pick<CarritoRepository, 'fusionar' | 'asignarInvitado'>;
-  logger: Logger;
-}
+import { carritoRepository } from './carrito.repository.js';
+import type { AjusteFusion } from './carrito.types.js';
 
 /**
- * N-05: el carrito de invitado cuando el cliente abre sesión; corre como ese cliente. Si la fusión o la
- * asignación fallan, la sesión se abre igual, la cookie se conserva y el error se registra con su causa. Un
- * error dentro de la transacción la revierte completa (el carrito de invitado queda intacto). Nunca se
- * registra el token.
+ * N-05: al iniciar sesión, el carrito de la cookie se fusiona con el del cliente de la petición (el contexto
+ * debe ser el suyo). Devuelve las líneas que no pasaron completas. Un error dentro de la transacción la
+ * revierte completa: el carrito de invitado queda intacto.
  */
-export function crearCarritoDeInvitado({ repositorio, logger }: Dependencias) {
-  return {
-    /** Al iniciar sesión. null si falló. */
-    async fusionar(tokenInvitado: string): Promise<AvisoFusion[] | null> {
-      try {
-        return await repositorio.fusionar(hashearTokenOpaco(tokenInvitado));
-      } catch (error) {
-        logger.error({ err: error }, 'No se pudo fusionar el carrito de invitado');
-        return null;
-      }
-    },
-
-    /** Al registrarse. false si falló. */
-    async asignar(tokenInvitado: string): Promise<boolean> {
-      try {
-        await repositorio.asignarInvitado(hashearTokenOpaco(tokenInvitado));
-        return true;
-      } catch (error) {
-        logger.error({ err: error }, 'No se pudo asignar el carrito de invitado');
-        return false;
-      }
-    },
-  };
+export function fusionarCarritoDeInvitado(tokenInvitado: string): Promise<AjusteFusion[]> {
+  return carritoRepository.fusionar(hashearTokenOpaco(tokenInvitado));
 }
 
-export type CarritoDeInvitado = ReturnType<typeof crearCarritoDeInvitado>;
+/** N-05: al registrarse, el carrito de la cookie pasa a ser del cliente nuevo de la petición. */
+export function asignarCarritoDeInvitado(tokenInvitado: string): Promise<void> {
+  return carritoRepository.asignarInvitado(hashearTokenOpaco(tokenInvitado));
+}

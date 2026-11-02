@@ -1,11 +1,15 @@
 import type { RequestHandler, Response } from 'express';
 import { manejar } from '../../shared/http/index.js';
-import { COOKIE_CARRITO, cookiesCarritoSchema, RUTA_COOKIE_CARRITO } from '../carrito/index.js';
-import type { CarritoAlAbrirSesion, CarritoAlAbrirSesionService } from './auth.carrito.js';
+import {
+  borrarCookieCarrito,
+  COOKIE_CARRITO,
+  cookiesCarritoSchema,
+  type AvisoFusion,
+} from '../carrito/index.js';
 import { DIAS_VIGENCIA_REFRESH } from './auth.refresh.js';
 import { cookiesRefreshSchema, loginSchema, registroSchema } from './auth.schemas.js';
 import type { AuthService } from './auth.service.js';
-import type { AvisoFusionCarrito, Sesion } from './auth.types.js';
+import type { Sesion, SesionAbierta } from './auth.types.js';
 
 const HTTP_CREADO = 201;
 const HTTP_OK = 200;
@@ -24,7 +28,7 @@ export function enviarSesion(
   res: Response,
   sesion: Sesion,
   estado: number = HTTP_OK,
-  avisosCarrito?: AvisoFusionCarrito[],
+  avisosCarrito?: AvisoFusion[],
 ): void {
   res.cookie(COOKIE_REFRESH, sesion.refreshToken, {
     httpOnly: true,
@@ -43,9 +47,14 @@ export function enviarSesion(
   });
 }
 
-// N-05: el carrito de invitado ya es del cliente; la cookie deja de servir.
-function borrarCookieCarrito(res: Response, carrito: CarritoAlAbrirSesion): void {
-  if (carrito.cookieConsumida) res.clearCookie(COOKIE_CARRITO, { path: RUTA_COOKIE_CARRITO });
+/** N-05: la sesión abierta y, si el carrito de invitado ya es del cliente, la cookie del carrito se borra. */
+function enviarSesionAbierta(
+  res: Response,
+  { sesion, carrito }: SesionAbierta,
+  estado: number,
+): void {
+  if (carrito.cookieConsumida) borrarCookieCarrito(res);
+  enviarSesion(res, sesion, estado, carrito.avisos);
 }
 
 export interface AuthController {
@@ -55,34 +64,21 @@ export interface AuthController {
   logout: RequestHandler;
 }
 
-export function crearAuthController(
-  servicio: AuthService,
-  carritoInvitado: CarritoAlAbrirSesionService,
-): AuthController {
+export function crearAuthController(servicio: AuthService): AuthController {
   return {
     registro: manejar(
       { body: registroSchema, cookies: cookiesCarritoSchema },
       async ({ body, cookies, cliente }, res) => {
-        const sesion = await servicio.registrar(body, cliente);
-        const carrito = await carritoInvitado.alRegistrarse(
-          sesion.usuario,
-          cookies[COOKIE_CARRITO],
-        );
-        borrarCookieCarrito(res, carrito);
-        enviarSesion(res, sesion, HTTP_CREADO, carrito.avisos);
+        const abierta = await servicio.registrar(body, cliente, cookies[COOKIE_CARRITO]);
+        enviarSesionAbierta(res, abierta, HTTP_CREADO);
       },
     ),
 
     login: manejar(
       { body: loginSchema, cookies: cookiesCarritoSchema },
       async ({ body, cookies, cliente }, res) => {
-        const sesion = await servicio.iniciarSesion(body, cliente);
-        const carrito = await carritoInvitado.alIniciarSesion(
-          sesion.usuario,
-          cookies[COOKIE_CARRITO],
-        );
-        borrarCookieCarrito(res, carrito);
-        enviarSesion(res, sesion, HTTP_OK, carrito.avisos);
+        const abierta = await servicio.iniciarSesion(body, cliente, cookies[COOKIE_CARRITO]);
+        enviarSesionAbierta(res, abierta, HTTP_OK);
       },
     ),
 

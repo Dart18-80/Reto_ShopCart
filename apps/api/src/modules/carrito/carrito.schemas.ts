@@ -2,7 +2,7 @@ import { montoSchema } from '@shopcart/shared';
 import { idEnRutaSchema, idSchema } from '../../shared/http/index.js';
 import { z } from '../../shared/openapi/zod.js';
 import { ESTADOS_EXISTENCIA } from '../catalogo/index.js';
-import { ESTADOS_LINEA, TIPOS_AVISO } from './carrito.types.js';
+import { ESTADOS_LINEA, TIPOS_AJUSTE_FUSION, TIPOS_AVISO } from './carrito.types.js';
 
 // Tope técnico de una línea, lejos del desborde de INT; el límite real es el disponible (N-06).
 const CANTIDAD_MAXIMA = 1_000_000;
@@ -95,3 +95,17 @@ export const carritoSchema = z
   .openapi('Carrito');
 
 export type AgregarLinea = z.infer<typeof agregarLineaSchema>;
+
+/** N-05: los avisos del carrito de invitado en la respuesta del inicio de sesión y del registro. */
+export const avisoFusionSchema = z
+  .discriminatedUnion('tipo', [
+    z.object({
+      tipo: z.enum(TIPOS_AJUSTE_FUSION),
+      idVariante: z.number().int(),
+      producto: z.string(),
+      cantidadSolicitada: z.number().int(),
+      cantidadFinal: z.number().int(),
+    }),
+    z.object({ tipo: z.literal('FusionPendiente'), mensaje: z.string() }),
+  ])
+  .openapi('AvisoFusionCarrito');

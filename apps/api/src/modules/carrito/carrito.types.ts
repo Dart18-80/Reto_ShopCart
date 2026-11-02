@@ -79,17 +79,26 @@ export interface CarritoConCookie {
   tokenNuevo: string | null;
 }
 
-export const TIPOS_AVISO_FUSION = ['CantidadAjustada', 'NoFusionada'] as const;
+export const TIPOS_AJUSTE_FUSION = ['CantidadAjustada', 'NoFusionada'] as const;
 
 /** N-05: una línea del invitado que no pasó completa al carrito del cliente al iniciar sesión. */
-export interface AvisoFusion {
+export interface AjusteFusion {
+  tipo: (typeof TIPOS_AJUSTE_FUSION)[number];
   idVariante: number;
   producto: string;
-  tipo: (typeof TIPOS_AVISO_FUSION)[number];
   cantidadSolicitada: number;
   /** 0 si la línea no pasó (el carrito llegó al máximo de líneas). */
   cantidadFinal: number;
 }
+
+/** N-05: la fusión falló; la cookie se conserva y se reintenta en el siguiente inicio de sesión. */
+export interface FusionPendiente {
+  tipo: 'FusionPendiente';
+  mensaje: string;
+}
+
+/** N-05: lo que el inicio de sesión o el registro avisan sobre el carrito de invitado. */
+export type AvisoFusion = AjusteFusion | FusionPendiente;
 
 export interface ConsultaCarrito {
   carrito: Carrito;

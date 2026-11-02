@@ -3,12 +3,7 @@ import express, { type Express } from 'express';
 import helmet from 'helmet';
 import type { Logger } from 'pino';
 import swaggerUi from 'swagger-ui-express';
-import {
-  crearModuloAuth,
-  crearSesiones,
-  type CarritoDeInvitado,
-  type LimitadoresAuth,
-} from './modules/auth/index.js';
+import { crearModuloAuth, crearSesiones, type LimitadoresAuth } from './modules/auth/index.js';
 import { crearModuloCarrito } from './modules/carrito/index.js';
 import { crearModuloCatalogo } from './modules/catalogo/index.js';
 import { crearModuloConfiguracion } from './modules/configuracion/index.js';
@@ -48,8 +43,6 @@ export interface DependenciasApp {
   tokensAcceso: TokensAcceso;
   limitadores: Limitadores;
   versionesSesion: VersionesSesion;
-  /** N-05: fusión o asignación del carrito de invitado al abrir sesión. */
-  carritoInvitado: CarritoDeInvitado;
 }
 
 /** Composición: middlewares, rutas e inyección de adaptadores (01-arquitectura.md §4.3). */
@@ -61,7 +54,6 @@ export function crearApp({
   tokensAcceso,
   limitadores,
   versionesSesion,
-  carritoInvitado,
 }: DependenciasApp): Express {
   const app = express();
   app.disable('x-powered-by');
@@ -88,10 +80,10 @@ export function crearApp({
 
   const v1 = express.Router();
   v1.use(crearModuloSistema({ redis: verificadorRedis, instancia, logger }));
-  v1.use('/auth', crearModuloAuth({ tokens: tokensAcceso, limitadores, carritoInvitado }));
+  v1.use('/auth', crearModuloAuth({ tokens: tokensAcceso, limitadores, logger }));
 
   const autenticar = crearAutenticar({ tokens: tokensAcceso, versiones: versionesSesion });
-  const sesiones = crearSesiones(tokensAcceso);
+  const sesiones = crearSesiones(tokensAcceso, logger);
   v1.use(
     '/usuarios',
     crearModuloUsuarios({
