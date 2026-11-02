@@ -303,18 +303,32 @@ describe('consultas de inventario (E3-H06)', () => {
 });
 
 describe('roles en inventario (RF-01)', () => {
-  it('el Admin también opera el inventario', async () => {
+  it('el Admin también opera el inventario: cada ruta responde como al Operador', async () => {
     const admin = leerSesion(
       await iniciarSesion(app, 'admin@shopcart.gt', 'Admin2026!'),
     ).accessToken;
+    const cabeceras = { Authorization: `Bearer ${admin}` };
     const idVariante = await nuevaVariante();
 
-    const respuesta = await request(app)
+    const entradaAdmin = await request(app)
       .post('/api/v1/inventario/entradas')
-      .set({ Authorization: `Bearer ${admin}` })
-      .send({ idVariante, cantidad: 1, motivo: 'Inventario inicial' });
+      .set(cabeceras)
+      .send({ idVariante, cantidad: 3, motivo: 'Inventario inicial' });
+    const ajusteAdmin = await request(app)
+      .post('/api/v1/inventario/ajustes')
+      .set(cabeceras)
+      .send({ idVariante, cantidad: -1, motivo: 'Conteo' });
+    const consultas = await Promise.all(
+      [
+        `/api/v1/inventario/kardex?variante=${String(idVariante)}`,
+        `/api/v1/inventario/existencias?variante=${String(idVariante)}`,
+        '/api/v1/inventario/conciliacion',
+        `/api/v1/inventario/bodega?variante=${String(idVariante)}`,
+      ].map((ruta) => request(app).get(ruta).set(cabeceras)),
+    );
 
-    expect(respuesta.status).toBe(201);
+    expect([entradaAdmin.status, ajusteAdmin.status]).toEqual([201, 201]);
+    expect(consultas.map((r) => r.status)).toEqual([200, 200, 200, 200]);
   });
 
   it('un Cliente recibe 403 en cada ruta de inventario y sin token 401', async () => {

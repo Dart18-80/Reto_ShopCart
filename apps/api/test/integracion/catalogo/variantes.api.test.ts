@@ -282,7 +282,7 @@ describe('edición de variantes (N-14)', () => {
 });
 
 describe('borrado con historial (N-14)', () => {
-  async function conHistorial(tipo: 'kardex' | 'reserva' | 'venta') {
+  async function conHistorial(tipo: 'kardex' | 'reserva' | 'venta' | 'checkout') {
     const idProducto = await productoNuevo();
     const variante = await varianteNueva(idProducto, [id(talla.valores, 'S')]);
     if (tipo === 'kardex') await registrarEntrada(variante.idVariante, 5);
@@ -291,6 +291,11 @@ describe('borrado con historial (N-14)', () => {
         IDVariante: { tipo: sql.Int, valor: variante.idVariante },
         Cantidad: { tipo: sql.Int, valor: 1 },
         MinutosParaVencer: { tipo: sql.Int, valor: 15 },
+      });
+    }
+    if (tipo === 'checkout') {
+      await ejecutarSP('SP_Pruebas_CrearLineaSesionCheckout', {
+        IDVariante: { tipo: sql.Int, valor: variante.idVariante },
       });
     }
     if (tipo === 'venta') {
@@ -303,7 +308,7 @@ describe('borrado con historial (N-14)', () => {
     return { idProducto, idVariante: variante.idVariante };
   }
 
-  it.each(['kardex', 'reserva', 'venta'] as const)(
+  it.each(['kardex', 'reserva', 'venta', 'checkout'] as const)(
     'con %s, ni la variante ni el producto se borran (409 PRODUCTO_CON_HISTORIAL) y se pueden desactivar',
     async (tipo) => {
       const { idProducto, idVariante } = await conHistorial(tipo);
@@ -347,6 +352,62 @@ describe('borrado con historial (N-14)', () => {
 
     expect(respuesta.status).toBe(204);
     expect(despues.status).toBe(404);
+  });
+
+  const entradaDe = (idVariante: number) =>
+    request(app)
+      .post('/api/v1/inventario/entradas')
+      .set(conToken(token))
+      .send({ idVariante, cantidad: 2, motivo: 'Compra' });
+
+  it('cambiar la combinación mientras entra inventario: o se cambia antes o responde VARIANTE_CON_HISTORIAL, nunca 500', async () => {
+    const casos = await Promise.all(
+      Array.from({ length: 5 }, async () => {
+        const idProducto = await productoNuevo();
+        return varianteNueva(idProducto, [id(talla.valores, 'S')]);
+      }),
+    );
+
+    const respuestas = await Promise.all(
+      casos.flatMap((variante) => [
+        request(app)
+          .patch(rutaVariante(variante.idVariante))
+          .set(conToken(token))
+          .send({ valores: [id(talla.valores, 'M')] }),
+        entradaDe(variante.idVariante),
+      ]),
+    );
+
+    for (let i = 0; i < respuestas.length; i += 2) {
+      const [cambio, entrada] = [respuestas[i], respuestas[i + 1]];
+      expect(entrada?.status).toBe(201);
+      expect([200, 409]).toContain(cambio?.status);
+      if (cambio?.status === 409) expect(leerError(cambio).codigo).toBe('VARIANTE_CON_HISTORIAL');
+    }
+  });
+
+  it('borrar una variante mientras entra inventario: o se borra (y la entrada no la encuentra) o tiene historial, nunca 500', async () => {
+    const casos = await Promise.all(
+      Array.from({ length: 5 }, async () => {
+        const idProducto = await productoNuevo();
+        return varianteNueva(idProducto, [id(talla.valores, 'S')]);
+      }),
+    );
+
+    const respuestas = await Promise.all(
+      casos.flatMap((variante) => [
+        request(app).delete(rutaVariante(variante.idVariante)).set(conToken(token)),
+        entradaDe(variante.idVariante),
+      ]),
+    );
+
+    for (let i = 0; i < respuestas.length; i += 2) {
+      const par = [respuestas[i]?.status, respuestas[i + 1]?.status];
+      expect([
+        [204, 404],
+        [409, 201],
+      ]).toContainEqual(par);
+    }
   });
 
   it('una variante inexistente responde 404', async () => {
