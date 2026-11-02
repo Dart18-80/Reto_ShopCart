@@ -18,7 +18,7 @@
 | Stored procedure | `SP_Modulo_Proceso` | `SP_Pedidos_CrearPedido` | **Enunciado** |
 | Vista | `VW_Modulo_Proceso` | `VW_Dashboard_VentasPorCategoria` | **Enunciado** |
 | Función tipo tabla | `FU_Modulo_Proceso` | `FU_Catalogo_PrecioVigente` | **Enunciado** |
-| Trigger | `TR_Modulo_Proceso` | `TR_Bitacora_Inmutable` | Extensión del estándar (M-06) |
+| Trigger | `TR_Modulo_Proceso` | `TR_Pedidos_ValidarTransicion` | Extensión del estándar (M-06) |
 | Constraints | `PK_Tabla`, `FK_Tabla_Referida`, `UQ_Tabla_Columnas`, `CK_Tabla_Regla`, `DF_Tabla_Columna` | `CK_Variante_ExistenciaNoNegativa` | Extensión del estándar (M-06) |
 | Índices | `IX_Tabla_Columnas` y, si es único filtrado, `UX_Tabla_Regla` | `UX_Carrito_ActivoPorUsuario` | Extensión del estándar (M-06) |
 
@@ -790,14 +790,16 @@ UQ `(IDPedido, IDVariante)`. Índices: `IX_DetallePedido_Variante (IDVariante) I
 
 **Triggers que la alimentan** (`AFTER INSERT, UPDATE, DELETE`, serializando `inserted`/`deleted` con `FOR JSON PATH`). Las columnas de dinero (`Precio`, `Costo`, `Valor`, `MontoMaximoDescuento`, `MontoMinimoCompra`, `MontoEnvioGratis`) se serializan como texto (`"149.90"`), igual que en la API (A-21):
 
-| Tabla | Qué se registra | Módulo |
-|---|---|---|
-| `Categoria`, `Producto`, `Variante` | Creación, cambios, desactivación y existencia física | Catalogo / Inventario |
-| `PrecioVariante` | Cada nueva versión de precio, con el precio anterior. `IDEntidad` es el `IDPrecioVariante` de la nueva versión (siempre la PK del registro afectado) y `ValorAnterior`/`ValorNuevo` incluyen `IDVariante` y el precio. El historial de precios de una variante se lee de `PrecioVariante` con `SP_Catalogo_HistorialPrecios`, no de la bitácora | Catalogo |
-| `Cupon` | Creación, cambios y desactivación | Cupones |
-| `Pedido` | **Solo cuando cambia `IDEstadoPedido`** | Pedidos |
-| `MetodoEnvio`, `ParametroSistema` | Cambios de tarifas y parámetros (N-04) | Envios / Configuracion |
-| `Usuario` | Rol y activación, **nunca `HashContrasena`** | Usuarios |
+| Tabla | Trigger | Qué se registra | Módulo |
+|---|---|---|---|
+| `Categoria`, `Producto`, `Variante` | `TR_Catalogo_CategoriaBitacora`, `TR_Catalogo_ProductoBitacora`, `TR_Catalogo_VarianteBitacora` | Creación, cambios, desactivación y existencia física | Catalogo / Inventario |
+| `PrecioVariante` | `TR_Catalogo_PrecioVarianteBitacora` | Cada nueva versión de precio, con el precio anterior. `IDEntidad` es el `IDPrecioVariante` de la nueva versión (siempre la PK del registro afectado) y `ValorAnterior`/`ValorNuevo` incluyen `IDVariante` y el precio. El historial de precios de una variante se lee de `PrecioVariante` con `SP_Catalogo_HistorialPrecios`, no de la bitácora | Catalogo |
+| `Cupon` | `TR_Cupones_Bitacora` | Creación, cambios y desactivación | Cupones |
+| `Pedido` | `TR_Pedidos_Bitacora` | **Solo cuando cambia `IDEstadoPedido`** | Pedidos |
+| `MetodoEnvio`, `ParametroSistema` | `TR_Envios_Bitacora`, `TR_Configuracion_Bitacora` | Cambios de tarifas y parámetros (N-04) | Envios / Configuracion |
+| `Usuario` | `TR_Usuarios_Bitacora` | Rol y activación, **nunca `HashContrasena`** | Usuarios |
+
+El décimo trigger es `TR_Pedidos_ValidarTransicion` (§3.9), que valida las transiciones de estado del pedido.
 
 ### 3.11 Exportaciones (V021, E7-H05, A-24)
 
@@ -848,6 +850,9 @@ UQ `(IDPedido, IDVariante)`. Índices: `IX_DetallePedido_Variante (IDVariante) I
 | `FU_Carrito_Activo(@IDCliente, @HashTokenInvitado)` | Inline TVF | El carrito `Activo` de quien pide (cliente o invitado), sin bloqueo |
 | `FU_Envios_EnvioGratis(@Monto)` | Inline TVF | N-04: mínimo de envío gratis, cuánto falta y si se alcanzó, para un monto ya con el cupón |
 | `FU_Envios_Costos(@Monto)` | Inline TVF | N-04: los métodos activos con su costo para ese monto (0 si alcanza el envío gratis); la usan los envíos y el checkout |
+| `FU_Catalogo_PatronBusqueda(@Texto)` | Inline TVF | A-10: el texto del usuario como patrones de `LIKE` literales (escapa `\`, `%`, `_` y `[`): `Contiene` y `EmpiezaCon`, para la relevancia de la búsqueda |
+| `FU_Cupones_RestriccionViolada(@MensajeError)` | Inline TVF | RF-05: traduce la violación de un `CHECK` de `Cupon` (error 547) al campo de la API y a un mensaje para el Admin; la usan `SP_Cupones_Crear` y `SP_Cupones_Actualizar` en su `CATCH` |
+| `FU_Inventario_Movimientos(@IDVariante)` | Inline TVF | RF-03, N-07: los movimientos del kardex de una variante con su tipo y su usuario, como los muestra la API; la usan `SP_Inventario_ObtenerKardex` y los SPs de entrada y ajuste |
 | `FU_Sistema_FechaLocal(@FechaUtc)` | Inline TVF | A-12, M-03: el día de Guatemala (UTC−6, sin horario de verano) de una fecha UTC; una sola fórmula para `FechaPagoLocal` (`SP_Pedidos_CrearPedido`) y `FechaLocal` |
 | `VW_Catalogo_ProductosTienda` | Vista | Productos activos con al menos una variante activa con precio vigente: categoría, imagen principal, precio mínimo y si tienen disponible. Lo único que puede leer `shopcart_busqueda` (A-23) |
 | `VW_Inventario_Conciliacion` | Vista | Variantes donde la existencia física ≠ la suma del kardex. **Debe estar vacía** |
@@ -855,6 +860,8 @@ UQ `(IDPedido, IDVariante)`. Índices: `IX_DetallePedido_Variante (IDVariante) I
 | `VW_Pedidos_Historial` | Vista | Historial de estados con nombres y usuario (nombre tomado del enunciado) |
 | **`VW_Dashboard_HechosVenta`** | Vista | **La definición única de "venta" (N-11):** filas de venta (pedidos no cancelados, en su `FechaPagoLocal`) `UNION ALL` filas de devolución (en negativo, en su `FechaLocal`), con fecha, categoría, variante, unidades y monto neto. Todos los reportes agregan sobre esta vista |
 | `VW_Dashboard_VentasPorCategoria` | Vista | Agregado de la vista de hechos por fecha y categoría (nombre tomado del enunciado) |
+| `VW_Cupones_Admin` | Vista | RF-05, N-12: los cupones como los ve el Admin, con su categoría y si ya se usaron (desde el primer uso, su tipo y su valor no cambian) |
+| `VW_Exportaciones_Solicitudes` | Vista | A-24: una solicitud de exportación con el código de su estado, sin el token de arrendamiento |
 | `VW_Carrito_Abandonados` | Vista | Carritos `Activo` con líneas y sin cambios en `HorasCarritoAbandonado`, con su monto potencial a precio vigente |
 
 ---
@@ -929,7 +936,7 @@ Los SPs marcados **(interno)** solo los invocan otros SPs, nunca la API. Así ha
 | `S004__catalogo_demo.sql` | ~8 categorías, ~60 productos, ~250 variantes con atributos, precios con historial, imágenes locales y entradas de inventario iniciales (con su kardex, fechadas 120 días atrás con el rol `Sistema`, antes del periodo de S006: N-07) |
 | `S005__clientes_concurrencia.sql` | Los 20 clientes de la prueba de concurrencia (E5-H05) |
 | `S006__datos_demo.sql` | `EXEC SP_Semilla_GenerarDatosDemo @Pedidos = 1500, @Dias = 90, @Semilla = 2026`: ~200 clientes (`demo001@shopcart.gt`…), 1,500 pedidos con cancelaciones y devoluciones, carritos abandonados y cupones de ejemplo, uno por cada mensaje de RF-05: `DEMO10` (vigente), `DEMOVENCIDO`, `DEMOFUTURO`, `DEMOINACTIVO`, `DEMOAGOTADO`, `DEMOUNAVEZ` (ya usado por `cliente@shopcart.gt`), `DEMOMINIMO` y `DEMOCATEGORIA` |
-| `database/load/L001__carga_pesada.sql` | Opcional: `@Pedidos = 50000` |
+| `database/load/L001__carga_pesada.sql` | **Pendiente (F5):** el generador con `@Pedidos = 50000`. La medición ya se hizo en una base desechable con el mismo generador ([revision/estado-backend.md](revision/estado-backend.md) §7) |
 
 ---
 

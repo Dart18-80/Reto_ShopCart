@@ -27,7 +27,7 @@ ShopCart es un **monolito modular** en Node.js/Express que se despliega como **d
 | Rendimiento | RNF-1 | < 1 s en listados y reportes con la semilla; el diseño asume volumen alto (script de 50k pedidos) |
 | Escalabilidad | RNF-2 | API stateless, 2 réplicas, Redis para estado volátil |
 | Concurrencia | RNF-3 | 20 checkouts simultáneos sobre la última unidad → exactamente 1 éxito; lo mismo para un cupón con 1 uso |
-| Observabilidad | RNF-4 | Logs y trazas con OpenTelemetry hacia Grafana LGTM (perfil opcional) |
+| Observabilidad | RNF-4 | Logs JSON con `requestId` y `/health` (Fase 1); trazas con OpenTelemetry hacia Grafana LGTM, planificado para F5 |
 | Restricciones | Enunciado | SQL Server 2019+, solo SPs, Express + TS strict, React + TS, 15 días, una persona, Docker Compose en Windows (16 GB) |
 
 ---
@@ -54,7 +54,7 @@ Versión en texto:
                           │                              │   redis   │   │   db-migrator   │
                           │                              └───────────┘   │ (scripts .sql)  │
                           │                                              └─────────────────┘
-                          │  ── perfil "observability" (opcional) ─────────────────────────
+                          │  ── perfil "observability" (planificado para F5) ─────────────
                           │   api-1 / api-2 ──OTLP──► ┌─────────────────────────────┐
                           │                           │ otel-lgtm (Grafana :3001,   │
                           │                           │ Loki, Tempo, Prometheus)    │
@@ -69,7 +69,7 @@ Versión en texto:
 | `redis` | `redis:7-alpine` | Rate limiting, versión de sesión por usuario y caché de reportes | `redis-cli ping` | — |
 | `api-1`, `api-2` | Propia (`apps/api`) | API REST; misma imagen y misma configuración salvo `INSTANCIA_ID` | `GET /api/v1/health` | Migrador completado, `redis` saludable |
 | `web` | Propia (nginx + build de `apps/web`) | **Balanceador de carga** (`upstream` round-robin hacia `api-1` y `api-2`, con `max_fails=3 fail_timeout=10s`) y servidor de la SPA y `/static` | `GET /` | `api-1`, `api-2` |
-| `otel-lgtm` | `grafana/otel-lgtm` | Logs, trazas y métricas | — | Perfil `observability` |
+| `otel-lgtm` | `grafana/otel-lgtm` | Logs, trazas y métricas. **Planificado para F5, no implementado:** hoy solo está reservada su IP en la subred | — | Perfil `observability` |
 
 **Notas de despliegue:**
 
@@ -79,7 +79,7 @@ Versión en texto:
 - **Redis está detrás de la API, no delante.** Toda petición llega a la API, que valida el token y el rol. Redis evita ir a SQL Server, no evita pasar por el backend. No se usa la caché HTTP de nginx (`proxy_cache`): saltaría la autenticación y no permite la invalidación por eventos que exige el extra (sección 9).
 - **Réplicas explícitas** (`api-1`, `api-2`) en lugar de `deploy.replicas`: nginx resuelve los nombres al arrancar, y así cada respuesta lleva el header `X-Instancia`, que permite demostrar el balanceo en la defensa.
 - **Arranque con un solo comando:** `docker compose up -d`. El orden lo garantizan `depends_on` con `condition: service_healthy` y `service_completed_successfully`.
-- **RAM estimada:** SQL Server 2 GB (limitado con `MSSQL_MEMORY_LIMIT_MB`), cada API ~150 MB, Redis ~30 MB, nginx ~10 MB, LGTM ~700 MB. Total: ~3.5 GB con observabilidad.
+- **RAM estimada:** SQL Server 2 GB (limitado con `MSSQL_MEMORY_LIMIT_MB`), cada API ~150 MB, Redis ~30 MB, nginx ~10 MB (medido en reposo: ~1.9 GB en total). Con LGTM (F5), ~700 MB más.
 - **Camino a Kubernetes (D-04):** cada servicio se traduce a un `Deployment` (las APIs con `replicas: 2` y un HPA), el migrador a un `Job` y SQL Server/Redis a `StatefulSet`. No requiere cambios en el código.
 
 ---
@@ -109,6 +109,7 @@ Un solo proceso desplegable, dividido internamente en **módulos por dominio** c
 | `reportes` | Dashboard y listados | `SP_Dashboard_*` | RF-08 |
 | `bitacora` | Consulta de la bitácora | `SP_Bitacora_*` | RF-09 |
 | `configuracion` | Parámetros del sistema (plazos y umbrales) | `SP_Configuracion_*` | N-02, N-04, N-06, N-13 |
+| `exportaciones` | Exportación asíncrona de reportes a Excel y PDF: cola en SQL Server, procesador en las réplicas, almacén compartido y purga | `SP_Exportaciones_*` | RF-08, A-24 |
 | `sistema` | Salud de la réplica (`GET /api/v1/health`) y contexto del actor para los triggers (`SP_Sistema_EstablecerContexto`) | `SP_Sistema_*` | RNF-2, A-18 |
 
 ### 4.3 Estructura interna de cada módulo
@@ -208,18 +209,19 @@ Es una pregunta segura en la defensa, porque el enunciado pide que los **servici
 |---|---|---|
 | auth | `POST /auth/registro`, `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout` | Público / autenticado |
 | usuarios | `GET/PATCH /usuarios/me`, `POST /usuarios/me/contrasena`; `GET/POST /usuarios`, `PATCH /usuarios/:id`, `POST /usuarios/:id/desactivar` y `/activar` | Cliente, Operador y Admin (`/me`) / Admin |
-| direcciones | `GET/POST /direcciones`, `PATCH/DELETE /direcciones/:id`; `GET /departamentos`, `GET /departamentos/:id/municipios` | Cliente / público |
-| catalogo | `GET /productos` (búsqueda y filtros), `GET /productos/:id`, `GET /categorias`; administración: `POST/PATCH/DELETE /admin/productos…`, `/admin/variantes…`, `/admin/categorias…`, `/admin/atributos…`, `PUT /admin/variantes/:id/precio` | Público / Admin |
-| inventario | `POST /inventario/entradas`, `POST /inventario/ajustes`, `GET /inventario/kardex?variante=`, `GET /inventario/existencias`, `GET /inventario/conciliacion` | Operador, Admin |
+| direcciones | `GET/POST /direcciones`, `GET/PATCH/DELETE /direcciones/:id`; `GET /departamentos`, `GET /departamentos/:id/municipios` | Cliente / público |
+| catalogo | `GET /productos` (búsqueda y filtros), `GET /productos/:id`, `GET /categorias`; administración: `GET/POST /admin/productos`, `GET/PATCH/DELETE /admin/productos/:id`, `POST /admin/productos/:id/activar` y `/desactivar`, `PUT /admin/productos/:id/imagenes`, `POST /admin/productos/:id/variantes`; `PATCH/DELETE /admin/variantes/:id`, `POST /admin/variantes/:id/activar` y `/desactivar`, `GET /admin/variantes/:id/precios`, `PUT /admin/variantes/:id/precio`; `POST /admin/categorias`, `PATCH/DELETE /admin/categorias/:id`, `POST /admin/categorias/:id/activar` y `/desactivar`; `GET/POST /admin/atributos`, `POST /admin/atributos/:id/valores` | Público / Admin |
+| inventario | `POST /inventario/entradas`, `POST /inventario/ajustes`, `GET /inventario/kardex?variante=`, `GET /inventario/existencias`, `GET /inventario/conciliacion`, `GET /inventario/bodega` | Operador, Admin |
 | carrito | `GET /carrito`, `POST /carrito/lineas`, `PATCH /carrito/lineas/:idLinea`, `DELETE /carrito/lineas/:idLinea`, `POST /carrito/avisos/vistos`, `PUT /carrito/cupon`, `DELETE /carrito/cupon` | Invitado, Cliente |
 | envios | `GET /envios/metodos`; `PUT /admin/envios/metodos/:id` | Público / Admin |
 | cupones | `GET/POST /admin/cupones`, `GET/PATCH /admin/cupones/:id`, `POST /admin/cupones/:id/activar`, `POST /admin/cupones/:id/desactivar` | Admin |
 | checkout | `POST /checkout/sesion` (iniciar pago), `GET /checkout/sesion`, `DELETE /checkout/sesion`, `POST /checkout/sesion/pagos` (**`Idempotency-Key`**) | Cliente |
-| pedidos | `GET /pedidos`, `GET /pedidos/:id` (propios), `POST /pedidos/:id/cancelar`; gestión: `GET /admin/pedidos`, `POST /admin/pedidos/:id/estado`, `POST /admin/pedidos/:id/devoluciones`, `GET /admin/reembolsos?estado=Fallido`, `POST /admin/reembolsos/:id/reintentar` | Cliente / Operador, Admin |
+| pedidos | `GET /pedidos`, `GET /pedidos/:id` (propios), `POST /pedidos/:id/cancelar`; gestión: `GET /admin/pedidos`, `POST /admin/pedidos/:id/estado`, `POST /admin/pedidos/:id/cancelar`, `POST /admin/pedidos/:id/devoluciones`, `GET /admin/reembolsos?estado=Fallido`, `POST /admin/reembolsos/:id/reintentar` | Cliente / Operador, Admin |
 | reportes | `GET /dashboard/ventas?agrupacion=dia\|semana\|mes&desde&hasta`, `/dashboard/ventas-por-categoria`, `/dashboard/top-productos`, `/dashboard/carritos-abandonados`, `/dashboard/resumen` | Admin |
 | bitacora | `GET /bitacora?modulo=&entidad=&desde&hasta` | Admin |
 | configuracion | `GET /admin/configuracion`, `PATCH /admin/configuracion` | Admin |
-| sistema | `GET /health` (verifica la BD mediante un SP y Redis), `GET /docs` | Público |
+| exportaciones | `POST /admin/reportes/:reporte/exportaciones` (202), `GET /admin/exportaciones`, `GET /admin/exportaciones/:id`, `GET /admin/exportaciones/:id/archivo` | Admin |
+| sistema | `GET /health` (verifica la BD mediante un SP y Redis); fuera de `/api/v1`: `GET /api/docs` (Swagger) y `GET /api/docs/openapi.json` | Público |
 
 **Aislamiento entre clientes (RF-01):** los endpoints del cliente **nunca reciben el `IDUsuario`**, porque sale del token. Los SPs del cliente reciben `@IDUsuario` y filtran con él (`WHERE IDPedido = @IDPedido AND IDUsuario = @IDUsuario`). Un recurso ajeno responde `404`, igual que uno inexistente. El carrito no expone su ID (N-05).
 
@@ -475,6 +477,8 @@ Se ejecutan **dentro de cada réplica de la API** con un planificador interno (`
 
 ## 11. Observabilidad (RNF-4)
 
+**Implementado en la Fase 1:** logs pino en JSON hacia stdout con `requestId`, `instancia`, `idUsuario` y el módulo, con redacción de datos sensibles; el `requestId` llega a los SPs y a la bitácora (A-18); `/health` con un SP. **Planificado para F5, no implementado:** lo que sigue (OpenTelemetry, LGTM y el dashboard de Grafana).
+
 - **Trazas:** el SDK de OpenTelemetry para Node, con instrumentación de `http`, `express`, `tedious` (cada llamada a un SP es un span con el nombre del SP) e `ioredis`, exporta por OTLP a `otel-lgtm`. Si el colector no está levantado, el exportador descarta en silencio y la API funciona igual.
 - **Logs:** pino en JSON hacia stdout y OTLP. Cada línea lleva `requestId`, `traceId`, `instancia`, `idUsuario` y el módulo.
 - **Correlación con la base:** `ejecutarSP` envía el `@RequestId` y cada SP que escribe lo fija en `SESSION_CONTEXT` (A-18), y la bitácora y los errores de SQL guardan ese `RequestId`. Desde una fila de la bitácora se puede llegar a la traza completa en Grafana.
@@ -540,7 +544,7 @@ Estado: 🟡 Propuesta · 🔍 En análisis · ✅ Confirmada · ✏️ Modifica
 | A-08 | Zod para validar entradas y generar OpenAPI; esquemas compartidos con el frontend | class-validator: duplica tipos. OpenAPI escrito a mano: se desalinea | ✅ |
 | A-09 | Migrador propio con versionado `V###` + `R__`, checksum y tabla de historial | Flyway: agrega Java a la imagen. Scripts sin control: no reproducible | ✅ |
 | A-10 | Búsqueda con `LIKE` sobre una columna calculada que no distingue mayúsculas ni tildes (`COLLATE Latin1_General_CI_AI`): "camion" encuentra "Camión". El `LIKE '%texto%'` recorre solo la tabla `Producto` (cientos de filas, no los pedidos), y los filtros de categoría, precio y disponibilidad sí usan índices | Full-Text Search: no viene en la imagen oficial de Docker. Queda como mejora documentada | ✅ |
-| A-11 | Caché de reportes en Redis (cache-aside en el servicio, puerto `Cache`) con **invalidación por versión** (`reportes:v{version}:…`): cada escritura de la lista de §9 hace `INCR` después de su commit, la versión se lee antes de consultar la base y el TTL es corto (60 s). No se borra nada ni se coordinan réplicas: una llave vieja queda huérfana | Borrado por patrón: costoso, con una ventana entre el borrado y la siguiente lectura en otra réplica. Invalidar por evento entre réplicas: necesita un canal de avisos. Sin caché: cada vista del dashboard recalcula todo | ✅ |
+| A-11 | Caché de reportes en Redis (cache-aside en el servicio, puerto `Cache`) con **invalidación por versión de dominio** (§9): dos versiones, `reportes:ventas:version` y `reportes:carritos:version`, y un mapa reporte → dominios de los que depende (solo el resumen y los carritos abandonados leen `carritos`). La llave lleva las versiones de sus dominios (`reportes:ventas3.carritos7:resumen:{hash}`); cada escritura de la lista de §9 hace `INCR` solo de los dominios que cambia, después de su commit; las versiones se leen antes de consultar la base y el TTL es corto (60 s). Un cambio en un carrito ya no invalida los reportes de ventas. No se borra nada ni se coordinan réplicas: una llave vieja queda huérfana | Borrado por patrón: costoso, con una ventana entre el borrado y la siguiente lectura en otra réplica. Invalidar por evento entre réplicas: necesita un canal de avisos. Sin caché: cada vista del dashboard recalcula todo | ✅ |
 | A-12 | Fechas en UTC (`DATETIME2(3)`) + columna `FechaPagoLocal DATE` (Guatemala) para agrupar reportes | `AT TIME ZONE` en cada consulta: no aprovecha índices | ✅ |
 | A-13 | Contadores con `CHECK` para límites (cupón, devoluciones, reembolsos, existencia) | Solo `COUNT`/`SUM` en el SP: correcto con bloqueo, pero sin defensa ante un bug | ✅ |
 | A-14 | Parámetros del sistema en una tabla tipada de una sola fila (`ParametroSistema`) | Tabla clave-valor: sin tipos ni `CHECK` | ✅ |

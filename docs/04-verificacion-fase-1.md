@@ -38,7 +38,7 @@ Al preparar el flujo de Swagger de E8-H01 apareció además un hallazgo real: la
 - el apagado ordenado no esperaba las exportaciones en curso;
 - dos pruebas no verificaban lo que decían.
 
-**Abierto:** si la base falla al registrar un archivo ya guardado, ese archivo queda sin referencia en el almacén. No se borra, porque el COMMIT pudo ocurrir aunque se perdiera la respuesta (A-24). Requiere decidir un barrido de los archivos sin referencia.
+**Resuelto (`15ffc5f`):** si la base falla al registrar un archivo ya guardado, ese archivo queda sin referencia en el almacén; no se borra en el momento, porque el COMMIT pudo ocurrir aunque se perdiera la respuesta (A-24). Por decisión del PO, la purga horaria lo barre: borra los archivos sin referencia con más de 24 h y nunca uno referenciado (`purga.test.ts` y `secuencial/exportaciones.api.test.ts`).
 
 ## 3. Criterios de aceptación de RF-01 a RF-09
 
