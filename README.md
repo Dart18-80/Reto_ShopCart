@@ -368,7 +368,7 @@ pnpm lint && pnpm typecheck
 pnpm test                # unitarias: servicios y middlewares con puertos falsos, sin infraestructura
 pnpm test:integracion    # contra SQL Server real: recrea la base shopcart_test en cada corrida
 pnpm test:concurrencia   # RNF-3: 20 clientes a la vez contra http://localhost:8080 (las dos réplicas)
-pnpm test:entorno        # seguridad HTTP en respuestas reales de nginx (pausa SQL Server unos 15 s)
+pnpm test:entorno        # seguridad HTTP, contenedores sin root y RNF-2 (detiene api-1 y Redis y pausa SQL Server; los levanta al terminar)
 ```
 
 - **Integración:** `pnpm test:integracion` recrea `shopcart_test` desde cero (las tablas ledger no admiten `DELETE`), aplica todos los scripts y, solo en esa base, los SPs de `database/test/`. Las pruebas no escriben SQL: preparan sus datos con esos `SP_Pruebas_*` y cada una crea datos únicos. Nunca tocan la base `ShopCart` del entorno.

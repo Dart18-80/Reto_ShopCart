@@ -187,10 +187,10 @@ async function limpiar(token: string): Promise<void> {
  * Los 20 clientes de S005 con su dirección. Inician sesión una sola vez por corrida: el login tiene un
  * límite de 5 por minuto por IP y correo (A-07).
  */
-export async function clientesSembrados(): Promise<Cliente[]> {
+export async function clientesSembrados(cantidad = TOTAL_CLIENTES): Promise<Cliente[]> {
   const idMunicipio = await municipioCualquiera();
   return Promise.all(
-    Array.from({ length: TOTAL_CLIENTES }, async (_, indice) => {
+    Array.from({ length: cantidad }, async (_, indice) => {
       const correo = `concurrencia${String(indice + 1).padStart(2, '0')}@shopcart.gt`;
       const token = await iniciarSesion(correo, CONTRASENA_CLIENTES);
       return { token, idDireccion: await direccionDe(token, idMunicipio) };

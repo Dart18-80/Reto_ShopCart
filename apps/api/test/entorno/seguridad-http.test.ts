@@ -1,12 +1,10 @@
-import { execFile } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { parseEnv, promisify } from 'node:util';
+import { parseEnv } from 'node:util';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
+import { compose, esperarSaludable, RAIZ } from './apoyo-entorno.js';
 
-const ejecutar = promisify(execFile);
-const RAIZ = join(import.meta.dirname, '../../../..');
 const URL_BASE = process.env.SHOPCART_URL ?? 'http://localhost:8080';
 const ORIGEN_AJENO = 'https://malicioso.example';
 
@@ -22,8 +20,6 @@ const origenesPermitidos = (
 const [origenPermitido = ''] = origenesPermitidos;
 
 const pedir = (ruta: string, init: RequestInit = {}) => fetch(`${URL_BASE}${ruta}`, init);
-const compose = (...argumentos: string[]) =>
-  ejecutar('docker', ['compose', ...argumentos], { cwd: RAIZ });
 
 // Lo que helmet agrega a cada respuesta de la API (01-arquitectura.md §10).
 const ENCABEZADOS_HELMET = {
@@ -125,6 +121,7 @@ describe('seguridad HTTP a través de nginx (verificación de entrega)', () => {
       respuesta = await pedir('/api/v1/categorias');
     } finally {
       await compose('unpause', 'sqlserver');
+      await esperarSaludable('sqlserver');
     }
     const texto = await respuesta.text();
 
