@@ -19,6 +19,18 @@ export interface TarjetaPago {
   cvv: string;
 }
 
+const MESES_POR_ANIO = 12;
+
+/** Una tarjeta vale hasta el último día de su mes de vencimiento (en UTC). */
+export function tarjetaVencida(
+  { mesVencimiento, anioVencimiento }: Pick<TarjetaPago, 'mesVencimiento' | 'anioVencimiento'>,
+  ahora: Date,
+): boolean {
+  const vence = anioVencimiento * MESES_POR_ANIO + mesVencimiento;
+  const actual = ahora.getUTCFullYear() * MESES_POR_ANIO + ahora.getUTCMonth() + 1;
+  return vence < actual;
+}
+
 export interface SolicitudAutorizacion {
   /** La llave de idempotencia del intento: la misma llave recibe siempre la misma respuesta. */
   llave: string;

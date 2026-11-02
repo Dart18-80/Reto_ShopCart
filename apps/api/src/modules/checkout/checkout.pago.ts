@@ -13,7 +13,7 @@ import {
 } from '../../shared/pasarela/index.js';
 import type { Pedido, PedidosParaCheckout } from '../pedidos/index.js';
 import type { CheckoutRepository } from './checkout.repository.js';
-import type { PagoRealizado } from './checkout.types.js';
+import type { Arrendamiento, PagoRealizado } from './checkout.types.js';
 
 // N-03: el arrendamiento cubre el timeout de la pasarela más un margen para crear el pedido y capturar.
 export const MARGEN_ARRENDAMIENTO_MS = 5_000;
@@ -58,7 +58,8 @@ export function crearPagoService({
     return pedido;
   }
 
-  async function capturar(idIntento: number, idTransaccion: string): Promise<void> {
+  async function capturar(arrendamiento: Arrendamiento, idTransaccion: string): Promise<void> {
+    const { idIntento } = arrendamiento;
     try {
       await pasarela.capturar(idTransaccion);
     } catch (error) {
@@ -70,7 +71,7 @@ export function crearPagoService({
       return;
     }
     try {
-      await repositorio.actualizarIntento(idIntento, { estado: 'Capturado' });
+      await repositorio.actualizarIntento(arrendamiento, { estado: 'Capturado' });
     } catch (error) {
       logger.warn(
         { err: error, idIntento, idTransaccion },
@@ -79,20 +80,22 @@ export function crearPagoService({
     }
   }
 
-  async function anular(idIntento: number, idTransaccion: string, causa: unknown): Promise<void> {
+  async function anular(
+    arrendamiento: Arrendamiento,
+    idTransaccion: string,
+    causa: unknown,
+  ): Promise<void> {
+    const { idIntento } = arrendamiento;
     const codigo = causa instanceof AppError ? causa.codigo : 'ERROR_INTERNO';
     for (let intento = 1; intento <= INTENTOS_ANULACION; intento++) {
       try {
         await pasarela.anular(idTransaccion);
-        await repositorio.actualizarIntento(idIntento, {
+        await repositorio.actualizarIntento(arrendamiento, {
           estado: 'Anulado',
           codigo,
           mensaje: causa instanceof AppError ? causa.message : null,
         });
-        logger.info(
-          { idIntento, idTransaccion, codigo },
-          'Autorización anulada: el pedido no se creó',
-        );
+        logger.info({ idIntento, idTransaccion, codigo }, 'Autorización anulada: no hay pedido');
         return;
       } catch (error) {
         logger.warn({ err: error, idIntento, idTransaccion, intento }, 'La anulación falló');
@@ -113,9 +116,12 @@ export function crearPagoService({
    */
   async function pedidoTrasFalla(
     causa: unknown,
-    idIntento: number,
+    arrendamiento: Arrendamiento,
     idTransaccion: string,
   ): Promise<Pedido> {
+    const { idIntento } = arrendamiento;
+    // N-03 (fencing): otro proceso retomó el arrendamiento; esta petición ya no toca el cobro.
+    if (causa instanceof AppError && causa.codigo === 'PAGO_EN_CURSO') throw causa;
     let pedido: Pedido | null;
     try {
       pedido = await pedidos.obtenerDeIntento(idIntento);
@@ -128,7 +134,7 @@ export function crearPagoService({
       throw causa;
     }
     if (pedido === null) {
-      await anular(idIntento, idTransaccion, causa);
+      await anular(arrendamiento, idTransaccion, causa);
       throw causa;
     }
     logger.warn(
@@ -139,28 +145,29 @@ export function crearPagoService({
   }
 
   async function crearPedidoYCapturar(
-    idIntento: number,
+    arrendamiento: Arrendamiento,
     idTransaccion: string,
   ): Promise<PagoRealizado> {
     let pedido: Pedido;
     try {
-      pedido = await pedidos.crearDeIntento(idIntento);
+      pedido = await pedidos.crearDeIntento(arrendamiento.idIntento, arrendamiento.token);
     } catch (error) {
-      pedido = await pedidoTrasFalla(error, idIntento, idTransaccion);
+      pedido = await pedidoTrasFalla(error, arrendamiento, idTransaccion);
     }
-    await capturar(idIntento, idTransaccion);
+    await capturar(arrendamiento, idTransaccion);
     return { pedido, creado: true };
   }
 
   // N-03: un timeout libera el arrendamiento para que el reintento con la misma llave no espere.
-  async function liberarTrasFalla(idIntento: number, causa: unknown): Promise<never> {
+  async function liberarTrasFalla(arrendamiento: Arrendamiento, causa: unknown): Promise<never> {
+    const { idIntento } = arrendamiento;
     if (causa instanceof PasarelaSinRespuesta) {
       logger.warn({ err: causa, idIntento }, 'La pasarela no respondió al autorizar');
     } else {
       logger.error({ err: causa, idIntento }, 'Error inesperado al autorizar en la pasarela');
     }
     try {
-      await repositorio.liberarArrendamiento(idIntento);
+      await repositorio.liberarArrendamiento(arrendamiento);
     } catch (error) {
       logger.error({ err: error, idIntento }, 'No se liberó el arrendamiento; vence solo');
     }
@@ -168,7 +175,7 @@ export function crearPagoService({
   }
 
   async function autorizar(
-    idIntento: number,
+    arrendamiento: Arrendamiento,
     monto: Decimal,
     { llave, tarjeta }: SolicitudPago,
   ): Promise<PagoRealizado> {
@@ -176,12 +183,12 @@ export function crearPagoService({
     try {
       resultado = await pasarela.autorizar({ llave, monto, tarjeta });
     } catch (error) {
-      return liberarTrasFalla(idIntento, error);
+      return liberarTrasFalla(arrendamiento, error);
     }
 
     if (resultado.tipo === 'Rechazada') {
       const { intentosRestantes, sesionCancelada } = await repositorio.actualizarIntento(
-        idIntento,
+        arrendamiento,
         {
           estado: 'Rechazado',
           codigo: resultado.codigo,
@@ -191,11 +198,38 @@ export function crearPagoService({
       throw rechazo(resultado.mensaje, intentosRestantes, sesionCancelada);
     }
 
-    await repositorio.actualizarIntento(idIntento, {
+    await repositorio.actualizarIntento(arrendamiento, {
       estado: 'Autorizado',
       idTransaccion: resultado.idTransaccion,
     });
-    return crearPedidoYCapturar(idIntento, resultado.idTransaccion);
+    return crearPedidoYCapturar(arrendamiento, resultado.idTransaccion);
+  }
+
+  /**
+   * N-03 (decisión de cierre de E5): un intento retomado de una sesión vencida o cancelada nunca se
+   * autoriza ni crea el pedido. Se consulta la pasarela, se anula la autorización si la hay y el intento
+   * se cierra sin cobro; la respuesta es SESION_VENCIDA.
+   */
+  async function cerrarSinCobro(arrendamiento: Arrendamiento, llave: string): Promise<never> {
+    const enPasarela = await pasarela.consultar(llave);
+    const vencida = new AppError('SESION_VENCIDA', {
+      mensaje: 'Tu sesión de pago venció y no se hizo ningún cobro. Vuelve a iniciar el pago.',
+    });
+    if (enPasarela.estado === 'Autorizada') {
+      await anular(arrendamiento, enPasarela.idTransaccion, vencida);
+    } else if (enPasarela.estado === 'Capturada') {
+      // Imposible sin pedido: no se toca el cobro y lo revisa la conciliación.
+      logger.error(
+        { idIntento: arrendamiento.idIntento },
+        'Cobro capturado en una sesión vencida sin pedido; queda para la conciliación',
+      );
+    } else {
+      await repositorio.actualizarIntento(arrendamiento, {
+        estado: 'Fallido',
+        codigo: vencida.codigo,
+      });
+    }
+    throw vencida;
   }
 
   return {
@@ -209,12 +243,14 @@ export function crearPagoService({
 
       switch (registro.accion) {
         case 'Autorizar':
-          return autorizar(registro.idIntento, registro.monto, solicitud);
+          return autorizar(arrendamientoDe(registro), registro.monto, solicitud);
         case 'CrearPedido':
-          return crearPedidoYCapturar(registro.idIntento, registro.idTransaccion);
+          return crearPedidoYCapturar(arrendamientoDe(registro), registro.idTransaccion);
         case 'Capturar':
-          await capturar(registro.idIntento, registro.idTransaccion);
+          await capturar(arrendamientoDe(registro), registro.idTransaccion);
           return { pedido: await obtenerPedido(registro.idPedido), creado: false };
+        case 'Cerrar':
+          return cerrarSinCobro(arrendamientoDe(registro), solicitud.llave);
         case 'Pedido':
           return { pedido: await obtenerPedido(registro.idPedido), creado: false };
         case 'EnCurso':
@@ -237,6 +273,11 @@ export function crearPagoService({
     },
   };
 }
+
+const arrendamientoDe = ({ idIntento, token }: Arrendamiento): Arrendamiento => ({
+  idIntento,
+  token,
+});
 
 function rechazo(mensaje: string, intentosRestantes: number, sesionCancelada: boolean): AppError {
   return new AppError('PAGO_RECHAZADO', {

@@ -141,3 +141,74 @@ describe('pasarela simulada (E5-H02, N-03)', () => {
     expect(guardado).toMatchObject({ UltimosDigitos: '4242', Marca: 'Visa' });
   });
 });
+
+describe('contrato completo del puerto (cierre de E5)', () => {
+  it('la misma llave con otro monto o con otra tarjeta es otra solicitud y se rechaza', async () => {
+    const pasarela = crearPasarelaSimulada();
+    const llave = randomUUID();
+    await pasarela.autorizar({ llave, monto: MONTO, tarjeta: APROBADA });
+
+    const otroMonto = pasarela.autorizar({ llave, monto: new Decimal('1.00'), tarjeta: APROBADA });
+    const otraTarjeta = pasarela.autorizar({ llave, monto: MONTO, tarjeta: RECHAZADA });
+
+    await expect(otroMonto).rejects.toMatchObject({ codigo: 'LLAVE_REUTILIZADA' });
+    await expect(otraTarjeta).rejects.toMatchObject({ codigo: 'LLAVE_REUTILIZADA' });
+  });
+
+  it('el reembolso con la misma llave y otro monto u otra transacción se rechaza', async () => {
+    const pasarela = crearPasarelaSimulada();
+    const capturada = async () => {
+      const autorizacion = await pasarela.autorizar({
+        llave: randomUUID(),
+        monto: MONTO,
+        tarjeta: APROBADA,
+      });
+      if (autorizacion.tipo !== 'Autorizada') throw new Error('Debía autorizar');
+      await pasarela.capturar(autorizacion.idTransaccion);
+      return autorizacion.idTransaccion;
+    };
+    const [idTransaccion, otraTransaccion] = [await capturada(), await capturada()];
+    const llave = randomUUID();
+    const primero = await pasarela.reembolsar({
+      llave,
+      idTransaccion,
+      monto: new Decimal('10.00'),
+    });
+
+    const repetido = await pasarela.reembolsar({
+      llave,
+      idTransaccion,
+      monto: new Decimal('10.00'),
+    });
+    const otroMonto = pasarela.reembolsar({ llave, idTransaccion, monto: new Decimal('20.00') });
+    const otraDeTransaccion = pasarela.reembolsar({
+      llave,
+      idTransaccion: otraTransaccion,
+      monto: new Decimal('10.00'),
+    });
+
+    expect(repetido).toEqual(primero);
+    await expect(otroMonto).rejects.toMatchObject({ codigo: 'LLAVE_REUTILIZADA' });
+    await expect(otraDeTransaccion).rejects.toMatchObject({ codigo: 'LLAVE_REUTILIZADA' });
+  });
+
+  it('declina una tarjeta vencida según su reloj (vale hasta el último día de su mes)', async () => {
+    const pasarela = crearPasarelaSimulada({ ahora: () => new Date('2026-11-01T00:00:00Z') });
+    const vencida = { ...APROBADA, mesVencimiento: 10, anioVencimiento: 2026 };
+    const vigente = { ...APROBADA, mesVencimiento: 11, anioVencimiento: 2026 };
+
+    const declinada = await pasarela.autorizar({
+      llave: randomUUID(),
+      monto: MONTO,
+      tarjeta: vencida,
+    });
+    const aceptada = await pasarela.autorizar({
+      llave: randomUUID(),
+      monto: MONTO,
+      tarjeta: vigente,
+    });
+
+    expect(declinada).toMatchObject({ tipo: 'Rechazada', codigo: 'TARJETA_VENCIDA' });
+    expect(aceptada.tipo).toBe('Autorizada');
+  });
+});

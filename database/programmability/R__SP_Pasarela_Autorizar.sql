@@ -1,5 +1,6 @@
 -- N-03 (E5-H02): la pasarela simulada autoriza un cobro. Idempotente por llave: si la llave ya existe,
--- devuelve la misma respuesta (Nueva = 0) sin cambiar nada, aunque la pida otra réplica. La decisión
+-- devuelve la misma respuesta (Nueva = 0) sin cambiar nada, aunque la pida otra réplica; con otro monto u otra
+-- tarjeta (marca y últimos 4) es otra solicitud: 50603, como cualquier pasarela con llaves de idempotencia. La decisión
 -- (@Aprobada y el código de rechazo) la toma el adaptador con la tarjeta de prueba; aquí nunca llega el número
 -- completo ni el CVV. Solo la usa el adaptador PasarelaSimulada, nunca dentro de una transacción del checkout.
 CREATE OR ALTER PROCEDURE dbo.SP_Pasarela_Autorizar
@@ -26,6 +27,11 @@ BEGIN
         BEGIN TRAN;
 
         -- sqlserver-sp §9.3: HOLDLOCK bloquea también el hueco de una llave nueva.
+        IF EXISTS (SELECT 1 FROM dbo.PasarelaAutorizacion AS a WITH (UPDLOCK, HOLDLOCK)
+                   WHERE a.LlaveIdempotencia = @LlaveIdempotencia
+                     AND (a.Monto <> @Monto OR a.Marca <> @Marca OR a.UltimosDigitos <> @UltimosDigitos))
+            THROW 50603, N'La llave de idempotencia ya se usó con otra solicitud.', 1;
+
         IF NOT EXISTS (SELECT 1 FROM dbo.PasarelaAutorizacion AS a WITH (UPDLOCK, HOLDLOCK)
                        WHERE a.LlaveIdempotencia = @LlaveIdempotencia)
         BEGIN

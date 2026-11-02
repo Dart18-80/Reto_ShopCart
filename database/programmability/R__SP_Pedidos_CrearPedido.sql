@@ -3,13 +3,17 @@
 -- petición: nunca hay pedido sin autorización confirmada. Idempotente: si la sesión ya tiene pedido, lo
 -- devuelve (UQ_Pedido_IDSesionCheckout es la autoridad).
 -- Orden de bloqueo (01 §6.6): carrito → variantes por IDVariante → sesión → cupón → intento.
--- La sesión debe estar Activa (si venció y el job la expiró: 50601). Una reserva vencida se vuelve a validar
+-- Fencing (N-03): solo la petición dueña del arrendamiento vigente (@TokenArrendamiento) crea el pedido; si otro
+-- proceso lo retomó (la conciliación o un reintento), 50602 y nada se escribe.
+-- La sesión debe estar Activa (si el job la expiró: 50601); una que venció durante este pago, con el
+-- arrendamiento vivo, se acepta: las reservas se revalidan bajo bloqueo. Una reserva vencida se vuelve a validar
 -- bajo el bloqueo de la variante; si no alcanza, 50301 y nada se escribe.
 -- Escribe en una sola transacción: pedido (copias de M-04, IVA de N-18, FechaPagoLocal de A-12), detalle,
 -- SalidaVenta en el kardex (SP_Inventario_RegistrarMovimiento, N-07), reservas Consumida, uso del cupón
 -- Confirmado, sesión Pagada, carrito Convertido e historial (ninguno) → Pagado. Devuelve el pedido.
 CREATE OR ALTER PROCEDURE dbo.SP_Pedidos_CrearPedido
-    @IDIntentoPago  BIGINT,
+    @IDIntentoPago      BIGINT,
+    @TokenArrendamiento UNIQUEIDENTIFIER,
     @IDUsuarioActor INT              = NULL,
     @RolActor       VARCHAR(20)      = NULL,
     @RequestId      UNIQUEIDENTIFIER = NULL
@@ -24,7 +28,7 @@ BEGIN
     DECLARE @IDSesion INT, @Dueno INT, @IDCarrito INT, @ID INT, @Bloqueada INT, @EstadoSesion VARCHAR(10),
             @EstadoIntento VARCHAR(12), @IDTransaccion VARCHAR(64), @IDPedido INT, @IDCupon INT,
             @Ahora DATETIME2(3) = SYSUTCDATETIME(), @FechaLocal DATE, @IDEstadoPagado INT, @Numero VARCHAR(20),
-            @Cantidad INT, @Error NVARCHAR(2048);
+            @Cantidad INT, @Error NVARCHAR(2048), @TokenVigente UNIQUEIDENTIFIER;
 
     SELECT @IDSesion = s.IDSesionCheckout, @Dueno = s.IDUsuario, @IDCarrito = s.IDCarrito
     FROM   dbo.IntentoPago AS i
@@ -60,9 +64,13 @@ BEGIN
             IF @IDCupon IS NOT NULL
                 SELECT @Bloqueada = c.IDCupon FROM dbo.Cupon AS c WITH (UPDLOCK, ROWLOCK) WHERE c.IDCupon = @IDCupon;
 
-            SELECT @EstadoIntento = i.Estado, @IDTransaccion = i.IDTransaccionPasarela
+            SELECT @EstadoIntento = i.Estado, @IDTransaccion = i.IDTransaccionPasarela,
+                   @TokenVigente = i.TokenArrendamiento
             FROM   dbo.IntentoPago AS i WITH (UPDLOCK, ROWLOCK)
             WHERE  i.IDIntentoPago = @IDIntentoPago;
+
+            IF @TokenArrendamiento IS NULL OR @TokenVigente IS NULL OR @TokenVigente <> @TokenArrendamiento
+                THROW 50602, N'Otro proceso tomó este pago. Reintenta con la misma llave.', 1;
 
             -- N-03: nunca un pedido sin una autorización confirmada.
             IF @EstadoIntento <> 'Autorizado' OR @IDTransaccion IS NULL

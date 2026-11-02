@@ -5,8 +5,8 @@
 --               MaxIntentosPagoRechazados con la sesión Activa, la cancela y libera (como el pago)
 --   Anulado     Pendiente o Autorizado sin pedido → se anuló la autorización
 --   Capturado   Pendiente o Autorizado con su pedido → se capturó
--- Compare-and-set: si el intento ya no está en @EstadoEsperado (un reintento del cliente lo resolvió),
--- no cambia nada y devuelve Resuelto = 0. Fallido y Anulado guardan PAGO_NO_COMPLETADO: es la respuesta que
+-- Compare-and-set: si el intento ya no está en @EstadoEsperado o su arrendamiento ya no es el de esta toma
+-- (@TokenArrendamiento: otro proceso lo retomó), no cambia nada y devuelve Resuelto = 0. Fallido y Anulado guardan PAGO_NO_COMPLETADO: es la respuesta que
 -- recibe un reintento con la misma llave. Solo el rol Sistema (los jobs).
 -- Orden de bloqueo (01 §6.6): carrito → sesión → intento (→ cupón al cancelar la sesión).
 CREATE OR ALTER PROCEDURE dbo.SP_Checkout_ResolverIntentoConciliado
@@ -16,6 +16,7 @@ CREATE OR ALTER PROCEDURE dbo.SP_Checkout_ResolverIntentoConciliado
     @IDTransaccion    VARCHAR(64)      = NULL,
     @CodigoRespuesta  VARCHAR(30)      = NULL,
     @MensajeRespuesta NVARCHAR(200)    = NULL,
+    @TokenArrendamiento UNIQUEIDENTIFIER = NULL,
     @IDUsuarioActor   INT              = NULL,
     @RolActor         VARCHAR(20)      = NULL,
     @RequestId        UNIQUEIDENTIFIER = NULL
@@ -37,7 +38,7 @@ BEGIN
         THROW 50005, N'Un rechazo conciliado requiere el código y el mensaje de la pasarela.', 1;
 
     DECLARE @IDSesion INT, @Dueno INT, @Actual VARCHAR(12), @EstadoSesion VARCHAR(10), @IDCarrito INT,
-            @MaxRechazos TINYINT, @Resuelto BIT = 0;
+            @MaxRechazos TINYINT, @Resuelto BIT = 0, @TokenVigente UNIQUEIDENTIFIER;
 
     SELECT @IDSesion = s.IDSesionCheckout, @Dueno = s.IDUsuario
     FROM   dbo.IntentoPago AS i
@@ -56,10 +57,10 @@ BEGIN
         EXEC dbo.SP_Carrito_BloquearActivo @Dueno, NULL, @IDCarrito OUTPUT;
         SELECT @EstadoSesion = s.Estado FROM dbo.SesionCheckout AS s WITH (UPDLOCK, ROWLOCK)
         WHERE  s.IDSesionCheckout = @IDSesion;
-        SELECT @Actual = i.Estado FROM dbo.IntentoPago AS i WITH (UPDLOCK, ROWLOCK)
+        SELECT @Actual = i.Estado, @TokenVigente = i.TokenArrendamiento FROM dbo.IntentoPago AS i WITH (UPDLOCK, ROWLOCK)
         WHERE  i.IDIntentoPago = @IDIntentoPago;
 
-        IF @Actual = @EstadoEsperado
+        IF @Actual = @EstadoEsperado AND @TokenVigente = @TokenArrendamiento
         BEGIN
             DECLARE @TienePedido BIT =
                 IIF(EXISTS (SELECT 1 FROM dbo.Pedido AS p WHERE p.IDIntentoPago = @IDIntentoPago), 1, 0);

@@ -14,6 +14,9 @@ BEGIN
 
     EXEC dbo.SP_Sistema_EstablecerContexto @IDUsuarioActor, @RolActor, @RequestId;
 
+    IF @RolActor IS NULL OR @RolActor <> 'Sistema'
+        THROW 50005, N'Solo los jobs ejecutan esta tarea.', 1;
+
     DECLARE @Bloqueo INT, @Expirados INT, @Dias SMALLINT =
         (SELECT TOP (1) ps.DiasExpiracionCarritoInvitado FROM dbo.ParametroSistema AS ps
          ORDER BY ps.IDParametroSistema);

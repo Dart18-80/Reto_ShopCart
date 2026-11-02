@@ -3,6 +3,7 @@ import pino from 'pino';
 import { describe, expect, it, vi } from 'vitest';
 import { crearPagoService } from '../../../../src/modules/checkout/checkout.pago.js';
 import type {
+  Arrendamiento,
   CambioIntento,
   RegistroIntento,
 } from '../../../../src/modules/checkout/checkout.types.js';
@@ -10,10 +11,13 @@ import type { Pedido } from '../../../../src/modules/pedidos/index.js';
 import { AppError } from '../../../../src/shared/errors/index.js';
 import {
   PasarelaSinRespuesta,
+  type EstadoEnPasarela,
   type ResultadoAutorizacion,
 } from '../../../../src/shared/pasarela/index.js';
 
 const ID_INTENTO = 7;
+const TOKEN = 'token-1';
+const ARRENDAMIENTO = { idIntento: ID_INTENTO, token: TOKEN };
 const ID_TRANSACCION = 'txn-1';
 const CERO = new Decimal(0);
 
@@ -58,10 +62,10 @@ const SOLICITUD = {
 function preparar(registro: RegistroIntento) {
   const repositorio = {
     registrarIntento: vi.fn(() => Promise.resolve(registro)),
-    actualizarIntento: vi.fn((_id: number, _cambio: CambioIntento) =>
+    actualizarIntento: vi.fn((_arrendamiento: Arrendamiento, _cambio: CambioIntento) =>
       Promise.resolve({ intentosRestantes: 4, sesionCancelada: false }),
     ),
-    liberarArrendamiento: vi.fn(() => Promise.resolve()),
+    liberarArrendamiento: vi.fn((_arrendamiento: Arrendamiento) => Promise.resolve()),
   };
   const pedidos = {
     crearDeIntento: vi.fn(() => Promise.resolve(PEDIDO)),
@@ -73,7 +77,7 @@ function preparar(registro: RegistroIntento) {
     capturar: vi.fn(() => Promise.resolve()),
     anular: vi.fn(() => Promise.resolve()),
     reembolsar: vi.fn(() => Promise.reject(new Error('no se usa'))),
-    consultar: vi.fn(() => Promise.reject(new Error('no se usa'))),
+    consultar: vi.fn((): Promise<EstadoEnPasarela> => Promise.resolve({ estado: 'NoExiste' })),
   };
   const servicio = crearPagoService({
     repositorio,
@@ -88,6 +92,7 @@ function preparar(registro: RegistroIntento) {
 const AUTORIZAR: RegistroIntento = {
   accion: 'Autorizar',
   idIntento: ID_INTENTO,
+  token: TOKEN,
   monto: new Decimal('149.90'),
 };
 
@@ -112,8 +117,8 @@ describe('checkout.pago (E5-H03)', () => {
 
     expect(resultado).toEqual({ pedido: PEDIDO, creado: true });
     expect(repositorio.actualizarIntento.mock.calls).toEqual([
-      [ID_INTENTO, { estado: 'Autorizado', idTransaccion: ID_TRANSACCION }],
-      [ID_INTENTO, { estado: 'Capturado' }],
+      [ARRENDAMIENTO, { estado: 'Autorizado', idTransaccion: ID_TRANSACCION }],
+      [ARRENDAMIENTO, { estado: 'Capturado' }],
     ]);
     const orden = [
       pasarela.autorizar.mock.invocationCallOrder,
@@ -131,7 +136,7 @@ describe('checkout.pago (E5-H03)', () => {
     const error = await servicio.pagar(SOLICITUD).catch((e: unknown) => e);
 
     expect(error).toMatchObject({ codigo: 'PAGO_SIN_CONFIRMAR', status: 504 });
-    expect(repositorio.liberarArrendamiento).toHaveBeenCalledWith(ID_INTENTO);
+    expect(repositorio.liberarArrendamiento).toHaveBeenCalledWith(ARRENDAMIENTO);
     expect(pedidos.crearDeIntento).not.toHaveBeenCalled();
   });
 
@@ -152,7 +157,7 @@ describe('checkout.pago (E5-H03)', () => {
       status: 402,
       detalles: { intentosRestantes: 4, sesionCancelada: false },
     });
-    expect(repositorio.actualizarIntento).toHaveBeenCalledWith(ID_INTENTO, {
+    expect(repositorio.actualizarIntento).toHaveBeenCalledWith(ARRENDAMIENTO, {
       estado: 'Rechazado',
       codigo: 'FONDOS_INSUFICIENTES',
       mensaje: 'Fondos insuficientes.',
@@ -170,7 +175,7 @@ describe('checkout.pago (E5-H03)', () => {
     expect(error).toBe(falla);
     expect(pasarela.anular).toHaveBeenCalledWith(ID_TRANSACCION);
     expect(pasarela.capturar).not.toHaveBeenCalled();
-    expect(repositorio.actualizarIntento).toHaveBeenLastCalledWith(ID_INTENTO, {
+    expect(repositorio.actualizarIntento).toHaveBeenLastCalledWith(ARRENDAMIENTO, {
       estado: 'Anulado',
       codigo: 'STOCK_INSUFICIENTE',
       mensaje: 'Sin existencia.',
@@ -188,8 +193,53 @@ describe('checkout.pago (E5-H03)', () => {
     expect(pedidos.obtenerDeIntento).toHaveBeenCalledWith(ID_INTENTO);
     expect(pasarela.anular).not.toHaveBeenCalled();
     expect(pasarela.capturar).toHaveBeenCalledWith(ID_TRANSACCION);
-    expect(repositorio.actualizarIntento).toHaveBeenLastCalledWith(ID_INTENTO, {
+    expect(repositorio.actualizarIntento).toHaveBeenLastCalledWith(ARRENDAMIENTO, {
       estado: 'Capturado',
+    });
+  });
+
+  it('si otro proceso retomó el arrendamiento (fencing), no anula ni consulta el pedido', async () => {
+    const { servicio, pedidos, pasarela } = preparar(AUTORIZAR);
+    const perdido = new AppError('PAGO_EN_CURSO', { mensaje: 'Otro proceso tomó este pago.' });
+    pedidos.crearDeIntento.mockRejectedValueOnce(perdido);
+
+    const error = await servicio.pagar(SOLICITUD).catch((e: unknown) => e);
+
+    expect(error).toBe(perdido);
+    expect(pedidos.obtenerDeIntento).not.toHaveBeenCalled();
+    expect(pasarela.anular).not.toHaveBeenCalled();
+  });
+
+  it('Cerrar (sesión vencida) con autorización: la anula, cierra sin cobro y responde SESION_VENCIDA', async () => {
+    const { servicio, repositorio, pasarela } = preparar({ accion: 'Cerrar', ...ARRENDAMIENTO });
+    pasarela.consultar.mockResolvedValueOnce({
+      estado: 'Autorizada',
+      idTransaccion: ID_TRANSACCION,
+      marca: 'Visa',
+      ultimosDigitos: '4242',
+    });
+
+    const error = await servicio.pagar(SOLICITUD).catch((e: unknown) => e);
+
+    expect(error).toMatchObject({ codigo: 'SESION_VENCIDA', status: 409 });
+    expect(pasarela.autorizar).not.toHaveBeenCalled();
+    expect(pasarela.anular).toHaveBeenCalledWith(ID_TRANSACCION);
+    expect(repositorio.actualizarIntento).toHaveBeenCalledWith(
+      ARRENDAMIENTO,
+      expect.objectContaining({ estado: 'Anulado', codigo: 'SESION_VENCIDA' }),
+    );
+  });
+
+  it('Cerrar sin autorización en la pasarela: el intento queda Fallido, sin autorizar', async () => {
+    const { servicio, repositorio, pasarela } = preparar({ accion: 'Cerrar', ...ARRENDAMIENTO });
+
+    const error = await servicio.pagar(SOLICITUD).catch((e: unknown) => e);
+
+    expect(error).toMatchObject({ codigo: 'SESION_VENCIDA' });
+    expect(pasarela.autorizar).not.toHaveBeenCalled();
+    expect(repositorio.actualizarIntento).toHaveBeenCalledWith(ARRENDAMIENTO, {
+      estado: 'Fallido',
+      codigo: 'SESION_VENCIDA',
     });
   });
 
@@ -213,7 +263,7 @@ describe('checkout.pago (E5-H03)', () => {
     const error = await servicio.pagar(SOLICITUD).catch((e: unknown) => e);
 
     expect(error).toMatchObject({ codigo: 'PAGO_SIN_CONFIRMAR', status: 504 });
-    expect(repositorio.liberarArrendamiento).toHaveBeenCalledWith(ID_INTENTO);
+    expect(repositorio.liberarArrendamiento).toHaveBeenCalledWith(ARRENDAMIENTO);
   });
 
   it('si liberar el arrendamiento falla, igual responde PAGO_SIN_CONFIRMAR con la causa original', async () => {
@@ -237,7 +287,7 @@ describe('checkout.pago (E5-H03)', () => {
     expect(error).toBeInstanceOf(Error);
     expect(pasarela.anular).toHaveBeenCalledTimes(3);
     expect(repositorio.actualizarIntento).not.toHaveBeenCalledWith(
-      ID_INTENTO,
+      ARRENDAMIENTO,
       expect.objectContaining({ estado: 'Anulado' }),
     );
   });
@@ -249,7 +299,7 @@ describe('checkout.pago (E5-H03)', () => {
     const resultado = await servicio.pagar(SOLICITUD);
 
     expect(resultado.creado).toBe(true);
-    expect(repositorio.actualizarIntento).not.toHaveBeenCalledWith(ID_INTENTO, {
+    expect(repositorio.actualizarIntento).not.toHaveBeenCalledWith(ARRENDAMIENTO, {
       estado: 'Capturado',
     });
   });
@@ -258,6 +308,7 @@ describe('checkout.pago (E5-H03)', () => {
     const { servicio, pasarela, pedidos } = preparar({
       accion: 'CrearPedido',
       idIntento: ID_INTENTO,
+      token: TOKEN,
       idTransaccion: ID_TRANSACCION,
     });
 
@@ -265,13 +316,14 @@ describe('checkout.pago (E5-H03)', () => {
 
     expect(resultado.creado).toBe(true);
     expect(pasarela.autorizar).not.toHaveBeenCalled();
-    expect(pedidos.crearDeIntento).toHaveBeenCalledWith(ID_INTENTO);
+    expect(pedidos.crearDeIntento).toHaveBeenCalledWith(ID_INTENTO, TOKEN);
   });
 
   it('Capturar (pedido sin capturar) captura y devuelve el pedido existente (200)', async () => {
     const { servicio, pasarela, pedidos } = preparar({
       accion: 'Capturar',
       idIntento: ID_INTENTO,
+      token: TOKEN,
       idTransaccion: ID_TRANSACCION,
       idPedido: PEDIDO.idPedido,
     });

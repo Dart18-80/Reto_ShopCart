@@ -305,12 +305,17 @@ Cliente          API (CheckoutService)                 Pasarela (puerto)       S
 | Nada (llave nueva) | `INSERT` del intento `Pendiente` con el arrendamiento tomado → autorizar |
 | Otro cliente, otra sesión u otro hash (incluida la llave de una sesión anterior cuando el cliente ya tiene otra `Activa`) | `422 LLAVE_REUTILIZADA` |
 | `Pendiente` o `Autorizado` con el arrendamiento vivo | `409 PAGO_EN_CURSO` con `Retry-After` |
+| `Pendiente` o `Autorizado` con el arrendamiento vencido y la sesión vencida o cancelada | Se retoma, pero **nunca se autoriza**: `consultar(llave)`, se anula la autorización si la hay y el intento se cierra sin cobro (`Anulado` o `Fallido`) → `409 SESION_VENCIDA` |
 | `Pendiente` con el arrendamiento vencido | Compare-and-set bajo `UPDLOCK` (solo una petición lo gana) → autorizar otra vez con la misma llave |
 | `Autorizado` sin pedido, arrendamiento vencido | Se retoma (compare-and-set) → `CrearPedido` |
 | `Autorizado` con pedido, arrendamiento vencido | Se retoma → capturar → pedido |
 | `Capturado` | `200` con el pedido |
 | `Rechazado`, `Anulado` o `Fallido` | El mismo error que se respondió entonces; si lo cerró la conciliación, `409 PAGO_NO_COMPLETADO` (sin cobro) |
 | Sesión ya pagada (con cualquier llave) | `200` con el pedido existente, sin crear intento ni llamar a la pasarela |
+
+**Token de fencing.** Cada toma del arrendamiento (la petición que registra o retoma el intento, o la conciliación) genera un `TokenArrendamiento` nuevo. `SP_Pedidos_CrearPedido`, `SP_Checkout_ActualizarIntentoPago` y `SP_Checkout_LiberarArrendamiento` reciben el token y verifican bajo `UPDLOCK` que sigue siendo el vigente; si no, `50602` y no escriben nada. Así una petición "zombi", cuyo arrendamiento ya retomó la conciliación, no puede crear el pedido de una autorización que se está anulando, y el servicio no toca el cobro al perder el arrendamiento.
+
+**Vigencia.** El pago empieza dentro de la vigencia de la sesión: una llave nueva con la sesión vencida responde `409 SESION_VENCIDA`, aunque el job todavía no la haya marcado. Una sesión que vence durante un pago en curso (con el arrendamiento vivo) sí termina: `CrearPedido` re-reserva bajo bloqueo.
 
 El puerto impone `TIMEOUT_PASARELA_MS` (10 s) a cada operación: sin respuesta en ese plazo lanza `PasarelaSinRespuesta`, y los arrendamientos se calculan con ese límite. Ante un timeout de la pasarela el arrendamiento se libera de inmediato (`ArrendadoHasta = ahora`) y se responde `504 PAGO_SIN_CONFIRMAR`: el reintento con la misma llave lo retoma sin esperar.
 

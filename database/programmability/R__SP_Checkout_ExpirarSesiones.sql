@@ -17,6 +17,9 @@ BEGIN
 
     EXEC dbo.SP_Sistema_EstablecerContexto @IDUsuarioActor, @RolActor, @RequestId;
 
+    IF @RolActor IS NULL OR @RolActor <> 'Sistema'
+        THROW 50005, N'Solo los jobs ejecutan esta tarea.', 1;
+
     DECLARE @Bloqueo INT, @ID INT, @Estado VARCHAR(10), @Expira DATETIME2(3);
     DECLARE @Vencidas TABLE (IDSesionCheckout INT PRIMARY KEY);
 

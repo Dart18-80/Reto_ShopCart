@@ -97,6 +97,26 @@ describe('planificador de tareas (E5-H04, A-04)', () => {
     expect(lenta.ejecutar).toHaveBeenCalledTimes(1);
   });
 
+  it('una tarea con alIniciar corre al arrancar y después en cada intervalo; las demás, solo en el intervalo', async () => {
+    const { logger } = loggerEnMemoria();
+    const horaria = { ...tarea(() => Promise.resolve({})), nombre: 'Horaria', alIniciar: true };
+    const comun = tarea(() => Promise.resolve({}));
+    const planificador = crearPlanificador([horaria, comun], logger);
+
+    planificador.iniciar();
+    await vi.advanceTimersByTimeAsync(0);
+    const alArrancar = [
+      vi.mocked(horaria.ejecutar).mock.calls.length,
+      vi.mocked(comun.ejecutar).mock.calls.length,
+    ];
+    await vi.advanceTimersByTimeAsync(INTERVALO_MS);
+    await planificador.detener();
+
+    expect(alArrancar).toEqual([1, 0]);
+    expect(horaria.ejecutar).toHaveBeenCalledTimes(2);
+    expect(comun.ejecutar).toHaveBeenCalledTimes(1);
+  });
+
   it('detener espera la ejecución en curso y no programa más', async () => {
     const { logger } = loggerEnMemoria();
     let terminada = false;

@@ -15,6 +15,7 @@ const PENDIENTE: IntentoPorConciliar = {
   llave: 'llave-1',
   idTransaccion: null,
   idPedido: null,
+  token: 'token-c',
 };
 const AUTORIZADO: IntentoPorConciliar = {
   idIntento: 2,
@@ -22,6 +23,7 @@ const AUTORIZADO: IntentoPorConciliar = {
   llave: 'llave-2',
   idTransaccion: 'txn-2',
   idPedido: null,
+  token: 'token-c',
 };
 
 /** La conciliación toma los intentos dados, uno por llamada, y después ninguno. */

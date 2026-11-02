@@ -3,7 +3,8 @@ import { montoATexto } from '../../shared/dinero/index.js';
 import { encabezadoIdempotenciaSchema, manejar } from '../../shared/http/index.js';
 import { pedidoARespuesta } from '../pedidos/index.js';
 import type { PagoService } from './checkout.pago.js';
-import { iniciarSesionSchema, pagarSchema } from './checkout.schemas.js';
+import type { Reloj } from '../../shared/reloj/index.js';
+import { iniciarSesionSchema, pagarVigenteSchema } from './checkout.schemas.js';
 import type { CheckoutService } from './checkout.service.js';
 import type { SesionPago } from './checkout.types.js';
 
@@ -36,7 +37,9 @@ export interface CheckoutController {
 export function crearCheckoutController(
   servicio: CheckoutService,
   pago: PagoService,
+  reloj: Reloj,
 ): CheckoutController {
+  const pagarSchema = pagarVigenteSchema(reloj);
   return {
     iniciarSesion: manejar({ body: iniciarSesionSchema }, async ({ body }, res) => {
       const { sesion, creada } = await servicio.iniciarSesion(body);

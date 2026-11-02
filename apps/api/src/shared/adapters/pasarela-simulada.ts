@@ -1,8 +1,10 @@
 import sql from 'mssql';
 import { ejecutarSP } from '../db/index.js';
+import { relojDelSistema, type Reloj } from '../reloj/index.js';
 import {
   marcaDeTarjeta,
   PasarelaSinRespuesta,
+  tarjetaVencida,
   TIMEOUT_PASARELA_MS,
   ultimosDigitos,
   type EstadoEnPasarela,
@@ -24,7 +26,10 @@ interface Decision {
 }
 
 // El "banco" de la simulación: decide con el número, que nunca sale de este archivo.
-function decidir(tarjeta: TarjetaPago): Decision {
+function decidir(tarjeta: TarjetaPago, ahora: Date): Decision {
+  if (tarjetaVencida(tarjeta, ahora)) {
+    return { aprobada: false, codigo: 'TARJETA_VENCIDA', mensaje: 'La tarjeta está vencida.' };
+  }
   if (tarjeta.numero === APROBADA || tarjeta.numero === TIEMPO_AGOTADO) {
     return { aprobada: true, codigo: null, mensaje: null };
   }
@@ -74,7 +79,7 @@ function conLimite<T>(operacion: string, promesa: Promise<T>): Promise<T> {
  * sistema externo: idempotente por llave aunque el reintento caiga en la otra réplica (sin Redis, RNF-2).
  * Nunca participa en una transacción del checkout: cada SP es su propia transacción.
  */
-export function crearPasarelaSimulada(): PasarelaPago {
+export function crearPasarelaSimulada(reloj: Reloj = relojDelSistema): PasarelaPago {
   async function cambiarEstado(idTransaccion: string, estado: 'Capturada' | 'Anulada') {
     await ejecutarSP('SP_Pasarela_CambiarEstado', {
       IDTransaccion: { tipo: sql.VarChar(64), valor: idTransaccion },
@@ -87,7 +92,7 @@ export function crearPasarelaSimulada(): PasarelaPago {
     monto,
     tarjeta,
   }: Parameters<PasarelaPago['autorizar']>[0]): Promise<ResultadoAutorizacion> {
-    const decision = decidir(tarjeta);
+    const decision = decidir(tarjeta, reloj.ahora());
     const [fila] = await ejecutarSP<FilaAutorizacion & { Nueva: boolean }>(
       'SP_Pasarela_Autorizar',
       {

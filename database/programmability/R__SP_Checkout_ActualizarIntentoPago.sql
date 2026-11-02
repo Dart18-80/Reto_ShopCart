@@ -4,6 +4,10 @@
 --               se cancela y libera reservas y cupón (SP_Checkout_CancelarSesionActiva)
 --   Anulado     Pendiente o Autorizado → Anulado con el código del error que hizo fallar el pedido
 --   Capturado   Autorizado → Capturado
+--   Fallido     Pendiente → Fallido: el cierre sin cobro de un intento de una sesión vencida que la pasarela
+--               nunca autorizó
+-- Fencing (N-03): solo la petición dueña del arrendamiento vigente (@TokenArrendamiento) escribe el intento;
+-- si otro proceso lo retomó (otra petición o la conciliación), 50602 y no cambia nada.
 -- Repetir el mismo estado no cambia nada. Solo el cliente dueño del intento (otro caso es un error de
 -- programación: 50005). Orden de bloqueo (01 §6.6): carrito → sesión → intento.
 -- Devuelve los intentos que le quedan a la sesión y si se canceló.
@@ -13,6 +17,7 @@ CREATE OR ALTER PROCEDURE dbo.SP_Checkout_ActualizarIntentoPago
     @IDTransaccion    VARCHAR(64)      = NULL,
     @CodigoRespuesta  VARCHAR(30)      = NULL,
     @MensajeRespuesta NVARCHAR(200)    = NULL,
+    @TokenArrendamiento UNIQUEIDENTIFIER = NULL,
     @IDUsuarioActor   INT              = NULL,
     @RolActor         VARCHAR(20)      = NULL,
     @RequestId        UNIQUEIDENTIFIER = NULL
@@ -25,7 +30,7 @@ BEGIN
 
     DECLARE @IDCliente INT = CASE WHEN @RolActor = 'Cliente' THEN @IDUsuarioActor END;
     DECLARE @IDSesion INT, @Dueno INT, @Actual VARCHAR(12), @IDCarrito INT, @Rechazos TINYINT,
-            @MaxRechazos TINYINT, @Cancelada BIT = 0, @Bloqueada INT;
+            @MaxRechazos TINYINT, @Cancelada BIT = 0, @Bloqueada INT, @TokenVigente UNIQUEIDENTIFIER;
 
     SELECT @IDSesion = s.IDSesionCheckout, @Dueno = s.IDUsuario
     FROM   dbo.IntentoPago AS i
@@ -44,15 +49,20 @@ BEGIN
         EXEC dbo.SP_Carrito_BloquearActivo @IDCliente, NULL, @IDCarrito OUTPUT;
         SELECT @Bloqueada = s.IDSesionCheckout FROM dbo.SesionCheckout AS s WITH (UPDLOCK, ROWLOCK)
         WHERE  s.IDSesionCheckout = @IDSesion;
-        SELECT @Actual = i.Estado FROM dbo.IntentoPago AS i WITH (UPDLOCK, ROWLOCK)
+        SELECT @Actual = i.Estado, @TokenVigente = i.TokenArrendamiento
+        FROM   dbo.IntentoPago AS i WITH (UPDLOCK, ROWLOCK)
         WHERE  i.IDIntentoPago = @IDIntentoPago;
+
+        IF @TokenArrendamiento IS NULL OR @TokenVigente IS NULL OR @TokenVigente <> @TokenArrendamiento
+            THROW 50602, N'Otro proceso tomó este pago. Reintenta con la misma llave.', 1;
 
         IF @Actual <> @Estado
         BEGIN
             IF NOT (   (@Estado = 'Autorizado' AND @Actual = 'Pendiente')
                     OR (@Estado = 'Rechazado'  AND @Actual = 'Pendiente')
                     OR (@Estado = 'Anulado'    AND @Actual IN ('Pendiente', 'Autorizado'))
-                    OR (@Estado = 'Capturado'  AND @Actual = 'Autorizado'))
+                    OR (@Estado = 'Capturado'  AND @Actual = 'Autorizado')
+                    OR (@Estado = 'Fallido'    AND @Actual = 'Pendiente'))
                 THROW 50005, N'Transición inválida del intento de pago.', 1;
 
             -- RF-06: un intento con pedido nunca se anula (su cobro es el del pedido).

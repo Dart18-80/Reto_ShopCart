@@ -1,5 +1,6 @@
 -- N-03, N-09 (E5-H02): la pasarela simulada reembolsa parte o todo de una transacción capturada. Idempotente
--- por llave: la misma llave devuelve el mismo reembolso. Nunca reembolsa más de lo capturado (se valida bajo
+-- por llave: la misma llave devuelve el mismo reembolso; con otra transacción u otro monto es otra solicitud
+-- (50603), así un reintento mal armado nunca recibe en silencio el reembolso de otro. Nunca reembolsa más de lo capturado (se valida bajo
 -- el bloqueo de la autorización). Solo la usa el adaptador PasarelaSimulada.
 CREATE OR ALTER PROCEDURE dbo.SP_Pasarela_Reembolsar
     @LlaveIdempotencia UNIQUEIDENTIFIER,
@@ -23,6 +24,11 @@ BEGIN
         SELECT @Estado = a.Estado, @Capturado = a.Monto
         FROM   dbo.PasarelaAutorizacion AS a WITH (UPDLOCK, ROWLOCK)
         WHERE  a.IDTransaccion = @IDTransaccion;
+
+        IF EXISTS (SELECT 1 FROM dbo.PasarelaReembolso AS r WITH (UPDLOCK, HOLDLOCK)
+                   WHERE r.LlaveIdempotencia = @LlaveIdempotencia
+                     AND (r.IDTransaccion <> @IDTransaccion OR r.Monto <> @Monto))
+            THROW 50603, N'La llave de idempotencia ya se usó con otra solicitud.', 1;
 
         IF NOT EXISTS (SELECT 1 FROM dbo.PasarelaReembolso AS r WITH (UPDLOCK, HOLDLOCK)
                        WHERE r.LlaveIdempotencia = @LlaveIdempotencia)

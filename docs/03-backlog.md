@@ -651,11 +651,11 @@ Se detalla en historias al cerrar la Fase 1.
 | E4-H04 | Cupones (administración) | Must | 0.25 | Hecha |
 | E4-H05 | Aplicar cupón en el carrito | Must | 0.5 | Hecha |
 | E4-H06 | Envíos y parámetros | Should | 0.25 | Hecha |
-| E5-H01 | Iniciar la sesión de pago | Must | 1.0 | En revisión |
-| E5-H02 | Pasarela de pago simulada | Must | 0.5 | En revisión |
-| E5-H03 | Confirmar el pago y crear el pedido | Must | 1.25 | En revisión |
-| E5-H04 | Planificador de tareas y expiración de sesiones | Must | 0.5 | En revisión |
-| E5-H05 | Test de concurrencia | Must | 0.75 | En revisión |
+| E5-H01 | Iniciar la sesión de pago | Must | 1.0 | Hecha |
+| E5-H02 | Pasarela de pago simulada | Must | 0.5 | Hecha |
+| E5-H03 | Confirmar el pago y crear el pedido | Must | 1.25 | Hecha |
+| E5-H04 | Planificador de tareas y expiración de sesiones | Must | 0.5 | Hecha |
+| E5-H05 | Test de concurrencia | Must | 0.75 | Hecha |
 | E6-H01 | Consulta de pedidos | Must | 0.5 | Propuesta |
 | E6-H02 | Cambios de estado | Must | 0.75 | Propuesta |
 | E6-H03 | Cancelación con reembolso | Must | 1.0 | Propuesta |

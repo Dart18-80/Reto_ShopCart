@@ -6,6 +6,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { crearApp } from '../../../src/app.js';
 import { crearTareasDeCarrito } from '../../../src/modules/carrito/index.js';
 import { crearTareasDeCheckout } from '../../../src/modules/checkout/index.js';
+import { pedidosParaCheckout } from '../../../src/modules/pedidos/index.js';
 import { crearTareasDeSistema } from '../../../src/modules/sistema/index.js';
 import { crearPasarelaSimulada } from '../../../src/shared/adapters/pasarela-simulada.js';
 import { ejecutarSP } from '../../../src/shared/db/index.js';
@@ -30,7 +31,7 @@ import {
   TARJETA_RECHAZADA,
   TARJETA_TIEMPO_AGOTADO,
 } from '../checkout/apoyo-checkout.js';
-import { unaFila } from '../datos-de-prueba.js';
+import { comoActor, unaFila } from '../datos-de-prueba.js';
 
 usarBaseDePruebas();
 
@@ -117,6 +118,18 @@ async function abandonarIntento(idSesion: number, segundos = VENCIDO_HACE_MAS_DE
   if (intento === undefined) throw new Error('La sesión no tiene intento de pago');
   await moverArrendamiento(intento.IDIntentoPago, segundos);
   return intento;
+}
+
+const ESPERA_SONDEO_MS = 50;
+const MAX_SONDEOS = 100;
+
+/** Espera a que la condición se cumpla (la conciliación corre en paralelo a la prueba). */
+async function hastaQue(condicion: () => Promise<boolean>): Promise<void> {
+  for (let sondeo = 0; sondeo < MAX_SONDEOS; sondeo++) {
+    if (await condicion()) return;
+    await new Promise((listo) => setTimeout(listo, ESPERA_SONDEO_MS));
+  }
+  throw new Error('La condición no se cumplió a tiempo');
 }
 
 function pasarelaCon(cambios: Partial<PasarelaPago>): PasarelaPago {
@@ -352,6 +365,77 @@ describe('conciliación de pagos (E5-H04, N-03)', () => {
     expect(resultado).toBeNull();
     expect(await intentosDe(idSesion)).toMatchObject([{ Estado: 'Pendiente' }]);
     await conciliar();
+  });
+});
+
+describe('cierre de E5: vigencia y fencing (N-03)', () => {
+  it('con la sesión ya expirada por el job, una llave nueva responde 409 SESION_VENCIDA', async () => {
+    const { cliente, idSesion } = await sesionDePago();
+    await vencerSesion(idSesion);
+    await expirarSesiones();
+
+    const respuesta = await pagar(app, cliente.token, randomUUID());
+
+    expect(respuesta.status).toBe(409);
+    expect(leerError(respuesta).codigo).toBe('SESION_VENCIDA');
+  });
+
+  it('una petición cuyo arrendamiento retomó la conciliación no puede crear el pedido; no queda pedido sin cobro', async () => {
+    // Autorizado sin pedido: falló el pedido y la anulación; la petición "zombi" conserva su token.
+    const anulacionCaida = crearApp(
+      dependenciasDePrueba({
+        pasarela: pasarelaCon({ anular: () => Promise.reject(new Error('pasarela caída')) }),
+      }),
+    );
+    const { IDVariante } = await varianteVendible('50.00', 10);
+    const cambiarSku = (sku: string) =>
+      request(app)
+        .patch(`/api/v1/admin/variantes/${String(IDVariante)}`)
+        .set(comoCliente(tokenAdmin))
+        .send({ sku });
+    await cambiarSku(`FALLA-${randomUUID().slice(0, 8)}`);
+    const cliente = await clienteConCarrito(anulacionCaida, [
+      { idVariante: IDVariante, cantidad: 1 },
+    ]);
+    const { idSesion } = leerSesionPago(await iniciarPago(anulacionCaida, cliente, estandar));
+    const llave = randomUUID();
+    await pagar(anulacionCaida, cliente.token, llave);
+    const zombi = await abandonarIntento(idSesion);
+    // Sin la falla, la petición zombi sí podría crear el pedido: solo la detiene el token.
+    expect((await cambiarSku(`SANA-${randomUUID().slice(0, 8)}`)).status).toBe(200);
+    let soltarAnulacion: () => void = () => undefined;
+    const anulacionEnPausa = new Promise<void>((listo) => {
+      soltarAnulacion = listo;
+    });
+    const real = crearPasarelaSimulada();
+    const [, conciliacionLenta] = crearTareasDeCheckout({
+      pasarela: pasarelaCon({
+        anular: async (idTransaccion) => {
+          await anulacionEnPausa;
+          await real.anular(idTransaccion);
+        },
+      }),
+      logger: pino({ level: 'silent' }),
+    });
+    if (conciliacionLenta === undefined) throw new Error('Falta la tarea de conciliación');
+
+    const enCurso = conciliacionLenta.ejecutar();
+    await hastaQue(
+      async () => (await intentosDe(idSesion))[0]?.TokenArrendamiento !== zombi.TokenArrendamiento,
+    );
+    const intentoZombi = comoActor(cliente.idUsuario, 'Cliente', () =>
+      pedidosParaCheckout.crearDeIntento(
+        Number(zombi.IDIntentoPago),
+        zombi.TokenArrendamiento ?? '',
+      ),
+    );
+    await expect(intentoZombi).rejects.toMatchObject({ codigo: 'PAGO_EN_CURSO' });
+    soltarAnulacion();
+    await enCurso;
+
+    expect((await pagoDe(idSesion)).Pedidos).toBe(0);
+    expect(await intentosDe(idSesion)).toMatchObject([{ Estado: 'Anulado' }]);
+    expect(await estadoEnPasarela(llave)).toBe('Anulada');
   });
 });
 

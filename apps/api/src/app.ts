@@ -25,6 +25,7 @@ import {
 } from './shared/http/index.js';
 import { registrarPeticiones } from './shared/observability/index.js';
 import type { PasarelaPago } from './shared/pasarela/index.js';
+import { relojDelSistema, type Reloj } from './shared/reloj/index.js';
 import { generarDocumentoOpenApi } from './shared/openapi/index.js';
 
 const LIMITE_CUERPO_JSON = '100kb';
@@ -47,6 +48,8 @@ export interface DependenciasApp {
   versionesSesion: VersionesSesion;
   /** N-03: el adaptador de la pasarela (la simulada, con estado en SQL Server). */
   pasarela: PasarelaPago;
+  /** La hora actual (las pruebas la fijan). */
+  reloj?: Reloj;
 }
 
 /** Composición: middlewares, rutas e inyección de adaptadores (01-arquitectura.md §4.3). */
@@ -59,6 +62,7 @@ export function crearApp({
   limitadores,
   versionesSesion,
   pasarela,
+  reloj = relojDelSistema,
 }: DependenciasApp): Express {
   const app = express();
   app.disable('x-powered-by');
@@ -104,7 +108,7 @@ export function crearApp({
   v1.use(crearModuloCupones({ autenticar }));
   v1.use(crearModuloEnvios({ autenticar }));
   v1.use(crearModuloConfiguracion({ autenticar }));
-  v1.use(crearModuloCheckout({ autenticar, pasarela, logger }));
+  v1.use(crearModuloCheckout({ autenticar, pasarela, logger, reloj }));
   v1.use(
     crearModuloCarrito({
       autenticar,

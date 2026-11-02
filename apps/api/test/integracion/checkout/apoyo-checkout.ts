@@ -173,6 +173,7 @@ export interface FilaIntento {
   CodigoRespuesta: string | null;
   IDTransaccionPasarela: string | null;
   Arrendado: boolean;
+  TokenArrendamiento: string | null;
 }
 
 export function intentosDe(idSesion: number): Promise<FilaIntento[]> {

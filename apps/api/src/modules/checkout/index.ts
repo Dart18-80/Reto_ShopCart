@@ -2,6 +2,7 @@ import type { RequestHandler, Router } from 'express';
 import type { Logger } from 'pino';
 import type { Tarea } from '../../shared/jobs/index.js';
 import type { PasarelaPago } from '../../shared/pasarela/index.js';
+import type { Reloj } from '../../shared/reloj/index.js';
 import { pedidosParaCheckout } from '../pedidos/index.js';
 import { crearConciliacionService } from './checkout.conciliacion.js';
 import { crearCheckoutController } from './checkout.controller.js';
@@ -15,6 +16,7 @@ interface DependenciasCheckout {
   autenticar: RequestHandler;
   pasarela: PasarelaPago;
   logger: Logger;
+  reloj: Reloj;
 }
 
 /** Monta /checkout (Cliente). */
@@ -22,6 +24,7 @@ export function crearModuloCheckout({
   autenticar,
   pasarela,
   logger,
+  reloj,
 }: DependenciasCheckout): Router {
   const servicio = crearCheckoutService({ repositorio: checkoutRepository });
   const pago = crearPagoService({
@@ -30,7 +33,7 @@ export function crearModuloCheckout({
     pasarela,
     logger: logger.child({ modulo: 'checkout' }),
   });
-  return crearCheckoutRouter(crearCheckoutController(servicio, pago), autenticar);
+  return crearCheckoutRouter(crearCheckoutController(servicio, pago, reloj), autenticar);
 }
 
 /** A-04: expiración de sesiones y conciliación de pagos (E5-H04). */

@@ -13,6 +13,9 @@ BEGIN
 
     EXEC dbo.SP_Sistema_EstablecerContexto @IDUsuarioActor, @RolActor, @RequestId;
 
+    IF @RolActor IS NULL OR @RolActor <> 'Sistema'
+        THROW 50005, N'Solo los jobs ejecutan esta tarea.', 1;
+
     IF @Horas IS NULL OR @Horas <= 0
         THROW 50005, N'SP_Sistema_PurgarSolicitudesIdempotentes recibió un plazo inválido.', 1;
 

@@ -96,9 +96,10 @@ async function pedidoDe(nombre: NombreSP, parametros: ParametrosSP): Promise<Ped
 
 export const pedidosRepository = {
   /** RF-06: la transacción atómica que crea el pedido del intento autorizado (idempotente por sesión). */
-  async crearDeIntento(idIntentoPago: number): Promise<Pedido> {
+  async crearDeIntento(idIntentoPago: number, tokenArrendamiento: string): Promise<Pedido> {
     const pedido = await pedidoDe('SP_Pedidos_CrearPedido', {
       IDIntentoPago: { tipo: sql.BigInt, valor: idIntentoPago },
+      TokenArrendamiento: { tipo: sql.UniqueIdentifier, valor: tokenArrendamiento },
     });
     if (pedido === null) throw new Error('SP_Pedidos_CrearPedido no devolvió el pedido');
     return pedido;

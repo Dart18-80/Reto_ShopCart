@@ -6,6 +6,8 @@ export type ResultadoTarea = Readonly<Record<string, number>> | null;
 export interface Tarea {
   nombre: string;
   intervaloMs: number;
+  /** Además de cada intervalo, una vez al arrancar la réplica (las tareas de cada hora). */
+  alIniciar?: boolean;
   ejecutar: () => Promise<ResultadoTarea>;
 }
 
@@ -58,6 +60,7 @@ export function crearPlanificador(tareas: readonly Tarea[], logger: Logger): Pla
         }, tarea.intervaloMs);
         temporizador.unref();
         temporizadores.push(temporizador);
+        if (tarea.alIniciar === true) disparar(tarea);
       }
     },
 

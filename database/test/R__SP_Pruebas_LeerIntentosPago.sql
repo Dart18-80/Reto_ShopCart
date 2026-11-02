@@ -12,7 +12,7 @@ BEGIN
 
     SELECT i.IDIntentoPago, i.IDSesionCheckout, i.LlaveIdempotencia, i.Estado, i.CodigoRespuesta,
            i.IDTransaccionPasarela,
-           CONVERT(BIT, IIF(i.ArrendadoHasta > SYSUTCDATETIME(), 1, 0)) AS Arrendado
+           CONVERT(BIT, IIF(i.ArrendadoHasta > SYSUTCDATETIME(), 1, 0)) AS Arrendado, i.TokenArrendamiento
     FROM   dbo.IntentoPago AS i
     WHERE  i.IDSesionCheckout = @IDSesionCheckout OR i.LlaveIdempotencia = @LlaveIdempotencia
     ORDER BY i.IDIntentoPago;

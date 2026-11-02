@@ -2,6 +2,7 @@ import sql from 'mssql';
 import { bigintANumero, ejecutarSP, ejecutarSPConjuntos } from '../../shared/db/index.js';
 import { aMonto } from '../../shared/dinero/index.js';
 import type {
+  Arrendamiento,
   CambioIntento,
   DatosInicioPago,
   IntentoPorConciliar,
@@ -91,6 +92,7 @@ interface FilaRegistro {
   IDPedido: number | null;
   CodigoRespuesta: string | null;
   MensajeRespuesta: string | null;
+  TokenArrendamiento: string | null;
   SegundosParaReintentar: number | null;
   IntentosRestantes: number;
 }
@@ -101,28 +103,32 @@ function presente<T>(valor: T | null, columna: string): T {
 }
 
 function aRegistro(fila: FilaRegistro): RegistroIntento {
-  const idIntento = () =>
-    bigintANumero(presente(fila.IDIntentoPago, 'IDIntentoPago'), 'IDIntentoPago');
+  const arrendamiento = () => ({
+    idIntento: bigintANumero(presente(fila.IDIntentoPago, 'IDIntentoPago'), 'IDIntentoPago'),
+    token: presente(fila.TokenArrendamiento, 'TokenArrendamiento'),
+  });
   switch (fila.Accion) {
     case 'Autorizar':
       return {
         accion: 'Autorizar',
-        idIntento: idIntento(),
+        ...arrendamiento(),
         monto: aMonto(presente(fila.Monto, 'Monto')),
       };
     case 'CrearPedido':
       return {
         accion: 'CrearPedido',
-        idIntento: idIntento(),
+        ...arrendamiento(),
         idTransaccion: presente(fila.IDTransaccion, 'IDTransaccion'),
       };
     case 'Capturar':
       return {
         accion: 'Capturar',
-        idIntento: idIntento(),
+        ...arrendamiento(),
         idTransaccion: presente(fila.IDTransaccion, 'IDTransaccion'),
         idPedido: presente(fila.IDPedido, 'IDPedido'),
       };
+    case 'Cerrar':
+      return { accion: 'Cerrar', ...arrendamiento() };
     case 'Pedido':
       return { accion: 'Pedido', idPedido: presente(fila.IDPedido, 'IDPedido') };
     case 'EnCurso':
@@ -156,12 +162,13 @@ interface FilaPorConciliar {
   LlaveIdempotencia: string | null;
   IDTransaccion: string | null;
   IDPedido: number | null;
+  TokenArrendamiento: string | null;
 }
 
 function aToma(fila: FilaPorConciliar): TomaConciliacion {
   if (!fila.Ejecutada) return { ejecutada: false };
   if (fila.IDIntentoPago === null) return { ejecutada: true, intento: null };
-  if (fila.Estado === null || fila.LlaveIdempotencia === null)
+  if (fila.Estado === null || fila.LlaveIdempotencia === null || fila.TokenArrendamiento === null)
     throw new Error('SP_Checkout_TomarIntentosPorConciliar devolvió un intento incompleto');
   return {
     ejecutada: true,
@@ -171,6 +178,7 @@ function aToma(fila: FilaPorConciliar): TomaConciliacion {
       llave: fila.LlaveIdempotencia,
       idTransaccion: fila.IDTransaccion,
       idPedido: fila.IDPedido,
+      token: fila.TokenArrendamiento,
     },
   };
 }
@@ -226,7 +234,7 @@ export const checkoutRepository = {
   },
 
   async actualizarIntento(
-    idIntento: number,
+    { idIntento, token }: Arrendamiento,
     cambio: CambioIntento,
   ): Promise<{ intentosRestantes: number; sesionCancelada: boolean }> {
     const [fila] = await ejecutarSP<{ IntentosRestantes: number; SesionCancelada: boolean }>(
@@ -241,13 +249,18 @@ export const checkoutRepository = {
         CodigoRespuesta: {
           tipo: sql.VarChar(30),
           valor:
-            cambio.estado === 'Rechazado' || cambio.estado === 'Anulado' ? cambio.codigo : null,
+            cambio.estado === 'Rechazado' ||
+            cambio.estado === 'Anulado' ||
+            cambio.estado === 'Fallido'
+              ? cambio.codigo
+              : null,
         },
         MensajeRespuesta: {
           tipo: sql.NVarChar(200),
           valor:
             cambio.estado === 'Rechazado' || cambio.estado === 'Anulado' ? cambio.mensaje : null,
         },
+        TokenArrendamiento: { tipo: sql.UniqueIdentifier, valor: token },
       },
     );
     if (fila === undefined)
@@ -255,9 +268,10 @@ export const checkoutRepository = {
     return { intentosRestantes: fila.IntentosRestantes, sesionCancelada: fila.SesionCancelada };
   },
 
-  async liberarArrendamiento(idIntento: number): Promise<void> {
+  async liberarArrendamiento({ idIntento, token }: Arrendamiento): Promise<void> {
     await ejecutarSP('SP_Checkout_LiberarArrendamiento', {
       IDIntentoPago: { tipo: sql.BigInt, valor: idIntento },
+      TokenArrendamiento: { tipo: sql.UniqueIdentifier, valor: token },
     });
   },
 
@@ -309,6 +323,7 @@ export const checkoutRepository = {
           tipo: sql.NVarChar(200),
           valor: resolucion.estado === 'Rechazado' ? resolucion.mensaje : null,
         },
+        TokenArrendamiento: { tipo: sql.UniqueIdentifier, valor: intento.token },
       },
     );
     if (fila === undefined)

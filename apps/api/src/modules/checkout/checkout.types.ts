@@ -54,10 +54,17 @@ export interface DatosInicioPago {
 }
 
 /** N-03: lo que el candado de idempotencia decide (SP_Checkout_RegistrarIntentoPago). */
+/** N-03: el arrendamiento que tomó esta petición (fencing): lo verifican los SPs que escriben el intento. */
+export interface Arrendamiento {
+  idIntento: number;
+  token: string;
+}
+
 export type RegistroIntento =
-  | { accion: 'Autorizar'; idIntento: number; monto: Decimal }
-  | { accion: 'CrearPedido'; idIntento: number; idTransaccion: string }
-  | { accion: 'Capturar'; idIntento: number; idTransaccion: string; idPedido: number }
+  | ({ accion: 'Autorizar'; monto: Decimal } & Arrendamiento)
+  | ({ accion: 'CrearPedido'; idTransaccion: string } & Arrendamiento)
+  | ({ accion: 'Capturar'; idTransaccion: string; idPedido: number } & Arrendamiento)
+  | ({ accion: 'Cerrar' } & Arrendamiento)
   | { accion: 'Pedido'; idPedido: number }
   | { accion: 'EnCurso'; segundosParaReintentar: number }
   | { accion: 'Rechazado'; mensaje: string; intentosRestantes: number }
@@ -67,6 +74,7 @@ export type CambioIntento =
   | { estado: 'Autorizado'; idTransaccion: string }
   | { estado: 'Rechazado'; codigo: string; mensaje: string }
   | { estado: 'Anulado'; codigo: string; mensaje: string | null }
+  | { estado: 'Fallido'; codigo: string }
   | { estado: 'Capturado' };
 
 export interface PagoRealizado {
@@ -83,6 +91,8 @@ export interface IntentoPorConciliar {
   idTransaccion: string | null;
   /** El pedido creado con este intento, si existe. */
   idPedido: number | null;
+  /** El arrendamiento que tomó la conciliación (fencing). */
+  token: string;
 }
 
 /** ejecutada = false si la otra réplica tenía el sp_getapplock; intento null si no queda ninguno. */

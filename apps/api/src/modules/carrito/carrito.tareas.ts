@@ -10,6 +10,8 @@ export function tareasCarrito(repositorio: Pick<CarritoRepository, 'expirarInvit
     {
       nombre: 'Carrito.ExpirarInvitados',
       intervaloMs: UNA_HORA_MS,
+      // Una réplica que se reinicia más seguido que cada hora también la ejecuta (con su sp_getapplock).
+      alIniciar: true,
       async ejecutar() {
         const carritosExpirados = await repositorio.expirarInvitados();
         return carritosExpirados === null ? null : { carritosExpirados };

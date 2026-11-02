@@ -1,6 +1,8 @@
 import { montoSchema } from '@shopcart/shared';
 import { idSchema } from '../../shared/http/index.js';
 import { z } from '../../shared/openapi/zod.js';
+import { tarjetaVencida } from '../../shared/pasarela/index.js';
+import type { Reloj } from '../../shared/reloj/index.js';
 
 // RF-01: .strict() rechaza un idUsuario o un idCarrito colado en el cuerpo; los dos salen del token.
 export const iniciarSesionSchema = z
@@ -62,5 +64,17 @@ export const pagarSchema = z
   })
   .strict()
   .openapi('Pagar');
+
+/** El cuerpo del pago con la tarjeta vigente a la fecha del reloj (la validación de la petición). */
+export const pagarVigenteSchema = (reloj: Reloj) =>
+  pagarSchema.superRefine((datos, contexto) => {
+    if (tarjetaVencida(datos, reloj.ahora())) {
+      contexto.addIssue({
+        code: 'custom',
+        path: ['anioVencimiento'],
+        message: 'La tarjeta está vencida.',
+      });
+    }
+  });
 
 export type IniciarSesion = z.infer<typeof iniciarSesionSchema>;

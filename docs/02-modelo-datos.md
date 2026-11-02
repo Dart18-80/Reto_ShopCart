@@ -574,6 +574,7 @@ UQ `(IDSesionCheckout, IDVariante)`. **Invariante (lo valida el SP):** `SUM(Desc
 | MarcaTarjeta | VARCHAR(20) *NULL* | |
 | UltimosDigitos | CHAR(4) *NULL* | CK: 4 dígitos |
 | ArrendadoHasta | DATETIME2(3) *NULL* | V013, N-03: hasta cuándo una petición tiene tomado el intento en curso; `NULL` cuando ya no está en curso |
+| TokenArrendamiento | UNIQUEIDENTIFIER *NULL* | V014, N-03: token de fencing; cada toma del arrendamiento (petición o conciliación) genera uno nuevo y `CrearPedido`, `ActualizarIntentoPago`, `LiberarArrendamiento` y `ResolverIntentoConciliado` verifican bajo `UPDLOCK` que el suyo sigue vigente (si no, `50602` o `Resuelto = 0`) |
 
 Índices: **`UX_IntentoPago_EnCursoPorSesion`** UNIQUE `(IDSesionCheckout) WHERE Estado IN ('Pendiente','Autorizado')` (**un solo intento en curso por sesión, garantizado por la BD** → 409, N-03), `UX_IntentoPago_Transaccion` UNIQUE `(IDTransaccionPasarela) WHERE IDTransaccionPasarela IS NOT NULL` e `IX_IntentoPago_PorConciliar (ArrendadoHasta) INCLUDE (Estado, IDSesionCheckout) WHERE Estado IN ('Pendiente','Autorizado')` (V013: la conciliación busca los intentos en curso con el arrendamiento vencido).
 
