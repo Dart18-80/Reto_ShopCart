@@ -11,7 +11,8 @@
     "test:integracion": "vitest run --config vitest.integracion.config.ts",
     "test:cobertura": "vitest run --coverage",
     "test:concurrencia": "vitest run --config vitest.concurrencia.config.ts",
-    "test:humo": "vitest run --config vitest.humo.config.ts"
+    "test:humo": "vitest run --config vitest.humo.config.ts",
+    "test:entorno": "vitest run --config vitest.entorno.config.ts"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
