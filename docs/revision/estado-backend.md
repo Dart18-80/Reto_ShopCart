@@ -1,9 +1,24 @@
 # Estado del backend (Fase 1)
 
-Revisión sin cambios de código, sobre `a31c5d5` (2026-11-02). Suites en verde en el clon de E8-H03 (`core.autocrlf=true`): API 464 unitarias y 738 de integración, migrador 228 + 9, concurrencia 2 y entorno 9.
+Revisión sobre `a31c5d5` (2026-11-02), actualizada tras el pulido del mismo día (§0). Suites en verde en un clon nuevo con `core.autocrlf=true` sobre `2d6f6fb`: API 467 unitarias y 743 de integración, migrador 248 + 9, concurrencia 2 y entorno 16.
+
+## 0. Cambios del pulido (2026-11-02)
+
+| Tema | Cambio | Commit |
+|---|---|---|
+| Historial | Borrado `refs/original/refs/heads/main` (respaldo de `filter-branch`), reflog expirado y `gc`: `git log --all` no muestra ningún `Co-Authored-By` | — (solo local) |
+| Redis sin root | `user: redis` en el servicio; prueba de entorno: ningún proceso principal corre como root y Redis escribe en `/data` | 380fae3 |
+| SQL Server fijado | `2022-CU27-GDR1-ubuntu-22.04@sha256:cf8f0ab2…` (16.0.4305.5, el CU que pasó las suites), con prueba y el procedimiento para actualizarlo en el README | fa31800 |
+| `SP_Inventario_ReservarExistencia` | Interno, único que inserta en `Reserva` (JSON, bloqueo por `IDVariante`, todo o nada con 50301, renueva en su fila la reserva vencida de la misma sesión); lo llaman `SP_Checkout_IniciarSesion` y `SP_Pedidos_CrearPedido`. `test:concurrencia` tres veces en verde | f66a955 |
+| Funciones de tabla | Las 14 `FU_` ya eran inline TVF; prueba de convención para que siga así | 2d8d25b |
+| README | Decisiones abiertas del enunciado, exclusiones y mejoras, y la justificación de cada librería con la nota de `pnpm audit` | a2a841e |
+| Documentación | Alineada con el código (§3): OpenTelemetry planificado para F5, L001 pendiente, A-11 con dos versiones, barrido resuelto, exportaciones y rutas en 01, objetos y triggers en 02 | 3c09179 |
+| RNF-2 en el entorno | Con `api-1` detenida, 20 peticiones por nginx responden 200 desde `api-2` y nginx la reincorpora; con Redis detenido, un checkout vende la última unidad una vez y cobra una vez | 32bfffc |
+| Duplicación | `respuestaPaginadaSchema(fila)` en `shared/openapi` para los 8 sobres de paginación (componente `Paginacion` en OpenAPI) | 2d6f6fb |
 
 | § | Contenido |
 |---|---|
+| 0 | Cambios del pulido |
 | 1 | Inventario por módulo |
 | 2 | Matriz de criterios y pruebas |
 | 3 | Coherencia entre documentos y código |
@@ -23,7 +38,7 @@ Pruebas: número de casos (archivos). Las de integración se asignan por carpeta
 | usuarios | 8 | 7 | Usuario, Rol | — | — | TR_Usuarios_Bitacora | 9 (1) | 56 (3) | 65 % · 37 % | 100 % · 80 % |
 | direcciones | 7 | 6 | Direccion, Departamento, Municipio | — | — | — | 3 (1) | 48 (2) | 58 % · 21 % | 100 % · 96 % |
 | catalogo | 26 | 24 | Categoria, Producto, ImagenProducto, Atributo, ValorAtributo, Variante, VarianteValorAtributo, PrecioVariante | VW_Catalogo_ProductosTienda | FU_Catalogo_CombinacionVariante, FU_Catalogo_HistorialVariante, FU_Catalogo_PatronBusqueda, FU_Catalogo_PrecioVigente | TR_Catalogo_CategoriaBitacora, TR_Catalogo_ProductoBitacora, TR_Catalogo_VarianteBitacora, TR_Catalogo_PrecioVarianteBitacora | 15 (1) | 89 (7) | 54 % · 8 % | 100 % · 90 % |
-| inventario | 6 | 8 | MovimientoKardex, TipoMovimiento | VW_Inventario_Conciliacion, VW_Inventario_ExistenciaBodega | FU_Inventario_Disponible, FU_Inventario_Movimientos | — | 3 (1) | 37 (4) | 60 % · 0 % | 100 % · 94 % |
+| inventario | 6 | 9 | MovimientoKardex, TipoMovimiento | VW_Inventario_Conciliacion, VW_Inventario_ExistenciaBodega | FU_Inventario_Disponible, FU_Inventario_Movimientos | — | 3 (1) | 37 (4) | 60 % · 0 % | 100 % · 94 % |
 | carrito | 7 | 11 | Carrito, LineaCarrito | VW_Carrito_Abandonados | FU_Carrito_Activo, FU_Carrito_Lineas | — | 14 (1) | 115 (8) | 53 % · 25 % | 98 % · 86 % |
 | cupones | 6 | 8 | Cupon, UsoCupon | VW_Cupones_Admin | FU_Cupones_CalculoDescuento, FU_Cupones_RestriccionViolada, FU_Cupones_Validar | TR_Cupones_Bitacora | 3 (1) | 34 (1) | 64 % · 10 % | 100 % · 92 % |
 | envios | 2 | 2 | MetodoEnvio | — | FU_Envios_Costos, FU_Envios_EnvioGratis | TR_Envios_Bitacora | 2 (1) | 0 (0)¹ | 60 % · 13 % | 98 % · 87 % |
@@ -35,12 +50,12 @@ Pruebas: número de casos (archivos). Las de integración se asignan por carpeta
 | exportaciones | 4 | 9 | SolicitudExportacion, EstadoExportacion | VW_Exportaciones_Solicitudes | — | — | 38 (4) | 10 (1) | 76 % · 60 % | 83 % · 68 % |
 | sistema | 1 | 5 | SolicitudIdempotente | — | FU_Sistema_FechaLocal | — | 8 (1) | 1 (1) | 82 % · 62 % | 92 % · 50 % |
 | shared, app y transversales | — | 1 (`SP_Semilla_GenerarDatosDemo`) | HistorialMigracion (migrador) | — | — | — | 271 (26) | 149 (16) | 80 % · 74 % | 73 % · 64 % |
-| **Total API** | **92** | **123** | **41** | **9** | **14** | **10** | **464 (46)** | **738 (62)** | **69 % · 44 %** | **89 % · 77 %** |
-| Migrador (`database/migrator`) | — | — | — | — | — | — | 228 | 9 | 70 % · 83 % | — |
+| **Total API** | **92** | **124** | **41** | **9** | **14** | **10** | **467 (47)** | **743 (63)** | **69 % · 44 %** | **89 % · 77 %** |
+| Migrador (`database/migrator`) | — | — | — | — | — | — | 248 | 9 | 70 % · 83 % | — |
 
 ¹ Los casos de envíos viven en `test/integracion/carrito/envios.api.test.ts` y `secuencial/configuracion-envios.api.test.ts` (contados en carrito y configuración).
 
-Además: 2 pruebas de concurrencia (`test/concurrencia`, RNF-3) y 9 de entorno (`test/entorno`, seguridad HTTP a través de nginx). Los SPs de prueba `database/test/R__SP_Pruebas_*` solo existen en `shopcart_test` y no se cuentan.
+Además: 2 pruebas de concurrencia (`test/concurrencia`, RNF-3) y 16 de entorno (`test/entorno`: seguridad HTTP, contenedores sin root y RNF-2). Los conteos por módulo y la cobertura son de la revisión; los totales, del pulido. Los SPs de prueba `database/test/R__SP_Pruebas_*` solo existen en `shopcart_test` y no se cuentan.
 
 ## 2. Matriz de criterios y pruebas
 
@@ -75,9 +90,9 @@ Rutas relativas a `apps/api/test/`, salvo las que empiezan con `database/`. Los 
 | RNF-1 | Listados y reportes < 1 s con volumen alto | Medición manual con 50 000 pedidos (§7). Aserción parcial con poco volumen: `integracion/reportes/dashboard.api.test.ts` › "cada reporte responde en menos de 1 s (RNF-1)" | manual + integración |
 | RNF-1 | Semilla de volumen medio | `integracion/semillas/datos-demo.test.ts` › "1,500 pedidos de ~200 clientes en los últimos 90 días, con cancelaciones, devoluciones y carritos abandonados" | integración |
 | RNF-2 | API stateless con 2 réplicas; estado en SQL Server o Redis | `concurrencia/checkout.concurrencia.test.ts` (exige respuestas de `api-1` y `api-2`); `integracion/reportes/cache.api.test.ts` › "crear un pedido en una réplica se ve de inmediato en el reporte de la otra"; `integracion/usuarios/usuarios.api.test.ts` › "A-07: dos réplicas ven la misma versión: …"; `integracion/adaptadores/limitador-redis.test.ts` › "el contador vive en Redis: dos réplicas comparten los intentos"; `integracion/secuencial/exportaciones.api.test.ts` › "el archivo que generó una réplica se descarga desde la otra, …", "una réplica que muere a mitad: otra la retoma al vencer el arrendamiento y queda un solo archivo" | concurrencia + integración |
-| RNF-2 | Redis caído: se degrada sin vender de más | `unit/modules/sistema/health.api.test.ts` › "con Redis detenido responde 200 con redis: \"degradado\""; `integracion/adaptadores/limitador-redis.test.ts` › "con Redis caído cae al contador en memoria: …"; `integracion/reportes/cache.api.test.ts` › "con Redis caído el reporte responde igual, desde la base". **Sin prueba:** un checkout completo con Redis detenido | unitaria + integración |
+| RNF-2 | Redis caído: se degrada sin vender de más | `unit/modules/sistema/health.api.test.ts` › "con Redis detenido responde 200 con redis: \"degradado\""; `integracion/adaptadores/limitador-redis.test.ts` › "con Redis caído cae al contador en memoria: …"; `integracion/reportes/cache.api.test.ts` › "con Redis caído el reporte responde igual, desde la base"; `entorno/rnf2.test.ts` › "con Redis detenido, un checkout completo vende la última unidad una sola vez y cobra una sola vez" | unitaria + integración + entorno |
 | RNF-2 | Los jobs corren en una sola réplica (`sp_getapplock`) | `integracion/secuencial/tareas-periodicas.test.ts` › "si la otra réplica tiene el bloqueo, retorna sin hacer nada"; `unit/shared/jobs/planificador.test.ts` › "no superpone dos ejecuciones de la misma tarea en una réplica" | integración + unitaria |
-| RNF-2 | Con `api-1` detenida todo responde desde `api-2` | **Sin prueba automatizada**; verificado a mano en E8-H03 (4 de 4 peticiones `200`) | manual |
+| RNF-2 | Con `api-1` detenida todo responde desde `api-2` | `entorno/rnf2.test.ts` › "con api-1 detenida, 20 peticiones seguidas a través de nginx responden 200 desde api-2" (y nginx la reincorpora al volver) | entorno |
 | RNF-3 | 20 checkouts por la última unidad / 20 usos del último cupón → 1 éxito | `concurrencia/checkout.concurrencia.test.ts` › escenarios 1 y 2 | concurrencia |
 | RNF-4 | Logs JSON sin secretos | `unit/shared/observability/logger.test.ts` › "redacta contraseñas, tarjeta, CVV, authorization y cookies, también anidados"; `integracion/auth/registro-login.api.test.ts` › "registro, login y un error de credenciales no dejan secretos en el log" | unitaria + integración |
 | RNF-4 | `requestId` hasta los SPs | `integracion/shared/contexto-de-sesion.test.ts` › "deja en SESSION_CONTEXT el usuario, el rol y el RequestId de la petición" | integración |
@@ -110,14 +125,14 @@ Rutas relativas a `apps/api/test/`, salvo las que empiezan con `database/`. Los 
 
 | Objeto | En 02 | En database/ |
 |---|---|---|
-| `SP_Inventario_ReservarExistencia` | Sí (§5, «interno, nombre del enunciado») | No existe: las reservas se insertan en `R__SP_Checkout_IniciarSesion.sql:172` |
+| `SP_Inventario_ReservarExistencia` | Sí (§5, «interno, nombre del enunciado») | **Resuelto en f66a955:** existe y es el único que inserta en `Reserva` |
 | `VW_Cupones_Admin` | No | `R__VW_Cupones_Admin.sql` (la usan `SP_Cupones_Listar` y `SP_Cupones_Obtener`) |
 | `VW_Exportaciones_Solicitudes` | Solo en §5, no en la tabla de §4 | `R__VW_Exportaciones_Solicitudes.sql` |
 | `FU_Catalogo_PatronBusqueda` | No | `R__FU_Catalogo_PatronBusqueda.sql` (A-10) |
 | `FU_Cupones_RestriccionViolada` | No | `R__FU_Cupones_RestriccionViolada.sql` |
 | `FU_Inventario_Movimientos` | No | `R__FU_Inventario_Movimientos.sql` |
 | 9 triggers `TR_*_Bitacora` | Sin nombre (descritos por tabla en §3.10) | `database/programmability/R__TR_*_Bitacora.sql` |
-| `TR_Bitacora_Inmutable` | Solo como ejemplo de nomenclatura en §1.1 (02-modelo-datos.md:21) | No existe: M-01 usa tablas ledger (§6) |
+| `TR_Bitacora_Inmutable` | Solo como ejemplo de nomenclatura en §1.1 | **Resuelto en 3c09179:** el ejemplo ahora es `TR_Pedidos_ValidarTransicion`; el resto de las vistas, funciones y triggers de esta tabla también se documentaron en 02 |
 
 ### 3.3 Códigos de 02 §8 vs catalogo.ts
 
@@ -242,8 +257,8 @@ Las más largas son fábricas que agrupan los métodos de un servicio: el largo 
 
 | Duplicación | Dónde | Nota |
 |---|---|---|
-| Esquema OpenAPI del sobre de paginación (`pagina`, `tamano`, `total`, `totalPaginas`) | 8 archivos `*.routes.ts`: bitacora, catalogo, cupones, exportaciones, inventario, pedidos, reportes, usuarios | Candidato a un `respuestaPaginadaSchema(fila)` en `shared/openapi`; solo afecta la documentación |
-| Bloques de 6 líneas repetidos entre archivos de `src/` | 5 bloques, todos del punto anterior | Barrido por ventanas de 6 líneas sobre `apps/api/src` |
+| Esquema OpenAPI del sobre de paginación (`pagina`, `tamano`, `total`, `totalPaginas`) | 8 archivos `*.routes.ts`: bitacora, catalogo, cupones, exportaciones, inventario, pedidos, reportes, usuarios | **Resuelto en 2d6f6fb:** `respuestaPaginadaSchema(fila)` en `shared/openapi`, con una prueba que impide declarar otro |
+| Bloques de 6 líneas repetidos entre archivos de `src/` | 5 bloques, todos del punto anterior (resueltos con él) | Barrido por ventanas de 6 líneas sobre `apps/api/src` |
 
 ### 5.5 Excepciones a las reglas de CLAUDE.md vigentes
 
@@ -273,8 +288,8 @@ Las más largas son fábricas que agrupan los métodos de un servicio: el largo 
 | Errores | Un 500 real (SQL Server en pausa) responde solo `codigo`, `mensaje` y `requestId` con `NODE_ENV=development`; el detalle va al log | prueba de entorno; apps/api/src/shared/errors/middleware.ts |
 | Límites de tamaño | JSON 100 KB en la API, 1 MB en nginx; cuerpo comprimido ilegible → 400 (corregido hoy, f62b7ea) | apps/api/src/app.ts:40; infra/nginx/nginx.conf:35 |
 | Rate limiting | Login 5/min por IP y correo; registro 3/min por IP; cambio de contraseña 5/min por usuario; carritos de invitado 20/min por IP; exportaciones por usuario | docs/01-arquitectura.md §10 |
-| Usuario no root en las imágenes | API y migrador: `USER node`. SQL Server: `mssql`. nginx: maestro `root` y workers `nginx` (imagen oficial). **Redis: `root`** (ver §8) | apps/api/Dockerfile:30; database/migrator/Dockerfile:21; `ps` en cada contenedor |
-| Versiones de imágenes fijadas | Fijadas por versión mayor/menor, sin digest: `node:24-alpine`, `nginx:1.28-alpine`, `redis:7-alpine`. **SQL Server sin fijar: `2022-latest`** (ver §8) | Dockerfiles; docker-compose.yml:56, :107 |
+| Usuario no root en las imágenes | API y migrador: `USER node`. SQL Server: `mssql`. nginx: maestro `root` y workers `nginx` (imagen oficial). Redis: `redis` desde 380fae3, con prueba de entorno | apps/api/Dockerfile:30; database/migrator/Dockerfile:21; `ps` en cada contenedor |
+| Versiones de imágenes fijadas | SQL Server fijado al CU exacto con digest (`2022-CU27-GDR1-ubuntu-22.04@sha256:…`, fa31800, con prueba: ninguna imagen usa `latest`). El resto por versión mayor/menor, sin digest: `node:24-alpine`, `nginx:1.28-alpine`, `redis:7-alpine` | Dockerfiles; docker-compose.yml:56, :107 |
 | `pnpm audit` | 4 moderadas, 0 altas, 0 críticas (2 avisos). Producción: 3 moderadas, todas transitivas de `exceljs`: `uuid <11.1.1` (GHSA-w5hq-g745-h8pq: solo con el parámetro `buf`, que exceljs no usa) y `minimatch <11.0.1` (GHSA-g3hv-75wg-m249, vía `archiver`: los globs no vienen del cliente). Desarrollo: `minimatch` vía `eslint` | `pnpm audit`, 2026-11-02 |
 | Login del migrador vs `shopcart_app` | `shopcart_app`: solo `EXECUTE` en `dbo`, con `DENY SELECT/INSERT/UPDATE/DELETE` sobre el esquema y sin roles de servidor. `shopcart_migrator`: `db_owner` de `ShopCart`, sin roles de servidor. `shopcart_busqueda` (usuario sin login): solo `SELECT` sobre `VW_Catalogo_ProductosTienda`, para la búsqueda dinámica | `sys.database_permissions` y `sys.server_role_members` en `ShopCart` |
 | Aislamiento entre clientes | Barrido sobre las rutas del router real: 7 rutas de cliente con ID → 404 con el ID de otro cliente; ninguna entrada de cliente acepta `idUsuario`; toda ruta declara roles o es pública conocida | test/integracion/seguridad/aislamiento.api.test.ts |
@@ -314,9 +329,9 @@ Generador `SP_Semilla_GenerarDatosDemo @Pedidos = 50000, @Dias = 90` en una base
 
 | Riesgo | Origen | Estado | Evidencia |
 |---|---|---|---|
-| Redis corre como `root`: el `command: sh -c 'exec redis-server …'` del compose se salta la bajada de privilegios del entrypoint oficial | Verificación de entrega (2026-11-02) | Abierto. Corrección propuesta: `user: redis` en el servicio, o `command: ['redis-server', …]` con la contraseña por archivo | `ps` dentro de `shopcart-redis-1`; docker-compose.yml:113 |
-| La imagen de SQL Server no está fijada (`2022-latest`); el resto se fija por versión menor sin digest | Verificación de entrega | Abierto: un `pull` puede traer otro CU de SQL Server | docker-compose.yml:56 |
-| Respaldo de `git filter-branch` en `refs/original/refs/heads/main` con 4 commits de E0 que tienen `Co-Authored-By` | Verificación del historial (2026-11-02) | Abierto, **solo local** (no está en `origin`); no se tocó, a la espera de Diego | `git for-each-ref refs/original` |
+| Redis corría como `root` (el `command: sh -c …` se saltaba la bajada de privilegios) | Verificación de entrega | **Resuelto en 380fae3** (`user: redis`). Un entorno anterior puede tener un `dump.rdb` de root: el README indica cómo recrear Redis | `entorno/contenedores.test.ts` |
+| La imagen de SQL Server no estaba fijada (`2022-latest`) | Verificación de entrega | **Resuelto en fa31800**; el resto de las imágenes sigue fijado por versión menor sin digest | `penalizaciones.test.ts` › imágenes fijadas |
+| Respaldo de `git filter-branch` con 4 commits de E0 con `Co-Authored-By` | Verificación del historial | **Resuelto** (borrado, reflog expirado y `gc`; solo era local) | `git log --all` sin `Co-Authored-By` |
 | Filas de un SP sin validar en ejecución (`as T[]`) | Revisión de E0 | Mitigado: política aceptada; montos convertidos y probados | ejecutar-sp.ts:83; integracion/shared/montos.test.ts |
 | nginx es punto único de falla | E0-H05 | Abierto (aceptado; mejora de producción) | 01:77 |
 | Con Redis caído, la revocación por versión de sesión espera hasta 15 min | E2 (N-15) | Mitigado (acotado y documentado) | 01:243; integracion/adaptadores/versiones-sesion.test.ts |
@@ -324,7 +339,7 @@ Generador `SP_Semilla_GenerarDatosDemo @Pedidos = 50000, @Dias = 90` en una base
 | Último tramo de listados grandes: la última página de pedidos o bitácora cuesta ~350 ms con 50k, y crece lineal con el OFFSET; hubo un pico aislado de 9.6 s | Rendimiento (2026-11-02) | Mitigado: bajo 1 s en estado estable; candidato a paginar las llaves antes de armar las filas en `SP_Pedidos_Listar` | §7 |
 | El filtro de carritos abandonados no tiene índice | Cierre de E6/E7 | Mitigado: 15 ms con 50k; el índice sigue en F5 | 03-backlog:653; §7 |
 | 3 vulnerabilidades moderadas transitivas en producción (`uuid`, `minimatch` vía `exceljs`) | Verificación de entrega | Abierto; ninguna recibe entrada del usuario | `pnpm audit --prod` |
-| Documentación desalineada: RNF-4 y 01 §11 describen OpenTelemetry como existente; 02 §7 lista `L001__carga_pesada.sql`; 02 §5 lista `SP_Inventario_ReservarExistencia`; A-11 habla de una sola versión de caché; `04-verificacion-fase-1.md:41` dice «Abierto» para el barrido de huérfanos; N-04 y N-18 dicen que el README menciona tarifa por zona y FEL | Inventario (§3) | Abierto (documental; no se cambió por ser esta una revisión sin cambios) | §3.2, §3.5 |
-| Sobre de paginación duplicado en 8 esquemas OpenAPI | Inventario (§5.4) | Abierto (BAJO) | §5.4 |
+| Documentación desalineada con el código | Inventario (§3) | **Resuelto en 3c09179 y a2a841e** (README con FEL, tarifa por zona y el resto de exclusiones) | §0 |
+| Sobre de paginación duplicado en 8 esquemas OpenAPI | Inventario (§5.4) | **Resuelto en 2d6f6fb** | §5.4 |
 
 Se descartaron 71 riesgos y dudas de los reportes de cierre de E0 a E8 por estar resueltos y verificados contra el código, las pruebas o un commit. Entre ellos están los 5 resueltos hoy (15ffc5f, 176d889, 4a9f80e, 609af26), y 3 se cerraron por decisión del PO sin riesgo residual.
