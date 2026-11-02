@@ -60,7 +60,7 @@
 | E6 Pedidos y devoluciones | 4 | 3.0 | 4 | 1 parte | — |
 | E7 Reportes, bitácora y datos demo | 5 | 5.75 | 4 | 1 | — |
 | E8 Cierre de la Fase 1 | 3 | 1.5 | 3 | — | — |
-| E9 Observabilidad, tiempo real y defensa | 3 | 5.0 | 3 | — | — |
+| E9 Observabilidad, tiempo real y defensa | 4 | 7.0 | 4 | — | — |
 
 E7-H04, E7-H05 y E9 se agregaron después de este plan (encargos del PO); la tabla muestra el alcance final.
 
@@ -677,6 +677,23 @@ Encargo del PO después del push de la Fase 1. E9-H01 y E9-H02 son historias gra
 
 **Referencias:** todo `docs/`, el enunciado y `docs/revision/estado-backend.md`.
 
+### E9-H04 · Revisión manual de pagos y reembolsos — `Must` · 2.0 h ⭐ historia grande
+Encargo del PO al cierre de la Fase 1: el Admin resuelve con evidencia un intento de pago `EnRevision` y un reembolso `Fallido`, y todo queda en la bitácora.
+**Alcance:** solo Admin. `GET /admin/pagos/en-revision` (paginado: intento, pedido si lo hay, cliente, monto, transacción, causa y fecha) y `POST /admin/pagos/:id/resolver` con `{ resolucion, motivo }`, motivo obligatorio. Resoluciones:
+- **CobroVerificado** (intento con pedido): solo si `consultar(llave)` en la pasarela confirma `Capturada`; si no, se rechaza con un código claro. El pedido sigue su flujo.
+- **SinCobro** (intento con pedido): cancela el pedido reutilizando el flujo de cancelación existente (estado, `ReingresoCancelacion`, cupón revertido y, como no hubo captura, sin reembolso), con el motivo del Admin. Sin un camino paralelo.
+- **Reembolsar** (cobro capturado sin pedido): crea un reembolso `Pendiente` que procesa el job de siempre. Si `Reembolso` exige `IDPedido`, la migración le permite apuntar al intento, con un `CHECK` de exactamente uno de los dos; `MontoReembolsado` nunca supera lo capturado.
+
+`POST /admin/reembolsos/:id/resolver` con `{ motivo, referencia }`: un reembolso `Fallido` pasa al estado nuevo `ResueltoManual` (motivo, referencia, quién y cuándo), distinto de `Completado`; para los montos cuenta como reembolsado. Una resolución solo procede desde `EnRevision` o `Fallido`, con bloqueo de la fila; resolver dos veces responde 409. La conciliación y el job de reintento nunca tocan un intento `EnRevision` ni un reembolso `ResueltoManual`. Triggers de bitácora en `IntentoPago` (solo al cambiar de estado) y en `Reembolso`, que también cubren el reintento actual.
+**CA**
+- [ ] Cada resolución hace lo descrito y queda en la bitácora con quién, cuándo y el motivo.
+- [ ] `CobroVerificado` sin captura confirmada en la pasarela se rechaza y no cambia nada.
+- [ ] Dos resoluciones simultáneas del mismo intento o reembolso: una pasa y la otra recibe 409.
+- [ ] Operador y Cliente reciben 403.
+- [ ] N-03 o N-09, 01 §5.2, 02 y la guía de defensa actualizados (con su prueba de citas).
+
+**Referencias:** N-03, N-09, A-02, A-05, A-18, M-01, `docs/revision/estado-backend.md` §8.
+
 ---
 
 ## 4. Semana 2 (Fase 2: frontend y proyecto completo) — vista general
@@ -747,3 +764,4 @@ Se detalla en historias al cerrar la Fase 1.
 | E9-H01 | OpenTelemetry y Grafana LGTM | Must | 2.0 | Hecha |
 | E9-H02 | Dashboard en tiempo real con SSE | Must | 1.5 | Hecha |
 | E9-H03 | Guía de defensa | Must | 1.5 | Hecha |
+| E9-H04 | Revisión manual de pagos y reembolsos | Must | 2.0 | Lista |
