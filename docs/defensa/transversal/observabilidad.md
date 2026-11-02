@@ -95,7 +95,7 @@ El apagado ordenado tiene 10 s. Sin colector, vaciar los lotes esperaría el tim
 
 ## Prueba de seguridad de las trazas
 
-[seguridad-trazas.test.ts](../../../apps/api/test/telemetria/seguridad-trazas.test.ts) compila la API y la arranca como la imagen [api-con-telemetria.ts:143](../../../apps/api/test/telemetria/api-con-telemetria.ts#L143 "'--import', './dist/telemetria.js'"), contra `shopcart_test` y Redis real con contraseña, exportando a un receptor OTLP en memoria [api-con-telemetria.ts:56](../../../apps/api/test/telemetria/api-con-telemetria.ts#L56 "export async function receptorEnMemoria"). Recorre registro, login, perfil, refresh, carrito y un pago con tarjeta, y verifica:
+[seguridad-trazas.test.ts](../../../apps/api/test/telemetria/seguridad-trazas.test.ts) compila la API y la arranca como la imagen [api-con-telemetria.ts:145](../../../apps/api/test/telemetria/api-con-telemetria.ts#L145 "'--import', './dist/telemetria.js'"), contra `shopcart_test` y Redis real con contraseña, exportando a un receptor OTLP en memoria [api-con-telemetria.ts:56](../../../apps/api/test/telemetria/api-con-telemetria.ts#L56 "export async function receptorEnMemoria"). Recorre registro, login, perfil, refresh, carrito y un pago con tarjeta, y verifica:
 
 | Qué | Prueba |
 |---|---|
