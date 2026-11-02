@@ -1,12 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import { AppError } from '../../shared/errors/index.js';
 import {
+  generarTokenOpaco,
+  hashearTokenOpaco,
   VIGENCIA_ACCESO_SEG,
   type ClienteHttp,
   type TokensAcceso,
 } from '../../shared/http/index.js';
 import { hashearContrasena, verificarContrasena } from './auth.contrasenas.js';
-import { DIAS_VIGENCIA_REFRESH, generarRefresh, hashearRefresh } from './auth.refresh.js';
+import { DIAS_VIGENCIA_REFRESH } from './auth.refresh.js';
 import type { AuthRepository } from './auth.repository.js';
 import type { DatosLogin, DatosRegistro } from './auth.schemas.js';
 import type { IdentidadSesion, Sesion } from './auth.types.js';
@@ -39,7 +41,7 @@ export function crearAuthService({ repositorio, tokens }: Dependencias) {
 
   /** A-07: access token de 15 min y un refresh token nuevo de la familia (una familia por sesión). */
   async function abrirSesion(identidad: IdentidadSesion, cliente: ClienteHttp): Promise<Sesion> {
-    const refresh = generarRefresh();
+    const refresh = generarTokenOpaco();
     await repositorio.registrarRefresh({
       idUsuario: identidad.idUsuario,
       idFamilia: randomUUID(),
@@ -84,9 +86,9 @@ export function crearAuthService({ repositorio, tokens }: Dependencias) {
     // reúso revoca la familia y llega como REFRESH_REUTILIZADO.
     async refrescar(token: string | undefined, cliente: ClienteHttp): Promise<Sesion> {
       if (token === undefined) throw new AppError('NO_AUTENTICADO');
-      const nuevo = generarRefresh();
+      const nuevo = generarTokenOpaco();
       const identidad = await repositorio.rotarRefresh({
-        hashActual: hashearRefresh(token),
+        hashActual: hashearTokenOpaco(token),
         hashNuevo: nuevo.hash,
         diasVigencia: DIAS_VIGENCIA_REFRESH,
         ip: cliente.ip,
@@ -98,7 +100,7 @@ export function crearAuthService({ repositorio, tokens }: Dependencias) {
 
     async cerrarSesion(token: string | undefined): Promise<void> {
       if (token === undefined) return;
-      await repositorio.revocarSesion(hashearRefresh(token), 'Logout');
+      await repositorio.revocarSesion(hashearTokenOpaco(token), 'Logout');
     },
   };
 }

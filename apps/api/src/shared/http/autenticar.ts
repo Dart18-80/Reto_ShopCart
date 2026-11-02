@@ -46,6 +46,28 @@ export function crearAutenticar({ tokens, versiones }: DependenciasAutenticar): 
   };
 }
 
+/**
+ * N-05: rutas que también atienden a invitados. Sin Authorization sigue como anónimo; con él, lo verifica
+ * `autenticar`: un token inválido o vencido responde 401 y nunca cae a invitado.
+ */
+export function autenticarOpcional(autenticar: RequestHandler): RequestHandler {
+  return (req, res, next) => {
+    if (req.get('Authorization') === undefined) {
+      next();
+      return;
+    }
+    return autenticar(req, res, next);
+  };
+}
+
+/** Con sesión, solo los roles indicados; sin sesión pasa como invitado. Va después de autenticarOpcional. */
+export function autorizarSiHaySesion(...roles: Rol[]): RequestHandler {
+  return (_req, _res, next) => {
+    const rol = obtenerContexto()?.rol ?? null;
+    next(rol === null || roles.includes(rol) ? undefined : new AppError('SIN_PERMISO'));
+  };
+}
+
 /** RF-01: solo los roles indicados. Va siempre después de autenticar. */
 export function autorizar(...roles: Rol[]): RequestHandler {
   return (_req, _res, next) => {

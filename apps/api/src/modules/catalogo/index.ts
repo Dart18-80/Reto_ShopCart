@@ -13,3 +13,5 @@ export function crearModuloCatalogo({ autenticar }: DependenciasCatalogo): Route
   const servicio = crearCatalogoService({ repositorio: catalogoRepository });
   return crearCatalogoRouter(crearCatalogoController(servicio), autenticar);
 }
+
+export { ESTADOS_EXISTENCIA, type EstadoExistencia } from './catalogo.types.js';

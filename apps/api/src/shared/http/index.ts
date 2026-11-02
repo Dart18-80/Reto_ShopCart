@@ -17,8 +17,15 @@ export { idEnRutaSchema, idSchema } from './identificadores.js';
 export { requestId } from './request-id.js';
 export { manejar, type ClienteHttp, type Entrada } from './manejar.js';
 export { leerCookies } from './cookies.js';
-export { autorizar, crearAutenticar, type VersionesSesion } from './autenticar.js';
+export {
+  autenticarOpcional,
+  autorizar,
+  autorizarSiHaySesion,
+  crearAutenticar,
+  type VersionesSesion,
+} from './autenticar.js';
 export { limitarIntentos, type LimitadorIntentos } from './limitar-intentos.js';
+export { generarTokenOpaco, hashearTokenOpaco, type TokenOpaco } from './token-opaco.js';
 export {
   aRolDeUsuario,
   crearTokensAcceso,

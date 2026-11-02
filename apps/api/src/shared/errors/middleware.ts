@@ -40,6 +40,9 @@ export function manejadorErrores(logger: Logger): ErrorRequestHandler {
 
     const appError = aAppError(error);
     registrarError(logger, appError, error);
+    if (appError.segundosParaReintentar !== undefined) {
+      res.setHeader('Retry-After', String(appError.segundosParaReintentar));
+    }
     res.status(appError.status).json(cuerpoDeError(appError, requestIdDe(res)));
   };
 }

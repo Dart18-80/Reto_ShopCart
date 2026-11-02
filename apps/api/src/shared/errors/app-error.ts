@@ -5,6 +5,8 @@ export interface OpcionesAppError {
   mensaje?: string;
   detalles?: unknown;
   cause?: unknown;
+  /** 429: segundos para el encabezado Retry-After. */
+  segundosParaReintentar?: number;
 }
 
 /** Error esperado: se responde al cliente con su código estable y el HTTP del catálogo (A-06). */
@@ -12,13 +14,18 @@ export class AppError extends Error {
   readonly codigo: CodigoError;
   readonly status: number;
   readonly detalles: unknown;
+  readonly segundosParaReintentar: number | undefined;
 
-  constructor(codigo: CodigoError, { mensaje, detalles, cause }: OpcionesAppError = {}) {
+  constructor(
+    codigo: CodigoError,
+    { mensaje, detalles, cause, segundosParaReintentar }: OpcionesAppError = {},
+  ) {
     const entrada = CATALOGO[codigo];
     super(mensaje ?? entrada.mensaje, { cause });
     this.name = 'AppError';
     this.codigo = codigo;
     this.status = entrada.http;
     this.detalles = detalles;
+    this.segundosParaReintentar = segundosParaReintentar;
   }
 }

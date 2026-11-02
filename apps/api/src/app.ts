@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import type { Logger } from 'pino';
 import swaggerUi from 'swagger-ui-express';
 import { crearModuloAuth, crearSesiones, type LimitadoresAuth } from './modules/auth/index.js';
+import { crearModuloCarrito } from './modules/carrito/index.js';
 import { crearModuloCatalogo } from './modules/catalogo/index.js';
 import { crearModuloDirecciones } from './modules/direcciones/index.js';
 import { crearModuloInventario } from './modules/inventario/index.js';
@@ -27,6 +28,8 @@ const SALTOS_DE_PROXY_CONFIABLES = 1;
 export interface Limitadores extends LimitadoresAuth {
   /** A-07: 5 intentos por minuto por usuario. */
   cambioContrasena: LimitadorIntentos;
+  /** 01 §5.3: 20 carritos de invitado nuevos por minuto por IP. */
+  carritoInvitado: LimitadorIntentos;
 }
 
 export interface DependenciasApp {
@@ -37,6 +40,8 @@ export interface DependenciasApp {
   tokensAcceso: TokensAcceso;
   limitadores: Limitadores;
   versionesSesion: VersionesSesion;
+  /** N-05: Secure en la cookie del carrito de invitado (fuera de desarrollo). */
+  cookiesSeguras: boolean;
 }
 
 /** Composición: middlewares, rutas e inyección de adaptadores (01-arquitectura.md §4.3). */
@@ -48,6 +53,7 @@ export function crearApp({
   tokensAcceso,
   limitadores,
   versionesSesion,
+  cookiesSeguras,
 }: DependenciasApp): Express {
   const app = express();
   app.disable('x-powered-by');
@@ -90,6 +96,13 @@ export function crearApp({
   v1.use(crearModuloDirecciones({ autenticar }));
   v1.use(crearModuloCatalogo({ autenticar }));
   v1.use('/inventario', crearModuloInventario({ autenticar }));
+  v1.use(
+    crearModuloCarrito({
+      autenticar,
+      limitadorCreacion: limitadores.carritoInvitado,
+      cookiesSeguras,
+    }),
+  );
   app.use('/api/v1', v1);
 
   // Después de montar todas las rutas, para que el documento las incluya.

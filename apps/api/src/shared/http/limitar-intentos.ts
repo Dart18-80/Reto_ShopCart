@@ -11,11 +11,10 @@ export function limitarIntentos(
   limitador: LimitadorIntentos,
   claveDe: (req: Request) => string,
 ): RequestHandler {
-  return async (req, res, next) => {
+  return async (req, _res, next) => {
     const { permitido, segundosParaReintentar } = await limitador.consumir(claveDe(req));
     if (!permitido) {
-      res.setHeader('Retry-After', String(segundosParaReintentar));
-      next(new AppError('DEMASIADAS_PETICIONES'));
+      next(new AppError('DEMASIADAS_PETICIONES', { segundosParaReintentar }));
       return;
     }
     next();

@@ -23,6 +23,7 @@ const ESPERA_APAGADO_MS = 10_000;
 const LIMITE_LOGIN = { intentos: 5, ventanaSeg: 60 };
 const LIMITE_REGISTRO = { intentos: 3, ventanaSeg: 60 };
 const LIMITE_CAMBIO_CONTRASENA = { intentos: 5, ventanaSeg: 60 };
+const LIMITE_CARRITO_INVITADO = { intentos: 20, ventanaSeg: 60 };
 
 type ClienteRedis = ReturnType<typeof crearClienteRedis>;
 
@@ -54,7 +55,13 @@ async function iniciar(): Promise<void> {
         prefijo: 'limite:contrasena',
         ...LIMITE_CAMBIO_CONTRASENA,
       }),
+      carritoInvitado: crearLimitadorRedis(redis, logger, {
+        prefijo: 'limite:carrito',
+        ...LIMITE_CARRITO_INVITADO,
+      }),
     },
+    // N-05: la cookie del carrito de invitado lleva Secure fuera de desarrollo.
+    cookiesSeguras: config.entorno !== 'development',
     versionesSesion: crearVersionesSesionRedis(redis, logger),
   });
 
