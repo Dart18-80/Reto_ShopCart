@@ -1,4 +1,10 @@
 import type { Logger } from 'pino';
+import {
+  ATRIBUTOS,
+  enSpan,
+  metricasDeNegocio,
+  type ResultadoTareaMetrica,
+} from '../observability/index.js';
 
 /** Lo que hizo una ejecución (conteos para el log); null si la otra réplica tenía el sp_getapplock (A-04). */
 export type ResultadoTarea = Readonly<Record<string, number>> | null;
@@ -17,17 +23,36 @@ export interface Planificador {
   detener(): Promise<void>;
 }
 
+function resultadoParaMetrica(resultado: ResultadoTarea): ResultadoTareaMetrica {
+  if (resultado === null) return 'Omitida';
+  return Object.values(resultado).some((cantidad) => cantidad !== 0) ? 'ConTrabajo' : 'SinTrabajo';
+}
+
 /**
  * A-04 (01 §8): cada réplica ejecuta todas las tareas; la coordinación entre réplicas la hace el
  * sp_getapplock de cada SP, así que el planificador no guarda estado compartido (RNF-2).
+ * E9-H01: cada ejecución es un span con la réplica y si tomó el bloqueo, y una métrica por resultado.
  */
-export function crearPlanificador(tareas: readonly Tarea[], logger: Logger): Planificador {
+export function crearPlanificador(
+  tareas: readonly Tarea[],
+  logger: Logger,
+  instancia = 'local',
+): Planificador {
   const temporizadores: NodeJS.Timeout[] = [];
   const enCurso = new Map<string, Promise<void>>();
 
+  function ejecutarConSpan(tarea: Tarea): Promise<ResultadoTarea> {
+    return enSpan(`tarea ${tarea.nombre}`, { [ATRIBUTOS.replica]: instancia }, async (span) => {
+      const resultado = await tarea.ejecutar();
+      span.setAttribute(ATRIBUTOS.bloqueoTomado, resultado !== null);
+      return resultado;
+    });
+  }
+
   async function ejecutar(tarea: Tarea): Promise<void> {
     try {
-      const resultado = await tarea.ejecutar();
+      const resultado = await ejecutarConSpan(tarea);
+      metricasDeNegocio.tareaEjecutada(tarea.nombre, resultadoParaMetrica(resultado));
       // Decisión del PO (cierre de la Fase 1): en info solo cuando hubo trabajo; lo vacío, en debug.
       if (resultado === null) {
         logger.debug({ tarea: tarea.nombre }, 'Tarea omitida: otra réplica la está ejecutando');
@@ -37,6 +62,7 @@ export function crearPlanificador(tareas: readonly Tarea[], logger: Logger): Pla
         logger.debug({ tarea: tarea.nombre }, 'Tarea ejecutada sin trabajo');
       }
     } catch (error) {
+      metricasDeNegocio.tareaEjecutada(tarea.nombre, 'Fallida');
       logger.error(
         { err: error, tarea: tarea.nombre },
         'La tarea falló; se reintenta en su siguiente turno',

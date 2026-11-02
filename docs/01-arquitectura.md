@@ -27,7 +27,7 @@ ShopCart es un **monolito modular** en Node.js/Express que se despliega como **d
 | Rendimiento | RNF-1 | < 1 s en listados y reportes con la semilla; el diseño asume volumen alto (script de 50k pedidos) |
 | Escalabilidad | RNF-2 | API stateless, 2 réplicas, Redis para estado volátil |
 | Concurrencia | RNF-3 | 20 checkouts simultáneos sobre la última unidad → exactamente 1 éxito; lo mismo para un cupón con 1 uso |
-| Observabilidad | RNF-4 | Logs JSON con `requestId` y `/health` (Fase 1); trazas con OpenTelemetry hacia Grafana LGTM, planificado para F5 |
+| Observabilidad | RNF-4 | OpenTelemetry (trazas, métricas y logs) hacia Grafana LGTM en el perfil opcional `observabilidad`; logs JSON con `requestId` y `trace_id`; `/health` (§11) |
 | Restricciones | Enunciado | SQL Server 2019+, solo SPs, Express + TS strict, React + TS, 15 días, una persona, Docker Compose en Windows (16 GB) |
 
 ---
@@ -54,7 +54,7 @@ Versión en texto:
                           │                              │   redis   │   │   db-migrator   │
                           │                              └───────────┘   │ (scripts .sql)  │
                           │                                              └─────────────────┘
-                          │  ── perfil "observability" (planificado para F5) ─────────────
+                          │  ── perfil "observabilidad" (opcional) ───────────────────────
                           │   api-1 / api-2 ──OTLP──► ┌─────────────────────────────┐
                           │                           │ otel-lgtm (Grafana :3001,   │
                           │                           │ Loki, Tempo, Prometheus)    │
@@ -69,7 +69,7 @@ Versión en texto:
 | `redis` | `redis:7-alpine` | Rate limiting, versión de sesión por usuario y caché de reportes | `redis-cli ping` | — |
 | `api-1`, `api-2` | Propia (`apps/api`) | API REST; misma imagen y misma configuración salvo `INSTANCIA_ID` | `GET /api/v1/health` | Migrador completado, `redis` saludable |
 | `web` | Propia (nginx + build de `apps/web`) | **Balanceador de carga** (`upstream` round-robin hacia `api-1` y `api-2`, con `max_fails=3 fail_timeout=10s`) y servidor de la SPA y `/static` | `GET /` | `api-1`, `api-2` |
-| `otel-lgtm` | `grafana/otel-lgtm` | Logs, trazas y métricas. **Planificado para F5, no implementado:** hoy solo está reservada su IP en la subred | — | Perfil `observability` |
+| `otel-lgtm` | `grafana/otel-lgtm:0.36.0` fijada con su digest | Colector OTLP, Tempo, Loki, Prometheus y Grafana (`127.0.0.1:${GRAFANA_PUERTO}`, 3001) | Propio de la imagen | Perfil `observabilidad` (E9-H01) |
 
 **Notas de despliegue:**
 
@@ -79,7 +79,7 @@ Versión en texto:
 - **Redis está detrás de la API, no delante.** Toda petición llega a la API, que valida el token y el rol. Redis evita ir a SQL Server, no evita pasar por el backend. No se usa la caché HTTP de nginx (`proxy_cache`): saltaría la autenticación y no permite la invalidación por eventos que exige el extra (sección 9).
 - **Réplicas explícitas** (`api-1`, `api-2`) en lugar de `deploy.replicas`: nginx resuelve los nombres al arrancar, y así cada respuesta lleva el header `X-Instancia`, que permite demostrar el balanceo en la defensa.
 - **Arranque con un solo comando:** `docker compose up -d`. El orden lo garantizan `depends_on` con `condition: service_healthy` y `service_completed_successfully`.
-- **RAM estimada:** SQL Server 2 GB (limitado con `MSSQL_MEMORY_LIMIT_MB`), cada API ~150 MB, Redis ~30 MB, nginx ~10 MB (medido en reposo: ~1.9 GB en total). Con LGTM (F5), ~700 MB más.
+- **RAM estimada:** SQL Server 2 GB (limitado con `MSSQL_MEMORY_LIMIT_MB`), cada API ~150 MB, Redis ~30 MB, nginx ~10 MB (medido en reposo: ~1.9 GB en total). Con el perfil `observabilidad`, unos 700 MB más.
 - **Camino a Kubernetes (D-04):** cada servicio se traduce a un `Deployment` (las APIs con `replicas: 2` y un HPA), el migrador a un `Job` y SQL Server/Redis a `StatefulSet`. No requiere cambios en el código.
 
 ---
@@ -477,12 +477,16 @@ Se ejecutan **dentro de cada réplica de la API** con un planificador interno (`
 
 ## 11. Observabilidad (RNF-4)
 
-**Implementado en la Fase 1:** logs pino en JSON hacia stdout con `requestId`, `instancia`, `idUsuario` y el módulo, con redacción de datos sensibles; el `requestId` llega a los SPs y a la bitácora (A-18); `/health` con un SP. **Planificado para F5, no implementado:** lo que sigue (OpenTelemetry, LGTM y el dashboard de Grafana).
+E9-H01 (plan en `docs/planes/E9-H01-opentelemetry-y-grafana.md`).
 
-- **Trazas:** el SDK de OpenTelemetry para Node, con instrumentación de `http`, `express`, `tedious` (cada llamada a un SP es un span con el nombre del SP) e `ioredis`, exporta por OTLP a `otel-lgtm`. Si el colector no está levantado, el exportador descarta en silencio y la API funciona igual.
-- **Logs:** pino en JSON hacia stdout y OTLP. Cada línea lleva `requestId`, `traceId`, `instancia`, `idUsuario` y el módulo.
-- **Correlación con la base:** `ejecutarSP` envía el `@RequestId` y cada SP que escribe lo fija en `SESSION_CONTEXT` (A-18), y la bitácora y los errores de SQL guardan ese `RequestId`. Desde una fila de la bitácora se puede llegar a la traza completa en Grafana.
-- **Demo:** un dashboard de Grafana provisionado con las peticiones por réplica, la latencia por endpoint y el top de SPs más lentos, más un enlace de la traza a sus logs.
+- **Arranque:** `node --import ./dist/telemetria.js dist/server.js`. Antes que la API se registran el hook de ESM (`import-in-the-middle`, con los hooks síncronos de Node 24) y las instrumentaciones: una librería importada antes no quedaría instrumentada (`apps/api/src/telemetria.ts`, `shared/observability/telemetria.ts`).
+- **Trazas:** instrumentación de `http`, `express` (solo el handler de cada ruta, que fija `http.route`), `tedious` (un span por SP: `EXECUTE SP_…`, con `db.stored_procedure.name` y sin parámetros) e `ioredis` (solo el nombre del comando, nunca sus argumentos ni el `AUTH`). Spans propios de la pasarela (`pasarela.autorizar`, `capturar`, `anular`, `consultar`, `reembolsar`, con su resultado y nunca la tarjeta), de cada tarea del planificador (con `shopcart.replica` y `shopcart.tarea.bloqueo_tomado`) y de cada exportación (`exportacion.procesar`). Cada span lleva `shopcart.request_id`. El healthcheck no se traza.
+- **Métricas:** `http.server.request.duration` por ruta, método y estado; `shopcart.pedidos.creados`; `shopcart.pagos` por resultado (`PedidoCreado`, `Repetido` o el código del error); `shopcart.tareas.ejecuciones` por tarea y resultado (`ConTrabajo`, `SinTrabajo`, `Omitida`, `Fallida`); `shopcart.exportaciones.pendientes` (`SP_Exportaciones_ContarPendientes`). Se exportan cada 15 s.
+- **Logs:** pino en JSON hacia stdout y por OTLP a Loki, ya redactados. Cada línea escrita dentro de un span lleva `trace_id` y `span_id`: en Grafana se pasa de la traza a sus logs.
+- **Sin el perfil:** las réplicas siempre exportan a `http://otel-lgtm:4318`, un nombre que `extra_hosts` resuelve a una IP fija de la subred. Sin el colector, cada señal registra **una sola** advertencia al dejar de responder y una línea al volver (`conRegistroDeEstado`), y la API funciona igual. Se activa con un solo comando: `docker compose --profile observabilidad up -d`, sin reiniciar la API.
+- **Correlación con la base:** `ejecutarSP` envía el `@RequestId` y cada SP que escribe lo fija en `SESSION_CONTEXT` (A-18): la bitácora y los errores de SQL guardan el mismo `RequestId` que el span.
+- **Dashboard:** `infra/grafana/dashboards/shopcart.json`, aprovisionado: latencia p95, peticiones y errores 4xx/5xx por endpoint, peticiones por réplica, pedidos, pagos por resultado, tareas por resultado, exportaciones pendientes y los logs.
+- **Seguridad:** `test/telemetria/seguridad-trazas.test.ts` compila la API, la arranca igual que la imagen y revisa todo lo que exporta (en un receptor en memoria): ninguna contraseña, token, refresh, contraseña de Redis, tarjeta, CVV, `Authorization` ni `Cookie`, y ningún valor de parámetro de SQL.
 
 ---
 
@@ -549,7 +553,7 @@ Estado: 🟡 Propuesta · 🔍 En análisis · ✅ Confirmada · ✏️ Modifica
 | A-13 | Contadores con `CHECK` para límites (cupón, devoluciones, reembolsos, existencia) | Solo `COUNT`/`SUM` en el SP: correcto con bloqueo, pero sin defensa ante un bug | ✅ |
 | A-14 | Parámetros del sistema en una tabla tipada de una sola fila (`ParametroSistema`) | Tabla clave-valor: sin tipos ni `CHECK` | ✅ |
 | A-15 | Estados con comportamiento en tablas de catálogo (`EstadoPedido`, `TipoMovimiento`, `Rol`); estados simples con `CHECK` | Todo con `CHECK`: las transiciones no pueden tener FK. Todo en tablas: exceso de joins | ✅ |
-| A-16 | Librerías del backend: Express 5, `mssql`, Zod, `@asteasolutions/zod-to-openapi` (OpenAPI generado desde los esquemas Zod, A-08), `swagger-ui-express` (`/api/docs`), `decimal.js`, pino, helmet, cors, argon2, jose, ioredis, rate-limiter-flexible, **exceljs** (Excel en modo streaming: escribe fila por fila sin cargar el libro en memoria) y **pdfmake** (PDF declarativo sobre pdfkit, con las fuentes estándar: sin archivos de fuente en la imagen), las dos para la exportación asíncrona (A-24, E7-H05), OpenTelemetry, Vitest + Supertest, `@vitest/coverage-v8` (reporte de cobertura, solo desarrollo) | Cada una se justifica en el README | ✅ |
+| A-16 | Librerías del backend: Express 5, `mssql`, Zod, `@asteasolutions/zod-to-openapi` (OpenAPI generado desde los esquemas Zod, A-08), `swagger-ui-express` (`/api/docs`), `decimal.js`, pino, helmet, cors, argon2, jose, ioredis, rate-limiter-flexible, **exceljs** (Excel en modo streaming: escribe fila por fila sin cargar el libro en memoria) y **pdfmake** (PDF declarativo sobre pdfkit, con las fuentes estándar: sin archivos de fuente en la imagen), las dos para la exportación asíncrona (A-24, E7-H05), OpenTelemetry (E9-H01: `@opentelemetry/api` 1.9.1, `api-logs` 0.223.0, `sdk-trace-node` 2.12.0, `sdk-metrics` 2.12.0, `sdk-logs` 0.223.0, `resources` 2.12.0, `core` 2.12.0, `semantic-conventions` 1.43.0, `exporter-trace-otlp-http`, `exporter-metrics-otlp-http` y `exporter-logs-otlp-http` 0.223.0, `instrumentation` e `instrumentation-http` 0.223.0, `instrumentation-express` 0.71.1, `instrumentation-tedious` 0.42.0, `instrumentation-ioredis` 0.71.0 e `instrumentation-pino` 0.69.0, más `import-in-the-middle` 3.5.3 (aprobado por el PO: el hook de ESM síncrono de Node 24 para instrumentar lo que el código ESM importa)), Vitest + Supertest, `@vitest/coverage-v8` (reporte de cobertura, solo desarrollo) | Cada una se justifica en el README | ✅ |
 | A-17 | Estrategia de pruebas: unitarias de servicios con puertos simulados, integración contra SQL Server real en Docker (base `shopcart_test`), test de concurrencia (RNF-3) y test de coincidencia de transiciones (N-08) | Mocks de la BD: no prueban los SPs, que es donde están las reglas críticas | ✅ |
 | A-18 | **Contexto del actor por parámetros estándar.** `ejecutarSP` agrega a cada SP `@IDUsuarioActor`, `@RolActor` y `@RequestId` (tomados de un `AsyncLocalStorage` por petición). Los SPs de recursos propios filtran con `@IDUsuarioActor`, y todo SP que escribe llama primero a `SP_Sistema_EstablecerContexto`, que fija `SESSION_CONTEXT` para los triggers. **Fuera de una petición (jobs), `ejecutarSP` envía `@RolActor = 'Sistema'` e `@IDUsuarioActor = NULL`.** Los triggers de bitácora fallan con `50004 CONTEXTO_NO_ESTABLECIDO` si `SESSION_CONTEXT(N'Rol')` es `NULL`: toda escritura auditada declara quién la hace, también una escritura manual en la base (que debe llamar antes a `SP_Sistema_EstablecerContexto`) y el migrador (que fija `Rol = 'Sistema'` antes de cada script). `Sistema` no es un rol de usuario: el token solo admite `Cliente`, `Operador` y `Administrador` | Fijar `SESSION_CONTEXT` desde Node antes de cada llamada: con el pool de conexiones, el `sp_set_session_context` y el SP pueden ejecutarse en conexiones distintas, y amarrar la conexión exige transacciones del lado del cliente que chocan con las de los SPs | ✅ |
 | A-19 | **Errores con detalles estructurados.** Si un `THROW` necesita datos (por ejemplo, qué líneas no tienen existencia), su mensaje es un JSON `{ mensaje, detalles }` y `ejecutarSP` lo separa | Devolver un conjunto de resultados con el error: obliga a cada SP a usar un formato de salida doble y complica el `TRY/CATCH` | ✅ |

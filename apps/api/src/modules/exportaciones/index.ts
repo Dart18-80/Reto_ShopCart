@@ -2,7 +2,7 @@ import type { RequestHandler, Router } from 'express';
 import type { Logger } from 'pino';
 import type { AlmacenArchivos } from '../../shared/almacen/index.js';
 import type { Cache } from '../../shared/cache/index.js';
-import type { LimitadorIntentos } from '../../shared/http/index.js';
+import { fueraDeLaPeticion, type LimitadorIntentos } from '../../shared/http/index.js';
 import type { Tarea } from '../../shared/jobs/index.js';
 import { relojDelSistema, type Reloj } from '../../shared/reloj/index.js';
 import { crearServicioReportes } from '../reportes/index.js';
@@ -17,6 +17,10 @@ import { crearExportacionesService } from './exportaciones.service.js';
 import { tareasExportaciones } from './exportaciones.tareas.js';
 
 export type { ProcesadorExportaciones } from './exportaciones.procesador.js';
+
+/** E9-H01: para la métrica de pendientes. La lee el SDK de métricas fuera de una petición (rol Sistema). */
+export const contarExportacionesPendientes = (): Promise<number> =>
+  fueraDeLaPeticion(() => exportacionesRepository.contarPendientes());
 
 interface DependenciasProcesador {
   almacen: AlmacenArchivos;

@@ -73,14 +73,25 @@ Redis corre con el usuario `redis`, no como root. Un entorno levantado antes de 
 
 Cada valor tiene una sola fuente en `.env`: Compose, el migrador y la API leen las mismas variables (`.env.example` documenta cada una). `.env` está en `.gitignore`: el repositorio no tiene credenciales reales.
 
+### Observabilidad (opcional): trazas, métricas y logs
+
+Un solo comando levanta Grafana LGTM (Tempo, Loki, Prometheus y Grafana) junto al resto:
+
+```bash
+docker compose --profile observabilidad up -d
+```
+
+Grafana queda en <http://localhost:3001> (`GRAFANA_PUERTO`), solo en `127.0.0.1`, con el dashboard **ShopCart** ya aprovisionado. No hace falta reiniciar la API: las réplicas siempre exportan al colector y, mientras no está, lo registran una sola vez y funcionan igual. Para apagarlo: `docker compose --profile observabilidad stop otel-lgtm`. La imagen ocupa ~1 GB y unos 700 MB de RAM.
+
 **Puertos del host.** Si alguno está ocupado, cámbialo en `.env` y vuelve a levantar con `docker compose up -d`:
 
-| Puerto | Servicio                              | Variable en `.env` | Publicado en                     |
-| ------ | ------------------------------------- | ------------------ | -------------------------------- |
-| 8080   | nginx: la tienda, la API y Swagger    | `WEB_PUERTO`       | `WEB_IP` (por defecto 127.0.0.1) |
-| 1433   | SQL Server (SSMS y las pruebas)       | `DB_PORT`          | 127.0.0.1                        |
-| 6379   | Redis (las pruebas)                   | `REDIS_PORT`       | 127.0.0.1                        |
-| 3000   | La API (solo dentro de la red Docker) | `PUERTO`           | no se publica                    |
+| Puerto | Servicio                                      | Variable en `.env` | Publicado en                     |
+| ------ | --------------------------------------------- | ------------------ | -------------------------------- |
+| 8080   | nginx: la tienda, la API y Swagger            | `WEB_PUERTO`       | `WEB_IP` (por defecto 127.0.0.1) |
+| 1433   | SQL Server (SSMS y las pruebas)               | `DB_PORT`          | 127.0.0.1                        |
+| 6379   | Redis (las pruebas)                           | `REDIS_PORT`       | 127.0.0.1                        |
+| 3000   | La API (solo dentro de la red Docker)         | `PUERTO`           | no se publica                    |
+| 3001   | Grafana (solo con el perfil `observabilidad`) | `GRAFANA_PUERTO`   | 127.0.0.1                        |
 
 Con otro `WEB_PUERTO`, las URLs pasan a `http://localhost:<WEB_PUERTO>`, y las pruebas de entorno y de concurrencia la leen de `SHOPCART_URL`. `DB_PORT` y `REDIS_PORT` cambian el puerto dentro y fuera del contenedor a la vez, y la API y el migrador leen las mismas variables.
 
@@ -161,6 +172,14 @@ Abre <http://localhost:8080/api/docs>. En cada paso: **Try it out** → completa
 10. **Opcional:** `POST /api/v1/pedidos/{id}/cancelar` con `{ "motivo": "Ya no lo necesito" }` → `Cancelado`, la existencia vuelve al kardex y el reembolso queda `Completado`. Inicia sesión como `admin@shopcart.gt` para recorrer `GET /api/v1/dashboard/resumen`, `GET /api/v1/bitacora` o `GET /api/v1/admin/pedidos`.
 
 **Para ver el aislamiento entre clientes (RF-01):** con el token de `cliente2@shopcart.gt`, `GET /api/v1/pedidos/{id}` de un pedido de otro cliente responde `404`, igual que uno inexistente.
+
+### La compra en Grafana (con el perfil `observabilidad`)
+
+1. Levanta el perfil (`docker compose --profile observabilidad up -d`) y haz los pasos 6 a 8. Copia el encabezado `x-request-id` de la respuesta del pago.
+2. Abre <http://localhost:3001> → **Explore** → fuente **Tempo** → **TraceQL** y busca `{ span.shopcart.request_id = "<el x-request-id>" }`, o `{ name = "pasarela.autorizar" }` para la más reciente.
+3. La traza muestra la petición `POST /api/v1/checkout/sesion/pagos` en la réplica que la atendió (`service.instance.id`: `api-1` o `api-2`), los SPs en orden (`EXECUTE SP_Checkout_RegistrarIntentoPago`, `SP_Pasarela_Autorizar`, `SP_Pedidos_CrearPedido`, `SP_Pasarela_CambiarEstado`…), las operaciones de la pasarela (`pasarela.autorizar`, `pasarela.capturar`) y los comandos de Redis. En el reintento del paso 8, la autorización la devuelve la pasarela sin cobrar dos veces.
+4. En cualquier span, **Logs for this span** abre en Loki las líneas de esa petición (las del pino de la réplica, con el mismo `trace_id`).
+5. **Dashboards → ShopCart:** latencia y errores por endpoint, peticiones por réplica, pedidos creados, pagos por resultado (`PedidoCreado`, `Repetido`, `PAGO_SIN_CONFIRMAR`…), tareas por resultado (`Omitida` = la otra réplica tenía el bloqueo) y exportaciones pendientes.
 
 ---
 
@@ -265,7 +284,25 @@ Cada una con su porqué ([A-16](docs/01-arquitectura.md)); ninguna fuera de esta
 | `pdfmake`                                    | PDF declarativo con las fuentes estándar: sin archivos de fuente en la imagen |
 | `vitest`, `supertest`, `@vitest/coverage-v8` | Pruebas unitarias, de integración y de API, y cobertura (solo desarrollo)     |
 
-`pnpm audit` (2026-11-02): ninguna alta ni crítica; 3 moderadas en producción, todas transitivas de `exceljs`: `uuid` (solo con el parámetro `buf`, que exceljs no usa) y `minimatch` vía `archiver` (los patrones no vienen del usuario). Ninguna recibe entrada del usuario. OpenTelemetry, también en A-16, está planificado para F5.
+**OpenTelemetry (E9-H01, RNF-4):** solo paquetes de la familia `@opentelemetry`, en el último conjunto con más de dos semanas al instalarlos:
+
+| Paquete                                                                            | Versión | Para qué                                                                                                                                                                                                |
+| ---------------------------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@opentelemetry/api`                                                               | 1.9.1   | Spans y métricas propios (no hacen nada sin SDK)                                                                                                                                                        |
+| `@opentelemetry/sdk-trace-node`, `sdk-metrics`, `resources`, `core`                | 2.12.0  | SDK de trazas (con el contexto de la petición) y de métricas                                                                                                                                            |
+| `@opentelemetry/sdk-logs`, `api-logs`                                              | 0.223.0 | Logs de pino hacia Loki                                                                                                                                                                                 |
+| `@opentelemetry/exporter-trace-otlp-http`, `-metrics-otlp-http`, `-logs-otlp-http` | 0.223.0 | Exportan por OTLP/HTTP al colector                                                                                                                                                                      |
+| `@opentelemetry/instrumentation`, `instrumentation-http`                           | 0.223.0 | Registro de instrumentaciones; spans y métrica de duración HTTP                                                                                                                                         |
+| `@opentelemetry/instrumentation-express`                                           | 0.71.1  | `http.route` en cada petición                                                                                                                                                                           |
+| `@opentelemetry/instrumentation-tedious`                                           | 0.42.0  | Un span por SP, con su nombre y sin parámetros                                                                                                                                                          |
+| `@opentelemetry/instrumentation-ioredis`                                           | 0.71.0  | Un span por comando de Redis, sin argumentos                                                                                                                                                            |
+| `@opentelemetry/instrumentation-pino`                                              | 0.69.0  | `trace_id`/`span_id` en cada línea y envío de logs por OTLP                                                                                                                                             |
+| `@opentelemetry/semantic-conventions`                                              | 1.43.0  | Nombres estándar de atributos                                                                                                                                                                           |
+| `import-in-the-middle`                                                             | 3.5.3   | Hook de ESM con los hooks síncronos de Node 24, para instrumentar lo que el código ESM importa (fuera de la familia, aprobado por el PO; ya venía como dependencia de `@opentelemetry/instrumentation`) |
+
+No se usa `@opentelemetry/sdk-node`: trae los exportadores gRPC, Zipkin, Jaeger y Prometheus, que no hacen falta.
+
+`pnpm audit` (2026-11-02, también después de agregar OpenTelemetry): ninguna alta ni crítica; 3 moderadas en producción, todas transitivas de `exceljs`: `uuid` (solo con el parámetro `buf`, que exceljs no usa) y `minimatch` vía `archiver` (los patrones no vienen del usuario). Ninguna recibe entrada del usuario.
 
 ---
 
@@ -396,6 +433,5 @@ Lo que queda fuera de la Fase 1, a propósito y con su lugar en el plan ([docs/0
 - **Fase 2 · Frontend:** SPA con Vite + React + TypeScript (tienda, backoffice y dashboard con gráficas), renovación transparente del token y estados de carga, vacío y error.
 - **Revisión manual de pagos:** un intento con pedido cuya autorización ya no existe en la pasarela queda `EnRevision` y un reembolso que agota sus 5 intentos queda `Fallido` en la lista del Admin (`GET /api/v1/admin/reembolsos`, con reintento). La Fase 2 les dará pantalla.
 - **Carga pesada (F5):** el script `database/load/L001` con el generador de datos demo a 50,000 pedidos. Ya se midió en una base desechable: ningún listado ni reporte pasa de 1 s ([docs/revision/estado-backend.md](docs/revision/estado-backend.md) §7).
-- **Observabilidad (F5):** OpenTelemetry y Grafana LGTM ([RNF-4](docs/00-vision-y-contexto.md)); hoy hay logs JSON con `requestId` y `/health`.
 - **Dashboard en tiempo real (SSE):** con dos réplicas, el evento que ocurre en una tiene que llegar a los clientes conectados a la otra, así que necesita un canal de avisos entre ellas (Redis pub/sub o el outbox de la base).
 - **Producción:** SQL Server Standard o Enterprise en lugar de Developer, HTTPS en nginx y secretos fuera de `.env`.

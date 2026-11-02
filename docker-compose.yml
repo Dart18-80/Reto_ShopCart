@@ -25,6 +25,10 @@ x-api-entorno: &api-entorno
   JWT_SECRETO: ${JWT_SECRETO:?Define JWT_SECRETO en .env (ver .env.example)}
   # A-24: el almacén de exportaciones, en el volumen compartido por las dos réplicas.
   ALMACEN_DIR: /var/lib/shopcart/exportaciones
+  # E9-H01 (RNF-4): las réplicas siempre exportan al colector del perfil `observabilidad`. Sin el perfil, el
+  # envío se intenta contra su IP de la subred (extra_hosts), nunca sale de ella, y se registra una sola vez.
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-lgtm:4318
+  OTEL_SEMCONV_STABILITY_OPT_IN: http
 
 # A-03, RNF-2: dos réplicas idénticas de la API; solo cambia el nombre de la réplica.
 x-api: &api
@@ -43,7 +47,7 @@ x-api: &api
   extra_hosts:
     - 'sqlserver:${RED_PREFIJO:-172.28.10}.10'
     - 'redis:${RED_PREFIJO:-172.28.10}.11'
-    # Reservada para el colector de OpenTelemetry (Fase 2), para que su nombre tampoco salga al DNS.
+    # El colector de OpenTelemetry (perfil `observabilidad`, E9-H01): su nombre tampoco sale al DNS.
     - 'otel-lgtm:${RED_PREFIJO:-172.28.10}.40'
   # A-24: el archivo que genera una réplica se descarga desde la otra. En producción, S3 o Azure Blob (otro
   # adaptador del puerto AlmacenArchivos), sin volumen.
@@ -169,8 +173,30 @@ services:
       - 'api-2:${RED_PREFIJO:-172.28.10}.22'
     restart: unless-stopped
 
+  # E9-H01 (RNF-4): Grafana LGTM (colector OTLP, Tempo, Loki, Prometheus y Grafana). Opcional: se levanta con
+  # `docker compose --profile observabilidad up -d`. Imagen de desarrollo: corre como root y Grafana entra como
+  # Admin anónimo, por eso solo se publica en 127.0.0.1; los puertos OTLP no se publican.
+  otel-lgtm:
+    image: grafana/otel-lgtm:0.36.0@sha256:57c04cbd8e7022f32bb84c4ac005d79baf8b08e2c5be44facf11f5f1f9944ba2
+    profiles: [observabilidad]
+    environment:
+      # Sin salidas a internet: el arranque de la imagen preinstala un plugin y Grafana busca actualizaciones.
+      GF_PLUGINS_PREINSTALL_DISABLED: 'true'
+      GF_ANALYTICS_REPORTING_ENABLED: 'false'
+      GF_ANALYTICS_CHECK_FOR_UPDATES: 'false'
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: 'false'
+    ports:
+      - '127.0.0.1:${GRAFANA_PUERTO:-3001}:3000'
+    volumes:
+      - ./infra/grafana/provisioning/dashboards/shopcart.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/shopcart.yaml:ro
+      - ./infra/grafana/dashboards:/otel-lgtm/shopcart-dashboards:ro
+    networks:
+      shopcart:
+        ipv4_address: ${RED_PREFIJO:-172.28.10}.40
+    restart: unless-stopped
+
 # A-03: subred fija. Las IPs de .2 a .127 son fijas (una por servicio); un contenedor sin IP fija
-# (por ejemplo, el perfil de observabilidad) toma una de .128 a .254, así nadie ocupa la IP de una
+# toma una de .128 a .254, así nadie ocupa la IP de una
 # réplica detenida. RED_PREFIJO se cambia en .env si la subred choca con otra red de la máquina.
 networks:
   shopcart:

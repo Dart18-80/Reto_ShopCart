@@ -7,6 +7,7 @@ import type { Reloj } from '../../shared/reloj/index.js';
 import { pedidosParaCheckout } from '../pedidos/index.js';
 import { crearConciliacionService } from './checkout.conciliacion.js';
 import { crearCheckoutController } from './checkout.controller.js';
+import { conMetricasDePago } from './checkout.metricas.js';
 import { crearPagoService } from './checkout.pago.js';
 import { checkoutRepository } from './checkout.repository.js';
 import { crearCheckoutRouter } from './checkout.routes.js';
@@ -30,13 +31,15 @@ export function crearModuloCheckout({
   reportes,
 }: DependenciasCheckout): Router {
   const servicio = crearCheckoutService({ repositorio: checkoutRepository });
-  const pago = crearPagoService({
-    repositorio: checkoutRepository,
-    pedidos: pedidosParaCheckout,
-    pasarela,
-    logger: logger.child({ modulo: 'checkout' }),
-    reportes,
-  });
+  const pago = conMetricasDePago(
+    crearPagoService({
+      repositorio: checkoutRepository,
+      pedidos: pedidosParaCheckout,
+      pasarela,
+      logger: logger.child({ modulo: 'checkout' }),
+      reportes,
+    }),
+  );
   return crearCheckoutRouter(crearCheckoutController(servicio, pago, reloj), autenticar);
 }
 

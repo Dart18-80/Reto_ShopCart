@@ -39,6 +39,16 @@ export default defineConfig({
           sequence: { groupOrder: 1 },
         },
       },
+      {
+        extends: true,
+        test: {
+          name: 'telemetria',
+          include: ['test/telemetria/**/*.test.ts'],
+          // E9-H01: compila la API y la levanta con `--import ./dist/telemetria.js`, como en la imagen.
+          hookTimeout: 120_000,
+          sequence: { groupOrder: 0 },
+        },
+      },
     ],
   },
 });

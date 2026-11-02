@@ -191,6 +191,12 @@ export const exportacionesRepository = {
     return new Set(filas.map((f) => f.ReferenciaArchivo));
   },
 
+  /** E9-H01: las solicitudes Pendiente o Procesando, para la métrica (rol Sistema). */
+  async contarPendientes(): Promise<number> {
+    const [fila] = await ejecutarSP<{ Pendientes: number }>('SP_Exportaciones_ContarPendientes');
+    return fila?.Pendientes ?? 0;
+  },
+
   async quitarArchivo(idExportacion: number): Promise<void> {
     await ejecutarSP('SP_Exportaciones_QuitarArchivo', {
       IDSolicitudExportacion: { tipo: sql.Int, valor: idExportacion },

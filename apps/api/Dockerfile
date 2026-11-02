@@ -32,4 +32,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \
   CMD wget -q -O /dev/null http://127.0.0.1:3000/api/v1/health || exit 1
 # node como PID 1 recibe SIGTERM directamente: el apagado ordenado vive en server.ts.
-CMD ["node", "dist/server.js"]
+# E9-H01: la telemetría se carga antes que la API, para que instrumente express, mssql, ioredis y pino.
+CMD ["node", "--import", "./dist/telemetria.js", "dist/server.js"]

@@ -31,7 +31,7 @@ import {
   metodoEnvio,
   pagar,
 } from '../checkout/apoyo-checkout.js';
-import { unaFila } from '../datos-de-prueba.js';
+import { comoActor, unaFila } from '../datos-de-prueba.js';
 import { moverFechaPedido } from '../pedidos/apoyo-pedidos.js';
 
 usarBaseDePruebas();
@@ -443,5 +443,27 @@ describe('exportación asíncrona de reportes (E7-H05, A-24)', () => {
     // Deja la cola vacía para las corridas siguientes.
     await procesador1.procesarPendientes();
     await procesador1.procesarPendientes();
+  });
+
+  it('E9-H01: la métrica de pendientes cuenta las solicitudes que esperan; solo el rol Sistema la lee', async () => {
+    const propio = await nuevoAdmin('Admin Metrica');
+    const antes = await exportacionesRepository.contarPendientes();
+
+    const solicitud = await solicitar(
+      sinProcesar,
+      'resumen',
+      { formato: 'xlsx', filtros: { desde: enElAnio('05-01'), hasta: enElAnio('05-28') } },
+      propio,
+    );
+    const conUna = await exportacionesRepository.contarPendientes();
+    await procesador1.procesarPendientes();
+    const despues = await exportacionesRepository.contarPendientes();
+    const comoAdmin = comoActor(1, 'Administrador', () =>
+      exportacionesRepository.contarPendientes(),
+    );
+
+    expect(solicitud.status).toBe(202);
+    expect([conUna - antes, despues - antes]).toEqual([1, 0]);
+    await expect(comoAdmin).rejects.toMatchObject({ codigo: 'INVARIANTE_INTERNA' });
   });
 });

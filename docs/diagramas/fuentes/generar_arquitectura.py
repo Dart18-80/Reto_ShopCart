@@ -67,8 +67,8 @@ text(54,716,"Arranque ordenado",14,700)
 for i,s in enumerate(["1. sqlserver  → healthy","2. db-migrator  → completed","3. redis  → healthy","4. api-1 · api-2  → /health OK","5. web (nginx)"]):
     text(54,746+i*24,s,12.5)
 text(54,880,"docker compose up -d",12,600,"#475569")
-text(54,902,"Observabilidad (OpenTelemetry",12,400,MUTED)
-text(54,922,"+ Grafana LGTM): Fase 2",12,400,MUTED)
+text(54,902,"+ --profile observabilidad",12,400,MUTED)
+text(54,922,"(opcional: Grafana LGTM)",12,400,MUTED)
 
 # ---- BORDE
 card(340,190,290,300,"web · nginx","#1F8A7A",sub=":8080",lines=[
@@ -149,7 +149,7 @@ text(744,1134,"Transversal",13,700)
 for i,s in enumerate(["Configuración validada con Zod al arrancar · .env (sin secretos en el repo)",
                       "Errores centralizados: THROW 5xxxx en SP → código estable → HTTP",
                       "OpenAPI 3.1 en /api/docs generado desde los esquemas Zod",
-                      "pino: requestId e instancia en cada línea, redacción de datos sensibles"]):
+                      "OpenTelemetry + pino: requestId y trace_id en spans y logs, sin datos sensibles"]):
     text(744,1158+i*21,s,12.2)
 
 # ---- DATOS
@@ -184,8 +184,8 @@ card(1780,190,220,150,"db-migrator","#5B6470",sub="one-shot",lines=[
   ("V### migraciones (inmutables)",INK,400),("R__ SPs · vistas · funciones",INK,400),("S### semillas",INK,400),("Checksum en HistorialMigracion",MUTED,400)],gap=22,size=12.2)
 arrow(1780,265,1720,265,"DDL +\nsemillas",dash=True,color="#4B5563",ly=238)
 rect(1772,800,236,210,fill="none",stroke="#3E8E3A",sw=1.4,rx=10,dash="7 5")
-text(1786,824,"Fase 2: perfil observability",12.5,700,"#2F6E2C")
+text(1786,824,"perfil opcional: observabilidad",12.5,700,"#2F6E2C")
 card(1786,840,208,155,"otel-lgtm","#3E8E3A",sub="Grafana :3001",lines=[("Loki · logs",INK,400),("Tempo · trazas",INK,400),("Prometheus · métricas",INK,400),("Dashboards provisionados",MUTED,400)],gap=22,size=12.2)
-arrow(1320,1000,1786,960,"OTLP (Fase 2)",dash=True,color="#4B5563",lx=1560,ly=968)
+arrow(1320,1000,1786,960,"OTLP: trazas, métricas y logs",dash=True,color="#4B5563",lx=1560,ly=968)
 a('</svg>')
 open(sys.argv[1],"w",encoding="utf-8",newline="\n").write("\n".join(out))

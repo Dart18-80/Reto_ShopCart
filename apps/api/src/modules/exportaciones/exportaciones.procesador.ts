@@ -10,6 +10,7 @@ import { GENERADORES } from './exportaciones.generadores.js';
 import type { ExportacionesRepository } from './exportaciones.repository.js';
 import { TABLAS } from './exportaciones.tablas.js';
 import type { ExportacionTomada } from './exportaciones.types.js';
+import { ATRIBUTOS, enSpan } from '../../shared/observability/index.js';
 
 // A-24: cada réplica genera como mucho dos archivos a la vez; el resto espera en la cola (la otra réplica o el
 // siguiente ciclo los toma). Es un límite local de la réplica, no un estado compartido (RNF-2).
@@ -104,6 +105,20 @@ export function crearProcesadorExportaciones({
     return estado === 'Fallida' ? 'fallidas' : 'reintentos';
   }
 
+  /** E9-H01: un span por solicitud, hijo de la tarea o del POST que la disparó. */
+  function procesarConSpan(tomada: ExportacionTomada): Promise<Resultado> {
+    const atributos = {
+      [ATRIBUTOS.idExportacion]: tomada.idExportacion,
+      [ATRIBUTOS.reporteExportacion]: tomada.reporte,
+      [ATRIBUTOS.formatoExportacion]: tomada.formato,
+    };
+    return enSpan('exportacion.procesar', atributos, async (span) => {
+      const resultado = await procesar(tomada);
+      span.setAttribute(ATRIBUTOS.resultadoExportacion, resultado);
+      return resultado;
+    });
+  }
+
   async function procesar(tomada: ExportacionTomada): Promise<Resultado> {
     let archivo: { referencia: string; tamanoBytes: number };
     try {
@@ -165,7 +180,7 @@ export function crearProcesadorExportaciones({
             const { idExportacion } = tomada;
             enProceso.push(
               seguir(
-                procesar(tomada)
+                procesarConSpan(tomada)
                   .then((resultado) => {
                     resumen[resultado] += 1;
                   })

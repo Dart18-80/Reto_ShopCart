@@ -13,6 +13,7 @@ import type { ExportacionTomada } from '../../../../src/modules/exportaciones/ex
 import type { ReportesService } from '../../../../src/modules/reportes/index.js';
 import type { AlmacenArchivos } from '../../../../src/shared/almacen/index.js';
 import { ejecutarConContexto, obtenerContexto } from '../../../../src/shared/http/index.js';
+import { usarTelemetriaEnMemoria } from '../../telemetria-en-memoria.js';
 
 const tomada = (cambios: Partial<ExportacionTomada> = {}): ExportacionTomada => ({
   idExportacion: 41,
@@ -82,6 +83,24 @@ function preparar(colas: ExportacionTomada[] = [tomada()]) {
   });
   return { procesador, repositorio, reportes, almacen, archivos };
 }
+
+const telemetria = usarTelemetriaEnMemoria();
+
+describe('procesador de exportaciones con trazas (E9-H01)', () => {
+  it('cada solicitud procesada es un span con su ID, reporte, formato y resultado', async () => {
+    const { procesador } = preparar();
+
+    await procesador.procesarPendientes();
+
+    const [span] = telemetria.spans().filter((s) => s.name === 'exportacion.procesar');
+    expect(span?.attributes).toMatchObject({
+      'shopcart.exportacion.id': 41,
+      'shopcart.exportacion.reporte': 'top-productos',
+      'shopcart.exportacion.formato': 'xlsx',
+      'shopcart.exportacion.resultado': 'completadas',
+    });
+  });
+});
 
 describe('procesador de exportaciones (E7-H05, A-24)', () => {
   it('toma, genera el archivo en el almacén y la completa con su token', async () => {

@@ -54,8 +54,8 @@
 <text x="54" y="818" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.5" font-weight="400" fill="#1F2937" text-anchor="start">4. api-1 · api-2  → /health OK</text>
 <text x="54" y="842" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.5" font-weight="400" fill="#1F2937" text-anchor="start">5. web (nginx)</text>
 <text x="54" y="880" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#475569" text-anchor="start">docker compose up -d</text>
-<text x="54" y="902" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="400" fill="#6B7280" text-anchor="start">Observabilidad (OpenTelemetry</text>
-<text x="54" y="922" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="400" fill="#6B7280" text-anchor="start">+ Grafana LGTM): Fase 2</text>
+<text x="54" y="902" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="400" fill="#6B7280" text-anchor="start">+ --profile observabilidad</text>
+<text x="54" y="922" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="400" fill="#6B7280" text-anchor="start">(opcional: Grafana LGTM)</text>
 <rect x="340" y="190" width="290" height="300" rx="8" fill="white" stroke="#CBD5E1" stroke-width="1.5"/>
 <path d="M340 198 a8 8 0 0 1 8 -8 h274 a8 8 0 0 1 8 8 v26 h-290 z" fill="#1F8A7A"/>
 <text x="354" y="212" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="15" font-weight="700" fill="white" text-anchor="start">web · nginx</text>
@@ -178,7 +178,7 @@
 <text x="744" y="1158" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.2" font-weight="400" fill="#1F2937" text-anchor="start">Configuración validada con Zod al arrancar · .env (sin secretos en el repo)</text>
 <text x="744" y="1179" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.2" font-weight="400" fill="#1F2937" text-anchor="start">Errores centralizados: THROW 5xxxx en SP → código estable → HTTP</text>
 <text x="744" y="1200" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.2" font-weight="400" fill="#1F2937" text-anchor="start">OpenAPI 3.1 en /api/docs generado desde los esquemas Zod</text>
-<text x="744" y="1221" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.2" font-weight="400" fill="#1F2937" text-anchor="start">pino: requestId e instancia en cada línea, redacción de datos sensibles</text>
+<text x="744" y="1221" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.2" font-weight="400" fill="#1F2937" text-anchor="start">OpenTelemetry + pino: requestId y trace_id en spans y logs, sin datos sensibles</text>
 <rect x="1420" y="190" width="300" height="290" rx="8" fill="white" stroke="#CBD5E1" stroke-width="1.5"/>
 <path d="M1420 198 a8 8 0 0 1 8 -8 h284 a8 8 0 0 1 8 8 v26 h-300 z" fill="#B9412E"/>
 <text x="1434" y="212" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="15" font-weight="700" fill="white" text-anchor="start">sqlserver</text>
@@ -229,7 +229,7 @@
 <text x="1750.0" y="238" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#4B5563" text-anchor="middle">DDL +</text>
 <text x="1750.0" y="253" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#4B5563" text-anchor="middle">semillas</text>
 <rect x="1772" y="800" width="236" height="210" rx="10" fill="none" stroke="#3E8E3A" stroke-width="1.4" stroke-dasharray="7 5"/>
-<text x="1786" y="824" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.5" font-weight="700" fill="#2F6E2C" text-anchor="start">Fase 2: perfil observability</text>
+<text x="1786" y="824" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.5" font-weight="700" fill="#2F6E2C" text-anchor="start">perfil opcional: observabilidad</text>
 <rect x="1786" y="840" width="208" height="155" rx="8" fill="white" stroke="#CBD5E1" stroke-width="1.5"/>
 <path d="M1786 848 a8 8 0 0 1 8 -8 h192 a8 8 0 0 1 8 8 v26 h-208 z" fill="#3E8E3A"/>
 <text x="1800" y="862" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="15" font-weight="700" fill="white" text-anchor="start">otel-lgtm</text>
@@ -239,5 +239,5 @@
 <text x="1800" y="940" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.2" font-weight="400" fill="#1F2937" text-anchor="start">Prometheus · métricas</text>
 <text x="1800" y="962" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12.2" font-weight="400" fill="#6B7280" text-anchor="start">Dashboards provisionados</text>
 <line x1="1320" y1="1000" x2="1786" y2="960" stroke="#4B5563" stroke-width="1.8" stroke-dasharray="7 5" marker-end="url(#arrD)"/>
-<text x="1560" y="968" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#4B5563" text-anchor="middle">OTLP (Fase 2)</text>
+<text x="1560" y="968" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#4B5563" text-anchor="middle">OTLP: trazas, métricas y logs</text>
 </svg>

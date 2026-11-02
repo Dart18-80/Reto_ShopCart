@@ -6,6 +6,7 @@ import { crearInvalidadorReportes } from './modules/reportes/index.js';
 import { crearCacheRedis } from './shared/adapters/cache-redis.js';
 import { crearAlmacenEnDisco } from './shared/adapters/almacen-disco.js';
 import {
+  contarExportacionesPendientes,
   crearProcesadorExportaciones,
   crearTareasDeExportaciones,
 } from './modules/exportaciones/index.js';
@@ -28,7 +29,8 @@ import { crearVersionesSesionRedis } from './shared/adapters/versiones-sesion-re
 import { conectarPool, conexionMssql, configurarBaseDatos } from './shared/db/index.js';
 import { crearTokensAcceso } from './shared/http/index.js';
 import { crearPlanificador } from './shared/jobs/index.js';
-import { crearLogger } from './shared/observability/index.js';
+import { conTrazas, crearLogger, metricasDeNegocio } from './shared/observability/index.js';
+import { detenerTelemetria } from './shared/observability/telemetria.js';
 
 const ESPERA_APAGADO_MS = 10_000;
 // A-07: login 5 por minuto por IP y correo; registro 3 por minuto por IP; cambio de contraseña 5 por
@@ -52,7 +54,8 @@ async function iniciar(): Promise<void> {
   });
   configurarBaseDatos(conexionMssql(pool), logger);
   const redis = conectarRedis(config.redis, logger);
-  const pasarela = crearPasarelaSimulada();
+  // E9-H01: cada operación de la pasarela es un span propio.
+  const pasarela = conTrazas(crearPasarelaSimulada());
   const cache = crearCacheRedis(redis, logger);
   const reportes = crearInvalidadorReportes(cache);
   const almacen = crearAlmacenEnDisco(config.directorioAlmacen);
@@ -114,7 +117,9 @@ async function iniciar(): Promise<void> {
       ...crearTareasDeSistema(),
     ],
     logger.child({ modulo: 'jobs' }),
+    config.instancia,
   );
+  metricasDeNegocio.observarExportacionesPendientes(contarExportacionesPendientes);
   planificador.iniciar();
 
   registrarApagadoOrdenado({
@@ -129,6 +134,8 @@ async function iniciar(): Promise<void> {
           .then(() => exportaciones.detener())
           .then(() => pool.close()),
       () => redis.quit(),
+      // E9-H01: lo último que se exportó (spans y logs del apagado) sale antes de terminar.
+      detenerTelemetria,
     ],
     logger,
     salir: (codigo) => process.exit(codigo),

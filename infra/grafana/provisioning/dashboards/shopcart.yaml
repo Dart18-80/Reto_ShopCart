@@ -1,0 +1,12 @@
+# E9-H01: el dashboard de ShopCart, aprovisionado desde infra/grafana/dashboards (montado de solo lectura).
+apiVersion: 1
+
+providers:
+  - name: ShopCart
+    folder: ShopCart
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    options:
+      path: /otel-lgtm/shopcart-dashboards
+      foldersFromFilesStructure: false
