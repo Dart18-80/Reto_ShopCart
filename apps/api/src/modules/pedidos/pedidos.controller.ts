@@ -1,11 +1,12 @@
 import type { RequestHandler } from 'express';
-import { manejar, paginar } from '../../shared/http/index.js';
+import { manejar, obtenerContexto, paginar } from '../../shared/http/index.js';
 import {
   pedidoARespuesta,
   resumenARespuesta,
   resumenGestionARespuesta,
 } from './pedidos.respuesta.js';
 import {
+  cambiarEstadoSchema,
   listarPedidosGestionSchema,
   listarPedidosPropiosSchema,
   paramsIdPedidoSchema,
@@ -16,6 +17,15 @@ export interface PedidosController {
   listarPropios: RequestHandler;
   obtenerPropio: RequestHandler;
   listarGestion: RequestHandler;
+  cambiarEstado: RequestHandler;
+}
+
+// autorizar() ya exigió un rol de gestión: aquí solo se lee del contexto de la petición.
+function rolDeLaPeticion() {
+  const rol = obtenerContexto()?.rol;
+  if (rol === undefined || rol === null)
+    throw new Error('La ruta de gestión no tiene rol autenticado');
+  return rol;
 }
 
 export function crearPedidosController(servicio: PedidosService): PedidosController {
@@ -33,5 +43,13 @@ export function crearPedidosController(servicio: PedidosService): PedidosControl
       const { filas, total } = await servicio.listarGestion(query);
       res.json(paginar(filas.map(resumenGestionARespuesta), total, query));
     }),
+
+    cambiarEstado: manejar(
+      { params: paramsIdPedidoSchema, body: cambiarEstadoSchema },
+      async ({ params, body }, res) => {
+        const pedido = await servicio.cambiarEstado(params.id, body, rolDeLaPeticion());
+        res.json({ datos: pedidoARespuesta(pedido) });
+      },
+    ),
   };
 }

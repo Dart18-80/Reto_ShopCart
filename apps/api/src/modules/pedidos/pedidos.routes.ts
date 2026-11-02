@@ -9,6 +9,7 @@ import {
   resumenPedidoSchema,
 } from './pedidos.respuesta.js';
 import {
+  cambiarEstadoSchema,
   listarPedidosGestionSchema,
   listarPedidosPropiosSchema,
   paramsIdPedidoSchema,
@@ -67,6 +68,23 @@ registroOpenApi.registerPath({
   },
 });
 
+registroOpenApi.registerPath({
+  method: 'post',
+  path: '/api/v1/admin/pedidos/{id}/estado',
+  tags: ['Pedidos'],
+  summary:
+    'Mueve el pedido por su ciclo (Pagado → EnPreparacion → Despachado → Entregado) si sigue en estadoEsperado (N-08)',
+  security: seguridad,
+  request: { params: paramsIdPedidoSchema, body: json(cambiarEstadoSchema) },
+  responses: {
+    200: {
+      description: 'El pedido con su nuevo estado',
+      ...json(z.object({ datos: pedidoSchema })),
+    },
+    ...respuestasError(400, 401, 403, 404, 409),
+  },
+});
+
 export function crearPedidosRouter(
   controller: PedidosController,
   autenticar: RequestHandler,
@@ -78,5 +96,6 @@ export function crearPedidosRouter(
   router.get('/pedidos', ...soloCliente, controller.listarPropios);
   router.get('/pedidos/:id', ...soloCliente, controller.obtenerPropio);
   router.get('/admin/pedidos', ...gestion, controller.listarGestion);
+  router.post('/admin/pedidos/:id/estado', ...gestion, controller.cambiarEstado);
   return router;
 }

@@ -1,11 +1,20 @@
 import type { PaginaSP } from '../../shared/db/index.js';
 import { AppError } from '../../shared/errors/index.js';
+import type { Rol } from '../../shared/http/index.js';
 import type { PedidosRepository } from './pedidos.repository.js';
-import type { ListarPedidosGestion, ListarPedidosPropios } from './pedidos.schemas.js';
+import type {
+  CambiarEstado,
+  ListarPedidosGestion,
+  ListarPedidosPropios,
+} from './pedidos.schemas.js';
+import { transicionPermitida } from './pedidos.transiciones.js';
 import type { Pedido, ResumenPedido, ResumenPedidoGestion } from './pedidos.types.js';
 
 interface Dependencias {
-  repositorio: Pick<PedidosRepository, 'listarPropios' | 'listarGestion' | 'obtener'>;
+  repositorio: Pick<
+    PedidosRepository,
+    'listarPropios' | 'listarGestion' | 'obtener' | 'cambiarEstado'
+  >;
 }
 
 export function crearPedidosService({ repositorio }: Dependencias) {
@@ -22,6 +31,16 @@ export function crearPedidosService({ repositorio }: Dependencias) {
 
     listarGestion: (filtros: ListarPedidosGestion): Promise<PaginaSP<ResumenPedidoGestion>> =>
       repositorio.listarGestion(filtros),
+
+    async cambiarEstado(idPedido: number, cambio: CambiarEstado, rol: Rol): Promise<Pedido> {
+      // N-08, primera capa: un 409 claro antes de ir a la base; el SP y el trigger lo vuelven a exigir.
+      if (!transicionPermitida(cambio.estadoEsperado, cambio.estadoNuevo, rol, 'Gestion')) {
+        throw new AppError('TRANSICION_INVALIDA', {
+          mensaje: `El pedido no puede pasar de ${cambio.estadoEsperado} a ${cambio.estadoNuevo} desde la gestión.`,
+        });
+      }
+      return repositorio.cambiarEstado(idPedido, cambio);
+    },
   };
 }
 

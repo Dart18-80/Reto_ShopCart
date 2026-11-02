@@ -1,4 +1,5 @@
 import { consultaPaginacionSchema, idEnRutaSchema, idSchema } from '../../shared/http/index.js';
+import { textoNvarchar } from '@shopcart/shared';
 import { z } from '../../shared/openapi/zod.js';
 import { ESTADOS_PEDIDO } from './pedidos.types.js';
 
@@ -21,3 +22,15 @@ export const listarPedidosGestionSchema = consultaPaginacionSchema
 
 export type ListarPedidosPropios = z.infer<typeof listarPedidosPropiosSchema>;
 export type ListarPedidosGestion = z.infer<typeof listarPedidosGestionSchema>;
+
+// RF-07: el motivo es opcional en los cambios de gestión (NVARCHAR(250)).
+export const cambiarEstadoSchema = z
+  .object({
+    estadoEsperado: z.enum(ESTADOS_PEDIDO),
+    estadoNuevo: z.enum(ESTADOS_PEDIDO),
+    motivo: textoNvarchar(250).optional(),
+  })
+  .strict()
+  .openapi('CambiarEstadoPedido');
+
+export type CambiarEstado = z.infer<typeof cambiarEstadoSchema>;

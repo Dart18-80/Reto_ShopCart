@@ -1,5 +1,6 @@
 import sql from 'mssql';
 import {
+  ejecutarSP,
   ejecutarSPConjuntos,
   ejecutarSPPaginado,
   type NombreSP,
@@ -7,7 +8,7 @@ import {
   type ParametrosSP,
 } from '../../shared/db/index.js';
 import { aMonto } from '../../shared/dinero/index.js';
-import type { ListarPedidosGestion } from './pedidos.schemas.js';
+import type { CambiarEstado, ListarPedidosGestion } from './pedidos.schemas.js';
 import type {
   CambioDeEstado,
   Pedido,
@@ -202,6 +203,23 @@ export const pedidosRepository = {
       Tamano: { tipo: sql.Int, valor: filtros.tamano },
     });
     return { filas: filas.map(aResumenGestion), total };
+  },
+
+  /** N-08: el SP valida la transición, el rol y el estado esperado bajo bloqueo. */
+  async cambiarEstado(idPedido: number, cambio: CambiarEstado): Promise<Pedido> {
+    const pedido = await pedidoDe('SP_Pedidos_CambiarEstado', {
+      IDPedido: { tipo: sql.Int, valor: idPedido },
+      EstadoEsperado: { tipo: sql.VarChar(20), valor: cambio.estadoEsperado },
+      EstadoNuevo: { tipo: sql.VarChar(20), valor: cambio.estadoNuevo },
+      Motivo: { tipo: sql.NVarChar(250), valor: cambio.motivo ?? null },
+    });
+    if (pedido === null) throw new Error('SP_Pedidos_CambiarEstado no devolvió el pedido');
+    return pedido;
+  },
+
+  /** N-08: la tabla de transiciones (la prueba de coincidencia con el mapa del servicio). */
+  listarTransiciones(): Promise<{ Origen: string; Destino: string; Rol: string }[]> {
+    return ejecutarSP('SP_Pedidos_ListarTransiciones');
   },
 
   /** RF-01: null si no existe o si es de otro cliente. */
