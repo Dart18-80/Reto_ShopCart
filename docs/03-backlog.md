@@ -405,7 +405,7 @@
 ### E4-H04 · Cupones (administración) — `Must` · 0.25 h
 **Alcance:** Admin `GET/POST /admin/cupones`, `PATCH /admin/cupones/:id`, activar y desactivar.
 **CA**
-- [ ] Un cupón con usos no permite cambiar tipo ni valor (`409 CUPON_USADO_NO_EDITABLE`); sí vigencia, límites y estado.
+- [ ] Un cupón con usos (al menos una fila en `UsoCupon`) solo permite cambiar vigencia, límites y estado; tipo, valor, categoría, compra mínima, tope y código responden `409 CUPON_USADO_NO_EDITABLE` con el campo en los detalles.
 - [ ] El código se guarda en mayúsculas y es único sin distinguir mayúsculas.
 - [ ] Bajar el límite total por debajo de los usos comprometidos responde con un error claro.
 

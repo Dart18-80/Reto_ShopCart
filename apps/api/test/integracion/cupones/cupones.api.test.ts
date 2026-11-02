@@ -171,24 +171,65 @@ describe('editar cupones (E4-H04, N-12)', () => {
     expect(leerDatos(respuesta, cuponSchema)).toMatchObject({ tipo: 'Porcentaje', valor: '20.00' });
   });
 
-  it('con usos no cambia tipo ni valor (409 CUPON_USADO_NO_EDITABLE) y queda como estaba', async () => {
-    const { idCupon } = await cuponNuevo();
-    await usarCupon(idCupon);
+  it.each([
+    ['tipo', { tipo: 'MontoFijo' }],
+    ['valor', { valor: '11.00' }],
+    ['idCategoria', 'categoria'],
+    ['idCategoria', { idCategoria: null }],
+    ['montoMinimoCompra', { montoMinimoCompra: '1.00' }],
+    ['montoMaximoDescuento', { montoMaximoDescuento: '3.00' }],
+    ['montoMaximoDescuento', { montoMaximoDescuento: null }],
+    ['codigo', 'codigo'],
+  ] as const)(
+    'con usos no cambia %s: 409 CUPON_USADO_NO_EDITABLE con el campo en detalles y queda como estaba',
+    async (campo, cambio) => {
+      const idCategoria = await crearCategoria(app, admin.token);
+      const original = await cuponNuevo({
+        tipo: 'Porcentaje',
+        valor: '10',
+        montoMaximoDescuento: '5',
+        idCategoria,
+      });
+      await usarCupon(original.idCupon);
+      const cuerpo =
+        cambio === 'categoria'
+          ? { idCategoria: await crearCategoria(app, admin.token) }
+          : cambio === 'codigo'
+            ? { codigo: codigoUnico() }
+            : cambio;
 
-    const tipo = await actualizar(idCupon, { tipo: 'Porcentaje' });
-    const valor = await actualizar(idCupon, { valor: '11.00' });
-    const consulta = await request(app)
-      .get(`${RUTA}/${String(idCupon)}`)
-      .set(conToken(admin.token));
+      const respuesta = await actualizar(original.idCupon, cuerpo);
+      const consulta = await request(app)
+        .get(`${RUTA}/${String(original.idCupon)}`)
+        .set(conToken(admin.token));
 
-    expect([tipo.status, valor.status]).toEqual([409, 409]);
-    expect(leerError(valor).codigo).toBe('CUPON_USADO_NO_EDITABLE');
-    expect(leerDatos(consulta, cuponSchema)).toMatchObject({
-      tipo: 'MontoFijo',
-      valor: '10.00',
-      usado: true,
-      usosComprometidos: 1,
+      expect(respuesta.status).toBe(409);
+      expect(leerError(respuesta)).toMatchObject({
+        codigo: 'CUPON_USADO_NO_EDITABLE',
+        detalles: { campo },
+      });
+      expect(leerDatos(consulta, cuponSchema)).toEqual({
+        ...original,
+        usado: true,
+        usosComprometidos: 1,
+      });
+    },
+  );
+
+  it('con usos, enviar los mismos valores inmutables no cuenta como cambio', async () => {
+    const original = await cuponNuevo();
+    await usarCupon(original.idCupon);
+
+    const respuesta = await actualizar(original.idCupon, {
+      tipo: original.tipo,
+      valor: original.valor,
+      codigo: original.codigo.toLowerCase(),
+      montoMinimoCompra: original.montoMinimoCompra,
+      idCategoria: null,
+      montoMaximoDescuento: null,
     });
+
+    expect(respuesta.status).toBe(200);
   });
 
   it('con usos sí cambian la vigencia, los límites y el estado (y el mismo valor no cuenta como cambio)', async () => {
@@ -249,17 +290,37 @@ describe('editar cupones (E4-H04, N-12)', () => {
     });
   });
 
-  it('pasar a monto fijo con un tope de descuento guardado responde 400, no 500', async () => {
-    const { idCupon } = await cuponNuevo({
-      tipo: 'Porcentaje',
-      valor: '10',
-      montoMaximoDescuento: '5',
-    });
+  it.each([
+    [
+      'pasar a monto fijo con un tope guardado',
+      { tipo: 'Porcentaje', valor: '10', montoMaximoDescuento: '5' },
+      { tipo: 'MontoFijo' },
+      'montoMaximoDescuento',
+    ],
+    ['pasar a porcentaje con un valor de 150', { valor: '150' }, { tipo: 'Porcentaje' }, 'valor'],
+    [
+      'una fecha final anterior a la inicial guardada',
+      {
+        fechaInicio: new Date(Date.now() + 10 * DIA_MS).toISOString(),
+        fechaFin: new Date(Date.now() + 20 * DIA_MS).toISOString(),
+      },
+      { fechaFin: new Date(Date.now() + 5 * DIA_MS).toISOString() },
+      'fechaFin',
+    ],
+  ])(
+    '%s responde 400 con el campo en detalles (CHECK de la base)',
+    async (_caso, inicial, cambio, campo) => {
+      const { idCupon } = await cuponNuevo(inicial);
 
-    const respuesta = await actualizar(idCupon, { tipo: 'MontoFijo' });
+      const respuesta = await actualizar(idCupon, cambio);
 
-    expect(respuesta.status).toBe(400);
-  });
+      expect(respuesta.status).toBe(400);
+      expect(leerError(respuesta)).toMatchObject({
+        codigo: 'PARAMETRO_INVALIDO',
+        detalles: { campo },
+      });
+    },
+  );
 
   it('cambiar a un código que ya existe responde 409', async () => {
     const existente = await cuponNuevo();

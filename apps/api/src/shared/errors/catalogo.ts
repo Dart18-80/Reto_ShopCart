@@ -165,7 +165,7 @@ export const CATALOGO = {
   CUPON_USADO_NO_EDITABLE: {
     http: 409,
     numeroSql: 50509,
-    mensaje: 'El cupón ya se usó y no se puede editar.',
+    mensaje: 'El cupón ya se usó: solo se pueden cambiar su vigencia, sus límites y su estado.',
   },
   CUPON_CODIGO_DUPLICADO: {
     http: 409,
