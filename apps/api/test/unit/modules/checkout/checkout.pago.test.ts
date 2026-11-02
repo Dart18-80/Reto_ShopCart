@@ -31,6 +31,7 @@ const PEDIDO: Pedido = {
   total: CERO,
   baseImponible: CERO,
   iva: CERO,
+  montoReembolsado: CERO,
   codigoCupon: null,
   envio: { nombre: 'Estándar', fechaEstimadaEntrega: '2026-11-05' },
   fechaPago: new Date('2026-11-01T12:00:00Z'),
@@ -45,6 +46,7 @@ const PEDIDO: Pedido = {
     referencia: null,
   },
   lineas: [],
+  historial: [],
 };
 
 const AUTORIZADA: ResultadoAutorizacion = {

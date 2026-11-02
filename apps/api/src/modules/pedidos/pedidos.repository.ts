@@ -1,7 +1,19 @@
 import sql from 'mssql';
-import { ejecutarSPConjuntos, type NombreSP, type ParametrosSP } from '../../shared/db/index.js';
+import {
+  ejecutarSPConjuntos,
+  ejecutarSPPaginado,
+  type NombreSP,
+  type PaginaSP,
+  type ParametrosSP,
+} from '../../shared/db/index.js';
 import { aMonto } from '../../shared/dinero/index.js';
-import type { Pedido } from './pedidos.types.js';
+import type { ListarPedidosGestion } from './pedidos.schemas.js';
+import type {
+  CambioDeEstado,
+  Pedido,
+  ResumenPedido,
+  ResumenPedidoGestion,
+} from './pedidos.types.js';
 
 interface FilaPedido {
   IDPedido: number;
@@ -13,6 +25,7 @@ interface FilaPedido {
   Total: number;
   BaseImponible: number;
   IVA: number;
+  MontoReembolsado: number;
   CodigoCupon: string | null;
   NombreMetodoEnvio: string;
   FechaEstimadaEntrega: Date;
@@ -29,22 +42,75 @@ interface FilaPedido {
 }
 
 interface FilaLineaPedido {
+  IDDetallePedido: number;
   IDVariante: number;
   SKU: string;
   NombreProducto: string;
   DescripcionVariante: string;
   NombreCategoria: string;
   Cantidad: number;
+  CantidadDevuelta: number;
   PrecioUnitario: number;
   DescuentoLinea: number;
   TotalLinea: number;
+}
+
+interface FilaHistorial {
+  CodigoEstadoAnterior: string | null;
+  CodigoEstadoNuevo: string;
+  RolUsuario: string;
+  Motivo: string | null;
+  Fecha: Date;
+}
+
+interface FilaResumen {
+  IDPedido: number;
+  NumeroPedido: string;
+  Estado: string;
+  Total: number;
+  Articulos: number;
+  FechaPago: Date;
+  FechaPagoLocal: Date;
+}
+
+interface FilaResumenGestion extends FilaResumen {
+  IDCliente: number;
+  NombreCliente: string;
+  CorreoCliente: string;
 }
 
 // El driver entrega un DATE como la medianoche UTC de ese día.
 const LARGO_FECHA = 10;
 const aFecha = (fecha: Date): string => fecha.toISOString().slice(0, LARGO_FECHA);
 
-const aPedido = (fila: FilaPedido, lineas: FilaLineaPedido[]): Pedido => ({
+const aCambio = (fila: FilaHistorial): CambioDeEstado => ({
+  estadoAnterior: fila.CodigoEstadoAnterior,
+  estadoNuevo: fila.CodigoEstadoNuevo,
+  rol: fila.RolUsuario,
+  motivo: fila.Motivo,
+  fecha: fila.Fecha,
+});
+
+const aResumen = (fila: FilaResumen): ResumenPedido => ({
+  idPedido: fila.IDPedido,
+  numeroPedido: fila.NumeroPedido,
+  estado: fila.Estado,
+  total: aMonto(fila.Total),
+  articulos: fila.Articulos,
+  fechaPago: fila.FechaPago,
+  fechaPagoLocal: aFecha(fila.FechaPagoLocal),
+});
+
+const aResumenGestion = (fila: FilaResumenGestion): ResumenPedidoGestion => ({
+  ...aResumen(fila),
+  cliente: { idUsuario: fila.IDCliente, nombre: fila.NombreCliente, correo: fila.CorreoCliente },
+});
+
+const aPedido = (
+  fila: FilaPedido,
+  lineas: FilaLineaPedido[],
+  historial: FilaHistorial[],
+): Pedido => ({
   idPedido: fila.IDPedido,
   numeroPedido: fila.NumeroPedido,
   estado: fila.Estado,
@@ -54,6 +120,7 @@ const aPedido = (fila: FilaPedido, lineas: FilaLineaPedido[]): Pedido => ({
   total: aMonto(fila.Total),
   baseImponible: aMonto(fila.BaseImponible),
   iva: aMonto(fila.IVA),
+  montoReembolsado: aMonto(fila.MontoReembolsado),
   codigoCupon: fila.CodigoCupon,
   envio: {
     nombre: fila.NombreMetodoEnvio,
@@ -71,27 +138,31 @@ const aPedido = (fila: FilaPedido, lineas: FilaLineaPedido[]): Pedido => ({
     referencia: fila.Referencia,
   },
   lineas: lineas.map((linea) => ({
+    idDetallePedido: linea.IDDetallePedido,
     idVariante: linea.IDVariante,
     sku: linea.SKU,
     producto: linea.NombreProducto,
     descripcionVariante: linea.DescripcionVariante,
     categoria: linea.NombreCategoria,
     cantidad: linea.Cantidad,
+    cantidadDevuelta: linea.CantidadDevuelta,
     precioUnitario: aMonto(linea.PrecioUnitario),
     descuentoLinea: aMonto(linea.DescuentoLinea),
     totalLinea: aMonto(linea.TotalLinea),
   })),
+  historial: historial.map(aCambio),
 });
 
 async function pedidoDe(nombre: NombreSP, parametros: ParametrosSP): Promise<Pedido | null> {
-  const [pedidos, lineas] = await ejecutarSPConjuntos<[FilaPedido[], FilaLineaPedido[]]>(
-    nombre,
-    parametros,
-  );
+  const [pedidos, lineas, historial] = await ejecutarSPConjuntos<
+    [FilaPedido[], FilaLineaPedido[], FilaHistorial[]]
+  >(nombre, parametros);
   const pedido = pedidos?.[0];
   if (pedido === undefined) return null;
-  if (lineas === undefined) throw new Error(`${nombre} devolvió un pedido sin detalle`);
-  return aPedido(pedido, lineas);
+  if (lineas === undefined || historial === undefined) {
+    throw new Error(`${nombre} devolvió un pedido sin detalle o sin historial`);
+  }
+  return aPedido(pedido, lineas, historial);
 }
 
 export const pedidosRepository = {
@@ -110,6 +181,27 @@ export const pedidosRepository = {
     return pedidoDe('SP_Pedidos_ObtenerDeIntento', {
       IDIntentoPago: { tipo: sql.BigInt, valor: idIntentoPago },
     });
+  },
+
+  /** RF-01: los del cliente de la petición (@IDUsuarioActor). */
+  async listarPropios(pagina: number, tamano: number): Promise<PaginaSP<ResumenPedido>> {
+    const { filas, total } = await ejecutarSPPaginado<FilaResumen>('SP_Pedidos_ListarPropios', {
+      Pagina: { tipo: sql.Int, valor: pagina },
+      Tamano: { tipo: sql.Int, valor: tamano },
+    });
+    return { filas: filas.map(aResumen), total };
+  },
+
+  async listarGestion(filtros: ListarPedidosGestion): Promise<PaginaSP<ResumenPedidoGestion>> {
+    const { filas, total } = await ejecutarSPPaginado<FilaResumenGestion>('SP_Pedidos_Listar', {
+      Estado: { tipo: sql.VarChar(20), valor: filtros.estado ?? null },
+      IDClienteFiltro: { tipo: sql.Int, valor: filtros.idCliente ?? null },
+      Desde: { tipo: sql.Date, valor: filtros.desde ?? null },
+      Hasta: { tipo: sql.Date, valor: filtros.hasta ?? null },
+      Pagina: { tipo: sql.Int, valor: filtros.pagina },
+      Tamano: { tipo: sql.Int, valor: filtros.tamano },
+    });
+    return { filas: filas.map(aResumenGestion), total };
   },
 
   /** RF-01: null si no existe o si es de otro cliente. */
