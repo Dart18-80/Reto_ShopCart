@@ -511,6 +511,8 @@
 - [ ] Un cliente que pide el ID de un pedido ajeno recibe `404` (criterio de RF-01).
 - [ ] El listado de gestión responde en menos de 1 s con la semilla.
 
+**Decisión del PO (cierre de E5):** RF-01 con dos clientes (pedido ajeno → 404). El filtro de fechas de la gestión usa `FechaPagoLocal`, igual que los reportes. Un índice por filtro, con el tiempo medido con la semilla.
+
 **Referencias:** RF-07, RF-08, RF-01.
 
 ### E6-H02 · Cambios de estado — `Must` · 0.75 h
@@ -520,6 +522,8 @@
 - [ ] Si el pedido ya cambió de estado, responde `409 CONFLICTO_CONCURRENCIA`.
 - [ ] Cada cambio registra usuario, fecha y hora, estado anterior y nuevo (criterio de RF-07).
 - [ ] El test de coincidencia falla si el mapa y la tabla difieren.
+
+**Decisión del PO (cierre de E5):** `DevueltoParcial` y `Devuelto` solo los deriva el SP de devoluciones, nunca el endpoint. La prueba de coincidencia compara el mapa y la tabla, incluido el rol.
 
 **Referencias:** N-08, RF-07.
 
@@ -532,6 +536,8 @@
 - [ ] Si la pasarela falla al reembolsar, la cancelación se mantiene y el reembolso queda `Pendiente`.
 - [ ] Repetir la cancelación no genera un segundo reembolso.
 
+**Decisión del PO (cierre de E5), historia grande con plan:** el `Reembolso` `Pendiente` se registra en la misma transacción de la cancelación y la pasarela se llama después del commit, con una llave determinista por reembolso para que los reintentos y el job nunca reembolsen dos veces. Si el intento del pedido todavía no está `Capturado` (captura pendiente de conciliación), cancelar anula la autorización en vez de reembolsar, y la conciliación nunca captura el cobro de un pedido cancelado. El *Should* (job cada 5 min con `sp_getapplock`, 5 intentos → `Fallido`) se incluye. Dos cancelaciones simultáneas: una sola cancelación y un solo reembolso. `MontoReembolsado` nunca supera lo capturado (contador con `CHECK`, A-13).
+
 **Referencias:** N-09, N-03, A-04.
 
 ### E6-H04 · Devoluciones — `Must` · 0.5 h
@@ -542,6 +548,8 @@
 - [ ] El estado pasa a `DevueltoParcial` o `Devuelto` según corresponda; el producto reingresa con `ReingresoDevolucion`.
 - [ ] El reembolso es proporcional (precio pagado menos descuento repartido) y la suma de reembolsos nunca supera el total.
 - [ ] `FechaLocal` de la devolución es el día de Guatemala (UTC−6): una devolución a las 05:59 UTC queda en el día anterior y una a las 06:00 UTC en el mismo día (N-11, M-03).
+
+**Decisión del PO (cierre de E5):** las líneas de `DetallePedido` se bloquean en orden de su ID; los 30 días cuentan desde que el pedido pasó a `Entregado` (historial). Reembolso por unidad = precio efectivo − descuento repartido; la última devolución de una línea se lleva el residuo de centavos, para que la suma de los reembolsos de la línea sea exactamente lo pagado. El envío no se reembolsa en una devolución.
 
 **Referencias:** N-10, RF-07, A-13.
 
@@ -555,6 +563,8 @@
 - [ ] Los reportes **excluyen cancelados y descuentan devoluciones** en la fecha en que ocurren (criterio de RF-08 y N-11).
 - [ ] Las fechas se agrupan por día de Guatemala (`FechaPagoLocal`).
 - [ ] Cada reporte responde en menos de 1 s con la semilla.
+
+**Decisión del PO (cierre de E5):** las devoluciones se descuentan en su propia fecha local (prueba cerca de la medianoche); cada reporte se mide con la semilla y con los datos demo.
 
 **Referencias:** RF-08, N-11, N-13, M-07.
 
@@ -571,6 +581,8 @@
 - [ ] El dashboard muestra datos de los últimos 90 días desde el primer arranque.
 - [ ] Al terminar, `VW_Inventario_Conciliacion` está vacía y todos los pedidos cumplen sus `CHECK`.
 - [ ] Existe un cupón para demostrar cada mensaje de rechazo de RF-05.
+
+**Decisión del PO (cierre de E5):** `SP_Inventario_RegistrarMovimiento` acepta una fecha opcional del movimiento solo cuando el rol del contexto es `Sistema` y nunca en el futuro; sigue siendo el único que escribe el kardex. El generador usa esa fecha para que kardex, pedidos e historial coincidan en los 90 días (N-07 y 02). La semilla usa el siguiente `S###` libre (`S005` ya existe). Termina con `VW_Inventario_Conciliacion` vacía y un cupón por cada mensaje de rechazo.
 
 **Referencias:** RNF-1, M-08.
 
@@ -656,13 +668,13 @@ Se detalla en historias al cerrar la Fase 1.
 | E5-H03 | Confirmar el pago y crear el pedido | Must | 1.25 | Hecha |
 | E5-H04 | Planificador de tareas y expiración de sesiones | Must | 0.5 | Hecha |
 | E5-H05 | Test de concurrencia | Must | 0.75 | Hecha |
-| E6-H01 | Consulta de pedidos | Must | 0.5 | Propuesta |
-| E6-H02 | Cambios de estado | Must | 0.75 | Propuesta |
-| E6-H03 | Cancelación con reembolso | Must | 1.0 | Propuesta |
-| E6-H04 | Devoluciones | Must | 0.5 | Propuesta |
-| E7-H01 | Dashboard | Must | 1.0 | Propuesta |
-| E7-H02 | Consulta de la bitácora | Must | 0.25 | Propuesta |
-| E7-H03 | Generador de datos demo | Should | 1.25 | Propuesta |
+| E6-H01 | Consulta de pedidos | Must | 0.5 | Lista |
+| E6-H02 | Cambios de estado | Must | 0.75 | Lista |
+| E6-H03 | Cancelación con reembolso | Must | 1.0 | Lista |
+| E6-H04 | Devoluciones | Must | 0.5 | Lista |
+| E7-H01 | Dashboard | Must | 1.0 | Lista |
+| E7-H02 | Consulta de la bitácora | Must | 0.25 | Lista |
+| E7-H03 | Generador de datos demo | Should | 1.25 | Lista |
 | E8-H01 | README de la Fase 1 | Must | 0.75 | Propuesta |
 | E8-H02 | Revisión contra penalizaciones | Must | 0.5 | Propuesta |
 | E8-H03 | Ensayo en máquina limpia | Must | 0.25 | Propuesta |
