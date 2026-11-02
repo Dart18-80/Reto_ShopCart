@@ -149,3 +149,13 @@ describe('límite del cuerpo JSON (100 kb)', () => {
     expect(leerError(respuesta).codigo).toBe('CUERPO_DEMASIADO_GRANDE');
   });
 });
+
+describe('documento OpenAPI (E8-H01)', () => {
+  it('declara el esquema bearer que usan las rutas protegidas (Authorize en Swagger)', async () => {
+    const respuesta = await request(crearAppDePrueba()).get(RUTA_SIN_DEPENDENCIAS);
+
+    expect(respuesta.body).toMatchObject({
+      components: { securitySchemes: { bearer: { type: 'http', scheme: 'bearer' } } },
+    });
+  });
+});

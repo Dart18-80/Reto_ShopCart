@@ -1,29 +1,40 @@
 # ShopCart
 
-En construcción: ver [docs/](./docs/).
+Tienda en línea de una cadena guatemalteca de ropa, calzado y accesorios: catálogo con variantes, carrito de invitado y de cliente, cupones, checkout con pasarela de pago simulada, pedidos con ciclo de vida, inventario con kardex, devoluciones, bitácora y dashboard.
 
-## Requisitos
+**Fase 1 (esta entrega):** backend completo (Express 5 + TypeScript + SQL Server 2022) con dos réplicas detrás de nginx. El frontend es la Fase 2.
 
-- Node.js 24 LTS o superior y pnpm 10.
-- Docker Desktop. En Windows, con el backend de WSL2.
+| Documento                                                    | Contenido                                                                        |
+| ------------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| [docs/enunciado-shopcart.md](docs/enunciado-shopcart.md)     | El enunciado oficial del reto                                                    |
+| [docs/00-vision-y-contexto.md](docs/00-vision-y-contexto.md) | Decisiones de negocio (`N-xx`), no funcionales (`RNF-xx`) y generales (`D-xx`)   |
+| [docs/01-arquitectura.md](docs/01-arquitectura.md)           | Arquitectura (`A-xx`), flujos críticos, errores y API                            |
+| [docs/02-modelo-datos.md](docs/02-modelo-datos.md)           | Tablas, constraints, índices, SPs, vistas, funciones y códigos de error (`M-xx`) |
+| [docs/03-backlog.md](docs/03-backlog.md)                     | Historias, criterios de aceptación y tablero                                     |
 
-### Memoria para WSL2 (Windows)
+---
 
-SQL Server queda limitado a 2 GB, pero el entorno completo (SQL Server, Redis, dos réplicas de la API, nginx y, de forma opcional, observabilidad) necesita margen. Se recomienda asignar **10 GB** a WSL2 en `%UserProfile%\.wslconfig`:
+## 1. Instalación desde cero
+
+### Requisitos
+
+- **Docker Desktop** (en Windows, con el backend de WSL2) y **Git**.
+- Para correr las pruebas desde el host: **Node.js 24 LTS** y **pnpm 10** (`corepack enable` lo activa).
+
+**Memoria para WSL2 (Windows).** SQL Server queda limitado a 2 GB, pero el entorno completo (SQL Server, Redis, dos réplicas de la API y nginx) necesita margen. Se recomienda asignar **10 GB** a WSL2 en `%UserProfile%\.wslconfig`, y después ejecutar `wsl --shutdown` y volver a abrir Docker Desktop:
 
 ```ini
 [wsl2]
 memory=10GB
 ```
 
-Después ejecuta `wsl --shutdown` y vuelve a abrir Docker Desktop para que tome el cambio.
-
-## Arranque (en construcción)
+### Levantar el entorno
 
 Bash (Linux, macOS, Git Bash):
 
 ```bash
-cp .env.example .env              # y cambia los valores marcados como EJEMPLO
+git clone <url-del-repositorio> shopcart && cd shopcart
+cp .env.example .env              # los valores de ejemplo funcionan en local; cámbialos fuera de tu máquina
 docker compose up -d              # SQL Server, Redis, migrador, api-1, api-2 y nginx
 docker compose ps                 # todo "healthy"; db-migrator "Exited (0)"
 ```
@@ -31,100 +42,266 @@ docker compose ps                 # todo "healthy"; db-migrator "Exited (0)"
 PowerShell (Windows):
 
 ```powershell
-Copy-Item .env.example .env       # y cambia los valores marcados como EJEMPLO
+git clone <url-del-repositorio> shopcart; cd shopcart
+Copy-Item .env.example .env       # los valores de ejemplo funcionan en local; cámbialos fuera de tu máquina
 docker compose up -d              # SQL Server, Redis, migrador, api-1, api-2 y nginx
 docker compose ps                 # todo "healthy"; db-migrator "Exited (0)"
 ```
 
-Todo se sirve en <http://localhost:8080>: `/api/*` va a las réplicas y `/` a la web. API: `http://localhost:8080/api/v1/health` · Swagger: `http://localhost:8080/api/docs`.
+El primer arranque descarga las imágenes y construye la API (unos minutos). El migrador crea la base, los logins y aplica todos los scripts de `database/`, incluidos los datos demo; cuando termina, las réplicas quedan `healthy`.
 
-SQL Server y Redis solo se publican en `127.0.0.1`: son accesibles desde tu máquina (SSMS, Azure Data Studio, pruebas), no desde la red. nginx se publica en `WEB_IP` (por defecto `127.0.0.1`; con `0.0.0.0` queda visible en la red local).
+| URL                                           | Qué es                                                |
+| --------------------------------------------- | ----------------------------------------------------- |
+| <http://localhost:8080/api/docs>              | Swagger (OpenAPI 3.1 generado desde los esquemas Zod) |
+| <http://localhost:8080/api/v1/health>         | Estado de la réplica, de SQL Server y de Redis        |
+| <http://localhost:8080/api/docs/openapi.json> | El documento OpenAPI                                  |
 
-Los contenedores viven en una subred fija (`RED_PREFIJO`, por defecto `172.28.10`, en `.env`) con una IP fija por servicio, y cada uno resuelve los nombres de los demás desde su `/etc/hosts`. Así, si un servicio está detenido, su nombre nunca se consulta al DNS del host (que podría devolver una IP pública). Si esa subred choca con otra red de tu máquina, cambia `RED_PREFIJO` y vuelve a levantar con `docker compose down && docker compose up -d`.
+> En Windows, `localhost` se resuelve primero a IPv6 (`::1`) y nginx escucha en `127.0.0.1`: cada petición de un script paga unos 200 ms de reintento. Para medir tiempos, usa `http://127.0.0.1:8080` (la API responde en menos de 20 ms).
 
-### Balanceo entre réplicas (demo)
+Para empezar de cero (borra la base): `docker compose down -v && docker compose up -d`.
+
+### Variables de entorno
+
+Cada valor tiene una sola fuente en `.env`: Compose, el migrador y la API leen las mismas variables (`.env.example` documenta cada una). `.env` está en `.gitignore`: el repositorio no tiene credenciales reales.
+
+SQL Server y Redis solo se publican en `127.0.0.1` (accesibles desde tu máquina para SSMS o las pruebas, no desde la red). nginx se publica en `WEB_IP` (por defecto `127.0.0.1`). Los contenedores viven en una subred fija (`RED_PREFIJO`, por defecto `172.28.10`) con una IP por servicio; si choca con otra red de tu máquina, cámbiala y vuelve a levantar.
+
+> **Licencia de SQL Server:** el entorno usa la edición **Developer** (`MSSQL_PID=Developer`), gratuita para desarrollo y pruebas pero **no licenciada para producción**.
+
+---
+
+## 2. Credenciales de prueba
+
+| Correo                                                      | Contraseña          | Rol                                                             |
+| ----------------------------------------------------------- | ------------------- | --------------------------------------------------------------- |
+| `admin@shopcart.gt`                                         | `Admin2026!`        | Administrador                                                   |
+| `operador@shopcart.gt`                                      | `Operador2026!`     | Operador                                                        |
+| `cliente@shopcart.gt`                                       | `Cliente2026!`      | Cliente                                                         |
+| `cliente2@shopcart.gt`                                      | `Cliente2026!`      | Cliente (para demostrar que un cliente no ve los datos de otro) |
+| `demo001@shopcart.gt` … `demo200@shopcart.gt`               | `Demo2026!`         | Clientes de los datos demo, con pedidos                         |
+| `concurrencia01@shopcart.gt` … `concurrencia20@shopcart.gt` | `Concurrencia2026!` | Clientes de `pnpm test:concurrencia`                            |
+
+**Tarjetas de la pasarela simulada** (cualquier CVV de 3 dígitos y una fecha de vencimiento futura):
+
+| Número                | Resultado                                                                                                                                                          |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `4242424242424242`    | Aprobada                                                                                                                                                           |
+| `4000000000000002`    | Rechazada: `402 PAGO_RECHAZADO` (fondos insuficientes), con los intentos restantes                                                                                 |
+| `4000000000000119`    | La pasarela autoriza, pero la respuesta "se pierde": `504 PAGO_SIN_CONFIRMAR`. Reintentar con la **misma** `Idempotency-Key` confirma el pago sin cobrar dos veces |
+| Una fecha vencida     | `400 VALIDACION_FALLIDA`                                                                                                                                           |
+| Cualquier otro número | Rechazada: `402 PAGO_RECHAZADO` (la tarjeta no es válida)                                                                                                          |
+
+**Cupones demo**, uno por cada mensaje de rechazo de RF-05: `DEMO10` (vigente, 10 %), `DEMOVENCIDO`, `DEMOFUTURO`, `DEMOINACTIVO`, `DEMOAGOTADO`, `DEMOUNAVEZ` (ya usado por `cliente@shopcart.gt`), `DEMOMINIMO` y `DEMOCATEGORIA`.
+
+**Datos demo.** Las semillas cargan los catálogos fijos, los 22 departamentos y 340 municipios de Guatemala, un catálogo de 61 productos y 244 variantes (imágenes en `apps/web/public/static/productos/`) y, con `S006`, unos 200 clientes con 1,500 pedidos en los últimos 90 días (cancelaciones y devoluciones incluidas) y carritos abandonados: el dashboard tiene datos desde el primer arranque. La variante `DEMO-CONCURRENCIA` es la única con una sola unidad, para la demo de compra simultánea.
+
+---
+
+## 3. Flujo de compra en Swagger, paso a paso
+
+Abre <http://localhost:8080/api/docs>. En cada paso: **Try it out** → completa → **Execute**.
+
+1. **Crear la cuenta.** `POST /api/v1/auth/registro`:
+   ```json
+   { "correo": "ana@ejemplo.gt", "contrasena": "Ensayo2026!", "nombre": "Ana Pérez" }
+   ```
+   Responde `201` con `datos.accessToken`. Cópialo, pulsa **Authorize** (arriba a la derecha), pégalo en `bearer` y pulsa **Authorize**. (Con una cuenta existente, `POST /api/v1/auth/login` con `correo` y `contrasena`).
+2. **Elegir un producto.** `GET /api/v1/productos` → toma un `idProducto`. `GET /api/v1/productos/{id}` → toma el `idVariante` de una variante con `estadoExistencia` distinto de `Agotado`.
+3. **Agregarlo al carrito.** `POST /api/v1/carrito/lineas` con `{ "idVariante": 14, "cantidad": 1 }`. Opcional: `PUT /api/v1/carrito/cupon` con `{ "codigo": "DEMO10" }`, o con `DEMOVENCIDO` para ver un rechazo.
+4. **Método de envío.** `GET /api/v1/envios/metodos` → `datos.metodos[].idMetodoEnvio` (1 Estándar, 2 Express) y cuánto falta para el envío gratis.
+5. **Dirección.** `GET /api/v1/departamentos` → `GET /api/v1/departamentos/{id}/municipios` → `POST /api/v1/direcciones`:
+   ```json
+   {
+     "nombreRecibe": "Ana Pérez",
+     "telefonoRecibe": "55551234",
+     "idMunicipio": 1,
+     "direccionLinea": "5a avenida 10-20, zona 1"
+   }
+   ```
+   Responde `201` con `datos.idDireccion`.
+6. **Iniciar el pago.** `POST /api/v1/checkout/sesion` con `{ "idDireccion": 1, "idMetodoEnvio": 1 }`. Responde `201` con el total congelado, y las unidades quedan reservadas hasta `expiraEn` (15 minutos).
+7. **Pagar con la respuesta perdida (4000…0119).** `POST /api/v1/checkout/sesion/pagos`. En `idempotency-key` pon un UUID nuevo (en PowerShell, `[guid]::NewGuid()`; en Bash, `uuidgen`) y **anótalo**:
+   ```json
+   {
+     "numeroTarjeta": "4000000000000119",
+     "mesVencimiento": 12,
+     "anioVencimiento": 2030,
+     "cvv": "123"
+   }
+   ```
+   Responde `504 PAGO_SIN_CONFIRMAR`: la pasarela autorizó, pero la API no recibió la respuesta.
+8. **Reintentar con la misma llave.** Pulsa **Execute** otra vez, sin cambiar la `idempotency-key` ni el cuerpo. Responde `201` con el pedido (`SC-…`, estado `Pagado`): la pasarela devolvió la misma autorización, se creó el pedido y se capturó un solo cobro. Un tercer envío con la misma llave responde `200` con el mismo pedido. (Con `4242424242424242` y una llave nueva, el paso 7 responde `201` directamente).
+9. **Ver el pedido.** `GET /api/v1/pedidos` y `GET /api/v1/pedidos/{id}`, con el desglose de IVA, la dirección, la tarjeta (solo la marca y los últimos 4 dígitos) y el historial de estados.
+10. **Opcional:** `POST /api/v1/pedidos/{id}/cancelar` con `{ "motivo": "Ya no lo necesito" }` → `Cancelado`, la existencia vuelve al kardex y el reembolso queda `Completado`. Inicia sesión como `admin@shopcart.gt` para recorrer `GET /api/v1/dashboard/resumen`, `GET /api/v1/bitacora` o `GET /api/v1/admin/pedidos`.
+
+**Para ver el aislamiento entre clientes (RF-01):** con el token de `cliente2@shopcart.gt`, `GET /api/v1/pedidos/{id}` de un pedido de otro cliente responde `404`, igual que uno inexistente.
+
+---
+
+## 4. Decisiones técnicas
+
+| Decisión                                                                                                                                                                                                    | Por qué                                                                                                                | Detalle                                                                                                 |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| **Monolito modular** (Express 5 + TypeScript strict): `routes → controller → service → repository` por módulo, fronteras verificadas con ESLint                                                             | RF-06 exige una transacción que cruza pedidos, inventario y cupones; los microservicios la complicarían sin beneficio  | [A-01](docs/01-arquitectura.md), [A-20](docs/01-arquitectura.md)                                        |
+| **Sin SQL en el backend:** el repositorio solo llama a `ejecutarSP` con tipos SQL explícitos; el login de la API solo tiene `EXECUTE`                                                                       | Penalización directa del enunciado y defensa contra inyección: ni siquiera un bug puede leer una tabla                 | [A-02](docs/01-arquitectura.md), [A-18](docs/01-arquitectura.md), [02 §5](docs/02-modelo-datos.md)      |
+| **La base protege las invariantes:** stock, reservas, límites de cupón, transiciones, devoluciones e idempotencia viven en SPs con `UPDLOCK`, `CHECK` y `UNIQUE`; el servicio orquesta y da mensajes claros | Una regla en el servicio no resiste dos peticiones simultáneas en dos réplicas                                         | [A-02](docs/01-arquitectura.md), [A-05](docs/01-arquitectura.md), [A-13](docs/01-arquitectura.md)       |
+| **Dos réplicas stateless detrás de nginx**; los jobs corren en las réplicas con `sp_getapplock`                                                                                                             | Escala horizontal y tolerancia a la caída de una réplica; Redis solo guarda lo que se puede perder                     | [RNF-2](docs/00-vision-y-contexto.md), [A-03](docs/01-arquitectura.md), [A-04](docs/01-arquitectura.md) |
+| **Pago idempotente con arrendamiento y token de fencing:** `Idempotency-Key` + intento registrado antes de llamar a la pasarela; la pasarela nunca se llama dentro de una transacción                       | Doble clic, timeouts y una réplica que muere a mitad del pago terminan en un solo pedido y un solo cobro               | [N-03](docs/00-vision-y-contexto.md), [01 §6.2](docs/01-arquitectura.md)                                |
+| **Pasarela simulada como adaptador** del puerto `PasarelaPago`, con estado propio en SQL Server                                                                                                             | Una pasarela real sería otro adaptador sin tocar el checkout; idempotente aunque el reintento caiga en la otra réplica | [N-03](docs/00-vision-y-contexto.md)                                                                    |
+| **Tablas ledger append-only** (`Bitacora`, `MovimientoKardex`, `HistorialEstadoPedido`)                                                                                                                     | El motor rechaza `UPDATE` y `DELETE` incluso a un administrador                                                        | [M-01](docs/02-modelo-datos.md)                                                                         |
+| **Migrador propio** `V###` + `R__` + `S###` con checksum                                                                                                                                                    | Sin Java en la imagen; un script aplicado no se puede editar en silencio                                               | [A-09](docs/01-arquitectura.md)                                                                         |
+| **Zod para validar y generar OpenAPI**; dinero con `decimal.js` y como texto en JSON (`"149.90"`)                                                                                                           | Un solo esquema para validar y documentar; nunca `number` para dinero                                                  | [A-08](docs/01-arquitectura.md), [A-21](docs/01-arquitectura.md)                                        |
+| **JWT de 15 min + refresh opaco en cookie httpOnly** con rotación por familia y detección de reúso                                                                                                          | Un refresh robado se detecta al reusarse y revoca la familia                                                           | [A-07](docs/01-arquitectura.md)                                                                         |
+| **Fechas en UTC + `FechaPagoLocal`** (Guatemala, UTC−6)                                                                                                                                                     | Los reportes agrupan por el día local sin `AT TIME ZONE` en cada consulta                                              | [A-12](docs/01-arquitectura.md)                                                                         |
+
+### Decisiones de negocio (las que el enunciado deja abiertas)
+
+| Tema                     | Postura                                                                                                                                 | Detalle                                                                    |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| ¿Cuándo nace el pedido?  | Solo cuando el pago se confirma; antes hay carrito y sesión de pago                                                                     | [N-01](docs/00-vision-y-contexto.md)                                       |
+| Congelamiento de precio  | El carrito garantiza el precio 3 días; la sesión de pago congela precio y descuento                                                     | [N-02](docs/00-vision-y-contexto.md)                                       |
+| Existencia               | El carrito valida pero no reserva; la sesión de pago reserva 15 minutos; el stock sale del kardex al confirmar el pago                  | [N-06](docs/00-vision-y-contexto.md), [N-07](docs/00-vision-y-contexto.md) |
+| Ciclo de vida del pedido | §5; las devoluciones derivan el estado a partir de lo devuelto                                                                          | [N-08](docs/00-vision-y-contexto.md)                                       |
+| Cancelación              | Cliente u Operador desde `Pagado` o `EnPreparacion`, con motivo; reintegra stock y reembolsa (o anula si el cobro no se capturó)        | [N-09](docs/00-vision-y-contexto.md)                                       |
+| Devoluciones             | Las registra el Operador hasta 30 días después de la entrega, por línea; reembolso proporcional, el envío no se reembolsa               | [N-10](docs/00-vision-y-contexto.md)                                       |
+| Qué es una venta         | Pedido no cancelado en su fecha de pago local, neto de descuento, con IVA y sin envío; las devoluciones restan en su propia fecha       | [N-11](docs/00-vision-y-contexto.md)                                       |
+| Cupones                  | Aplicados en el carrito como vista previa y comprometidos en la sesión de pago; límites total y por cliente con contadores bajo bloqueo | [N-12](docs/00-vision-y-contexto.md)                                       |
+| Carrito abandonado       | Activo con productos y 24 horas sin cambios (configurable)                                                                              | [N-13](docs/00-vision-y-contexto.md)                                       |
+| Envío                    | Estándar y Express con tarifa fija configurable y monto para envío gratis                                                               | [N-04](docs/00-vision-y-contexto.md)                                       |
+| IVA                      | Precios con IVA incluido; el desglose se calcula sobre el total del pedido                                                              | [N-18](docs/00-vision-y-contexto.md)                                       |
+
+**Definiciones de los reportes** (`/api/v1/dashboard/*`, solo Admin). Todos agregan sobre una única definición de venta (`VW_Dashboard_HechosVenta`):
+
+- **Venta:** un pedido no cancelado, contado en su día de pago de Guatemala (`FechaPagoLocal`, UTC−6).
+- **Monto de ventas:** productos neto de descuento, con IVA incluido y **sin envío**; el envío se reporta aparte.
+- **Devoluciones:** se restan en el día en que ocurren, no en el de la venta, así un periodo ya reportado no cambia; las ventas netas de un día pueden ser negativas.
+- **Ticket promedio:** monto neto de ventas / número de pedidos del periodo.
+- **Carrito abandonado:** se cuenta en el día de su última actividad, con el monto potencial perdido a precio vigente.
+- Sin rango (`desde`, `hasta`), los reportes muestran los últimos 30 días.
+
+---
+
+## 5. Diagrama de estados del pedido
+
+```mermaid
+stateDiagram-v2
+    [*] --> Pagado : pago confirmado (Cliente)
+    Pagado --> EnPreparacion : Operador / Admin
+    EnPreparacion --> Despachado : Operador / Admin
+    Despachado --> Entregado : Operador / Admin
+    Pagado --> Cancelado : Cliente / Operador / Admin, con motivo
+    EnPreparacion --> Cancelado : Cliente / Operador / Admin, con motivo
+    Entregado --> DevueltoParcial : devolución de parte (Operador / Admin)
+    Entregado --> Devuelto : devolución de todo (Operador / Admin)
+    DevueltoParcial --> Devuelto : devolución del resto
+    Cancelado --> [*]
+    Devuelto --> [*]
+```
+
+Las transiciones viven en la tabla `TransicionEstadoPedido` (por rol) y en el mapa `pedidos.transiciones.ts`. Una prueba compara las dos, y el trigger `TR_Pedidos_ValidarTransicion` rechaza cualquier cambio fuera de la tabla, aunque se escriba directo en la base. Cada cambio queda en `HistorialEstadoPedido` (append-only) con quién, cuándo y el motivo. `DevueltoParcial` y `Devuelto` los deriva solo el SP de devoluciones a partir de lo devuelto.
+
+---
+
+## 6. Diagrama entidad-relación
+
+Vista general de las entidades y sus relaciones. Las columnas, los tipos, las constraints y los índices de cada tabla están en [docs/02-modelo-datos.md](docs/02-modelo-datos.md) (§2 por áreas y §3 tabla por tabla), con los diagramas en imagen en [docs/diagramas/](docs/diagramas/).
+
+```mermaid
+erDiagram
+    Rol ||--o{ Usuario : "tiene"
+    Usuario ||--o{ RefreshToken : "inicia sesión"
+    Usuario ||--o{ Direccion : "registra"
+    Departamento ||--o{ Municipio : "contiene"
+    Municipio ||--o{ Direccion : "ubica"
+
+    Categoria ||--o{ Producto : "agrupa"
+    Producto ||--o{ ImagenProducto : "muestra"
+    Producto ||--|{ Variante : "se vende como"
+    Atributo ||--o{ ValorAtributo : "define"
+    ValorAtributo ||--o{ VarianteValorAtributo : "se usa en"
+    Variante ||--|{ VarianteValorAtributo : "se describe con"
+    Variante ||--|{ PrecioVariante : "tiene versiones de"
+    TipoMovimiento ||--o{ MovimientoKardex : "clasifica"
+    Variante ||--o{ MovimientoKardex : "registra"
+
+    Usuario ||--o{ Carrito : "posee"
+    Carrito ||--o{ LineaCarrito : "contiene"
+    Variante ||--o{ LineaCarrito : "se agrega en"
+    PrecioVariante ||--o{ LineaCarrito : "garantiza"
+    Cupon |o--o{ Carrito : "se aplica a"
+    Categoria |o--o{ Cupon : "restringe"
+    Cupon ||--o{ UsoCupon : "se consume en"
+
+    Carrito ||--o{ SesionCheckout : "origina"
+    MetodoEnvio ||--o{ SesionCheckout : "se elige en"
+    SesionCheckout ||--|{ LineaSesionCheckout : "congela"
+    SesionCheckout ||--|{ Reserva : "aparta"
+    Variante ||--o{ Reserva : "se reserva"
+    SesionCheckout ||--o{ IntentoPago : "registra"
+
+    SesionCheckout ||--o| Pedido : "se convierte en"
+    IntentoPago ||--o| Pedido : "paga"
+    Usuario ||--o{ Pedido : "compra"
+    EstadoPedido ||--o{ Pedido : "está en"
+    EstadoPedido ||--o{ TransicionEstadoPedido : "origen y destino"
+    Rol ||--o{ TransicionEstadoPedido : "autoriza"
+    Pedido ||--|{ DetallePedido : "contiene"
+    Variante ||--o{ DetallePedido : "se vendió en"
+    Pedido ||--|{ HistorialEstadoPedido : "registra"
+    Pedido ||--o{ Devolucion : "recibe"
+    Devolucion ||--|{ DetalleDevolucion : "detalla"
+    DetallePedido ||--o{ DetalleDevolucion : "se devuelve en"
+    Pedido ||--o{ Reembolso : "genera"
+    Pedido ||--o{ MovimientoKardex : "referencia"
+
+    Usuario ||--o{ Bitacora : "actúa"
+```
+
+Además: `ParametroSistema` (configuración tipada de una sola fila), `SolicitudIdempotente` (llaves de idempotencia de 24 h) y las tablas propias de la pasarela simulada (`PasarelaAutorizacion`, `PasarelaReembolso`), que simulan la base de un sistema externo.
+
+**Nomenclatura del enunciado:** `SP_Modulo_Proceso`, `VW_Modulo_Proceso`, `FU_Modulo_Proceso`, PK `IDTabla`; extensión propia `TR_`, `PK_`, `FK_`, `UQ_`, `CK_`, `DF_`, `IX_`, `UX_`. Montos `DECIMAL(12,2)`, porcentajes `DECIMAL(5,2)`, fechas `DATETIME2(3)` en UTC; nunca `FLOAT`, `REAL` ni `MONEY`.
+
+---
+
+## 7. Pruebas
+
+Desde el host, con el entorno levantado (`docker compose up -d`):
 
 ```bash
-for i in 1 2 3 4; do curl -s -o /dev/null -D - localhost:8080/api/v1/health | grep -i x-instancia; done
-# X-Instancia alterna: api-1, api-2, api-1, api-2
+pnpm install             # una vez
+pnpm lint && pnpm typecheck
+pnpm test                # unitarias: servicios y middlewares con puertos falsos, sin infraestructura
+pnpm test:integracion    # contra SQL Server real: recrea la base shopcart_test en cada corrida
+pnpm test:concurrencia   # RNF-3: 20 clientes a la vez contra http://localhost:8080 (las dos réplicas)
+```
 
+- **Integración:** `pnpm test:integracion` recrea `shopcart_test` desde cero (las tablas ledger no admiten `DELETE`), aplica todos los scripts y, solo en esa base, los SPs de `database/test/`. Las pruebas no escriben SQL: preparan sus datos con esos `SP_Pruebas_*` y cada una crea datos únicos. Nunca tocan la base `ShopCart` del entorno.
+- **Concurrencia:** escenario 1, la última unidad de una variante: 1 pedido y 19 × `409 STOCK_INSUFICIENTE`. Escenario 2, el último uso de un cupón: 1 pedido y 19 × `422 CUPON_AGOTADO`. Verifica además la existencia final, la conciliación de inventario vacía, el contador del cupón y que respondieron las dos réplicas. Crea sus propios datos con la API, así que se puede repetir sin reiniciar nada; como cada corrida inicia sesión una vez por cliente y el login admite 5 intentos por minuto por IP y correo (A-07), no conviene repetirla más de unas 4 veces por minuto. Otra URL con `SHOPCART_URL`.
+
+**Balanceo y tolerancia a fallas (demo):**
+
+```bash
+for i in 1 2 3 4; do curl -s -o /dev/null -D - http://127.0.0.1:8080/api/v1/health | grep -i x-instancia; done
+# X-Instancia alterna: api-1, api-2, api-1, api-2
 docker compose stop api-1         # la tienda sigue respondiendo, todo desde api-2
 docker compose start api-1        # nginx la reincorpora sola
 ```
 
-### Migraciones de base de datos
+**Migraciones.** `db-migrator` aplica `migrations/V###` → `programmability/R__*` → `seeds/S###` y termina. Tras agregar scripts: `docker compose up -d --build db-migrator`. Un `V###` o `S###` aplicado **no se edita**: si cambia, el migrador falla; se crea el siguiente número.
 
-`db-migrator` crea la base, los logins y aplica los scripts de `database/` en orden `migrations/V###` → `programmability/R__*` → `seeds/S###`. Se ejecuta solo y termina:
+**La API fuera de Docker** (con SQL Server y Redis levantados y la base migrada): `pnpm --filter @shopcart/api build && pnpm --filter @shopcart/api start` → <http://localhost:3000/api/docs>. La API usa timeouts explícitos hacia SQL Server (`DB_TIMEOUT_CONEXION_MS`, por defecto 2000; `DB_TIMEOUT_CONSULTA_MS`, por defecto 15000): con la base caída, el health responde `503` en unos 2 s.
 
-```bash
-docker compose up -d --build db-migrator   # tras agregar o cambiar scripts
-docker compose logs db-migrator
-```
+---
 
-Base de pruebas (`shopcart_test`), con Compose o desde el host:
+## 8. Mejoras documentadas
 
-```bash
-docker compose run --rm -e DB_NOMBRE=shopcart_test db-migrator
-DB_NOMBRE=shopcart_test pnpm db:migrar                    # Bash
-```
+Lo que queda fuera de la Fase 1, a propósito y con su lugar en el plan ([docs/03-backlog.md](docs/03-backlog.md) §4):
 
-```powershell
-$env:DB_NOMBRE = 'shopcart_test'; pnpm db:migrar; Remove-Item Env:DB_NOMBRE   # PowerShell
-```
-
-Un `V###` o `S###` ya aplicado **no se edita**: si cambia, el migrador falla. Se crea un script nuevo con el siguiente número.
-
-### Datos demo
-
-Las semillas cargan los catálogos fijos, los 22 departamentos y 340 municipios de Guatemala y un catálogo de ropa, calzado y accesorios (61 productos, 244 variantes, imágenes en `apps/web/public/static/productos/`). Cuentas de prueba:
-
-| Correo                 | Contraseña      | Rol                                                             |
-| ---------------------- | --------------- | --------------------------------------------------------------- |
-| `admin@shopcart.gt`    | `Admin2026!`    | Administrador                                                   |
-| `operador@shopcart.gt` | `Operador2026!` | Operador                                                        |
-| `cliente@shopcart.gt`  | `Cliente2026!`  | Cliente                                                         |
-| `cliente2@shopcart.gt` | `Cliente2026!`  | Cliente (para demostrar que un cliente no ve los datos de otro) |
-
-Los datos demo (semilla `S006`) agregan unos 200 clientes, `demo001@shopcart.gt` a `demo200@shopcart.gt` (contraseña `Demo2026!`), con 1,500 pedidos en los últimos 90 días (cancelaciones y devoluciones incluidas), carritos abandonados y cupones para demostrar cada mensaje de rechazo: `DEMO10` (vigente), `DEMOVENCIDO`, `DEMOFUTURO`, `DEMOINACTIVO`, `DEMOAGOTADO`, `DEMOUNAVEZ` (con `cliente@shopcart.gt`), `DEMOMINIMO` y `DEMOCATEGORIA`.
-
-Los clientes `concurrencia01@shopcart.gt` a `concurrencia20@shopcart.gt` (contraseña `Concurrencia2026!`) son los de la prueba de concurrencia (`pnpm test:concurrencia`).
-
-La variante `DEMO-CONCURRENCIA` es la única con una sola unidad: sirve para la demo de compra simultánea (RF-06).
-
-### Definiciones de los reportes (N-11, N-13)
-
-El dashboard (`/api/v1/dashboard/*`, solo Admin) agrega siempre sobre una única definición de venta (`VW_Dashboard_HechosVenta`):
-
-- **Venta:** un pedido no cancelado, contado en su día de pago de Guatemala (`FechaPagoLocal`, UTC−6).
-- **Monto de ventas:** productos neto de descuento, con IVA incluido y **sin envío**; el envío se reporta aparte.
-- **Devoluciones:** se restan en el día en que ocurren (su `FechaLocal`), no en el de la venta: un periodo ya reportado no cambia.
-- **Ticket promedio:** monto neto de ventas / número de pedidos del periodo.
-- **Carrito abandonado:** carrito activo con productos y sin cambios en 24 horas (configurable); se cuenta en el día de su última actividad, con el monto potencial perdido a precio vigente.
-- Sin rango (`desde`, `hasta`), los reportes muestran los últimos 30 días.
-
-### API (desarrollo, desde el host)
-
-Requiere SQL Server y Redis levantados y la base migrada:
-
-```bash
-pnpm --filter @shopcart/api build
-pnpm --filter @shopcart/api start      # http://localhost:3000/api/v1/health · Swagger en /api/docs
-```
-
-### Pruebas
-
-```bash
-pnpm test                # unitarias: servicios y middlewares con puertos falsos, sin infraestructura
-pnpm test:integracion    # contra SQL Server real (requiere `docker compose up -d sqlserver`)
-pnpm test:concurrencia   # RNF-3: contra el entorno completo (requiere `docker compose up -d`)
-```
-
-`pnpm test:concurrencia` lanza 20 clientes a la vez contra `http://localhost:8080` (nginx, que reparte entre `api-1` y `api-2`; otra URL con `SHOPCART_URL`). Escenario 1: la última unidad de una variante, que termina en 1 pedido y 19 × `409 STOCK_INSUFICIENTE`. Escenario 2: el último uso de un cupón, que termina en 1 pedido y 19 × `422 CUPON_AGOTADO`. Además verifica la existencia final, la conciliación de inventario vacía, el contador del cupón y que respondieron las dos réplicas. Crea sus propios datos con la API y vacía los carritos de los clientes antes de cada escenario, así que se puede repetir sin reiniciar nada. Usa los clientes `concurrencia01@shopcart.gt` a `concurrencia20@shopcart.gt` (contraseña `Concurrencia2026!`, semilla `S005`). Cada corrida inicia sesión una vez por cliente, y el login admite 5 intentos por minuto por IP y correo (A-07), así que no conviene repetirla más de unas 4 veces por minuto.
-
-`pnpm test:integracion` recrea la base `shopcart_test` desde cero en cada corrida (las tablas ledger no admiten `DELETE`), aplica todos los scripts y, solo en esa base, los SPs de `database/test/`. Las pruebas no escriben SQL: preparan sus datos con esos `SP_Pruebas_*`, y cada prueba crea datos únicos en lugar de borrar los de otras.
-
-La API usa timeouts explícitos hacia SQL Server: `DB_TIMEOUT_CONEXION_MS` (por defecto 2000) y `DB_TIMEOUT_CONSULTA_MS` (por defecto 15000). Con la base caída, el health responde `503` en unos 2 s.
-
-Redis exige contraseña (`requirepass`). Cada valor tiene una sola fuente en `.env` (`DB_HOST`, `DB_PORT`, `DB_USUARIO`, `DB_CONTRASENA`, `REDIS_HOST`, `REDIS_PORT`, `REDIS_CONTRASENA`): Compose, el migrador y la API leen las mismas variables.
-
-> **Licencia de SQL Server:** el entorno usa la edición **Developer** (`MSSQL_PID=Developer`), gratuita para desarrollo y pruebas pero **no licenciada para producción**. En producción se usaría Standard o Enterprise (o Express, con sus límites).
+- **Fase 2 · Frontend:** SPA con Vite + React + TypeScript (tienda, backoffice y dashboard con gráficas), renovación transparente del token y estados de carga, vacío y error.
+- **Caché de reportes en Redis** con invalidación por versión, en la capa de servicio de reportes y bitácora ([A-11](docs/01-arquitectura.md)).
+- **Carga pesada:** el generador de datos demo con 50,000 pedidos sobre una base nueva (el número de pedidos es un parámetro), para medir los reportes y el filtro de carritos abandonados, que hoy no usa un índice.
+- **Observabilidad** con OpenTelemetry y Grafana LGTM ([RNF-4](docs/00-vision-y-contexto.md)) y exportación a Excel.
+- **Revisión manual de pagos:** un intento con pedido cuya autorización ya no existe en la pasarela queda `EnRevision` y un reembolso que agota sus 5 intentos queda `Fallido` en la lista del Admin (`GET /api/v1/admin/reembolsos`, con reintento). La Fase 2 les dará pantalla.
+- **Pasarela real:** otro adaptador del puerto `PasarelaPago`, sin tocar el checkout.
+- **Kubernetes** queda diferido ([D-04](docs/00-vision-y-contexto.md)); el diseño stateless ya lo permite.
+- **Producción:** SQL Server Standard o Enterprise en lugar de Developer, HTTPS en nginx y secretos fuera de `.env`.
