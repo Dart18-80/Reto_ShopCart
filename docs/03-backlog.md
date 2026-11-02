@@ -633,12 +633,12 @@ Se detalla en historias al cerrar la Fase 1.
 | E3-H04 | Precios versionados | Must | 0.5 | Hecha |
 | E3-H05 | Búsqueda y filtros del catálogo | Must | 0.75 | Hecha |
 | E3-H06 | Inventario y kardex | Must | 0.75 | Hecha |
-| E4-H01 | Carrito de invitado y de cliente | Must | 0.75 | En revisión |
-| E4-H02 | Garantía de precio de 3 días | Must | 0.5 | En revisión |
-| E4-H03 | Fusión del carrito al iniciar sesión o registrarse | Must | 0.25 | En revisión |
-| E4-H04 | Cupones (administración) | Must | 0.25 | En revisión |
-| E4-H05 | Aplicar cupón en el carrito | Must | 0.5 | En revisión |
-| E4-H06 | Envíos y parámetros | Should | 0.25 | En revisión |
+| E4-H01 | Carrito de invitado y de cliente | Must | 0.75 | Hecha |
+| E4-H02 | Garantía de precio de 3 días | Must | 0.5 | Hecha |
+| E4-H03 | Fusión del carrito al iniciar sesión o registrarse | Must | 0.25 | Hecha |
+| E4-H04 | Cupones (administración) | Must | 0.25 | Hecha |
+| E4-H05 | Aplicar cupón en el carrito | Must | 0.5 | Hecha |
+| E4-H06 | Envíos y parámetros | Should | 0.25 | Hecha |
 | E5-H01 | Iniciar la sesión de pago | Must | 1.0 | Propuesta |
 | E5-H02 | Pasarela de pago simulada | Must | 0.5 | Propuesta |
 | E5-H03 | Confirmar el pago y crear el pedido | Must | 1.25 | Propuesta |
