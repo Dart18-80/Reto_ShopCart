@@ -469,7 +469,7 @@ Se ejecutan **dentro de cada réplica de la API** con un planificador interno (`
 | Tokens | Ver 5.3. Los refresh tokens y los tokens de invitado se guardan solo como hash |
 | Cabeceras | `helmet` (CSP, HSTS cuando hay HTTPS, `X-Content-Type-Options`, `frame-ancestors 'none'`) y nginx con `server_tokens off` |
 | CORS | Lista explícita desde `CORS_ORIGINS` y `credentials: true` |
-| Secretos | Solo en `.env` (ignorado por git). `.env.example` con valores de ejemplo. Al arrancar, la validación de configuración rechaza secretos por defecto en `NODE_ENV=production` |
+| Secretos | Solo en `.env` (ignorado por git). `.env.example` con valores de ejemplo. Al arrancar, la validación de configuración de la API y la del migrador rechazan los valores de ejemplo (`EJEMPLO`) en `NODE_ENV=production` |
 | Datos de pago | Nunca se guardan; solo la marca y los últimos 4 dígitos. pino redacta `numeroTarjeta`, `cvv`, `contrasena`, `authorization` y `cookie` |
 | Exportaciones (A-24) | Solo el Admin, y solo las propias (una ajena responde 404). Un texto que empieza con `=`, `+`, `-`, `@`, tabulador o retorno de carro se escribe en Excel con un apóstrofo delante (inyección de fórmulas, OWASP). Los nombres de los archivos los genera el servidor (`{id}-{uuid}.{ext}`, validados contra `^[\w-]+\.(xlsx\|pdf)$`) y ninguna respuesta incluye una ruta del sistema: solo el enlace del endpoint de descarga |
 | Bitácora | Inmutable: tabla ledger append-only (`LEDGER = ON (APPEND_ONLY = ON)`), que el motor no deja actualizar ni borrar (M-01) |

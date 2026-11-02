@@ -104,6 +104,8 @@ services:
       DB_USUARIO: ${DB_USUARIO:?Define DB_USUARIO en .env (ver .env.example)}
       DB_CONTRASENA: ${DB_CONTRASENA:?Define DB_CONTRASENA en .env (ver .env.example)}
       DB_MIGRADOR_CONTRASENA: ${DB_MIGRADOR_CONTRASENA:?Define DB_MIGRADOR_CONTRASENA en .env (ver .env.example)}
+      # Como en la API: con production rechaza las contraseñas de ejemplo (la imagen trae production).
+      NODE_ENV: ${NODE_ENV:-development}
     depends_on:
       sqlserver:
         condition: service_healthy

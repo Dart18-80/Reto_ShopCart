@@ -15,6 +15,28 @@ function leerCon(cambios: Record<string, string | undefined>, argumentos: string
 }
 
 describe('leerConfiguracion del migrador', () => {
+  const DE_EJEMPLO = {
+    MSSQL_SA_PASSWORD: 'EJEMPLO_Cambiar_Sa_2026!',
+    DB_CONTRASENA: 'EJEMPLO_Cambiar_App_2026!',
+    DB_MIGRADOR_CONTRASENA: 'EJEMPLO_Cambiar_Migrador_2026!',
+  };
+
+  it('con NODE_ENV=production rechaza las contraseñas de ejemplo de .env.example y dice cuáles', () => {
+    const leer = () => leerCon({ ...DE_EJEMPLO, NODE_ENV: 'production' });
+
+    expect(leer).toThrow(ErrorMigracion);
+    expect(leer).toThrow(/MSSQL_SA_PASSWORD, DB_CONTRASENA, DB_MIGRADOR_CONTRASENA/);
+  });
+
+  it('fuera de producción acepta las contraseñas de ejemplo (el entorno local)', () => {
+    expect(() => leerCon({ ...DE_EJEMPLO, NODE_ENV: 'development' })).not.toThrow();
+    expect(() => leerCon(DE_EJEMPLO)).not.toThrow();
+  });
+
+  it('en producción acepta contraseñas propias', () => {
+    expect(() => leerCon({ NODE_ENV: 'production' })).not.toThrow();
+  });
+
   it('aplica los valores por defecto', () => {
     expect(leerCon({})).toMatchObject({
       servidor: 'localhost',

@@ -8,10 +8,16 @@ const NOMBRE_BASE = /^[A-Za-z][A-Za-z0-9_]{0,127}$/;
 
 const ARGUMENTO_PRUEBAS = '--pruebas';
 
+// La misma marca que rechaza la API en producción (apps/api/src/shared/config, 01 §10).
+const MARCA_EJEMPLO = 'EJEMPLO';
+const CONTRASENAS = ['MSSQL_SA_PASSWORD', 'DB_CONTRASENA', 'DB_MIGRADOR_CONTRASENA'] as const;
+
 // CREATE LOGIN no acepta parámetros: la contraseña se escapa con QUOTENAME, que devuelve NULL con más de 128 caracteres.
 const contrasena = z.string().min(8).max(128);
 
 const esquema = z.object({
+  // Solo cambia la validación de las contraseñas, como en la API.
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   DB_HOST: z.string().min(1).default('localhost'),
   DB_PORT: z.coerce.number().int().min(1).max(65535).default(1433),
   DB_NOMBRE: z
@@ -58,6 +64,7 @@ export function leerConfiguracion(
     throw new ErrorMigracion(`Configuración inválida:\n${z.prettifyError(resultado.error)}`);
   }
   const variables = resultado.data;
+  if (variables.NODE_ENV === 'production') rechazarContrasenasDeEjemplo(variables);
   const modoPruebas = argumentos.includes(ARGUMENTO_PRUEBAS);
   return {
     servidor: variables.DB_HOST,
@@ -70,4 +77,13 @@ export function leerConfiguracion(
     contrasenaMigrador: variables.DB_MIGRADOR_CONTRASENA,
     directorioScripts: variables.DB_SCRIPTS_DIR,
   };
+}
+
+// En producción el migrador no crea logins con las contraseñas de ejemplo de .env.example.
+function rechazarContrasenasDeEjemplo(variables: z.infer<typeof esquema>): void {
+  const conEjemplo = CONTRASENAS.filter((clave) => variables[clave].includes(MARCA_EJEMPLO));
+  if (conEjemplo.length === 0) return;
+  throw new ErrorMigracion(
+    `En producción no se permiten las contraseñas de ejemplo (${MARCA_EJEMPLO}): ${conEjemplo.join(', ')}`,
+  );
 }

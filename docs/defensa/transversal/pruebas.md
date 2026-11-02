@@ -47,7 +47,7 @@ Los SPs de prueba son 84 `R__SP_Pruebas_*` y 3 triggers `R__TR_Pruebas_*` en [da
 |---|---|---|
 | Las pruebas de integración siempre usan `shopcart_test` y la base 1 de Redis | config de Vitest | [vitest.integracion.config.ts:19](../../../apps/api/vitest.integracion.config.ts#L19 "DB_NOMBRE: 'shopcart_test'") |
 | Si la configuración apunta a otra base, la prueba se niega a conectar | `conectarBaseDePruebas` | [base-de-pruebas.ts:14](../../../apps/api/test/integracion/base-de-pruebas.ts#L14 "config.baseDatos.nombre !== BASE_DE_PRUEBAS") |
-| `--pruebas` fija la base `shopcart_test` y pide recrearla | migrador | [config.ts:65](../../../database/migrator/src/config.ts#L65 "modoPruebas ? BASE_PRUEBAS") |
+| `--pruebas` fija la base `shopcart_test` y pide recrearla | migrador | [config.ts:72](../../../database/migrator/src/config.ts#L72 "modoPruebas ? BASE_PRUEBAS") |
 | La recreación borra la base (los ledger no admiten `DELETE`, M-01) | script del migrador | [recrear-base.sql:6](../../../database/migrator/sql/recrear-base.sql#L6 "IF @Base <> N'shopcart_test'") |
 | Los SPs de prueba solo se agregan cuando la base es `shopcart_test` | migrador | [scripts.ts:49](../../../database/migrator/src/scripts.ts#L49 "baseDatos === BASE_PRUEBAS") |
 | Lo verifica una prueba: nunca entran a la base real | unitaria del migrador | [leer-scripts.test.ts:130](../../../database/migrator/test/leer-scripts.test.ts#L130 "nunca incluye database/test/") |
