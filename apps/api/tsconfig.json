@@ -13,6 +13,7 @@
     "vitest.integracion.config.ts",
     "vitest.humo.config.ts",
     "vitest.concurrencia.config.ts",
-    "vitest.entorno.config.ts"
+    "vitest.entorno.config.ts",
+    "vitest.cobertura.config.ts"
   ]
 }

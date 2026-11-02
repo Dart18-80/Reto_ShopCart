@@ -29,10 +29,10 @@ Los SPs de prueba son 84 `R__SP_Pruebas_*` y 3 triggers `R__TR_Pruebas_*` en [da
 | `pnpm typecheck` | `tsc --noEmit` en cada paquete | [package.json:13](../../../package.json#L13 "pnpm -r --if-present typecheck") |
 | `pnpm test` | Unitarias de la API y del migrador | [package.json:14](../../../package.json#L14 "pnpm -r --if-present test") |
 | `pnpm test:integracion` | Integración del migrador, luego recrea y migra `shopcart_test`, luego integración de la API | [package.json:18](../../../package.json#L18 "migrar:pruebas") |
-| `pnpm test:concurrencia` | RNF-3 contra el entorno levantado | [package.json:19](../../../package.json#L19 "test:concurrencia") |
-| `pnpm test:entorno` | Verificación de entrega contra Docker | [package.json:20](../../../package.json#L20 "test:entorno") |
-| `pnpm test:humo` | Construye la imagen y prueba lo que lleva | [package.json:21](../../../package.json#L21 "docker compose build api-1") |
-| `pnpm --filter @shopcart/api test:cobertura` | Unitarias con cobertura v8 | [package.json:12](../../../apps/api/package.json#L12 "vitest run --coverage") |
+| `pnpm test:concurrencia` | RNF-3 contra el entorno levantado | [package.json:20](../../../package.json#L20 "test:concurrencia") |
+| `pnpm test:entorno` | Verificación de entrega contra Docker | [package.json:21](../../../package.json#L21 "test:entorno") |
+| `pnpm test:humo` | Construye la imagen y prueba lo que lleva | [package.json:22](../../../package.json#L22 "docker compose build api-1") |
+| `pnpm test:cobertura` | Migra `shopcart_test` y corre unitarias e integración en una sola corrida con cobertura v8: un solo reporte | [package.json:19](../../../package.json#L19 "test:cobertura") |
 
 ## Unitarias: servicios con puertos falsos
 
@@ -118,7 +118,7 @@ El detalle de cada escenario de falla está en [infraestructura.md](infraestruct
 
 ## Cobertura
 
-`@vitest/coverage-v8` sobre `src/**/*.ts` [vitest.config.ts:13](../../../apps/api/vitest.config.ts#L13 "provider: 'v8'"). La configuración por defecto solo corre las unitarias, así que mide lo que cubren las unitarias. Corrida del 2 de noviembre de 2026 (sin `defensa.test.ts`): **líneas 69.89 %, ramas 45.61 %, funciones 51.45 %, sentencias 67.79 %**. Es baja a propósito en los repositorios y controladores: esas capas se prueban en integración, contra los SPs reales. No hay umbral mínimo configurado.
+`pnpm test:cobertura` corre las unitarias y las de integración en **una sola corrida** con `@vitest/coverage-v8` sobre `src/**/*.ts`: las unitarias son un proyecto más junto a los de integración, así sale un solo reporte sin fusionar nada ([vitest.cobertura.config.ts:11](../../../apps/api/vitest.cobertura.config.ts#L11 "projects: [{ extends: './vitest.config.ts'")). Corrida del 2 de noviembre de 2026 (1,283 pruebas): **líneas 94.47 %, ramas 86.45 %, funciones 94.84 %, sentencias 93.16 %**. Por módulo, las líneas van de 92 % (exportaciones) a 100 %; lo más bajo es el arranque (`server.ts`, `telemetria.ts`: 56 %), porque la prueba de telemetría levanta la API compilada en otro proceso, que v8 no mide. El detalle por módulo está en [docs/revision/estado-backend.md](../../revision/estado-backend.md) §1. No hay umbral mínimo configurado.
 
 ## Alternativas descartadas
 

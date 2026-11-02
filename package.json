@@ -16,6 +16,7 @@
     "db:migrar": "pnpm --filter @shopcart/migrator migrar",
     "ledger:verificar": "pnpm --filter @shopcart/migrator ledger:verificar",
     "test:integracion": "pnpm --filter @shopcart/migrator test:integracion && pnpm --filter @shopcart/migrator migrar:pruebas && pnpm --filter @shopcart/api test:integracion",
+    "test:cobertura": "pnpm --filter @shopcart/migrator migrar:pruebas && pnpm --filter @shopcart/api test:cobertura",
     "test:concurrencia": "pnpm --filter @shopcart/api test:concurrencia",
     "test:entorno": "pnpm --filter @shopcart/api test:entorno",
     "test:humo": "docker compose build api-1 && pnpm --filter @shopcart/api test:humo"
