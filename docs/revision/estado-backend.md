@@ -4,16 +4,17 @@ Revisión sobre `a31c5d5` (2026-11-02), actualizada tras el pulido del mismo dí
 
 ## E9. Observabilidad, tiempo real y defensa (2026-11-02)
 
-Encargo del PO después del push de la Fase 1. Las tres historias quedan **En revisión**. Suites en verde en clones nuevos con `core.autocrlf=true`: lint, tipos y unitarias sobre `7433caf`; integración, concurrencia y entorno sobre `ee34fc8`, después del cual solo cambió documentación (proyecto `shopcart-e8`, entorno desde cero en 103 s):
+Encargo del PO después del push de la Fase 1. Las tres historias quedan **En revisión**. Suites en verde en un clon nuevo con `core.autocrlf=true` sobre `859d08d`, después de aplicar las decisiones del PO sobre los riesgos de la guía (proyecto `shopcart-e8`, entorno desde cero en 51 s con las imágenes en caché):
 
 | Suite | Sin el perfil `observabilidad` | Con el perfil |
 |---|---|---|
 | `pnpm lint` y `pnpm typecheck` | verde | — |
-| API unitarias | 516 | — |
-| Migrador | 249 + 9 de integración | 9 de integración |
-| API integración (incluida la telemetría) | 750 + 5 | 755 |
+| API unitarias | 526 | — |
+| Migrador | 251 + 9 de integración | 9 de integración |
+| API integración (incluida la telemetría) | 752 + 5 | 757 |
 | Concurrencia (RNF-3) | 2 | 2 |
-| Entorno | 21 (2 omitidas: las del perfil) | 22 (1 omitida: la de sin perfil) |
+| Entorno | 26 (2 omitidas: las del perfil) | 27 (1 omitida: la de sin perfil) |
+| Humo de la imagen | 2 | — |
 
 El guion de demo (`docs/defensa/guion-demo.md`) se ensayó literal: los bloques de Bash se extrajeron del archivo y se ejecutaron, y el paso 7 encontró en Tempo la traza del 504 por su `requestId`.
 
@@ -25,6 +26,7 @@ El guion de demo (`docs/defensa/guion-demo.md`) se ensayó literal: los bloques 
 | E9-H03 | `docs/defensa/`: índice, 15 módulos, 7 transversales, 30 preguntas difíciles y guion de demo; `defensa.test.ts` verifica que cada una de sus 1,701 citas siga en su línea | 37f0629 |
 | Bugs que encontró la guía | Con el pago en curso, el cliente no podía cambiar la cantidad de lo que él mismo reservó (409); una reserva vencida y aún no liberada del propio carrito retiraba el cupón como agotado | 2502250, ab3a5b1 |
 | Documentación | 01 y 02 alineados con el código: el 503 del health solo lo usa Docker, bitácora como ledger, índices de la búsqueda y de la bitácora, `manejar`, `LiberarArrendamiento` | c365608 |
+| Decisiones del PO sobre los riesgos de la guía | Purga de los `.tmp` de exportaciones con más de 24 h; al menos un método de envío activo (50901, N-04); N-15 explícito por acción; `stop_grace_period: 15s`; orden de capas en el lint; todas las imágenes con versión exacta y digest | a0af0d6, d25ba49, 0ea1585, 029c3b6, 250d796, 859d08d |
 
 ## 0. Cambios del pulido (2026-11-02)
 
