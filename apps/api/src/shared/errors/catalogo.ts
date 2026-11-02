@@ -160,6 +160,17 @@ export const CATALOGO = {
     numeroSql: 50509,
     mensaje: 'El cupón ya se usó y no se puede editar.',
   },
+  CUPON_CODIGO_DUPLICADO: {
+    http: 409,
+    numeroSql: 50510,
+    mensaje: 'Ya existe un cupón con ese código.',
+  },
+  // A-13: CK_Cupon_UsosComprometidos rechaza el cambio; el SP lo traduce con los usos en los detalles.
+  CUPON_LIMITE_BAJO_USOS: {
+    http: 422,
+    numeroSql: 50511,
+    mensaje: 'El límite de usos no puede ser menor que los usos ya comprometidos.',
+  },
 
   // 50600–50699 Checkout y pago
   SESION_VENCIDA: { http: 409, numeroSql: 50601, mensaje: 'La sesión de pago venció.' },

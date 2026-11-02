@@ -1,6 +1,11 @@
 import { montoSchema, textoNvarchar } from '@shopcart/shared';
 import { Decimal } from 'decimal.js';
-import { consultaPaginacionSchema, idEnRutaSchema, idSchema } from '../../shared/http/index.js';
+import {
+  booleanoConsultaSchema,
+  consultaPaginacionSchema,
+  idEnRutaSchema,
+  idSchema,
+} from '../../shared/http/index.js';
 import { z } from '../../shared/openapi/zod.js';
 import { DIRECCIONES_ORDEN, ESTADOS_EXISTENCIA, ORDENES_BUSQUEDA } from './catalogo.types.js';
 
@@ -9,8 +14,6 @@ const MENSAJE_SIN_CAMPOS = 'Indica al menos un campo.';
 
 // Orden de despliegue: SMALLINT en la tabla. Sin orden, el SP lo pone después del último.
 const ordenSchema = z.number().int().min(0).max(32_767);
-
-const booleanoConsultaSchema = z.enum(['true', 'false']).transform((valor) => valor === 'true');
 
 // --- Categorías (E3-H01). Largos de la tabla y los SPs: Nombre NVARCHAR(80), Descripcion NVARCHAR(300).
 

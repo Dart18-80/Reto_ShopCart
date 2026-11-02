@@ -11,6 +11,7 @@ import {
 } from './modules/auth/index.js';
 import { crearModuloCarrito } from './modules/carrito/index.js';
 import { crearModuloCatalogo } from './modules/catalogo/index.js';
+import { crearModuloCupones } from './modules/cupones/index.js';
 import { crearModuloDirecciones } from './modules/direcciones/index.js';
 import { crearModuloInventario } from './modules/inventario/index.js';
 import { crearModuloSistema, type VerificadorRedis } from './modules/sistema/index.js';
@@ -104,6 +105,7 @@ export function crearApp({
   v1.use(crearModuloDirecciones({ autenticar }));
   v1.use(crearModuloCatalogo({ autenticar }));
   v1.use('/inventario', crearModuloInventario({ autenticar }));
+  v1.use(crearModuloCupones({ autenticar }));
   v1.use(
     crearModuloCarrito({
       autenticar,
