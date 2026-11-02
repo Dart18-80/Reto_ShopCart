@@ -85,6 +85,8 @@ Las semillas cargan los catálogos fijos, los 22 departamentos y 340 municipios 
 | `cliente@shopcart.gt`  | `Cliente2026!`  | Cliente                                                         |
 | `cliente2@shopcart.gt` | `Cliente2026!`  | Cliente (para demostrar que un cliente no ve los datos de otro) |
 
+Los datos demo (semilla `S006`) agregan unos 200 clientes, `demo001@shopcart.gt` a `demo200@shopcart.gt` (contraseña `Demo2026!`), con 1,500 pedidos en los últimos 90 días (cancelaciones y devoluciones incluidas), carritos abandonados y cupones para demostrar cada mensaje de rechazo: `DEMO10` (vigente), `DEMOVENCIDO`, `DEMOFUTURO`, `DEMOINACTIVO`, `DEMOAGOTADO`, `DEMOUNAVEZ` (con `cliente@shopcart.gt`), `DEMOMINIMO` y `DEMOCATEGORIA`.
+
 Los clientes `concurrencia01@shopcart.gt` a `concurrencia20@shopcart.gt` (contraseña `Concurrencia2026!`) son los de la prueba de concurrencia (`pnpm test:concurrencia`).
 
 La variante `DEMO-CONCURRENCIA` es la única con una sola unidad: sirve para la demo de compra simultánea (RF-06).

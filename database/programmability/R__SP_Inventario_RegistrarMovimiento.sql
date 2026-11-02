@@ -2,6 +2,8 @@
 -- Interno: lo llaman otros SPs (entradas, ajustes, pedidos, cancelaciones, devoluciones) y la semilla,
 -- siempre dentro de su transacción. El actor y el RequestId salen de SESSION_CONTEXT (A-18).
 -- @IDMovimientoKardex devuelve el movimiento registrado, para que el llamador no tenga que buscarlo.
+-- @FechaMovimiento (N-07, E7-H03): solo cuando el rol del contexto es Sistema (el generador de datos demo, para
+-- que kardex, pedidos e historial coincidan en el tiempo) y nunca en el futuro; si no, la fecha es la actual.
 CREATE OR ALTER PROCEDURE dbo.SP_Inventario_RegistrarMovimiento
     @IDVariante   INT,
     @CodigoTipo   VARCHAR(30),
@@ -10,7 +12,8 @@ CREATE OR ALTER PROCEDURE dbo.SP_Inventario_RegistrarMovimiento
     @Referencia   NVARCHAR(100),
     @IDPedido     INT,
     @IDDevolucion INT,
-    @IDMovimientoKardex BIGINT = NULL OUTPUT
+    @IDMovimientoKardex BIGINT = NULL OUTPUT,
+    @FechaMovimiento    DATETIME2(3) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -25,6 +28,10 @@ BEGIN
 
     IF @IDUsuario IS NULL
         THROW 50005, N'Todo movimiento de inventario necesita un usuario responsable.', 1;
+    IF @FechaMovimiento IS NOT NULL AND ISNULL(TRY_CONVERT(VARCHAR(20), SESSION_CONTEXT(N'Rol')), '') <> 'Sistema'
+        THROW 50005, N'Solo un proceso del sistema registra un movimiento con fecha propia.', 1;
+    IF @FechaMovimiento > SYSUTCDATETIME()
+        THROW 50003, N'Un movimiento de inventario no puede tener fecha futura.', 1;
     -- Tope técnico por movimiento (el mismo que CANTIDAD_MAXIMA en Zod): lejos del desborde de INT.
     DECLARE @CantidadMaxima INT = 1000000;
 
@@ -62,10 +69,10 @@ BEGIN
 
     INSERT INTO dbo.MovimientoKardex (IDVariante, IDTipoMovimiento, Signo, Cantidad, ExistenciaAnterior,
                                       ExistenciaResultante, Motivo, Referencia, IDPedido, IDDevolucion,
-                                      IDUsuario, RequestId)
+                                      IDUsuario, RequestId, Fecha)
     VALUES (@IDVariante, @IDTipoMovimiento, @Signo, @Cantidad, @ExistenciaAnterior,
             @ExistenciaResultante, @Motivo, @Referencia, @IDPedido, @IDDevolucion,
-            @IDUsuario, @RequestId);
+            @IDUsuario, @RequestId, COALESCE(@FechaMovimiento, SYSUTCDATETIME()));
     SET @IDMovimientoKardex = SCOPE_IDENTITY();
 END
 GO

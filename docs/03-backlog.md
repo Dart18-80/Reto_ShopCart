@@ -576,7 +576,7 @@
 **Referencias:** RF-09.
 
 ### E7-H03 · Generador de datos demo — `Should` · 1.25 h
-**Alcance:** `SP_Semilla_GenerarDatosDemo(@Pedidos, @Dias, @Semilla)` y `S005__datos_demo.sql` (1,500 pedidos en 90 días, ~200 clientes, carritos abandonados, cancelaciones, devoluciones y los cupones de ejemplo de `02-modelo-datos.md` §7). Fechas **relativas a hoy**.
+**Alcance:** `SP_Semilla_GenerarDatosDemo(@Pedidos, @Dias, @Semilla)` y `S006__datos_demo.sql` (S005 ya existe) (1,500 pedidos en 90 días, ~200 clientes, carritos abandonados, cancelaciones, devoluciones y los cupones de ejemplo de `02-modelo-datos.md` §7). Fechas **relativas a hoy**.
 **CA**
 - [ ] El dashboard muestra datos de los últimos 90 días desde el primer arranque.
 - [ ] Al terminar, `VW_Inventario_Conciliacion` está vacía y todos los pedidos cumplen sus `CHECK`.
@@ -674,7 +674,7 @@ Se detalla en historias al cerrar la Fase 1.
 | E6-H04 | Devoluciones | Must | 0.5 | En revisión |
 | E7-H01 | Dashboard | Must | 1.0 | En revisión |
 | E7-H02 | Consulta de la bitácora | Must | 0.25 | En revisión |
-| E7-H03 | Generador de datos demo | Should | 1.25 | Lista |
+| E7-H03 | Generador de datos demo | Should | 1.25 | En revisión |
 | E8-H01 | README de la Fase 1 | Must | 0.75 | Propuesta |
 | E8-H02 | Revisión contra penalizaciones | Must | 0.5 | Propuesta |
 | E8-H03 | Ensayo en máquina limpia | Must | 0.25 | Propuesta |

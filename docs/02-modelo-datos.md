@@ -805,7 +805,7 @@ Los SPs marcados **(interno)** solo los invocan otros SPs, nunca la API. Así ha
 `SP_Dashboard_Resumen` (ventas, pedidos, ticket promedio, carritos abandonados) · `SP_Dashboard_VentasPorPeriodo` (`@Agrupacion` = día, semana o mes) · `SP_Dashboard_VentasPorCategoria` · `SP_Dashboard_TopProductos` (top 10) · `SP_Dashboard_CarritosAbandonados` · `SP_Bitacora_Listar` (filtro por módulo, entidad y días de Guatemala; paginado; `IX_Bitacora_Modulo`, `IX_Bitacora_Entidad` e `IX_Bitacora_Fecha` de V017 sin filtros) · `SP_Sistema_Health` · `SP_Sistema_EstablecerContexto` **(interno: fija `SESSION_CONTEXT` a partir de los parámetros estándar)**
 
 ### Datos semilla y carga
-`SP_Semilla_GenerarDatosDemo (@Pedidos, @Dias, @Semilla)` genera clientes, carritos y pedidos **consistentes** (detalle, kardex, historial y devoluciones) con fechas **relativas a hoy**, para que el dashboard siempre muestre los últimos 90 días. Termina verificando que `VW_Inventario_Conciliacion` esté vacía. La semilla normal usa `@Pedidos = 1500`; la carga pesada de la defensa, `@Pedidos = 50000`.
+`SP_Semilla_GenerarDatosDemo (@Pedidos, @Dias, @Semilla)` (solo rol `Sistema`, determinista e idempotente) genera clientes, carritos y pedidos **consistentes** (detalle, kardex, historial y devoluciones) con fechas **relativas a hoy**, para que el dashboard siempre muestre los últimos 90 días. Termina verificando que `VW_Inventario_Conciliacion` esté vacía. La semilla normal usa `@Pedidos = 1500`; la carga pesada de la defensa, `@Pedidos = 50000`.
 
 ---
 
@@ -835,7 +835,8 @@ Los SPs marcados **(interno)** solo los invocan otros SPs, nunca la API. Así ha
 | `S002__geografia_gt.sql` | 22 departamentos y 340 municipios de Guatemala |
 | `S003__usuarios_demo.sql` | `admin@shopcart.gt`, `operador@shopcart.gt` y `cliente@shopcart.gt`, con hashes argon2 ya calculados. Las credenciales de prueba se documentan en el README, como pide el enunciado |
 | `S004__catalogo_demo.sql` | ~8 categorías, ~60 productos, ~250 variantes con atributos, precios con historial, imágenes locales y entradas de inventario iniciales (con su kardex) |
-| `S005__datos_demo.sql` | `EXEC SP_Semilla_GenerarDatosDemo @Pedidos = 1500, @Dias = 90` más cupones de ejemplo: uno vigente, uno vencido, uno agotado, uno por categoría y uno con mínimo (para demostrar cada mensaje de RF-05) |
+| `S005__clientes_concurrencia.sql` | Los 20 clientes de la prueba de concurrencia (E5-H05) |
+| `S006__datos_demo.sql` | `EXEC SP_Semilla_GenerarDatosDemo @Pedidos = 1500, @Dias = 90, @Semilla = 2026`: ~200 clientes (`demo001@shopcart.gt`…), 1,500 pedidos con cancelaciones y devoluciones, carritos abandonados y cupones de ejemplo, uno por cada mensaje de RF-05: `DEMO10` (vigente), `DEMOVENCIDO`, `DEMOFUTURO`, `DEMOINACTIVO`, `DEMOAGOTADO`, `DEMOUNAVEZ` (ya usado por `cliente@shopcart.gt`), `DEMOMINIMO` y `DEMOCATEGORIA` |
 | `database/load/L001__carga_pesada.sql` | Opcional: `@Pedidos = 50000` |
 
 ---
