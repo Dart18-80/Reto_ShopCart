@@ -66,6 +66,7 @@ function preparar(registro: RegistroIntento) {
   const pedidos = {
     crearDeIntento: vi.fn(() => Promise.resolve(PEDIDO)),
     obtener: vi.fn((): Promise<Pedido | null> => Promise.resolve(PEDIDO)),
+    obtenerDeIntento: vi.fn((): Promise<Pedido | null> => Promise.resolve(null)),
   };
   const pasarela = {
     autorizar: vi.fn(() => Promise.resolve(AUTORIZADA)),
@@ -79,6 +80,7 @@ function preparar(registro: RegistroIntento) {
     pedidos,
     pasarela,
     logger: pino({ level: 'silent' }),
+    esperar: () => Promise.resolve(),
   });
   return { servicio, repositorio, pedidos, pasarela };
 }
@@ -114,11 +116,12 @@ describe('checkout.pago (E5-H03)', () => {
       [ID_INTENTO, { estado: 'Capturado' }],
     ]);
     const orden = [
-      pasarela.autorizar.mock.invocationCallOrder[0],
-      pedidos.crearDeIntento.mock.invocationCallOrder[0],
-      pasarela.capturar.mock.invocationCallOrder[0],
-    ];
-    expect(orden).toEqual([...orden].sort((a = 0, b = 0) => a - b));
+      pasarela.autorizar.mock.invocationCallOrder,
+      pedidos.crearDeIntento.mock.invocationCallOrder,
+      pasarela.capturar.mock.invocationCallOrder,
+    ].flat();
+    expect(orden).toHaveLength(3);
+    expect(orden).toEqual([...orden].sort((a, b) => a - b));
   });
 
   it('si la pasarela no responde, libera el arrendamiento y responde PAGO_SIN_CONFIRMAR (504)', async () => {
@@ -172,6 +175,56 @@ describe('checkout.pago (E5-H03)', () => {
       codigo: 'STOCK_INSUFICIENTE',
       mensaje: 'Sin existencia.',
     });
+  });
+
+  it('si la petición falla después del COMMIT del pedido, no anula: captura y responde el pedido (RF-06)', async () => {
+    const { servicio, repositorio, pedidos, pasarela } = preparar(AUTORIZAR);
+    pedidos.crearDeIntento.mockRejectedValueOnce(new Error('timeout al leer el detalle'));
+    pedidos.obtenerDeIntento.mockResolvedValueOnce(PEDIDO);
+
+    const resultado = await servicio.pagar(SOLICITUD);
+
+    expect(resultado).toEqual({ pedido: PEDIDO, creado: true });
+    expect(pedidos.obtenerDeIntento).toHaveBeenCalledWith(ID_INTENTO);
+    expect(pasarela.anular).not.toHaveBeenCalled();
+    expect(pasarela.capturar).toHaveBeenCalledWith(ID_TRANSACCION);
+    expect(repositorio.actualizarIntento).toHaveBeenLastCalledWith(ID_INTENTO, {
+      estado: 'Capturado',
+    });
+  });
+
+  it('si ni siquiera se puede comprobar el pedido, no anula: el intento queda para la conciliación', async () => {
+    const { servicio, pedidos, pasarela } = preparar(AUTORIZAR);
+    const causa = new Error('conexión perdida');
+    pedidos.crearDeIntento.mockRejectedValueOnce(causa);
+    pedidos.obtenerDeIntento.mockRejectedValueOnce(new Error('conexión perdida'));
+
+    const error = await servicio.pagar(SOLICITUD).catch((e: unknown) => e);
+
+    expect(error).toBe(causa);
+    expect(pasarela.anular).not.toHaveBeenCalled();
+    expect(pasarela.capturar).not.toHaveBeenCalled();
+  });
+
+  it('un error inesperado de la pasarela también libera el arrendamiento y responde 504', async () => {
+    const { servicio, repositorio, pasarela } = preparar(AUTORIZAR);
+    pasarela.autorizar.mockRejectedValueOnce(new TypeError('bug del adaptador'));
+
+    const error = await servicio.pagar(SOLICITUD).catch((e: unknown) => e);
+
+    expect(error).toMatchObject({ codigo: 'PAGO_SIN_CONFIRMAR', status: 504 });
+    expect(repositorio.liberarArrendamiento).toHaveBeenCalledWith(ID_INTENTO);
+  });
+
+  it('si liberar el arrendamiento falla, igual responde PAGO_SIN_CONFIRMAR con la causa original', async () => {
+    const { servicio, repositorio, pasarela } = preparar(AUTORIZAR);
+    const causa = new PasarelaSinRespuesta('autorizar');
+    pasarela.autorizar.mockRejectedValueOnce(causa);
+    repositorio.liberarArrendamiento.mockRejectedValueOnce(new Error('base caída'));
+
+    const error = await servicio.pagar(SOLICITUD).catch((e: unknown) => e);
+
+    expect(error).toMatchObject({ codigo: 'PAGO_SIN_CONFIRMAR', cause: causa });
   });
 
   it('reintenta la anulación y, si sigue fallando, deja el intento Autorizado para la conciliación', async () => {

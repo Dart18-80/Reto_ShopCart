@@ -104,6 +104,13 @@ export const pedidosRepository = {
     return pedido;
   },
 
+  /** N-03: el pedido creado con ese intento; null si no hay (o si es de otro cliente, RF-01). */
+  obtenerDeIntento(idIntentoPago: number): Promise<Pedido | null> {
+    return pedidoDe('SP_Pedidos_ObtenerDeIntento', {
+      IDIntentoPago: { tipo: sql.BigInt, valor: idIntentoPago },
+    });
+  },
+
   /** RF-01: null si no existe o si es de otro cliente. */
   obtener(idPedido: number): Promise<Pedido | null> {
     return pedidoDe('SP_Pedidos_ObtenerDetalle', { IDPedido: { tipo: sql.Int, valor: idPedido } });

@@ -8,10 +8,11 @@ import { leerDatos, leerError } from '../../unit/respuestas.js';
 import { dependenciasDePrueba } from '../../app-de-prueba.js';
 import { iniciarSesion, leerSesion } from '../auth/apoyo-auth.js';
 import { usarBaseDePruebas } from '../base-de-pruebas.js';
-import { comoCliente, varianteVendible } from '../carrito/apoyo-carrito.js';
+import { agregar, comoCliente, varianteVendible } from '../carrito/apoyo-carrito.js';
 import { unaFila } from '../datos-de-prueba.js';
 import {
   clienteConCarrito,
+  crearCupon,
   estadoEnPasarela,
   iniciarPago,
   intentosDe,
@@ -40,9 +41,15 @@ beforeAll(async () => {
 });
 
 /** Un cliente con una sesión de pago iniciada (1 línea) y su id de sesión. */
-async function clienteConSesion(precio = '100.00', cantidad = 2, existencia = 10) {
+async function clienteConSesion(precio = '100.00', cantidad = 2, existencia = 10, cupon?: string) {
   const { IDVariante } = await varianteVendible(precio, existencia);
   const cliente = await clienteConCarrito(app, [{ idVariante: IDVariante, cantidad }]);
+  if (cupon !== undefined) {
+    await request(app)
+      .put('/api/v1/carrito/cupon')
+      .set(comoCliente(cliente.token))
+      .send({ codigo: cupon });
+  }
   const sesion = leerSesionPago(await iniciarPago(app, cliente, estandar));
   return { cliente, idSesion: sesion.idSesion, idVariante: IDVariante, total: sesion.total };
 }
@@ -185,6 +192,21 @@ describe('idempotencia (E5-H03, N-03)', () => {
     expect(leerError(ajena).codigo).toBe('LLAVE_REUTILIZADA');
   });
 
+  it('la llave de una sesión ya pagada, usada para una compra nueva, responde 422 y no da por pagada la nueva', async () => {
+    const { cliente } = await clienteConSesion();
+    const llave = randomUUID();
+    expect((await pagar(app, cliente.token, llave)).status).toBe(201);
+    const { IDVariante } = await varianteVendible('20.00', 5);
+    await agregar(app, comoCliente(cliente.token), IDVariante);
+    const nueva = leerSesionPago(await iniciarPago(app, cliente, estandar));
+
+    const reutilizada = await pagar(app, cliente.token, llave);
+
+    expect(reutilizada.status).toBe(422);
+    expect(leerError(reutilizada).codigo).toBe('LLAVE_REUTILIZADA');
+    expect(await pagoDe(nueva.idSesion)).toMatchObject({ Pedidos: 0, EstadoSesion: 'Activa' });
+  });
+
   it('sesión ya pagada con una llave nueva: 200 con el pedido existente, sin otro intento', async () => {
     const { cliente, idSesion } = await clienteConSesion();
     const pedido = leerPedido(await pagar(app, cliente.token, randomUUID()));
@@ -285,8 +307,17 @@ describe('timeout y arrendamiento (E5-H03, N-03)', () => {
 });
 
 describe('rechazos (E5-H03, N-03)', () => {
+  const sesionConCupon = async () => {
+    const { codigo } = await crearCupon(app, tokenAdmin, { limiteUsosTotal: 3 });
+    return clienteConSesion('100.00', 2, 10, codigo);
+  };
+  const sesionCheckout = (idSesion: number) =>
+    unaFila('SP_Pruebas_LeerSesionCheckout', {
+      IDSesionCheckout: { tipo: sql.Int, valor: idSesion },
+    });
+
   it('una tarjeta rechazada responde 402 con los intentos restantes; el quinto cancela la sesión y libera', async () => {
-    const { cliente, idSesion } = await clienteConSesion();
+    const { cliente, idSesion } = await sesionConCupon();
 
     const respuestas = [];
     for (let i = 0; i < 5; i++) {
@@ -302,15 +333,18 @@ describe('rechazos (E5-H03, N-03)', () => {
     );
     expect(detalles.map((d) => d.intentosRestantes)).toEqual([4, 3, 2, 1, 0]);
     expect(detalles.map((d) => d.sesionCancelada)).toEqual([false, false, false, false, true]);
-    expect(await pagoDe(idSesion)).toMatchObject({
-      EstadoSesion: 'Cancelada',
+    expect(await sesionCheckout(idSesion)).toEqual({
+      Estado: 'Cancelada',
+      IntentosRechazados: 5,
       EstadoReserva: 'Liberada',
+      EstadoUsoCupon: 'Liberado',
+      UsosComprometidosCupon: 0,
     });
     expect(sexta.status).toBe(404);
   });
 
   it('rechazos simultáneos: nunca pasan de cinco ni cancelan dos veces', async () => {
-    const { cliente, idSesion } = await clienteConSesion();
+    const { cliente, idSesion } = await sesionConCupon();
 
     const estados: number[] = [];
     for (let ronda = 0; ronda < 7; ronda++) {
@@ -323,7 +357,13 @@ describe('rechazos (E5-H03, N-03)', () => {
     expect(estados.filter((estado) => estado === 402)).toHaveLength(5);
     expect(estados.every((estado) => [402, 409, 404].includes(estado))).toBe(true);
     expect((await intentosDe(idSesion)).filter((i) => i.Estado === 'Rechazado')).toHaveLength(5);
-    expect((await pagoDe(idSesion)).EstadoSesion).toBe('Cancelada');
+    // Una doble cancelación liberaría el cupón dos veces (el CHECK del contador lo impediría con un error).
+    expect(await sesionCheckout(idSesion)).toMatchObject({
+      Estado: 'Cancelada',
+      IntentosRechazados: 5,
+      EstadoUsoCupon: 'Liberado',
+      UsosComprometidosCupon: 0,
+    });
   });
 
   it('la misma llave de un rechazo devuelve el mismo 402', async () => {

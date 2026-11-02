@@ -54,12 +54,12 @@ const resoluciones = (repositorio: ReturnType<typeof preparar>['repositorio']) =
   repositorio.resolverIntentoConciliado.mock.calls.map(([, resolucion]) => resolucion);
 
 describe('checkout.conciliacion (E5-H04, N-03)', () => {
-  it('toma los intentos con 2 minutos de gracia y los arrienda lo que tardan consultar y resolver', async () => {
+  it('toma los intentos con 2 minutos de gracia y los arrienda lo que tardan sus dos llamadas a la pasarela, con holgura', async () => {
     const { servicio, repositorio } = preparar([]);
 
     await servicio.conciliar();
 
-    expect(repositorio.tomarIntentoPorConciliar).toHaveBeenCalledWith(120, 25);
+    expect(repositorio.tomarIntentoPorConciliar).toHaveBeenCalledWith(120, 60);
   });
 
   it('Pendiente que la pasarela no conoce → Fallido, sin capturar ni anular', async () => {
@@ -140,6 +140,15 @@ describe('checkout.conciliacion (E5-H04, N-03)', () => {
     const resultado = await servicio.conciliar();
 
     expect(resultado).toMatchObject({ errores: 1, Anulado: 1 });
+  });
+
+  it('si otra petición ya lo resolvió, lo cuenta como SinCambio y no como resuelto', async () => {
+    const { servicio, repositorio } = preparar([AUTORIZADO]);
+    repositorio.resolverIntentoConciliado.mockResolvedValueOnce(false);
+
+    const resultado = await servicio.conciliar();
+
+    expect(resultado).toMatchObject({ Anulado: 0, SinCambio: 1 });
   });
 
   it('si la otra réplica tiene el bloqueo, no hace nada (null)', async () => {

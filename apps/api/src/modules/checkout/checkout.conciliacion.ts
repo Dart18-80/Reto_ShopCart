@@ -1,7 +1,6 @@
 import type { Logger } from 'pino';
 import type { ResultadoTarea } from '../../shared/jobs/index.js';
-import type { PasarelaPago } from '../../shared/pasarela/index.js';
-import { MARGEN_ARRENDAMIENTO_MS, TIMEOUT_PASARELA_MS } from './checkout.pago.js';
+import { TIMEOUT_PASARELA_MS, type PasarelaPago } from '../../shared/pasarela/index.js';
 import type { CheckoutRepository } from './checkout.repository.js';
 import type { IntentoPorConciliar, ResolucionConciliada } from './checkout.types.js';
 
@@ -9,13 +8,17 @@ const MS_POR_SEGUNDO = 1000;
 // 01 §6.2: solo se concilia lo que lleva más de 2 minutos con el arrendamiento vencido; antes, el
 // reintento del cliente con la misma llave todavía lo puede retomar.
 const SEGUNDOS_GRACIA = 120;
-// La conciliación arrienda cada intento lo que tardan, como máximo, consultar y capturar o anular.
+// La conciliación arrienda cada intento lo que tardan, como máximo, sus dos llamadas a la pasarela
+// (consultar y capturar o anular), con holgura para las escrituras en la base: mientras tanto, un
+// reintento del cliente recibe 409 y no puede crear el pedido de una autorización que se está anulando.
+const MARGEN_CONCILIACION_MS = 40_000;
 const SEGUNDOS_ARRENDAMIENTO_CONCILIACION =
-  (2 * TIMEOUT_PASARELA_MS + MARGEN_ARRENDAMIENTO_MS) / MS_POR_SEGUNDO;
+  (2 * TIMEOUT_PASARELA_MS + MARGEN_CONCILIACION_MS) / MS_POR_SEGUNDO;
 // Acota una ejecución; lo que quede lo toma la siguiente.
 const MAX_INTENTOS_POR_EJECUCION = 50;
 
-type EstadoConciliado = ResolucionConciliada['estado'];
+// SinCambio: otra petición ya había resuelto el intento (el compare-and-set no aplicó).
+type EstadoConciliado = ResolucionConciliada['estado'] | 'SinCambio';
 
 interface Dependencias {
   repositorio: Pick<CheckoutRepository, 'tomarIntentoPorConciliar' | 'resolverIntentoConciliado'>;
@@ -34,10 +37,12 @@ export function crearConciliacionService({ repositorio, pasarela, logger }: Depe
     resolucion: ResolucionConciliada,
   ): Promise<EstadoConciliado> {
     const resuelto = await repositorio.resolverIntentoConciliado(intento, resolucion);
-    if (!resuelto) {
-      logger.info({ idIntento: intento.idIntento }, 'Otra petición ya había resuelto el intento');
-    }
-    return resolucion.estado;
+    if (resuelto) return resolucion.estado;
+    logger.warn(
+      { idIntento: intento.idIntento, resolucion: resolucion.estado },
+      'Otra petición ya había resuelto el intento; la conciliación no lo cambió',
+    );
+    return 'SinCambio';
   }
 
   // RF-06: se cobra solo lo que tiene pedido; sin pedido, la autorización se anula.
@@ -87,6 +92,7 @@ export function crearConciliacionService({ repositorio, pasarela, logger }: Depe
         Rechazado: 0,
         Anulado: 0,
         Capturado: 0,
+        SinCambio: 0,
         errores: 0,
       };
       for (let tomados = 0; tomados < MAX_INTENTOS_POR_EJECUCION; tomados++) {

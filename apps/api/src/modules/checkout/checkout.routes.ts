@@ -1,5 +1,5 @@
 import { Router, type RequestHandler } from 'express';
-import { autorizar } from '../../shared/http/index.js';
+import { autorizar, encabezadoIdempotenciaSchema } from '../../shared/http/index.js';
 import { registroOpenApi, respuestasError } from '../../shared/openapi/index.js';
 import { z } from '../../shared/openapi/zod.js';
 import type { CheckoutController } from './checkout.controller.js';
@@ -56,7 +56,7 @@ registroOpenApi.registerPath({
     'Paga la sesión: autoriza, crea el pedido (atómico) y captura. Idempotency-Key obligatoria: la misma llave da el mismo resultado (01 §6.2)',
   security: seguridad,
   request: {
-    headers: z.object({ 'idempotency-key': z.uuid() }),
+    headers: encabezadoIdempotenciaSchema,
     body: json(pagarSchema),
   },
   responses: {

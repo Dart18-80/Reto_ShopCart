@@ -3,6 +3,9 @@ import type { Decimal } from 'decimal.js';
 const MARCAS: Readonly<Record<string, string>> = { '3': 'Amex', '4': 'Visa', '5': 'Mastercard' };
 const DIGITOS_VISIBLES = 4;
 
+/** N-03: lo máximo que una operación de la pasarela tarda en responder; pasado eso, PasarelaSinRespuesta. */
+export const TIMEOUT_PASARELA_MS = 10_000;
+
 /** La marca por el primer dígito del número (lo único que, con los últimos 4, se guarda de la tarjeta). */
 export const marcaDeTarjeta = (numero: string): string => MARCAS[numero.charAt(0)] ?? 'Otra';
 

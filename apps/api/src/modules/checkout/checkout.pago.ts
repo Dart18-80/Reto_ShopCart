@@ -1,11 +1,14 @@
-import { setTimeout as esperar } from 'node:timers/promises';
+import { setTimeout as dormir } from 'node:timers/promises';
 import type { Decimal } from 'decimal.js';
 import type { Logger } from 'pino';
 import { AppError, esCodigoError } from '../../shared/errors/index.js';
 import {
   marcaDeTarjeta,
+  PasarelaSinRespuesta,
+  TIMEOUT_PASARELA_MS,
   ultimosDigitos,
   type PasarelaPago,
+  type ResultadoAutorizacion,
   type TarjetaPago,
 } from '../../shared/pasarela/index.js';
 import type { Pedido, PedidosParaCheckout } from '../pedidos/index.js';
@@ -13,7 +16,6 @@ import type { CheckoutRepository } from './checkout.repository.js';
 import type { PagoRealizado } from './checkout.types.js';
 
 // N-03: el arrendamiento cubre el timeout de la pasarela más un margen para crear el pedido y capturar.
-export const TIMEOUT_PASARELA_MS = 10_000;
 export const MARGEN_ARRENDAMIENTO_MS = 5_000;
 const MS_POR_SEGUNDO = 1000;
 const SEGUNDOS_ARRENDAMIENTO = (TIMEOUT_PASARELA_MS + MARGEN_ARRENDAMIENTO_MS) / MS_POR_SEGUNDO;
@@ -29,6 +31,8 @@ interface Dependencias {
   pedidos: PedidosParaCheckout;
   pasarela: PasarelaPago;
   logger: Logger;
+  /** Espera entre los intentos de anulación (las pruebas la reemplazan). */
+  esperar?: (ms: number) => Promise<unknown>;
 }
 
 export interface SolicitudPago {
@@ -38,10 +42,16 @@ export interface SolicitudPago {
 
 /**
  * RF-06, N-03 (01 §6.2): registrar el intento (candado de idempotencia y arrendamiento) → autorizar →
- * crear el pedido (transacción atómica) → capturar, o anular si el pedido falla. Ninguna llamada a la
- * pasarela ocurre dentro de una transacción: cada SP ya hizo COMMIT antes.
+ * crear el pedido (transacción atómica) → capturar, o anular si el pedido no se creó. Ninguna llamada a
+ * la pasarela ocurre dentro de una transacción: cada SP ya hizo COMMIT antes.
  */
-export function crearPagoService({ repositorio, pedidos, pasarela, logger }: Dependencias) {
+export function crearPagoService({
+  repositorio,
+  pedidos,
+  pasarela,
+  logger,
+  esperar = dormir,
+}: Dependencias) {
   async function obtenerPedido(idPedido: number): Promise<Pedido> {
     const pedido = await pedidos.obtener(idPedido);
     if (pedido === null) throw new Error(`El pedido ${String(idPedido)} del pago no existe`);
@@ -51,36 +61,81 @@ export function crearPagoService({ repositorio, pedidos, pasarela, logger }: Dep
   async function capturar(idIntento: number, idTransaccion: string): Promise<void> {
     try {
       await pasarela.capturar(idTransaccion);
-      await repositorio.actualizarIntento(idIntento, { estado: 'Capturado' });
     } catch (error) {
       // El pedido ya existe y el cobro está autorizado: la conciliación (E5-H04) captura después.
       logger.warn(
-        { err: error, idIntento },
-        'No se pudo capturar el pago; queda para la conciliación',
+        { err: error, idIntento, idTransaccion },
+        'La pasarela no capturó el pago; queda para la conciliación',
+      );
+      return;
+    }
+    try {
+      await repositorio.actualizarIntento(idIntento, { estado: 'Capturado' });
+    } catch (error) {
+      logger.warn(
+        { err: error, idIntento, idTransaccion },
+        'El pago se capturó pero el intento no se actualizó; la conciliación lo cierra',
       );
     }
   }
 
   async function anular(idIntento: number, idTransaccion: string, causa: unknown): Promise<void> {
+    const codigo = causa instanceof AppError ? causa.codigo : 'ERROR_INTERNO';
     for (let intento = 1; intento <= INTENTOS_ANULACION; intento++) {
       try {
         await pasarela.anular(idTransaccion);
-        const codigo = causa instanceof AppError ? causa.codigo : 'ERROR_INTERNO';
         await repositorio.actualizarIntento(idIntento, {
           estado: 'Anulado',
           codigo,
           mensaje: causa instanceof AppError ? causa.message : null,
         });
+        logger.info(
+          { idIntento, idTransaccion, codigo },
+          'Autorización anulada: el pedido no se creó',
+        );
         return;
       } catch (error) {
+        logger.warn({ err: error, idIntento, idTransaccion, intento }, 'La anulación falló');
         if (intento === INTENTOS_ANULACION) {
           // Queda Autorizado sin pedido: la conciliación lo anula.
-          logger.error({ err: error, idIntento }, 'No se pudo anular la autorización del pago');
+          logger.error({ idIntento, idTransaccion }, 'No se pudo anular la autorización del pago');
           return;
         }
         await esperar(ESPERA_BASE_ANULACION_MS * intento);
       }
     }
+  }
+
+  /**
+   * SP_Pedidos_CrearPedido falló, pero pudo hacerlo después de su COMMIT (por ejemplo, un timeout al
+   * devolver el detalle). Solo se anula si la base confirma que no hay pedido (RF-06: sin pedido no hay
+   * cobro, y con pedido el cobro no se anula).
+   */
+  async function pedidoTrasFalla(
+    causa: unknown,
+    idIntento: number,
+    idTransaccion: string,
+  ): Promise<Pedido> {
+    let pedido: Pedido | null;
+    try {
+      pedido = await pedidos.obtenerDeIntento(idIntento);
+    } catch (error) {
+      // Sin saber si el pedido existe no se toca el cobro: la conciliación decide bajo bloqueo.
+      logger.error(
+        { err: error, causa, idIntento },
+        'No se pudo comprobar el pedido tras la falla; el intento queda para la conciliación',
+      );
+      throw causa;
+    }
+    if (pedido === null) {
+      await anular(idIntento, idTransaccion, causa);
+      throw causa;
+    }
+    logger.warn(
+      { err: causa, idIntento, idPedido: pedido.idPedido },
+      'El pedido se confirmó aunque la petición falló; se continúa con la captura',
+    );
+    return pedido;
   }
 
   async function crearPedidoYCapturar(
@@ -91,12 +146,25 @@ export function crearPagoService({ repositorio, pedidos, pasarela, logger }: Dep
     try {
       pedido = await pedidos.crearDeIntento(idIntento);
     } catch (error) {
-      // RF-06: sin pedido no hay cobro.
-      await anular(idIntento, idTransaccion, error);
-      throw error;
+      pedido = await pedidoTrasFalla(error, idIntento, idTransaccion);
     }
     await capturar(idIntento, idTransaccion);
     return { pedido, creado: true };
+  }
+
+  // N-03: un timeout libera el arrendamiento para que el reintento con la misma llave no espere.
+  async function liberarTrasFalla(idIntento: number, causa: unknown): Promise<never> {
+    if (causa instanceof PasarelaSinRespuesta) {
+      logger.warn({ err: causa, idIntento }, 'La pasarela no respondió al autorizar');
+    } else {
+      logger.error({ err: causa, idIntento }, 'Error inesperado al autorizar en la pasarela');
+    }
+    try {
+      await repositorio.liberarArrendamiento(idIntento);
+    } catch (error) {
+      logger.error({ err: error, idIntento }, 'No se liberó el arrendamiento; vence solo');
+    }
+    throw new AppError('PAGO_SIN_CONFIRMAR', { cause: causa });
   }
 
   async function autorizar(
@@ -104,14 +172,11 @@ export function crearPagoService({ repositorio, pedidos, pasarela, logger }: Dep
     monto: Decimal,
     { llave, tarjeta }: SolicitudPago,
   ): Promise<PagoRealizado> {
-    let resultado;
+    let resultado: ResultadoAutorizacion;
     try {
       resultado = await pasarela.autorizar({ llave, monto, tarjeta });
     } catch (error) {
-      // N-03: no se sabe si autorizó. Se libera el arrendamiento y el reintento con la misma llave lo resuelve.
-      await repositorio.liberarArrendamiento(idIntento);
-      logger.warn({ err: error, idIntento }, 'La pasarela no respondió al autorizar');
-      throw new AppError('PAGO_SIN_CONFIRMAR', { cause: error });
+      return liberarTrasFalla(idIntento, error);
     }
 
     if (resultado.tipo === 'Rechazada') {

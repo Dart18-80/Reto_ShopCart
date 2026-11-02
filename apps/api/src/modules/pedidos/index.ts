@@ -7,6 +7,7 @@ export type { Pedido } from './pedidos.types.js';
 export const pedidosParaCheckout = {
   crearDeIntento: (idIntentoPago: number) => pedidosRepository.crearDeIntento(idIntentoPago),
   obtener: (idPedido: number) => pedidosRepository.obtener(idPedido),
+  obtenerDeIntento: (idIntentoPago: number) => pedidosRepository.obtenerDeIntento(idIntentoPago),
 };
 
 export type PedidosParaCheckout = typeof pedidosParaCheckout;

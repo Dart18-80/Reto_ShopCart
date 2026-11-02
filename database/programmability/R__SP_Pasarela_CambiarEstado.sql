@@ -1,6 +1,6 @@
 -- N-03 (E5-H02): la pasarela simulada captura o anula una autorización (@Estado = 'Capturada' o 'Anulada').
 -- Idempotente: si ya está en ese estado no cambia nada. Solo se captura o anula una autorización Autorizada;
--- en otro estado responde 50002 (el adaptador lo convierte en un error de la pasarela). Solo la usa el
+-- en otro estado responde 50002 (el servicio lo registra y deja el intento a la conciliación). Solo la usa el
 -- adaptador PasarelaSimulada, nunca dentro de una transacción del checkout.
 CREATE OR ALTER PROCEDURE dbo.SP_Pasarela_CambiarEstado
     @IDTransaccion  VARCHAR(64),

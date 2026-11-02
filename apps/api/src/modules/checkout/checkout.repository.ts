@@ -142,6 +142,10 @@ function aRegistro(fila: FilaRegistro): RegistroIntento {
         codigo: fila.CodigoRespuesta ?? 'ERROR_INTERNO',
         mensaje: fila.MensajeRespuesta,
       };
+    default:
+      throw new Error(
+        `SP_Checkout_RegistrarIntentoPago devolvió una acción desconocida: ${String(fila.Accion satisfies never)}`,
+      );
   }
 }
 

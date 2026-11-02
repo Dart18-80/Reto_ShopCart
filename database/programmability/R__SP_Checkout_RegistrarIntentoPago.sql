@@ -68,6 +68,12 @@ BEGIN
                                                                     @MarcaTarjeta, @UltimosDigitos))
                 THROW 50603, N'La llave de idempotencia ya se usó con otra solicitud.', 1;
 
+            -- 01 §6.2: la llave es de una sesión anterior y el cliente ya inició otra (el carrito bloqueado
+            -- serializa el inicio de sesiones): es otra solicitud, no un reintento.
+            IF EXISTS (SELECT 1 FROM dbo.SesionCheckout AS s
+                       WHERE s.IDUsuario = @IDCliente AND s.Estado = 'Activa' AND s.IDSesionCheckout <> @IDSesion)
+                THROW 50603, N'La llave de idempotencia ya se usó con otra solicitud.', 1;
+
             SET @IDPedido = (SELECT p.IDPedido FROM dbo.Pedido AS p WHERE p.IDSesionCheckout = @IDSesion);
 
             IF @Estado = 'Capturado'

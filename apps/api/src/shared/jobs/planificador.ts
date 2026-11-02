@@ -41,13 +41,17 @@ export function crearPlanificador(tareas: readonly Tarea[], logger: Logger): Pla
 
   function disparar(tarea: Tarea): void {
     // Dentro de una réplica no se superponen dos ejecuciones de la misma tarea.
-    if (enCurso.has(tarea.nombre)) return;
+    if (enCurso.has(tarea.nombre)) {
+      logger.warn({ tarea: tarea.nombre }, 'Turno omitido: la ejecución anterior sigue en curso');
+      return;
+    }
     const ejecucion = ejecutar(tarea).finally(() => enCurso.delete(tarea.nombre));
     enCurso.set(tarea.nombre, ejecucion);
   }
 
   return {
     iniciar() {
+      if (temporizadores.length > 0) return;
       for (const tarea of tareas) {
         const temporizador = setInterval(() => {
           disparar(tarea);

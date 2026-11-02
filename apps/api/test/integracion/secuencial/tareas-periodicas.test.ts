@@ -88,6 +88,9 @@ async function conBloqueoTomado<T>(recurso: string, accion: () => Promise<T>): P
     Recurso: { tipo: sql.NVarChar(255), valor: recurso },
     Milisegundos: { tipo: sql.Int, valor: 1500 },
   });
+  // Se marca como manejada ya: si falla antes del finally, no queda un rechazo suelto; el await la relanza.
+  retencion.catch(() => undefined);
+  // Margen para que el SP de prueba tome el bloqueo antes de ejecutar el job.
   await new Promise((listo) => setTimeout(listo, 300));
   try {
     return await accion();
@@ -327,7 +330,14 @@ describe('conciliación de pagos (E5-H04, N-03)', () => {
 
     const segunda = await conciliar();
 
-    expect(segunda).toEqual({ Fallido: 0, Rechazado: 0, Anulado: 0, Capturado: 0, errores: 0 });
+    expect(segunda).toEqual({
+      Fallido: 0,
+      Rechazado: 0,
+      Anulado: 0,
+      Capturado: 0,
+      SinCambio: 0,
+      errores: 0,
+    });
     expect(await intentosDe(idSesion)).toMatchObject([{ Estado: 'Anulado' }]);
     expect(await estadoEnPasarela(llave)).toBe('Anulada');
   });

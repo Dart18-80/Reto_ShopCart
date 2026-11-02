@@ -55,6 +55,10 @@ BEGIN
                     OR (@Estado = 'Capturado'  AND @Actual = 'Autorizado'))
                 THROW 50005, N'Transición inválida del intento de pago.', 1;
 
+            -- RF-06: un intento con pedido nunca se anula (su cobro es el del pedido).
+            IF @Estado = 'Anulado' AND EXISTS (SELECT 1 FROM dbo.Pedido AS p WHERE p.IDIntentoPago = @IDIntentoPago)
+                THROW 50005, N'No se anula un intento de pago con pedido.', 1;
+
             UPDATE dbo.IntentoPago
             SET    Estado                = @Estado,
                    IDTransaccionPasarela = COALESCE(@IDTransaccion, IDTransaccionPasarela),

@@ -303,7 +303,7 @@ Cliente          API (CheckoutService)                 Pasarela (puerto)       S
 | La llave encuentra | Respuesta |
 |---|---|
 | Nada (llave nueva) | `INSERT` del intento `Pendiente` con el arrendamiento tomado → autorizar |
-| Otro cliente, otra sesión u otro hash | `422 LLAVE_REUTILIZADA` |
+| Otro cliente, otra sesión u otro hash (incluida la llave de una sesión anterior cuando el cliente ya tiene otra `Activa`) | `422 LLAVE_REUTILIZADA` |
 | `Pendiente` o `Autorizado` con el arrendamiento vivo | `409 PAGO_EN_CURSO` con `Retry-After` |
 | `Pendiente` con el arrendamiento vencido | Compare-and-set bajo `UPDLOCK` (solo una petición lo gana) → autorizar otra vez con la misma llave |
 | `Autorizado` sin pedido, arrendamiento vencido | Se retoma (compare-and-set) → `CrearPedido` |
@@ -312,7 +312,7 @@ Cliente          API (CheckoutService)                 Pasarela (puerto)       S
 | `Rechazado`, `Anulado` o `Fallido` | El mismo error que se respondió entonces; si lo cerró la conciliación, `409 PAGO_NO_COMPLETADO` (sin cobro) |
 | Sesión ya pagada (con cualquier llave) | `200` con el pedido existente, sin crear intento ni llamar a la pasarela |
 
-Ante un timeout de la pasarela el arrendamiento se libera de inmediato (`ArrendadoHasta = ahora`) y se responde `504 PAGO_SIN_CONFIRMAR`: el reintento con la misma llave lo retoma sin esperar.
+El puerto impone `TIMEOUT_PASARELA_MS` (10 s) a cada operación: sin respuesta en ese plazo lanza `PasarelaSinRespuesta`, y los arrendamientos se calculan con ese límite. Ante un timeout de la pasarela el arrendamiento se libera de inmediato (`ArrendadoHasta = ahora`) y se responde `504 PAGO_SIN_CONFIRMAR`: el reintento con la misma llave lo retoma sin esperar.
 
 **La pasarela simulada tiene estado propio.** Guarda sus autorizaciones por llave en `PasarelaAutorizacion` (y los reembolsos en `PasarelaReembolso`), solo por `SP_Pasarela_*` y nunca dentro de una transacción del checkout. Un reintento que cae en la otra réplica recibe la misma autorización.
 
@@ -324,7 +324,7 @@ Ante un timeout de la pasarela el arrendamiento se libera de inmediato (`Arrenda
 | Timeout de la pasarela (`4000…0119`) | `504 PAGO_SIN_CONFIRMAR`, arrendamiento liberado; el reintento con la misma `K` (en cualquier réplica) recibe la misma autorización |
 | La red se cae después de autorizar | El cliente reintenta con la misma `K`; vencido el arrendamiento, la petición retoma el intento `Autorizado` y sigue en `CrearPedido`, que es idempotente gracias a `UNIQUE(IDSesionCheckout)` |
 | La reserva venció en el segundo 14:59 | `CrearPedido` intenta reservar de nuevo dentro de la transacción; si no hay stock → THROW → se anula la autorización → `409` |
-| Falla `CrearPedido` | Se anula la autorización; el intento queda `Anulado` con el código del error |
+| Falla `CrearPedido` | Se pregunta a la base si el pedido del intento existe (`SP_Pedidos_ObtenerDeIntento`): el SP pudo confirmar y la petición fallar después, por ejemplo con un timeout al devolver el detalle. Sin pedido, se anula la autorización y el intento queda `Anulado` con el código del error. Con pedido, se captura y se responde el pedido. Si ni eso se puede leer, no se toca el cobro: queda `Autorizado` para la conciliación. `SP_Checkout_ActualizarIntentoPago` rechaza `Anulado` en un intento con pedido |
 | Falla la anulación | El intento queda `Autorizado` sin pedido; la conciliación lo anula |
 | La API muere entre la autorización y la captura (o entre `CrearPedido` y la actualización del intento) | El intento queda `Autorizado`; la conciliación (cada minuto, E5-H04) lo captura si existe el pedido de la sesión o lo anula si no |
 | Falla la captura | El pedido existe y se responde `201`; la conciliación captura después |
@@ -395,7 +395,7 @@ En el carrito: **carrito → variantes en orden de `IDVariante`**. Todo SP de ca
 Se ejecutan **dentro de cada réplica de la API** con un planificador interno (`shared/jobs`, lo arranca solo `server.ts`). Cada SP toma un `sp_getapplock` exclusivo: si la otra réplica ya lo tiene, retorna sin hacer nada y el log de esa réplica dice `Tarea omitida`; la que la ejecuta registra `Tarea ejecutada` con sus conteos. Dentro de una réplica una tarea no se superpone consigo misma, y el apagado ordenado espera la ejecución en curso antes de cerrar el pool.
 
 - **Expiración:** bloquea primero todas las sesiones vencidas (por `IDSesionCheckout`) y después libera reservas y cupones, en el mismo orden sesión → cupón que el resto de los SPs.
-- **Conciliación:** `SP_Checkout_TomarIntentosPorConciliar` toma **un** intento por llamada (`UPDLOCK, READPAST`) y lo arrienda lo que tardan consultar y capturar o anular; el servicio llama a la pasarela fuera de toda transacción y `SP_Checkout_ResolverIntentoConciliado` registra el resultado con compare-and-set (si un reintento del cliente ya lo resolvió, no cambia nada). Captura solo lo que tiene pedido y anula solo lo que no lo tiene. Como máximo 50 intentos por ejecución.
+- **Conciliación:** `SP_Checkout_TomarIntentosPorConciliar` toma **un** intento por llamada (`UPDLOCK, READPAST`) y lo arrienda 60 s (sus dos llamadas a la pasarela, de 10 s como máximo cada una, más holgura para las escrituras); el servicio llama a la pasarela fuera de toda transacción y `SP_Checkout_ResolverIntentoConciliado` registra el resultado con compare-and-set (si un reintento del cliente ya lo resolvió, no cambia nada y se cuenta como `SinCambio`). Captura solo lo que tiene pedido y anula solo lo que no lo tiene. Como máximo 50 intentos por ejecución.
 
 | Tarea | Frecuencia | SP |
 |---|---|---|
