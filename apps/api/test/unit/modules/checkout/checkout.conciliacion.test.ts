@@ -154,6 +154,21 @@ describe('checkout.conciliacion (E5-H04, N-03)', () => {
     },
   );
 
+  it('un cobro Capturado sin pedido → EnRevision, sin anular ni capturar (no reintenta para siempre)', async () => {
+    const { servicio, repositorio, pasarela } = preparar([PENDIENTE], {
+      estado: 'Capturada',
+      idTransaccion: 'txn-1',
+      ...TARJETA,
+    });
+
+    const resultado = await servicio.conciliar();
+
+    expect(resoluciones(repositorio)).toEqual([{ estado: 'EnRevision' }]);
+    expect(pasarela.anular).not.toHaveBeenCalled();
+    expect(pasarela.capturar).not.toHaveBeenCalled();
+    expect(resultado).toMatchObject({ EnRevision: 1, errores: 0 });
+  });
+
   it('Autorizado sin pedido → anula', async () => {
     const { servicio, repositorio, pasarela } = preparar([AUTORIZADO]);
 

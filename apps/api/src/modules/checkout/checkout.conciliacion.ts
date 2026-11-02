@@ -62,29 +62,29 @@ export function crearConciliacionService({ repositorio, pasarela, logger }: Depe
     return cerrar(intento, { estado: 'Anulado', idTransaccion });
   }
 
-  // N-03: un intento con pedido solo puede terminar Capturado. Si la autorización ya no existe en la pasarela
-  // (anulada o desconocida), el pedido quedó sin cobro posible: estado terminal EnRevision, que no se vuelve a
-  // tomar, así el error se registra una sola vez y la conciliación no reintenta para siempre.
+  // N-03: un intento con pedido solo puede terminar Capturado, y uno sin pedido nunca queda capturado. Si la
+  // pasarela contradice eso (la autorización de un pedido ya no existe, o hay un cobro capturado sin pedido), el
+  // estado terminal EnRevision lo deja para revisión manual: no se vuelve a tomar, así el error se registra una
+  // sola vez y la conciliación no reintenta para siempre.
   function aRevision(
     intento: IntentoPorConciliar,
     enPasarela: EstadoEnPasarela,
   ): Promise<EstadoConciliado> {
     logger.error(
       { idIntento: intento.idIntento, idPedido: intento.idPedido, enPasarela: enPasarela.estado },
-      'Pedido sin cobro posible en la pasarela: el intento queda EnRevision para revisión manual',
+      'Pago inconsistente con la pasarela: el intento queda EnRevision para revisión manual',
     );
     return cerrar(intento, { estado: 'EnRevision' });
   }
 
   async function resolverSegunPasarela(intento: IntentoPorConciliar): Promise<EstadoConciliado> {
     const enPasarela = await pasarela.consultar(intento.llave);
-    if (
+    const pedidoSinCobro =
       intento.idPedido !== null &&
       enPasarela.estado !== 'Autorizada' &&
-      enPasarela.estado !== 'Capturada'
-    ) {
-      return aRevision(intento, enPasarela);
-    }
+      enPasarela.estado !== 'Capturada';
+    const cobroSinPedido = intento.idPedido === null && enPasarela.estado === 'Capturada';
+    if (pedidoSinCobro || cobroSinPedido) return aRevision(intento, enPasarela);
     switch (enPasarela.estado) {
       case 'NoExiste':
         return cerrar(intento, { estado: 'Fallido' });

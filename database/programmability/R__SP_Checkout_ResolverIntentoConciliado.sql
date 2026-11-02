@@ -5,8 +5,9 @@
 --               MaxIntentosPagoRechazados con la sesión Activa, la cancela y libera (como el pago)
 --   Anulado     Pendiente o Autorizado sin pedido → se anuló la autorización
 --   Capturado   Pendiente o Autorizado con su pedido → se capturó
---   EnRevision  Pendiente o Autorizado con su pedido, pero la autorización ya no existe en la pasarela (anulada
---               o desconocida): el pedido quedó sin cobro posible. Terminal, para revisión manual (V019)
+--   EnRevision  Pago inconsistente con la pasarela, terminal y para revisión manual (V019): un pedido cuya
+--               autorización ya no existe (anulada o desconocida), o un cobro capturado sin pedido. Un reintento
+--               con la misma llave responde el pedido o, sin pedido, INVARIANTE_INTERNA
 -- Compare-and-set: si el intento ya no está en @EstadoEsperado o su arrendamiento ya no es el de esta toma
 -- (@TokenArrendamiento: otro proceso lo retomó), no cambia nada y devuelve Resuelto = 0. Fallido y Anulado guardan PAGO_NO_COMPLETADO: es la respuesta que
 -- recibe un reintento con la misma llave. Solo el rol Sistema (los jobs).
@@ -70,8 +71,6 @@ BEGIN
             -- RF-06: se captura solo lo que tiene pedido y se anula solo lo que no lo tiene.
             IF @Estado = 'Capturado' AND @TienePedido = 0
                 THROW 50005, N'No se captura un intento de pago sin pedido.', 1;
-            IF @Estado = 'EnRevision' AND @TienePedido = 0
-                THROW 50005, N'Solo un intento de pago con pedido queda en revisión.', 1;
             -- Plan E6-H03 §2.6: el cobro de un pedido cancelado nunca se captura (la cancelación ya cercó el
             -- intento; esto es la última defensa).
             IF @Estado = 'Capturado' AND EXISTS (SELECT 1 FROM dbo.Pedido AS p
@@ -86,9 +85,12 @@ BEGIN
                    IDTransaccionPasarela = COALESCE(@IDTransaccion, IDTransaccionPasarela),
                    CodigoRespuesta       = CASE WHEN @Estado IN ('Fallido', 'Anulado') THEN 'PAGO_NO_COMPLETADO'
                                                 WHEN @Estado = 'Rechazado' THEN @CodigoRespuesta
+                                                WHEN @Estado = 'EnRevision' THEN 'INVARIANTE_INTERNA'
                                                 ELSE CodigoRespuesta END,
                    MensajeRespuesta      = CASE WHEN @Estado IN ('Fallido', 'Anulado') THEN NULL
                                                 WHEN @Estado = 'Rechazado' THEN @MensajeRespuesta
+                                                WHEN @Estado = 'EnRevision'
+                                                THEN N'No pudimos confirmar el estado de tu pago. Contáctanos antes de volver a pagar.'
                                                 ELSE MensajeRespuesta END,
                    ArrendadoHasta        = NULL,
                    FechaActualizacion    = SYSUTCDATETIME()

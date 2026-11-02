@@ -17,7 +17,7 @@ const LITERAL = "'S'";
 const RAIZ = resolve(DATABASE, '..');
 const CODIGO_TS = ['apps/api/src', 'apps/api/test', 'packages/shared/src', 'database/migrator/src'];
 const SENTENCIA_SQL =
-  /\b(?:SELECT\s+[\s\S]{0,200}?\bFROM\s+\w|INSERT\s+INTO\s+\w|UPDATE\s+\w+\s+SET\s|DELETE\s+FROM\s+\w|MERGE\s+INTO\s|TRUNCATE\s+TABLE\s|EXEC(?:UTE)?\s+(?:dbo\.|sys\.)?\w+_\w+|CREATE\s+(?:TABLE|PROCEDURE|VIEW)\s)/;
+  /\b(?:SELECT\s+[\s\S]{0,200}?\bFROM\s+[\w[]|INSERT\s+(?:INTO\s+)?(?:dbo\.|\[)[\w\]]|INSERT\s+INTO\s+\w|UPDATE\s+[\w.[\]]+\s+SET\s|DELETE\s+(?:FROM\s+)?(?:dbo\.|\[)|DELETE\s+FROM\s+\w|MERGE\s+(?:INTO\s+)?[\w[]+[\w.\]]*\s+(?:AS\s+\w+\s+)?USING\b|TRUNCATE\s+TABLE\s|EXEC(?:UTE)?\s+(?:dbo\.|sys\.)?\w+_\w+|CREATE\s+(?:TABLE|PROCEDURE|VIEW)\s)/;
 // Llamadas de mssql que aceptan texto SQL: la API solo usa request.execute(nombreDelSP).
 const TEXTO_A_MSSQL = /\.(?:query|batch)\s*\(/;
 
@@ -71,10 +71,10 @@ const codigoTs = CODIGO_TS.flatMap((carpeta) =>
 );
 const scriptsDelMigrador = leerScripts(SCRIPTS_DEL_MIGRADOR);
 
-/** Lo que se asigna a una variable (DECLARE @V ... = x; SET @V = x; SET @V += x;), hasta el ; o el fin de línea. */
+/** Lo que se asigna a una variable (DECLARE @V ... = x; SET o SELECT @V = x; SET @V += x;), hasta el ;. */
 function asignaciones(codigo: string, variable: string): string[] {
   const patron = new RegExp(
-    `(?:DECLARE\\s+@${variable}\\b[^=;]*=|SET\\s+@${variable}\\s*\\+?=)\\s*([\\s\\S]*?)(?:;|\\n\\s*\\n|$)`,
+    `(?:DECLARE\\s+@${variable}\\b[^=;]*=|(?:SET|SELECT)\\s+@${variable}\\s*\\+?=)\\s*([\\s\\S]*?)(?:;|\\n\\s*\\n|$)`,
     'gi',
   );
   return [...codigo.matchAll(patron)].map((m) => (m[1] ?? '').trim());
@@ -109,10 +109,13 @@ function concatenacionesInseguras(codigo: string, permitirQuotename: boolean): s
       )
     );
   };
-  const dinamicas = [...codigo.matchAll(/sp_executesql\s+@(\w+)/gi)].map((m) => m[1] ?? '');
+  // Cada asignación de la variable que se ejecuta se revisa, tenga o no un +: una copia de otra variable
+  // (SET @Sql = @Base) o un CONCAT(...) también traen lo que haya en ellos.
+  const dinamicas = [...codigo.matchAll(/sp_executesql\s+(?:@stmt\s*=\s*)?@(\w+)/gi)].map(
+    (m) => m[1] ?? '',
+  );
   return dinamicas.flatMap((variable) =>
     asignaciones(codigo, variable)
-      .filter((expresion) => expresion.includes('+'))
       .flatMap(operandos)
       .filter((operando) => !esSeguro(operando, new Set([variable]))),
   );
@@ -163,6 +166,15 @@ describe('checklist de penalizaciones sobre los scripts (E8-H02)', () => {
 
     expect(concatenacionesInseguras(codigo, false)).toEqual(['@Valor']);
   });
+
+  it.each([
+    ['SELECT @V =', "SELECT @Sql = N'SELECT 1 WHERE x = ''' + @Valor;\nEXEC sp_executesql @Sql;"],
+    ['CONCAT', "SET @Sql = CONCAT(N'SELECT ', @Valor);\nEXEC sp_executesql @Sql;"],
+    ['una copia', "SET @Base = N'SELECT ' + @Valor;\nSET @Sql = @Base;\nEXEC sp_executesql @Sql;"],
+    ['@stmt =', "SET @Sql = N'SELECT ' + @Valor;\nEXEC sp_executesql @stmt = @Sql;"],
+  ])('detecta la concatenación insegura con %s', (_caso, sql) => {
+    expect(concatenacionesInseguras(normalizar(sql), false)).not.toEqual([]);
+  });
 });
 
 describe('sin SQL en el backend (E8-H02, enunciado §08)', () => {
@@ -190,5 +202,15 @@ describe('sin SQL en el backend (E8-H02, enunciado §08)', () => {
   it('detecta una consulta escrita en el código (la regla no es vacía)', () => {
     expect(SENTENCIA_SQL.test('const sql = `SELECT Nombre FROM dbo.Producto`;')).toBe(true);
     expect(SENTENCIA_SQL.test("await request.query('EXEC dbo.SP_Catalogo_Listar')")).toBe(true);
+    for (const sentencia of [
+      'UPDATE dbo.Producto SET Precio = 1',
+      'UPDATE [dbo].[Producto] SET Precio = 1',
+      'DELETE dbo.Producto WHERE 1 = 1',
+      'DELETE FROM Producto',
+      'MERGE dbo.Producto AS t USING',
+      'INSERT dbo.Producto (Nombre) VALUES (1)',
+    ]) {
+      expect(SENTENCIA_SQL.test(sentencia), sentencia).toBe(true);
+    }
   });
 });

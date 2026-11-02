@@ -109,13 +109,14 @@ export function crearReembolsosService({ repositorio, pasarela, logger }: Depend
   }
 
   /**
-   * Si la base falla después de que la pasarela respondió, el resultado queda en el log (con la transacción
-   * del reembolso) antes de relanzar: la llave fija evita devolver dos veces cuando el job lo reintente.
+   * Si la base falla después de que la pasarela devolvió el dinero, la transacción del reembolso queda en el
+   * log antes de relanzar (quien llama registra la falla); la llave fija evita devolver dos veces cuando el
+   * job lo reintente.
    */
   async function registrarResultado(
     reembolso: ReembolsoParaProcesar,
     resultado: ResultadoReembolso,
-  ): Promise<EstadoReembolso> {
+  ): Promise<ResultadoActualizacionReembolso> {
     const { idReembolso } = reembolso;
     let registro: ResultadoActualizacionReembolso;
     try {
@@ -124,10 +125,12 @@ export function crearReembolsosService({ repositorio, pasarela, logger }: Depend
         segundosEntreIntentos: SEGUNDOS_ENTRE_INTENTOS,
       });
     } catch (error) {
-      logger.error(
-        { err: error, idReembolso, resultado },
-        'No se registró el resultado de la pasarela; el reembolso queda Pendiente para el job',
-      );
+      if (resultado.exito) {
+        logger.error(
+          { idReembolso, idTransaccionReembolso: resultado.idTransaccionReembolso },
+          'La pasarela devolvió el dinero pero no se registró; el job lo completa con la misma llave',
+        );
+      }
       throw error;
     }
     if (!registro.aplicado && !resultado.exito) {
@@ -136,7 +139,7 @@ export function crearReembolsosService({ repositorio, pasarela, logger }: Depend
         'Reclamo desplazado: otro proceso tomó el reembolso y este fallo no se registró',
       );
     }
-    return registro.estado;
+    return registro;
   }
 
   /** null si no estaba Pendiente o ya lo procesaba otro (no se toca). */
@@ -144,13 +147,13 @@ export function crearReembolsosService({ repositorio, pasarela, logger }: Depend
     const reembolso = await repositorio.tomarReembolso(idReembolso, SEGUNDOS_RECLAMO);
     if (reembolso === null) return null;
     const resultado = await devolver(reembolso);
-    const estado = await registrarResultado(reembolso, resultado);
+    const { estado, aplicado } = await registrarResultado(reembolso, resultado);
     if (resultado.exito && estado !== 'Completado') {
       logger.error(
         { idReembolso, idTransaccionReembolso: resultado.idTransaccionReembolso, estado },
         'La pasarela devolvió el dinero pero el reembolso no quedó Completado',
       );
-    } else if (estado === 'Fallido') {
+    } else if (aplicado && estado === 'Fallido') {
       logger.error(
         { idReembolso },
         'Reembolso Fallido tras 5 intentos: requiere resolución manual',

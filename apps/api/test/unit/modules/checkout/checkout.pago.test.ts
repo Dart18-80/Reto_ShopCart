@@ -219,6 +219,19 @@ describe('checkout.pago (E5-H03)', () => {
     expect(pasarela.anular).not.toHaveBeenCalled();
   });
 
+  it('si renovar el arrendamiento rompe una invariante (50005), responde 500 y no PAGO_EN_CURSO', async () => {
+    const { servicio, repositorio, pedidos, pasarela } = preparar(AUTORIZAR);
+    pedidos.crearDeIntento.mockRejectedValueOnce(new Error('timeout de CrearPedido'));
+    repositorio.renovarArrendamiento.mockRejectedValueOnce(
+      new AppError('INVARIANTE_INTERNA', { mensaje: 'El intento de pago no es del cliente.' }),
+    );
+
+    const error = await servicio.pagar(SOLICITUD).catch((e: unknown) => e);
+
+    expect(error).toMatchObject({ codigo: 'INVARIANTE_INTERNA', status: 500 });
+    expect(pasarela.anular).not.toHaveBeenCalled();
+  });
+
   it('al perder el arrendamiento registra la causa original en el log', async () => {
     const registrado: string[] = [];
     const logger = pino({ level: 'warn' }, { write: (linea: string) => registrado.push(linea) });

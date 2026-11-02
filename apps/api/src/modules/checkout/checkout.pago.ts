@@ -198,6 +198,8 @@ export function crearPagoService({
     try {
       return await repositorio.renovarArrendamiento(arrendamiento, SEGUNDOS_ARRENDAMIENTO);
     } catch (error) {
+      // Otro rol o un intento ajeno es un bug (50005), no un arrendamiento perdido: responde 500.
+      if (error instanceof AppError && error.codigo === 'INVARIANTE_INTERNA') throw error;
       logger.error(
         { err: error, idIntento: arrendamiento.idIntento },
         'No se pudo renovar el arrendamiento; el cobro queda para quien tenga el intento',
@@ -292,7 +294,8 @@ export function crearPagoService({
         mensaje: null,
       });
     } else if (enPasarela.estado === 'Capturada') {
-      // Sin pedido no puede haber captura: no se toca el cobro ni se dice que no hubo cobro.
+      // Sin pedido no puede haber captura: no se toca el cobro ni se dice que no hubo cobro; la conciliación
+      // lo deja EnRevision para revisión manual.
       logger.error(
         { idIntento: arrendamiento.idIntento },
         'Cobro capturado en una sesión vencida sin pedido; queda para la conciliación',
