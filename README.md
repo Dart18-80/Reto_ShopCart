@@ -54,7 +54,7 @@ docker compose ps                 # todo "healthy"; db-migrator "Exited (0)"
 
 El primer arranque descarga las imágenes y construye la API y la web. El migrador crea la base y los logins, y aplica todos los scripts de `database/`, incluidos los datos demo. Cuando termina, las réplicas quedan `healthy`.
 
-- **Con las imágenes base ya descargadas:** cerca de **1.5 minutos** desde un clon nuevo, construcción incluida (medido: 92 s).
+- **Con las imágenes base ya descargadas:** unos **2 minutos** desde un clon nuevo, construcción incluida (medido en dos ensayos: 92 s y 118 s).
 - **La primera vez en una máquina:** se suman unos 2 GB de descarga (SQL Server, Node, nginx y Redis); con 50 Mbps son unos 5 minutos más.
 
 | URL                                           | Qué es                                                |
