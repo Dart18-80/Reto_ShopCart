@@ -369,7 +369,7 @@ Generador `SP_Semilla_GenerarDatosDemo @Pedidos = 50000, @Dias = 90` en una base
 | Se podían desactivar todos los métodos de envío y entonces todo checkout fallaba con 404 | Guía de defensa (E9-H03) | **Resuelto** (decisión del PO): siempre queda uno activo, 50901 bajo bloqueo de las filas de `MetodoEnvio` (N-04) | `secuencial/configuracion-envios.api.test.ts` |
 | La espera máxima del apagado (10 s) era igual al plazo de `docker stop` | Guía de defensa (E9-H03) | **Resuelto** (decisión del PO): `stop_grace_period: 15s` en las réplicas, Redis y SQL Server | `entorno/apagado.test.ts` |
 | Cambiar el rol sube la versión de sesión pero no revoca los refresh tokens; el refresh siguiente emite el token con el rol nuevo | Guía de defensa (E9-H03) | **Confirmado por el PO** y explícito en N-15 | `usuarios.api.test.ts` › "N-15: cambiar el rol rechaza al instante…" |
-| El orden de capas dentro de un módulo (`routes → controller → service → repository`) no lo verifica el lint, solo las fronteras entre módulos | Guía de defensa (E9-H03) | Abierto: hoy se cumple (revisado a mano); CLAUDE.md dice que el lint lo verifica | `eslint.config.mjs` |
+| El orden de capas dentro de un módulo no lo verificaba el lint, solo las fronteras entre módulos | Guía de defensa (E9-H03) | **Resuelto** (decisión del PO): categorías por sufijo y políticas de capas en `eslint-plugin-boundaries` | `fronteras.test.ts` |
 | Redis usa `redis:7-alpine` sin digest | Guía de defensa (E9-H03) | Abierto (SQL Server y Grafana LGTM sí lo llevan) | `docker-compose.yml` |
 | El cierre de un stream SSE por token vencido o sesión revocada llega en el siguiente latido (hasta 15 s después) | Revisión de E9 | Aceptado y documentado en A-25 | `reportes.eventos.ts` (`revisar`) |
 

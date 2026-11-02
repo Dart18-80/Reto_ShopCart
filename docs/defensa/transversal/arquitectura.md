@@ -7,9 +7,9 @@ ShopCart es un **monolito modular** (A-01): una sola API Express 5 con 15 módul
 ## Monolito modular y fronteras (A-01)
 
 - Un módulo por dominio: `auth`, `bitacora`, `carrito`, `catalogo`, `checkout`, `configuracion`, `cupones`, `direcciones`, `envios`, `exportaciones`, `inventario`, `pedidos`, `reportes`, `sistema`, `usuarios`.
-- La frontera entre módulos la impone ESLint con `eslint-plugin-boundaries`: un módulo solo puede importar el `index.ts` de otro. [eslint.config.mjs:34](../../../eslint.config.mjs#L34 "A-01: un módulo solo puede usar a otro a través de su index.ts") y el mensaje del error en [eslint.config.mjs:68](../../../eslint.config.mjs#L68 "A-01: un módulo solo importa el index.ts de otro módulo").
-- La regla está probada con el lint real sobre un módulo temporal: importar el repositorio de otro módulo falla ([fronteras.test.ts:48](../../../apps/api/test/unit/fronteras.test.ts#L48 "importar el repositorio de otro módulo hace fallar el lint")) e importar su `index.ts` pasa ([fronteras.test.ts:56](../../../apps/api/test/unit/fronteras.test.ts#L56 "importar el index.ts de otro módulo está permitido")).
-- **Lo que el lint no verifica:** el orden de capas *dentro* de un módulo (que un controlador no llame al repositorio) es convención, no una regla de ESLint. Hoy se cumple: ningún `*.controller.ts` ni `*.routes.ts` importa un `*.repository.ts`, y ningún `*.service.ts` importa `mssql`, `ioredis` ni `express` (verificado con búsqueda en el código, no con una prueba).
+- La frontera entre módulos la impone ESLint con `eslint-plugin-boundaries`: un módulo solo puede importar el `index.ts` de otro. [eslint.config.mjs:34](../../../eslint.config.mjs#L34 "A-01: un módulo solo puede usar a otro a través de su index.ts") y el mensaje del error en [eslint.config.mjs:79](../../../eslint.config.mjs#L79 "A-01: un módulo solo importa el index.ts de otro módulo").
+- La regla está probada con el lint real sobre un módulo temporal: importar el repositorio de otro módulo falla ([fronteras.test.ts:61](../../../apps/api/test/unit/fronteras.test.ts#L61 "importar el repositorio de otro módulo hace fallar el lint")) e importar su `index.ts` pasa ([fronteras.test.ts:69](../../../apps/api/test/unit/fronteras.test.ts#L69 "importar el index.ts de otro módulo está permitido")).
+- **El orden de capas dentro de un módulo** también lo verifica el lint (decisión del PO en E9), con la misma herramienta: cada archivo se clasifica por su sufijo y el controlador no importa el repositorio, el servicio no importa Express, las rutas ni el controlador, y el repositorio no importa el servicio ([eslint.config.mjs:85](../../../eslint.config.mjs#L85 "A-01 (capas): el controlador llama al servicio, nunca al repositorio.")). La regla revisa también las dependencias internas de un módulo y las externas ([eslint.config.mjs:64](../../../eslint.config.mjs#L64 "checkInternals: true")); cada import prohibido tiene su prueba ([fronteras.test.ts:101](../../../apps/api/test/unit/fronteras.test.ts#L101 "%s: el lint falla")).
 - Por qué monolito y no microservicios: el pago (RF-06) crea el pedido, descuenta inventario y confirma el cupón en **una** transacción de SQL Server; repartirlo entre servicios obligaría a sagas.
 
 ## Capas, de punta a punta (ejemplo: direcciones)
@@ -117,12 +117,12 @@ El servicio puede prevalidar para dar un mensaje claro, pero el SP vuelve a vali
 ### ¿Cómo garantizan que un módulo no use los internos de otro?
 
 Con `eslint-plugin-boundaries`: importar un archivo de otro módulo que no sea su `index.ts` es un error de lint, y una prueba lo comprueba con el lint real.
-**Muéstralo en:** [fronteras.test.ts:48](../../../apps/api/test/unit/fronteras.test.ts#L48 "importar el repositorio de otro módulo hace fallar el lint")
+**Muéstralo en:** [fronteras.test.ts:61](../../../apps/api/test/unit/fronteras.test.ts#L61 "importar el repositorio de otro módulo hace fallar el lint")
 
 ### ¿Y el orden routes → controller → service → repository dentro del módulo?
 
-Es convención y hoy se cumple (ningún controlador ni ruta importa un repositorio), pero el lint no lo verifica: solo verifica la frontera entre módulos.
-**Muéstralo en:** [eslint.config.mjs:62](../../../eslint.config.mjs#L62 "captured: { modulo: '!{{from.captured.modulo}}' }")
+Lo verifica el lint: el controlador no importa el repositorio; el servicio no importa Express, las rutas ni el controlador; el repositorio no importa el servicio. Un import prohibido hace fallar `pnpm lint`, y la prueba lo demuestra con un módulo temporal.
+**Muéstralo en:** [eslint.config.mjs:85](../../../eslint.config.mjs#L85 "A-01 (capas): el controlador llama al servicio, nunca al repositorio.") y [fronteras.test.ts:101](../../../apps/api/test/unit/fronteras.test.ts#L101 "%s: el lint falla")
 
 ### ¿Dónde se arma todo?
 

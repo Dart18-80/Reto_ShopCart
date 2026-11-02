@@ -43,6 +43,13 @@ export default defineConfig(
         { type: 'modulo', pattern: 'apps/api/src/modules/*', capture: ['modulo'] },
         { type: 'shared', pattern: 'apps/api/src/shared/*', capture: ['pieza'] },
       ],
+      // Decisión del PO (E9): la capa de cada archivo de un módulo, por su sufijo.
+      'boundaries/files': [
+        { category: 'rutas', pattern: 'apps/api/src/modules/*/*.routes.ts' },
+        { category: 'controlador', pattern: 'apps/api/src/modules/*/*.controller.ts' },
+        { category: 'servicio', pattern: 'apps/api/src/modules/*/*.service.ts' },
+        { category: 'repositorio', pattern: 'apps/api/src/modules/*/*.repository.ts' },
+      ],
       'import/resolver': {
         typescript: { project: 'apps/api/tsconfig.json' },
       },
@@ -52,6 +59,10 @@ export default defineConfig(
         'error',
         {
           default: 'allow',
+          // Las capas se importan dentro de un mismo módulo (dependencias internas) y Express es externo: sin esto,
+          // la regla solo revisaría lo que cruza entre módulos.
+          checkInternals: true,
+          checkAllOrigins: true,
           policies: [
             {
               from: { element: { type: 'modulo' } },
@@ -66,6 +77,28 @@ export default defineConfig(
               },
               message:
                 'A-01: un módulo solo importa el index.ts de otro módulo, nunca sus archivos internos.',
+            },
+            // A-01, orden de capas dentro de un módulo: routes → controller → service → repository.
+            {
+              from: { file: { categories: 'controlador' } },
+              disallow: { to: { file: { categories: 'repositorio' } } },
+              message: 'A-01 (capas): el controlador llama al servicio, nunca al repositorio.',
+            },
+            {
+              from: { file: { categories: 'servicio' } },
+              disallow: { to: { file: { categories: { anyOf: ['rutas', 'controlador'] } } } },
+              message: 'A-01 (capas): el servicio no conoce las rutas ni el controlador.',
+            },
+            {
+              from: { file: { categories: 'servicio' } },
+              disallow: { to: { module: { origin: 'external', source: 'express' } } },
+              message:
+                'A-01 (capas): el servicio no depende de Express; recibe sus datos ya validados.',
+            },
+            {
+              from: { file: { categories: 'repositorio' } },
+              disallow: { to: { file: { categories: 'servicio' } } },
+              message: 'A-01 (capas): el repositorio no llama al servicio.',
             },
           ],
         },
