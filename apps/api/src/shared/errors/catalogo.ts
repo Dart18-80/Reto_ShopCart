@@ -193,6 +193,12 @@ export const CATALOGO = {
     numeroSql: 50605,
     mensaje: 'Se alcanzó el máximo de intentos de pago.',
   },
+  // N-03: la pasarela no respondió; el resultado es incierto y el reintento con la misma llave lo resuelve.
+  PAGO_SIN_CONFIRMAR: {
+    http: 504,
+    numeroSql: 50606,
+    mensaje: 'No pudimos confirmar tu pago. Puedes reintentar: no se te cobrará dos veces.',
+  },
 
   // 50700–50799 Pedidos
   TRANSICION_INVALIDA: {
@@ -226,6 +232,11 @@ const CODIGO_POR_NUMERO = new Map<number, CodigoError>(
     'numeroSql' in entrada ? [[entrada.numeroSql, codigo as CodigoError] as const] : [],
   ),
 );
+
+/** Un código guardado como texto (por ejemplo, el de un intento de pago anulado) que existe en el catálogo. */
+export function esCodigoError(texto: string): texto is CodigoError {
+  return Object.hasOwn(CATALOGO, texto);
+}
 
 export function codigoPorNumeroSql(numero: number): CodigoError | undefined {
   return CODIGO_POR_NUMERO.get(numero);

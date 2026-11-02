@@ -1,4 +1,4 @@
-import { paginar, type RespuestaPaginada } from '../../shared/http/index.js';
+import { paginar, solicitudIdempotente, type RespuestaPaginada } from '../../shared/http/index.js';
 import type { InventarioRepository } from './inventario.repository.js';
 import type { RegistrarAjuste, RegistrarEntrada } from './inventario.schemas.js';
 import type {
@@ -17,11 +17,12 @@ interface Dependencias {
 // existencia cambia por SP_Inventario_RegistrarMovimiento. El servicio solo orquesta.
 export function crearInventarioService({ repositorio }: Dependencias) {
   return {
-    registrarEntrada: (datos: RegistrarEntrada): Promise<Movimiento> =>
-      repositorio.registrarEntrada(datos),
+    // E5-H03: con Idempotency-Key, un reintento tras un error de red no registra dos veces el movimiento.
+    registrarEntrada: (datos: RegistrarEntrada, llave?: string): Promise<Movimiento> =>
+      repositorio.registrarEntrada(datos, solicitudIdempotente(llave, 'Inventario.Entrada', datos)),
 
-    registrarAjuste: (datos: RegistrarAjuste): Promise<Movimiento> =>
-      repositorio.registrarAjuste(datos),
+    registrarAjuste: (datos: RegistrarAjuste, llave?: string): Promise<Movimiento> =>
+      repositorio.registrarAjuste(datos, solicitudIdempotente(llave, 'Inventario.Ajuste', datos)),
 
     async obtenerKardex(
       idVariante: number,

@@ -1,7 +1,9 @@
 import type { RequestHandler } from 'express';
 import { montoATexto } from '../../shared/dinero/index.js';
-import { manejar } from '../../shared/http/index.js';
-import { iniciarSesionSchema } from './checkout.schemas.js';
+import { encabezadoIdempotenciaSchema, manejar } from '../../shared/http/index.js';
+import { pedidoARespuesta } from '../pedidos/index.js';
+import type { PagoService } from './checkout.pago.js';
+import { iniciarSesionSchema, pagarSchema } from './checkout.schemas.js';
 import type { CheckoutService } from './checkout.service.js';
 import type { SesionPago } from './checkout.types.js';
 
@@ -28,9 +30,13 @@ export interface CheckoutController {
   iniciarSesion: RequestHandler;
   obtenerSesion: RequestHandler;
   cancelarSesion: RequestHandler;
+  pagar: RequestHandler;
 }
 
-export function crearCheckoutController(servicio: CheckoutService): CheckoutController {
+export function crearCheckoutController(
+  servicio: CheckoutService,
+  pago: PagoService,
+): CheckoutController {
   return {
     iniciarSesion: manejar({ body: iniciarSesionSchema }, async ({ body }, res) => {
       const { sesion, creada } = await servicio.iniciarSesion(body);
@@ -45,5 +51,21 @@ export function crearCheckoutController(servicio: CheckoutService): CheckoutCont
       await servicio.cancelarSesion();
       res.status(HTTP_SIN_CONTENIDO).end();
     }),
+
+    pagar: manejar(
+      { body: pagarSchema, encabezados: encabezadoIdempotenciaSchema },
+      async ({ body, encabezados }, res) => {
+        const { pedido, creado } = await pago.pagar({
+          llave: encabezados['idempotency-key'],
+          tarjeta: {
+            numero: body.numeroTarjeta,
+            mesVencimiento: body.mesVencimiento,
+            anioVencimiento: body.anioVencimiento,
+            cvv: body.cvv,
+          },
+        });
+        res.status(creado ? HTTP_CREADO : HTTP_OK).json({ datos: pedidoARespuesta(pedido) });
+      },
+    ),
   };
 }

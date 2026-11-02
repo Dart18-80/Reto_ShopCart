@@ -37,11 +37,30 @@ describe('inventario.service (E3-H06, N-07)', () => {
 
     await servicio.registrarAjuste({ idVariante: 3, cantidad: -2, motivo: 'Conteo' });
 
-    expect(repositorio.registrarAjuste).toHaveBeenCalledWith({
-      idVariante: 3,
-      cantidad: -2,
-      motivo: 'Conteo',
-    });
+    expect(repositorio.registrarAjuste).toHaveBeenCalledWith(
+      { idVariante: 3, cantidad: -2, motivo: 'Conteo' },
+      null,
+    );
+  });
+
+  it('con Idempotency-Key, el hash distingue la operación y el contenido (E5-H03)', async () => {
+    const { servicio, repositorio } = preparar();
+    const llave = '7b0e8c3a-3f4d-4c1e-9a55-2d6f1b0c9e11';
+    const datos = { idVariante: 3, cantidad: 2, motivo: 'Conteo' };
+
+    await servicio.registrarAjuste(datos, llave);
+    await servicio.registrarAjuste({ ...datos, cantidad: 3 }, llave);
+    await servicio.registrarEntrada({ idVariante: 3, cantidad: 2, motivo: 'Conteo' }, llave);
+
+    const [primero, otroContenido] = repositorio.registrarAjuste.mock.calls.map(
+      (llamada: unknown[]) => llamada[1],
+    );
+    const [otraOperacion] = repositorio.registrarEntrada.mock.calls.map(
+      (llamada: unknown[]) => llamada[1],
+    );
+    expect(primero).toMatchObject({ llave });
+    expect(primero).not.toEqual(otroContenido);
+    expect(primero).not.toEqual(otraOperacion);
   });
 
   it('el kardex responde con la paginación estándar', async () => {

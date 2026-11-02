@@ -15,6 +15,13 @@ export {
 } from './paginacion.js';
 export { idEnRutaSchema, idSchema } from './identificadores.js';
 export { booleanoConsultaSchema } from './consulta.js';
+export {
+  ENCABEZADO_IDEMPOTENCIA,
+  encabezadoIdempotenciaOpcionalSchema,
+  encabezadoIdempotenciaSchema,
+  solicitudIdempotente,
+  type SolicitudIdempotente,
+} from './idempotencia.js';
 export { requestId } from './request-id.js';
 export { manejar, type ClienteHttp, type Entrada } from './manejar.js';
 export { leerCookies } from './cookies.js';

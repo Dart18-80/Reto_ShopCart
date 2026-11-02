@@ -1,4 +1,5 @@
 import type { Decimal } from 'decimal.js';
+import type { Pedido } from '../pedidos/index.js';
 
 /** N-02: lo que se cobra por línea, congelado al iniciar el pago. */
 export interface LineaSesion {
@@ -50,4 +51,26 @@ export interface SesionIniciada {
 export interface DatosInicioPago {
   idDireccion: number;
   idMetodoEnvio: number;
+}
+
+/** N-03: lo que el candado de idempotencia decide (SP_Checkout_RegistrarIntentoPago). */
+export type RegistroIntento =
+  | { accion: 'Autorizar'; idIntento: number; monto: Decimal }
+  | { accion: 'CrearPedido'; idIntento: number; idTransaccion: string }
+  | { accion: 'Capturar'; idIntento: number; idTransaccion: string; idPedido: number }
+  | { accion: 'Pedido'; idPedido: number }
+  | { accion: 'EnCurso'; segundosParaReintentar: number }
+  | { accion: 'Rechazado'; mensaje: string; intentosRestantes: number }
+  | { accion: 'Error'; codigo: string; mensaje: string | null };
+
+export type CambioIntento =
+  | { estado: 'Autorizado'; idTransaccion: string }
+  | { estado: 'Rechazado'; codigo: string; mensaje: string }
+  | { estado: 'Anulado'; codigo: string; mensaje: string | null }
+  | { estado: 'Capturado' };
+
+export interface PagoRealizado {
+  pedido: Pedido;
+  /** false si el pedido ya existía (misma llave o sesión ya pagada): la API responde 200. */
+  creado: boolean;
 }

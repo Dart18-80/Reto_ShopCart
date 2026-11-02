@@ -1,5 +1,13 @@
 import type { Decimal } from 'decimal.js';
 
+const MARCAS: Readonly<Record<string, string>> = { '3': 'Amex', '4': 'Visa', '5': 'Mastercard' };
+const DIGITOS_VISIBLES = 4;
+
+/** La marca por el primer dígito del número (lo único que, con los últimos 4, se guarda de la tarjeta). */
+export const marcaDeTarjeta = (numero: string): string => MARCAS[numero.charAt(0)] ?? 'Otra';
+
+export const ultimosDigitos = (numero: string): string => numero.slice(-DIGITOS_VISIBLES);
+
 /** Los datos de la tarjeta solo viajan a la pasarela: nunca se guardan ni se registran (N-03). */
 export interface TarjetaPago {
   numero: string;

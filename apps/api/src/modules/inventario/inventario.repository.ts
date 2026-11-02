@@ -1,5 +1,11 @@
 import sql from 'mssql';
-import { bigintANumero, ejecutarSP, ejecutarSPPaginado } from '../../shared/db/index.js';
+import type { SolicitudIdempotente } from '../../shared/http/index.js';
+import {
+  bigintANumero,
+  ejecutarSP,
+  ejecutarSPPaginado,
+  type ParametrosSP,
+} from '../../shared/db/index.js';
 import type { RegistrarAjuste, RegistrarEntrada } from './inventario.schemas.js';
 import type {
   Descuadre,
@@ -89,22 +95,36 @@ const paginacion = ({ pagina, tamano }: Pagina) => ({
   Tamano: { tipo: sql.Int, valor: tamano },
 });
 
+// E5-H03: con Idempotency-Key, el SP guarda la llave en la misma transacción que el movimiento.
+const parametrosIdempotencia = (idempotencia: SolicitudIdempotente | null): ParametrosSP => ({
+  LlaveIdempotencia: { tipo: sql.UniqueIdentifier, valor: idempotencia?.llave ?? null },
+  HashSolicitud: { tipo: sql.Binary, valor: idempotencia?.hash ?? null },
+});
+
 export const inventarioRepository = {
-  async registrarEntrada(datos: RegistrarEntrada): Promise<Movimiento> {
+  async registrarEntrada(
+    datos: RegistrarEntrada,
+    idempotencia: SolicitudIdempotente | null,
+  ): Promise<Movimiento> {
     const filas = await ejecutarSP<FilaMovimiento>('SP_Inventario_RegistrarEntrada', {
       IDVariante: { tipo: sql.Int, valor: datos.idVariante },
       Cantidad: { tipo: sql.Int, valor: datos.cantidad },
       Motivo: motivo(datos.motivo),
       Referencia: { tipo: sql.NVarChar(100), valor: datos.referencia ?? null },
+      ...parametrosIdempotencia(idempotencia),
     });
     return unico(filas, 'SP_Inventario_RegistrarEntrada');
   },
 
-  async registrarAjuste(datos: RegistrarAjuste): Promise<Movimiento> {
+  async registrarAjuste(
+    datos: RegistrarAjuste,
+    idempotencia: SolicitudIdempotente | null,
+  ): Promise<Movimiento> {
     const filas = await ejecutarSP<FilaMovimiento>('SP_Inventario_RegistrarAjuste', {
       IDVariante: { tipo: sql.Int, valor: datos.idVariante },
       Cantidad: { tipo: sql.Int, valor: datos.cantidad },
       Motivo: motivo(datos.motivo),
+      ...parametrosIdempotencia(idempotencia),
     });
     return unico(filas, 'SP_Inventario_RegistrarAjuste');
   },

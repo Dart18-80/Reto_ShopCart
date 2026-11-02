@@ -1,7 +1,13 @@
 import sql from 'mssql';
-import { ejecutarSP, ejecutarSPConjuntos } from '../../shared/db/index.js';
+import { bigintANumero, ejecutarSP, ejecutarSPConjuntos } from '../../shared/db/index.js';
 import { aMonto } from '../../shared/dinero/index.js';
-import type { DatosInicioPago, SesionIniciada, SesionPago } from './checkout.types.js';
+import type {
+  CambioIntento,
+  DatosInicioPago,
+  RegistroIntento,
+  SesionIniciada,
+  SesionPago,
+} from './checkout.types.js';
 
 interface FilaSesion {
   IDSesionCheckout: number;
@@ -74,6 +80,68 @@ const aSesion = (fila: FilaSesion, lineas: FilaLineaSesion[]): SesionPago => ({
   intentosRechazados: fila.IntentosRechazados,
 });
 
+interface FilaRegistro {
+  Accion: RegistroIntento['accion'];
+  IDIntentoPago: string | number | null;
+  Monto: number | null;
+  IDTransaccion: string | null;
+  IDPedido: number | null;
+  CodigoRespuesta: string | null;
+  MensajeRespuesta: string | null;
+  SegundosParaReintentar: number | null;
+  IntentosRestantes: number;
+}
+
+function presente<T>(valor: T | null, columna: string): T {
+  if (valor === null) throw new Error(`SP_Checkout_RegistrarIntentoPago devolvió ${columna} vacío`);
+  return valor;
+}
+
+function aRegistro(fila: FilaRegistro): RegistroIntento {
+  const idIntento = () =>
+    bigintANumero(presente(fila.IDIntentoPago, 'IDIntentoPago'), 'IDIntentoPago');
+  switch (fila.Accion) {
+    case 'Autorizar':
+      return {
+        accion: 'Autorizar',
+        idIntento: idIntento(),
+        monto: aMonto(presente(fila.Monto, 'Monto')),
+      };
+    case 'CrearPedido':
+      return {
+        accion: 'CrearPedido',
+        idIntento: idIntento(),
+        idTransaccion: presente(fila.IDTransaccion, 'IDTransaccion'),
+      };
+    case 'Capturar':
+      return {
+        accion: 'Capturar',
+        idIntento: idIntento(),
+        idTransaccion: presente(fila.IDTransaccion, 'IDTransaccion'),
+        idPedido: presente(fila.IDPedido, 'IDPedido'),
+      };
+    case 'Pedido':
+      return { accion: 'Pedido', idPedido: presente(fila.IDPedido, 'IDPedido') };
+    case 'EnCurso':
+      return {
+        accion: 'EnCurso',
+        segundosParaReintentar: presente(fila.SegundosParaReintentar, 'SegundosParaReintentar'),
+      };
+    case 'Rechazado':
+      return {
+        accion: 'Rechazado',
+        mensaje: fila.MensajeRespuesta ?? 'El pago fue rechazado.',
+        intentosRestantes: fila.IntentosRestantes,
+      };
+    case 'Error':
+      return {
+        accion: 'Error',
+        codigo: fila.CodigoRespuesta ?? 'ERROR_INTERNO',
+        mensaje: fila.MensajeRespuesta,
+      };
+  }
+}
+
 // RF-01: el cliente sale de @IDUsuarioActor (el token); ni la sesión ni el carrito llegan de la petición.
 export const checkoutRepository = {
   async iniciarSesion(datos: DatosInicioPago): Promise<SesionIniciada> {
@@ -105,6 +173,59 @@ export const checkoutRepository = {
 
   async cancelarSesion(): Promise<void> {
     await ejecutarSP('SP_Checkout_CancelarSesion');
+  },
+
+  async registrarIntento(datos: {
+    llave: string;
+    marca: string;
+    ultimosDigitos: string;
+    segundosArrendamiento: number;
+  }): Promise<RegistroIntento> {
+    const [fila] = await ejecutarSP<FilaRegistro>('SP_Checkout_RegistrarIntentoPago', {
+      LlaveIdempotencia: { tipo: sql.UniqueIdentifier, valor: datos.llave },
+      MarcaTarjeta: { tipo: sql.VarChar(20), valor: datos.marca },
+      UltimosDigitos: { tipo: sql.Char(4), valor: datos.ultimosDigitos },
+      SegundosArrendamiento: { tipo: sql.Int, valor: datos.segundosArrendamiento },
+    });
+    if (fila === undefined)
+      throw new Error('SP_Checkout_RegistrarIntentoPago no devolvió la acción');
+    return aRegistro(fila);
+  },
+
+  async actualizarIntento(
+    idIntento: number,
+    cambio: CambioIntento,
+  ): Promise<{ intentosRestantes: number; sesionCancelada: boolean }> {
+    const [fila] = await ejecutarSP<{ IntentosRestantes: number; SesionCancelada: boolean }>(
+      'SP_Checkout_ActualizarIntentoPago',
+      {
+        IDIntentoPago: { tipo: sql.BigInt, valor: idIntento },
+        Estado: { tipo: sql.VarChar(12), valor: cambio.estado },
+        IDTransaccion: {
+          tipo: sql.VarChar(64),
+          valor: cambio.estado === 'Autorizado' ? cambio.idTransaccion : null,
+        },
+        CodigoRespuesta: {
+          tipo: sql.VarChar(30),
+          valor:
+            cambio.estado === 'Rechazado' || cambio.estado === 'Anulado' ? cambio.codigo : null,
+        },
+        MensajeRespuesta: {
+          tipo: sql.NVarChar(200),
+          valor:
+            cambio.estado === 'Rechazado' || cambio.estado === 'Anulado' ? cambio.mensaje : null,
+        },
+      },
+    );
+    if (fila === undefined)
+      throw new Error('SP_Checkout_ActualizarIntentoPago no devolvió el resultado');
+    return { intentosRestantes: fila.IntentosRestantes, sesionCancelada: fila.SesionCancelada };
+  },
+
+  async liberarArrendamiento(idIntento: number): Promise<void> {
+    await ejecutarSP('SP_Checkout_LiberarArrendamiento', {
+      IDIntentoPago: { tipo: sql.BigInt, valor: idIntento },
+    });
   },
 };
 

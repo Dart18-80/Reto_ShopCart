@@ -9,11 +9,13 @@ interface EsquemasEntrada {
   query?: z.ZodType;
   /** Cookies del header Cookie (por ejemplo, el refresh token de A-07). */
   cookies?: z.ZodType;
+  /** Encabezados, con los nombres en minúsculas (por ejemplo, Idempotency-Key de N-03). */
+  encabezados?: z.ZodType;
 }
 
 type Parte = keyof EsquemasEntrada;
 
-const PARTES: readonly Parte[] = ['params', 'query', 'body', 'cookies'];
+const PARTES: readonly Parte[] = ['params', 'query', 'body', 'cookies', 'encabezados'];
 
 // RefreshToken.UserAgent es NVARCHAR(300).
 const LARGO_MAXIMO_USER_AGENT = 300;
@@ -78,7 +80,12 @@ function validarParte(
 ): unknown {
   if (esquema === undefined) return undefined;
 
-  const crudo: unknown = parte === 'cookies' ? leerCookies(req.get('Cookie')) : req[parte];
+  const crudo: unknown =
+    parte === 'cookies'
+      ? leerCookies(req.get('Cookie'))
+      : parte === 'encabezados'
+        ? req.headers
+        : req[parte];
   const validacion = esquema.safeParse(crudo);
   if (validacion.success) return validacion.data;
 

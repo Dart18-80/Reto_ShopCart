@@ -24,6 +24,7 @@ import {
   type VersionesSesion,
 } from './shared/http/index.js';
 import { registrarPeticiones } from './shared/observability/index.js';
+import type { PasarelaPago } from './shared/pasarela/index.js';
 import { generarDocumentoOpenApi } from './shared/openapi/index.js';
 
 const LIMITE_CUERPO_JSON = '100kb';
@@ -44,6 +45,8 @@ export interface DependenciasApp {
   tokensAcceso: TokensAcceso;
   limitadores: Limitadores;
   versionesSesion: VersionesSesion;
+  /** N-03: el adaptador de la pasarela (la simulada, con estado en SQL Server). */
+  pasarela: PasarelaPago;
 }
 
 /** Composición: middlewares, rutas e inyección de adaptadores (01-arquitectura.md §4.3). */
@@ -55,6 +58,7 @@ export function crearApp({
   tokensAcceso,
   limitadores,
   versionesSesion,
+  pasarela,
 }: DependenciasApp): Express {
   const app = express();
   app.disable('x-powered-by');
@@ -100,7 +104,7 @@ export function crearApp({
   v1.use(crearModuloCupones({ autenticar }));
   v1.use(crearModuloEnvios({ autenticar }));
   v1.use(crearModuloConfiguracion({ autenticar }));
-  v1.use(crearModuloCheckout({ autenticar }));
+  v1.use(crearModuloCheckout({ autenticar, pasarela, logger }));
   v1.use(
     crearModuloCarrito({
       autenticar,

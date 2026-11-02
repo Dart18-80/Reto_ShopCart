@@ -2,11 +2,14 @@
 -- obligatorio. Bajo el bloqueo de la variante (el mismo que toma todo proceso que reserva, sqlserver-sp
 -- §9.1) calcula lo reservado vigente: un ajuste no deja la existencia negativa (50302) ni por debajo de lo
 -- reservado (50303, con el máximo ajustable en detalles, A-19). Pasa por SP_Inventario_RegistrarMovimiento.
+-- Con @LlaveIdempotencia (E5-H03), la misma llave devuelve el mismo movimiento; otra solicitud, 50603.
 -- Devuelve el movimiento registrado.
 CREATE OR ALTER PROCEDURE dbo.SP_Inventario_RegistrarAjuste
     @IDVariante     INT,
     @Cantidad       INT,
     @Motivo         NVARCHAR(250),
+    @LlaveIdempotencia UNIQUEIDENTIFIER = NULL,
+    @HashSolicitud     BINARY(32)       = NULL,
     @IDUsuarioActor INT              = NULL,
     @RolActor       VARCHAR(20)      = NULL,
     @RequestId      UNIQUEIDENTIFIER = NULL
@@ -22,40 +25,57 @@ BEGIN
     IF @Cantidad IS NULL OR @Cantidad = 0
         THROW 50003, N'La cantidad del ajuste no puede ser cero.', 1;
 
-    DECLARE @IDMovimiento BIGINT;
+    DECLARE @IDMovimiento BIGINT, @Respuesta NVARCHAR(MAX);
 
     BEGIN TRY
         BEGIN TRAN;
 
-        DECLARE @Fisica INT, @Reservado INT;
-        SELECT @Fisica = v.ExistenciaFisica
-        FROM   dbo.Variante AS v WITH (UPDLOCK, ROWLOCK)
-        WHERE  v.IDVariante = @IDVariante;
+        -- E5-H03: con Idempotency-Key, la misma llave devuelve el mismo movimiento sin registrarlo otra vez.
+        IF @LlaveIdempotencia IS NOT NULL
+            EXEC dbo.SP_Sistema_BuscarSolicitudIdempotente @IDUsuarioActor, @LlaveIdempotencia, 'Inventario.Ajuste',
+                 @HashSolicitud, @Respuesta OUTPUT;
+        SET @IDMovimiento = CONVERT(BIGINT, JSON_VALUE(@Respuesta, '$.idMovimientoKardex'));
 
-        IF @Fisica IS NULL
-            THROW 50001, N'La variante no existe.', 1;
-
-        SELECT @Reservado = d.Reservado FROM dbo.FU_Inventario_Disponible(@IDVariante) AS d;
-
-        IF @Fisica + @Cantidad < 0
-            THROW 50302, N'El ajuste dejaría la existencia en negativo.', 1;
-        IF @Fisica + @Cantidad < @Reservado
+        IF @IDMovimiento IS NULL
         BEGIN
-            DECLARE @Error NVARCHAR(2048) = (
-                SELECT N'Hay unidades reservadas en pagos en curso: el ajuste no puede bajar de lo reservado.'
-                           AS mensaje,
-                       @Fisica - @Reservado AS [detalles.maximoAjustable]
-                FOR JSON PATH, WITHOUT_ARRAY_WRAPPER);
-            THROW 50303, @Error, 1;
+            DECLARE @Fisica INT, @Reservado INT;
+            SELECT @Fisica = v.ExistenciaFisica
+            FROM   dbo.Variante AS v WITH (UPDLOCK, ROWLOCK)
+            WHERE  v.IDVariante = @IDVariante;
+
+            IF @Fisica IS NULL
+                THROW 50001, N'La variante no existe.', 1;
+
+            SELECT @Reservado = d.Reservado FROM dbo.FU_Inventario_Disponible(@IDVariante) AS d;
+
+            IF @Fisica + @Cantidad < 0
+                THROW 50302, N'El ajuste dejaría la existencia en negativo.', 1;
+            IF @Fisica + @Cantidad < @Reservado
+            BEGIN
+                DECLARE @Error NVARCHAR(2048) = (
+                    SELECT N'Hay unidades reservadas en pagos en curso: el ajuste no puede bajar de lo reservado.'
+                               AS mensaje,
+                           @Fisica - @Reservado AS [detalles.maximoAjustable]
+                    FOR JSON PATH, WITHOUT_ARRAY_WRAPPER);
+                THROW 50303, @Error, 1;
+            END
+
+            DECLARE @Tipo VARCHAR(30) = CASE WHEN @Cantidad > 0 THEN 'AjustePositivo' ELSE 'AjusteNegativo' END,
+                    @Absoluta INT = ABS(@Cantidad);
+
+            EXEC dbo.SP_Inventario_RegistrarMovimiento
+                 @IDVariante = @IDVariante, @CodigoTipo = @Tipo, @Cantidad = @Absoluta,
+                 @Motivo = @Motivo, @Referencia = NULL, @IDPedido = NULL, @IDDevolucion = NULL,
+                 @IDMovimientoKardex = @IDMovimiento OUTPUT;
+
+            -- La llave se guarda en la misma transacción que el movimiento, nunca por separado.
+            IF @LlaveIdempotencia IS NOT NULL
+            BEGIN
+                SET @Respuesta = (SELECT @IDMovimiento AS idMovimientoKardex FOR JSON PATH, WITHOUT_ARRAY_WRAPPER);
+                EXEC dbo.SP_Sistema_GuardarSolicitudIdempotente @IDUsuarioActor, @LlaveIdempotencia, 'Inventario.Ajuste',
+                     @HashSolicitud, @Respuesta;
+            END
         END
-
-        DECLARE @Tipo VARCHAR(30) = CASE WHEN @Cantidad > 0 THEN 'AjustePositivo' ELSE 'AjusteNegativo' END,
-                @Absoluta INT = ABS(@Cantidad);
-
-        EXEC dbo.SP_Inventario_RegistrarMovimiento
-             @IDVariante = @IDVariante, @CodigoTipo = @Tipo, @Cantidad = @Absoluta,
-             @Motivo = @Motivo, @Referencia = NULL, @IDPedido = NULL, @IDDevolucion = NULL,
-             @IDMovimientoKardex = @IDMovimiento OUTPUT;
 
         COMMIT;
     END TRY

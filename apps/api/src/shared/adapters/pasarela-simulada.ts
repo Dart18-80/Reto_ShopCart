@@ -1,7 +1,9 @@
 import sql from 'mssql';
 import { ejecutarSP } from '../db/index.js';
 import {
+  marcaDeTarjeta,
   PasarelaSinRespuesta,
+  ultimosDigitos,
   type EstadoEnPasarela,
   type PasarelaPago,
   type ResultadoAutorizacion,
@@ -13,9 +15,6 @@ const APROBADA = '4242424242424242';
 const FONDOS_INSUFICIENTES = '4000000000000002';
 // Autoriza, pero la respuesta "se pierde": el reintento con la misma llave recibe esa misma autorización.
 const TIEMPO_AGOTADO = '4000000000000119';
-const DIGITOS_VISIBLES = 4;
-
-const MARCAS: Readonly<Record<string, string>> = { '3': 'Amex', '4': 'Visa', '5': 'Mastercard' };
 
 interface Decision {
   aprobada: boolean;
@@ -76,8 +75,8 @@ export function crearPasarelaSimulada(): PasarelaPago {
         {
           LlaveIdempotencia: { tipo: sql.UniqueIdentifier, valor: llave },
           Monto: { tipo: sql.Decimal(12, 2), valor: monto },
-          Marca: { tipo: sql.VarChar(20), valor: MARCAS[tarjeta.numero.charAt(0)] ?? 'Otra' },
-          UltimosDigitos: { tipo: sql.Char(4), valor: tarjeta.numero.slice(-DIGITOS_VISIBLES) },
+          Marca: { tipo: sql.VarChar(20), valor: marcaDeTarjeta(tarjeta.numero) },
+          UltimosDigitos: { tipo: sql.Char(4), valor: ultimosDigitos(tarjeta.numero) },
           Aprobada: { tipo: sql.Bit, valor: decision.aprobada },
           CodigoRechazo: { tipo: sql.VarChar(30), valor: decision.codigo },
           MensajeRechazo: { tipo: sql.NVarChar(200), valor: decision.mensaje },

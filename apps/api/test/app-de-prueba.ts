@@ -1,5 +1,6 @@
 import { pino } from 'pino';
 import type { DependenciasApp } from '../src/app.js';
+import { crearPasarelaSimulada } from '../src/shared/adapters/pasarela-simulada.js';
 import {
   crearTokensAcceso,
   type LimitadorIntentos,
@@ -40,6 +41,7 @@ export function dependenciasDePrueba(cambios: Partial<DependenciasApp> = {}): De
       carritoInvitado: SIN_LIMITE,
     },
     versionesSesion: versionesSesionEnMemoria(),
+    pasarela: crearPasarelaSimulada(),
     ...cambios,
   };
 }

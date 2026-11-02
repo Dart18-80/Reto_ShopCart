@@ -1,5 +1,5 @@
 import type { RequestHandler } from 'express';
-import { manejar } from '../../shared/http/index.js';
+import { encabezadoIdempotenciaOpcionalSchema, manejar } from '../../shared/http/index.js';
 import {
   consultaExistenciasSchema,
   consultaKardexSchema,
@@ -21,13 +21,21 @@ export interface InventarioController {
 
 export function crearInventarioController(servicio: InventarioService): InventarioController {
   return {
-    registrarEntrada: manejar({ body: registrarEntradaSchema }, async ({ body }, res) => {
-      res.status(HTTP_CREADO).json({ datos: await servicio.registrarEntrada(body) });
-    }),
+    registrarEntrada: manejar(
+      { body: registrarEntradaSchema, encabezados: encabezadoIdempotenciaOpcionalSchema },
+      async ({ body, encabezados }, res) => {
+        const movimiento = await servicio.registrarEntrada(body, encabezados['idempotency-key']);
+        res.status(HTTP_CREADO).json({ datos: movimiento });
+      },
+    ),
 
-    registrarAjuste: manejar({ body: registrarAjusteSchema }, async ({ body }, res) => {
-      res.status(HTTP_CREADO).json({ datos: await servicio.registrarAjuste(body) });
-    }),
+    registrarAjuste: manejar(
+      { body: registrarAjusteSchema, encabezados: encabezadoIdempotenciaOpcionalSchema },
+      async ({ body, encabezados }, res) => {
+        const movimiento = await servicio.registrarAjuste(body, encabezados['idempotency-key']);
+        res.status(HTTP_CREADO).json({ datos: movimiento });
+      },
+    ),
 
     obtenerKardex: manejar({ query: consultaKardexSchema }, async ({ query }, res) => {
       res.json(await servicio.obtenerKardex(query.variante, query));

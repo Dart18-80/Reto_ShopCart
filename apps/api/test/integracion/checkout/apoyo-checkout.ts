@@ -129,3 +129,86 @@ export function reservasDe(idSesion: number): Promise<FilaReserva[]> {
     IDSesionCheckout: { tipo: sql.Int, valor: idSesion },
   });
 }
+
+export const TARJETA_APROBADA = '4242424242424242';
+export const TARJETA_RECHAZADA = '4000000000000002';
+export const TARJETA_TIEMPO_AGOTADO = '4000000000000119';
+
+export const pagar = (
+  app: Express,
+  token: string,
+  llave: string,
+  numeroTarjeta = TARJETA_APROBADA,
+) =>
+  request(app)
+    .post('/api/v1/checkout/sesion/pagos')
+    .set({ ...comoCliente(token), 'Idempotency-Key': llave })
+    .send({ numeroTarjeta, mesVencimiento: 12, anioVencimiento: 2030, cvv: '731' });
+
+export const pedidoSchema = z.object({
+  idPedido: z.number(),
+  numeroPedido: z.string(),
+  estado: z.string(),
+  subtotal: z.string(),
+  descuento: z.string(),
+  costoEnvio: z.string(),
+  total: z.string(),
+  baseImponible: z.string(),
+  iva: z.string(),
+  codigoCupon: z.string().nullable(),
+  fechaPago: z.string(),
+  fechaPagoLocal: z.string(),
+  tarjeta: z.object({ marca: z.string(), ultimosDigitos: z.string() }),
+  lineas: z.array(z.looseObject({ idVariante: z.number(), sku: z.string(), cantidad: z.number() })),
+});
+
+export const leerPedido = (respuesta: Response) => leerDatos(respuesta, pedidoSchema);
+
+export interface FilaIntento {
+  IDIntentoPago: string;
+  IDSesionCheckout: number;
+  LlaveIdempotencia: string;
+  Estado: string;
+  CodigoRespuesta: string | null;
+  IDTransaccionPasarela: string | null;
+  Arrendado: boolean;
+}
+
+export function intentosDe(idSesion: number): Promise<FilaIntento[]> {
+  return ejecutarSP<FilaIntento>('SP_Pruebas_LeerIntentosPago', {
+    IDSesionCheckout: { tipo: sql.Int, valor: idSesion },
+  });
+}
+
+export function moverArrendamiento(idIntento: string, segundos: number) {
+  return ejecutarSP('SP_Pruebas_MoverArrendamiento', {
+    IDIntentoPago: { tipo: sql.BigInt, valor: idIntento },
+    Segundos: { tipo: sql.Int, valor: segundos },
+  });
+}
+
+export interface PagoDeSesion {
+  Pedidos: number;
+  Detalles: number;
+  SalidasKardex: number;
+  Historial: number;
+  EstadoUsoCupon: string | null;
+  EstadoSesion: string;
+  EstadoCarrito: string;
+  EstadoReserva: string | null;
+}
+
+export async function pagoDe(idSesion: number): Promise<PagoDeSesion> {
+  const [fila] = await ejecutarSP<PagoDeSesion>('SP_Pruebas_LeerPagoDeSesion', {
+    IDSesionCheckout: { tipo: sql.Int, valor: idSesion },
+  });
+  if (fila === undefined) throw new Error('La sesión no existe');
+  return fila;
+}
+
+export async function estadoEnPasarela(llave: string): Promise<string | undefined> {
+  const [fila] = await ejecutarSP<{ Estado: string }>('SP_Pruebas_LeerPasarela', {
+    LlaveIdempotencia: { tipo: sql.UniqueIdentifier, valor: llave },
+  });
+  return fila?.Estado;
+}

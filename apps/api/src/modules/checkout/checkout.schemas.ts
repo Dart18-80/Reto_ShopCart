@@ -49,4 +49,18 @@ export const sesionPagoSchema = z
   })
   .openapi('SesionPago');
 
+// N-03: los datos de la tarjeta solo viajan a la pasarela; nunca se guardan ni se registran (pino redacta
+// numeroTarjeta y cvv).
+export const pagarSchema = z
+  .object({
+    numeroTarjeta: z
+      .string()
+      .regex(/^\d{13,19}$/, 'El número de tarjeta tiene de 13 a 19 dígitos.'),
+    mesVencimiento: z.number().int().min(1).max(12),
+    anioVencimiento: z.number().int().min(2000).max(2100),
+    cvv: z.string().regex(/^\d{3,4}$/, 'El CVV tiene 3 o 4 dígitos.'),
+  })
+  .strict()
+  .openapi('Pagar');
+
 export type IniciarSesion = z.infer<typeof iniciarSesionSchema>;

@@ -1,6 +1,7 @@
 import type { Logger } from 'pino';
 import { registrarApagadoOrdenado } from './apagado.js';
 import { crearApp } from './app.js';
+import { crearPasarelaSimulada } from './shared/adapters/pasarela-simulada.js';
 import {
   crearClienteRedis,
   crearVerificadorRedis,
@@ -61,6 +62,7 @@ async function iniciar(): Promise<void> {
       }),
     },
     versionesSesion: crearVersionesSesionRedis(redis, logger),
+    pasarela: crearPasarelaSimulada(),
   });
 
   // Express 5 también llama a este callback si listen falla (por ejemplo, puerto ocupado).

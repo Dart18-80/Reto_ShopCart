@@ -3,7 +3,8 @@ import { autorizar } from '../../shared/http/index.js';
 import { registroOpenApi, respuestasError } from '../../shared/openapi/index.js';
 import { z } from '../../shared/openapi/zod.js';
 import type { CheckoutController } from './checkout.controller.js';
-import { iniciarSesionSchema, sesionPagoSchema } from './checkout.schemas.js';
+import { pedidoSchema } from '../pedidos/index.js';
+import { iniciarSesionSchema, pagarSchema, sesionPagoSchema } from './checkout.schemas.js';
 
 const RUTA = '/api/v1/checkout/sesion';
 const seguridad = [{ bearer: [] }];
@@ -47,6 +48,27 @@ registroOpenApi.registerPath({
   },
 });
 
+registroOpenApi.registerPath({
+  method: 'post',
+  path: `${RUTA}/pagos`,
+  tags: ['Checkout'],
+  summary:
+    'Paga la sesión: autoriza, crea el pedido (atómico) y captura. Idempotency-Key obligatoria: la misma llave da el mismo resultado (01 §6.2)',
+  security: seguridad,
+  request: {
+    headers: z.object({ 'idempotency-key': z.uuid() }),
+    body: json(pagarSchema),
+  },
+  responses: {
+    200: {
+      description: 'Ya pagado: el pedido existente',
+      ...json(z.object({ datos: pedidoSchema })),
+    },
+    201: { description: 'Pedido creado', ...json(z.object({ datos: pedidoSchema })) },
+    ...respuestasError(400, 401, 402, 403, 404, 409, 422, 504),
+  },
+});
+
 export function crearCheckoutRouter(
   controller: CheckoutController,
   autenticar: RequestHandler,
@@ -58,5 +80,6 @@ export function crearCheckoutRouter(
   router.post('/checkout/sesion', ...soloCliente, controller.iniciarSesion);
   router.get('/checkout/sesion', ...soloCliente, controller.obtenerSesion);
   router.delete('/checkout/sesion', ...soloCliente, controller.cancelarSesion);
+  router.post('/checkout/sesion/pagos', ...soloCliente, controller.pagar);
   return router;
 }
