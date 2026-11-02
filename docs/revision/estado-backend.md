@@ -18,11 +18,11 @@ Revisión completa sobre `fd600e4` (2026-11-02), al cierre de la Fase 1: E0 a E9
 
 - **Alcance:** 15 módulos, 95 rutas (93 en `/api/v1` y 2 de Swagger), 125 stored procedures, 9 vistas, 15 funciones de tabla, 10 triggers y 41 tablas (3 de ellas ledger append-only).
 - **Pruebas:** 526 unitarias de la API, 757 de integración (incluidas 5 de telemetría), 251 unitarias y 11 de integración del migrador, 2 de concurrencia (RNF-3), 28 de entorno y 2 de humo de la imagen.
-- **Cobertura combinada** (unitarias e integración en una sola corrida, `pnpm test:cobertura`): **líneas 94.47 %, ramas 86.45 %, funciones 94.84 %, sentencias 93.16 %**.
+- **Cobertura combinada** (unitarias e integración en una sola corrida, `pnpm test:cobertura`): **líneas 94.5 %, ramas 86.45 %, funciones 95.04 %, sentencias 93.22 %** (en la verificación final; entre corridas varía una o dos líneas, porque un reintento depende del tiempo).
 - **Coherencia:** el router y 01 coinciden en las 95 rutas; los objetos de base y los 65 códigos de error coinciden con 02; los 60 IDs citados en el código existen en `docs/` (§3).
 - **Riesgos abiertos:** ningún CRÍTICO ni ALTO. Queda una decisión pendiente del PO: cómo resuelve el Admin un intento de pago `EnRevision` (§8).
 
-**Verificación desde cero:** en un clon nuevo con `core.autocrlf=true`, con el entorno de Docker levantado desde cero, todas las suites en verde, sin el perfil de observabilidad y con él:
+**Verificación desde cero** sobre `99a2781`: en un clon nuevo con `core.autocrlf=true`, con el entorno de Docker levantado desde cero (123 s), todas las suites en verde, sin el perfil de observabilidad y con él. También `pnpm ledger:verificar` y `pnpm test:cobertura` (1,283 pruebas en una sola corrida).
 
 | Suite | Sin el perfil `observabilidad` | Con el perfil |
 |---|---|---|
@@ -58,14 +58,14 @@ Pruebas: casos (archivos), del reporte JSON de Vitest. Las de integración se as
 | exportaciones | 4 | 10 | SolicitudExportacion, EstadoExportacion | VW_Exportaciones_Solicitudes | — | — | 40 (4) | 11 (1) | 92 % · 78 % |
 | sistema | 1 | 5 | SolicitudIdempotente | — | FU_Sistema_FechaLocal | — | 8 (1) | 1 (1) | 98 % · 81 % |
 | shared, app y transversales | 2 (Swagger) | 1 (`SP_Semilla_GenerarDatosDemo`) | HistorialMigracion (migrador) | — | — | — | 311 (33) | 180 (21) | 88 % · 86 % |
-| **Total API** | **95** | **125** | **41** | **9** | **15** | **10** | **526 (55)** | **757 (65)** | **94.47 % · 86.45 %** |
+| **Total API** | **95** | **125** | **41** | **9** | **15** | **10** | **526 (55)** | **757 (65)** | **94.5 % · 86.45 %** |
 | Migrador (`database/migrator`) | — | — | — | — | — | — | 251 (7) | 11 (2) | — |
 
 ¹ Los casos de envíos viven en `test/integracion/carrito/envios.api.test.ts` y `secuencial/configuracion-envios.api.test.ts` (contados en carrito y configuración).
 
 Además: 2 pruebas de concurrencia (`test/concurrencia`), 28 de entorno en 6 archivos (`test/entorno`: seguridad HTTP, contenedores sin root, RNF-2, apagado ordenado, observabilidad y tiempo real) y 2 de humo de la imagen (`test/humo`). Los 84 SPs y 3 triggers de prueba de `database/test/` solo existen en `shopcart_test` y no se cuentan.
 
-**Cobertura por pieza compartida** (líneas · ramas): `shared/adapters` 97 % · 85 %, `shared/db` 97 % · 91 %, `shared/errors` 100 % · 94 %, `shared/http` 98 % · 97 %, `shared/jobs` 100 % · 93 %, `shared/observability` 73 % · 50 %, `shared/config` y `shared/dinero` 100 % · 100 %. Lo más bajo es el arranque (`server.ts`, `telemetria.ts`, `apagado.ts`: 56 % · 50 %) y la telemetría: la prueba de seguridad de trazas levanta la API compilada en otro proceso, que v8 no mide; el apagado se prueba aparte (`unit/apagado.test.ts`, `entorno/apagado.test.ts`).
+**Cobertura por pieza compartida** (líneas · ramas): `shared/adapters` 97 % · 85 %, `shared/db` 98 % · 91 %, `shared/errors` 100 % · 94 %, `shared/http` 98 % · 97 %, `shared/jobs` 100 % · 93 %, `shared/observability` 73 % · 50 %, `shared/config` y `shared/dinero` 100 % · 100 %. Lo más bajo es el arranque (`server.ts`, `telemetria.ts`, `apagado.ts`: 56 % · 50 %) y la telemetría: la prueba de seguridad de trazas levanta la API compilada en otro proceso, que v8 no mide; el apagado se prueba aparte (`unit/apagado.test.ts`, `entorno/apagado.test.ts`).
 
 ## 2. Matriz de criterios y pruebas
 
