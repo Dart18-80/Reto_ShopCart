@@ -212,7 +212,7 @@ Son solo para dar contexto. **Se deciden en la etapa 2**, después de cerrar las
 - **Autenticación:** access token JWT de 15 minutos y refresh token en una cookie httpOnly, con rotación y detección de reúso. Contraseñas con argon2.
 - **Liberación de reservas:** el disponible ignora las reservas vencidas, y un job periódico (protegido con `sp_getapplock`) las marca como liberadas.
 - **Infraestructura:** Docker Compose con SQL Server 2022, un migrador de un solo uso, Redis, 2 réplicas de la API detrás de nginx y el web servido con nginx, usando healthchecks. Perfil opcional `observabilidad` con `grafana/otel-lgtm` (E9-H01).
-- **Extras candidatos:** rate limiting en auth con Redis (Fase 1), exportación a Excel (Fase 2) y, si sobra tiempo, SSE y caché de reportes en Redis.
+- **Extras candidatos:** rate limiting en auth con Redis (Fase 1), exportación a Excel (Fase 2) y, si sobra tiempo, SSE y caché de reportes en Redis (las dos se hicieron: la caché en E7-H04 y SSE en E9-H02, A-25).
 
 ---
 

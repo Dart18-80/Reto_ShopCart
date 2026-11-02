@@ -14,6 +14,11 @@ export interface DependenciasApagado {
   logger: Logger;
   salir: (codigo: number) => void;
   esperaMaximaMs: number;
+  /**
+   * Al empezar, antes de cerrar el servidor: lo que corta las conexiones que no terminan solas (E9-H02: los streams
+   * del dashboard). Sin esto, `close` esperaría hasta forzar la salida y el cliente no reconectaría a la otra réplica.
+   */
+  alIniciar?: readonly (() => void)[];
 }
 
 /**
@@ -28,6 +33,7 @@ export function registrarApagadoOrdenado({
   logger,
   salir,
   esperaMaximaMs,
+  alIniciar = [],
 }: DependenciasApagado): void {
   let apagando = false;
   let terminado = false;
@@ -53,6 +59,7 @@ export function registrarApagadoOrdenado({
     }, esperaMaximaMs);
     forzarSalida.unref();
 
+    for (const accion of alIniciar) accion();
     servidor.close(() => {
       // Dentro de then: un cierre que lanza de forma síncrona también queda como rechazo y no deja a
       // los demás sin cerrar.

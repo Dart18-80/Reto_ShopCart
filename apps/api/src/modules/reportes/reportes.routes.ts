@@ -12,6 +12,7 @@ import {
   consultaCarritosSchema,
   consultaRangoSchema,
   consultaVentasSchema,
+  encabezadosEventosSchema,
   productoVendidoSchema,
   resumenSchema,
   ventasDeCategoriaSchema,
@@ -82,6 +83,28 @@ reporte(
   'Página de carritos',
 );
 
+registroOpenApi.registerPath({
+  method: 'get',
+  path: '/api/v1/admin/reportes/eventos',
+  tags: ['Dashboard'],
+  summary: 'Dashboard en tiempo real (SSE): avisa cuando cambian las ventas o los carritos',
+  description:
+    'E9-H02 (A-25): `text/event-stream`. El token va en `Authorization` (usa fetch con el cuerpo como stream, no ' +
+    'EventSource). Al conectar llega `versiones` con las versiones actuales; después, `cambio` con `{ dominio, version }` ' +
+    '(como máximo uno por dominio cada 2 s) y un comentario de latido cada 15 s. El `id` de cada evento son las versiones ' +
+    '(`ventas3.carritos7`): al reconectar, envía `Last-Event-ID` y `versiones` dirá si hay que recargar. El stream se ' +
+    'cierra al vencer el token o al revocarse la sesión.',
+  security: seguridad,
+  request: { headers: encabezadosEventosSchema.pick({ 'last-event-id': true }) },
+  responses: {
+    200: {
+      description: 'Stream de eventos',
+      content: { 'text/event-stream': { schema: z.string() } },
+    },
+    ...respuestasError(401, 403, 429),
+  },
+});
+
 export function crearReportesRouter(
   controller: ReportesController,
   autenticar: RequestHandler,
@@ -94,5 +117,6 @@ export function crearReportesRouter(
   router.get('/dashboard/ventas-por-categoria', ...soloAdmin, controller.ventasPorCategoria);
   router.get('/dashboard/top-productos', ...soloAdmin, controller.topProductos);
   router.get('/dashboard/carritos-abandonados', ...soloAdmin, controller.carritosAbandonados);
+  router.get('/admin/reportes/eventos', ...soloAdmin, controller.eventos);
   return router;
 }

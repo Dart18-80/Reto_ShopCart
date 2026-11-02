@@ -118,7 +118,7 @@ describe('iniciarSesion (E2-H01, N-15)', () => {
       CLIENTE,
     );
 
-    expect(await tokens.verificar(sesion.accessToken)).toEqual({
+    expect(await tokens.verificar(sesion.accessToken)).toMatchObject({
       idUsuario: 7,
       rol: 'Operador',
       versionSesion: 2,
@@ -170,7 +170,7 @@ describe('registrar (E2-H01, N-15)', () => {
     );
 
     expect(sesion.usuario).toMatchObject({ idUsuario: 9, rol: 'Cliente' });
-    expect(await tokens.verificar(sesion.accessToken)).toEqual({
+    expect(await tokens.verificar(sesion.accessToken)).toMatchObject({
       idUsuario: 9,
       rol: 'Cliente',
       versionSesion: 0,
@@ -206,7 +206,7 @@ describe('refrescar (E2-H02, A-07)', () => {
     expect(rotacion?.hashActual).toEqual(createHash('sha256').update('token-actual').digest());
     expect(rotacion?.hashNuevo).toEqual(createHash('sha256').update(sesion.refreshToken).digest());
     expect(sesion.refreshToken).not.toBe('token-actual');
-    expect(await tokens.verificar(sesion.accessToken)).toEqual({
+    expect(await tokens.verificar(sesion.accessToken)).toMatchObject({
       idUsuario: 7,
       rol: 'Cliente',
       versionSesion: 3,

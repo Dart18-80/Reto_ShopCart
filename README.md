@@ -181,6 +181,24 @@ Abre <http://localhost:8080/api/docs>. En cada paso: **Try it out** → completa
 4. En cualquier span, **Logs for this span** abre en Loki las líneas de esa petición (las del pino de la réplica, con el mismo `trace_id`).
 5. **Dashboards → ShopCart:** latencia y errores por endpoint, peticiones por réplica, pedidos creados, pagos por resultado (`PedidoCreado`, `Repetido`, `PAGO_SIN_CONFIRMAR`…), tareas por resultado (`Omitida` = la otra réplica tenía el bloqueo) y exportaciones pendientes.
 
+### El dashboard en tiempo real (SSE)
+
+Solo el Admin. El token va en el encabezado `Authorization`, nunca en la URL ([A-25](docs/01-arquitectura.md)):
+
+```bash
+TOKEN=$(curl -s -X POST http://localhost:8080/api/v1/auth/login -H 'Content-Type: application/json' \
+  -d '{"correo":"admin@shopcart.gt","contrasena":"Admin2026!"}' | sed -E 's/.*"accessToken":"([^"]+)".*/\1/')
+curl -N -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/v1/admin/reportes/eventos
+```
+
+```text
+id: ventas3.carritos152
+event: versiones
+data: {"versiones":{"ventas":3,"carritos":152},"recargar":false}
+```
+
+Deja esa terminal abierta y, en otra, agrega algo al carrito o haz una compra (pasos 3 a 8 de §3): llega un evento `cambio` con el dominio y su versión nueva (`{"dominio":"carritos","version":153}`), aunque la petición la atienda la otra réplica. Cada 15 s llega un latido (`: latido`). Con `docker compose stop redis` el stream sigue abierto con sus latidos; con `docker compose start redis` llega otra vez `versiones`, ahora con `"recargar":true`. Con `docker compose stop` de la réplica que atiende el stream (encabezado `X-Instancia` con `curl -i`), el stream se cierra de inmediato (curl termina) y un cliente que reconecta, como el dashboard, cae en la otra réplica. Sin token responde `401`; con el token del Operador, `403`; un cuarto stream del mismo Admin en la misma réplica, `429 CONEXIONES_MAXIMAS`.
+
 ---
 
 ## 4. Decisiones técnicas
@@ -200,6 +218,7 @@ Abre <http://localhost:8080/api/docs>. En cada paso: **Try it out** → completa
 | **Fechas en UTC + `FechaPagoLocal`** (Guatemala, UTC−6)                                                                                                                                                                                     | Los reportes agrupan por el día local sin `AT TIME ZONE` en cada consulta                                                   | [A-12](docs/01-arquitectura.md)                                                                         |
 | **Caché de reportes con invalidación por versión** (Redis, en el servicio): dos versiones, ventas y carritos; cada escritura incrementa, después de su commit, solo la de los dominios que cambia, y cada reporte depende solo de los suyos | Sin borrar claves ni coordinar réplicas; con Redis caído se lee la base                                                     | [A-11 y 01 §9](docs/01-arquitectura.md)                                                                 |
 | **Exportación asíncrona a Excel y PDF** con la cola en SQL Server, consumida por las dos réplicas en competencia, y archivos en un volumen compartido                                                                                       | Un reporte grande no bloquea la réplica; la cola no se pierde (RNF-2) y el archivo de una réplica se descarga desde la otra | [A-24](docs/01-arquitectura.md)                                                                         |
+| **Dashboard en tiempo real con SSE** y avisos entre réplicas por Redis pub/sub; el token en `Authorization`, nunca en la URL                                                                                                                | El dashboard se entera de un pedido en cualquier réplica sin polling; los eventos solo avisan y el reporte sale de la caché | [A-25](docs/01-arquitectura.md)                                                                         |
 
 ### Decisiones abiertas del enunciado
 
@@ -233,21 +252,20 @@ Cada ambigüedad que encontramos en el enunciado, la postura que se tomó y dón
 
 **Fuera de alcance y mejoras.** Lo que se excluyó a propósito, con su porqué:
 
-| Tema                                                           | Postura                                                                                            | Detalle                                                               |
-| -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| Factura electrónica (FEL de la SAT)                            | Fuera de alcance: el pedido guarda la base y el IVA que la factura necesitaría                     | [N-18](docs/00-vision-y-contexto.md)                                  |
-| Tarifa de envío por zona                                       | Mejora: hoy la tarifa es fija por método                                                           | [N-04](docs/00-vision-y-contexto.md)                                  |
-| Capturar el cobro al despachar                                 | Mejora: hoy autoriza y captura al pagar, y una cancelación reembolsa                               | [N-03](docs/00-vision-y-contexto.md)                                  |
-| Pasarela real                                                  | Mejora: otro adaptador del puerto `PasarelaPago`, sin tocar el checkout                            | [N-03](docs/00-vision-y-contexto.md)                                  |
-| Límite de compra por cliente                                   | Fuera de alcance: el límite es la existencia disponible                                            | [N-06](docs/00-vision-y-contexto.md)                                  |
-| Solicitud de devolución por el cliente, con aprobación         | Mejora: hoy la registra el Operador                                                                | [N-10](docs/00-vision-y-contexto.md)                                  |
-| Agregar una dimensión de atributos a un producto con historial | Fuera de alcance: un producto con variantes con historial no cambia su conjunto de atributos       | [N-14](docs/00-vision-y-contexto.md)                                  |
-| Costo del inventario (costo promedio, valoración)              | Mejora: las entradas no llevan costo                                                               | [N-16](docs/00-vision-y-contexto.md)                                  |
-| Recuperación de contraseña por correo                          | Fuera de la Fase 1: requiere SMTP; con sesión iniciada, el usuario cambia la suya                  | [N-15](docs/00-vision-y-contexto.md)                                  |
-| Correo (aviso de exportación terminada)                        | Fuera de la Fase 1: un puerto `Notificador` con Mailpit; requiere SMTP                             | [N-15](docs/00-vision-y-contexto.md), [A-24](docs/01-arquitectura.md) |
-| Dashboard en tiempo real (SSE)                                 | Mejora: con dos réplicas necesita un canal de avisos entre ellas; mientras tanto, la caché de 60 s | §8                                                                    |
-| Kubernetes                                                     | Diferido: el diseño stateless ya lo permite                                                        | [D-04](docs/00-vision-y-contexto.md)                                  |
-| Producción                                                     | SQL Server Standard o Enterprise, HTTPS en nginx y secretos en un vault en lugar de `.env`         | §8                                                                    |
+| Tema                                                           | Postura                                                                                      | Detalle                                                               |
+| -------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Factura electrónica (FEL de la SAT)                            | Fuera de alcance: el pedido guarda la base y el IVA que la factura necesitaría               | [N-18](docs/00-vision-y-contexto.md)                                  |
+| Tarifa de envío por zona                                       | Mejora: hoy la tarifa es fija por método                                                     | [N-04](docs/00-vision-y-contexto.md)                                  |
+| Capturar el cobro al despachar                                 | Mejora: hoy autoriza y captura al pagar, y una cancelación reembolsa                         | [N-03](docs/00-vision-y-contexto.md)                                  |
+| Pasarela real                                                  | Mejora: otro adaptador del puerto `PasarelaPago`, sin tocar el checkout                      | [N-03](docs/00-vision-y-contexto.md)                                  |
+| Límite de compra por cliente                                   | Fuera de alcance: el límite es la existencia disponible                                      | [N-06](docs/00-vision-y-contexto.md)                                  |
+| Solicitud de devolución por el cliente, con aprobación         | Mejora: hoy la registra el Operador                                                          | [N-10](docs/00-vision-y-contexto.md)                                  |
+| Agregar una dimensión de atributos a un producto con historial | Fuera de alcance: un producto con variantes con historial no cambia su conjunto de atributos | [N-14](docs/00-vision-y-contexto.md)                                  |
+| Costo del inventario (costo promedio, valoración)              | Mejora: las entradas no llevan costo                                                         | [N-16](docs/00-vision-y-contexto.md)                                  |
+| Recuperación de contraseña por correo                          | Fuera de la Fase 1: requiere SMTP; con sesión iniciada, el usuario cambia la suya            | [N-15](docs/00-vision-y-contexto.md)                                  |
+| Correo (aviso de exportación terminada)                        | Fuera de la Fase 1: un puerto `Notificador` con Mailpit; requiere SMTP                       | [N-15](docs/00-vision-y-contexto.md), [A-24](docs/01-arquitectura.md) |
+| Kubernetes                                                     | Diferido: el diseño stateless ya lo permite                                                  | [D-04](docs/00-vision-y-contexto.md)                                  |
+| Producción                                                     | SQL Server Standard o Enterprise, HTTPS en nginx y secretos en un vault en lugar de `.env`   | §8                                                                    |
 
 **Definiciones de los reportes** (`/api/v1/dashboard/*`, solo Admin). Todos agregan sobre una única definición de venta (`VW_Dashboard_HechosVenta`):
 
@@ -405,7 +423,7 @@ pnpm lint && pnpm typecheck
 pnpm test                # unitarias: servicios y middlewares con puertos falsos, sin infraestructura
 pnpm test:integracion    # contra SQL Server real: recrea la base shopcart_test en cada corrida
 pnpm test:concurrencia   # RNF-3: 20 clientes a la vez contra http://localhost:8080 (las dos réplicas)
-pnpm test:entorno        # seguridad HTTP, contenedores sin root y RNF-2 (detiene api-1 y Redis y pausa SQL Server; los levanta al terminar)
+pnpm test:entorno        # seguridad HTTP, contenedores sin root, RNF-2 y el dashboard en tiempo real (detiene api-1, una réplica con un stream y Redis, y pausa SQL Server; los levanta al terminar)
 ```
 
 - **Integración:** `pnpm test:integracion` recrea `shopcart_test` desde cero (las tablas ledger no admiten `DELETE`), aplica todos los scripts y, solo en esa base, los SPs de `database/test/`. Las pruebas no escriben SQL: preparan sus datos con esos `SP_Pruebas_*` y cada una crea datos únicos. Nunca tocan la base `ShopCart` del entorno.
@@ -433,5 +451,4 @@ Lo que queda fuera de la Fase 1, a propósito y con su lugar en el plan ([docs/0
 - **Fase 2 · Frontend:** SPA con Vite + React + TypeScript (tienda, backoffice y dashboard con gráficas), renovación transparente del token y estados de carga, vacío y error.
 - **Revisión manual de pagos:** un intento con pedido cuya autorización ya no existe en la pasarela queda `EnRevision` y un reembolso que agota sus 5 intentos queda `Fallido` en la lista del Admin (`GET /api/v1/admin/reembolsos`, con reintento). La Fase 2 les dará pantalla.
 - **Carga pesada (F5):** el script `database/load/L001` con el generador de datos demo a 50,000 pedidos. Ya se midió en una base desechable: ningún listado ni reporte pasa de 1 s ([docs/revision/estado-backend.md](docs/revision/estado-backend.md) §7).
-- **Dashboard en tiempo real (SSE):** con dos réplicas, el evento que ocurre en una tiene que llegar a los clientes conectados a la otra, así que necesita un canal de avisos entre ellas (Redis pub/sub o el outbox de la base).
 - **Producción:** SQL Server Standard o Enterprise en lugar de Developer, HTTPS en nginx y secretos fuera de `.env`.

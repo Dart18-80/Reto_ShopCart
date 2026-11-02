@@ -31,6 +31,8 @@ export {
   autorizar,
   autorizarSiHaySesion,
   crearAutenticar,
+  sesionRevocada,
+  tokenDeAutorizacion,
   type VersionesSesion,
 } from './autenticar.js';
 export { limitarIntentos, type LimitadorIntentos } from './limitar-intentos.js';
@@ -41,6 +43,7 @@ export {
   ROLES_DE_USUARIO,
   VIGENCIA_ACCESO_SEG,
   type ActorDelToken,
+  type TokenVerificado,
   type RolDeUsuario,
   type TokensAcceso,
 } from './token-acceso.js';

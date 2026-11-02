@@ -31,9 +31,6 @@ export function crearCacheRedis(
 
     contador: (clave) => tolerante(async () => Number((await cliente.get(clave)) ?? 0), null),
 
-    incrementar: (clave) =>
-      tolerante(async () => {
-        await cliente.incr(clave);
-      }, undefined),
+    incrementar: (clave) => tolerante(() => cliente.incr(clave), null),
   };
 }

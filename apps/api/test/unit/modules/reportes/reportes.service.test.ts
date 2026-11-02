@@ -12,6 +12,7 @@ import {
   type ReportesService,
 } from '../../../../src/modules/reportes/reportes.service.js';
 import type { Resumen } from '../../../../src/modules/reportes/reportes.types.js';
+import type { AvisoDeVersion, AvisosDeVersion } from '../../../../src/shared/avisos/index.js';
 import type { Cache } from '../../../../src/shared/cache/index.js';
 
 const RANGO = { desde: '2026-10-01', hasta: '2026-10-31' };
@@ -39,8 +40,9 @@ function cacheEnMemoria() {
     }),
     contador: vi.fn((clave: string) => Promise.resolve(Number(valores.get(clave) ?? 0))),
     incrementar: vi.fn((clave: string) => {
-      valores.set(clave, String(Number(valores.get(clave) ?? 0) + 1));
-      return Promise.resolve();
+      const nueva = Number(valores.get(clave) ?? 0) + 1;
+      valores.set(clave, String(nueva));
+      return Promise.resolve(nueva);
     }),
   } satisfies Cache;
   return cache;
@@ -50,7 +52,7 @@ const REDIS_CAIDO: Cache = {
   obtener: () => Promise.resolve(null),
   guardar: () => Promise.resolve(),
   contador: () => Promise.resolve(null),
-  incrementar: () => Promise.resolve(),
+  incrementar: () => Promise.resolve(null),
 };
 
 // Una fila que cumple los tres reportes de lista (ventas, por categoría y top de productos).
@@ -65,7 +67,7 @@ const FILA_CON_MONTO = {
   ventas: new Decimal('12.30'),
 };
 
-function preparar(cache: Cache = cacheEnMemoria()) {
+function preparar(cache: Cache = cacheEnMemoria(), avisos = avisosFalsos()) {
   const repositorio = {
     resumen: vi.fn(() => Promise.resolve(resumenCon('120.00'))),
     ventasPorPeriodo: vi.fn((): Promise<(typeof FILA_CON_MONTO)[]> => Promise.resolve([])),
@@ -90,9 +92,52 @@ function preparar(cache: Cache = cacheEnMemoria()) {
   return {
     servicio: crearReportesService({ repositorio, cache, logger: pino({ level: 'silent' }) }),
     repositorio,
-    invalidador: crearInvalidadorReportes(cache),
+    invalidador: crearInvalidadorReportes(cache, avisos),
+    avisos,
   };
 }
+
+/** E9-H02: el canal entre réplicas, falso; `publicar` registra cada aviso. */
+function avisosFalsos() {
+  return {
+    publicar: vi.fn((_aviso: AvisoDeVersion) => Promise.resolve()),
+    suscribir: vi.fn(),
+  } satisfies AvisosDeVersion;
+}
+
+describe('avisos de versión entre réplicas (E9-H02, A-25)', () => {
+  it('cada invalidación publica el dominio con su versión nueva, después de incrementarla', async () => {
+    const cache = cacheEnMemoria();
+    const { invalidador, avisos } = preparar(cache);
+
+    await invalidador.tras(Promise.resolve('pedido'), 'ventas', 'carritos');
+    await invalidador.invalidar('ventas');
+
+    expect(avisos.publicar.mock.calls.map(([aviso]) => aviso)).toEqual([
+      { dominio: 'ventas', version: 1 },
+      { dominio: 'carritos', version: 1 },
+      { dominio: 'ventas', version: 2 },
+    ]);
+  });
+
+  it('una escritura que falla no publica nada', async () => {
+    const { invalidador, avisos } = preparar();
+
+    await expect(
+      invalidador.tras(Promise.reject(new Error('rollback')), 'ventas'),
+    ).rejects.toThrow();
+
+    expect(avisos.publicar).not.toHaveBeenCalled();
+  });
+
+  it('con Redis caído (sin versión nueva) no publica', async () => {
+    const { invalidador, avisos } = preparar(REDIS_CAIDO);
+
+    await invalidador.invalidar('ventas');
+
+    expect(avisos.publicar).not.toHaveBeenCalled();
+  });
+});
 
 describe('caché de reportes (E7-H04, A-11)', () => {
   it('la segunda consulta con los mismos filtros sale de la caché, con montos Decimal', async () => {

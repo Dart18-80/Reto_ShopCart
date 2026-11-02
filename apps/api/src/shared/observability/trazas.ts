@@ -12,6 +12,9 @@ export const ATRIBUTOS = {
   reporteExportacion: 'shopcart.exportacion.reporte',
   formatoExportacion: 'shopcart.exportacion.formato',
   resultadoExportacion: 'shopcart.exportacion.resultado',
+  dominioSse: 'shopcart.sse.dominio',
+  versionSse: 'shopcart.sse.version',
+  clientesSse: 'shopcart.sse.clientes',
 } as const;
 
 /**

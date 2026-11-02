@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { Decimal } from 'decimal.js';
+import type { AvisosDeVersion } from '../../shared/avisos/index.js';
 import type { Cache } from '../../shared/cache/index.js';
 import { z } from '../../shared/openapi/zod.js';
 
@@ -34,16 +35,26 @@ export const claveDeVersion = (dominio: DominioReportes): string => `reportes:${
 // días y los carritos que se vuelven abandonados con el paso del tiempo) y un incremento de versión fallido.
 export const SEGUNDOS_CACHE_REPORTES = 60;
 
-/** Invalida la caché de reportes (A-11). Nunca lanza: si Redis no responde, el TTL acota lo desactualizado. */
+/**
+ * Invalida la caché de reportes (A-11) y avisa a las réplicas la versión nueva (E9-H02). Nunca lanza: si Redis no
+ * responde, el TTL acota lo desactualizado y no se avisa nada.
+ */
 export interface InvalidadorReportes {
   invalidar(dominio: DominioReportes, ...otros: DominioReportes[]): Promise<void>;
   /** Espera la escritura y, solo si se confirmó (después de su commit), invalida sus dominios. */
   tras<T>(escritura: Promise<T>, dominio: DominioReportes, ...otros: DominioReportes[]): Promise<T>;
 }
 
-export function crearInvalidadorReportes(cache: Cache): InvalidadorReportes {
+export function crearInvalidadorReportes(
+  cache: Cache,
+  avisos: AvisosDeVersion,
+): InvalidadorReportes {
+  const incrementarYAvisar = async (dominio: DominioReportes) => {
+    const version = await cache.incrementar(claveDeVersion(dominio));
+    if (version !== null) await avisos.publicar({ dominio, version });
+  };
   const invalidar = async (dominio: DominioReportes, ...otros: DominioReportes[]) => {
-    await Promise.all([dominio, ...otros].map((d) => cache.incrementar(claveDeVersion(d))));
+    await Promise.all([dominio, ...otros].map(incrementarYAvisar));
   };
   return {
     invalidar,

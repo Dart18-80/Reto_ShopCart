@@ -76,3 +76,10 @@ export const carritoAbandonadoSchema = z
     montoPotencial: montoSchema,
   })
   .openapi('CarritoAbandonado');
+
+/** E9-H02: el stream del dashboard. El token llega en Authorization (A-25), nunca en la URL. */
+export const encabezadosEventosSchema = z.object({
+  authorization: z.string().optional(),
+  // El id del último evento que recibió el cliente al reconectar: `ventas3.carritos7`.
+  'last-event-id': z.string().max(100).optional(),
+});

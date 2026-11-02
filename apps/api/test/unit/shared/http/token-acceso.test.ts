@@ -5,6 +5,7 @@ import { describe, expect, expectTypeOf, it } from 'vitest';
 import {
   aRolDeUsuario,
   crearTokensAcceso,
+  VIGENCIA_ACCESO_SEG,
   type ActorDelToken,
 } from '../../../../src/shared/http/index.js';
 
@@ -97,9 +98,22 @@ describe('verificar registra el motivo del rechazo, nunca el token (A-07)', () =
   it('un token válido no deja nada en el log', async () => {
     const { tokens, lineas } = tokensConLog();
 
-    expect(await tokens.verificar(await tokens.emitir(ACTOR))).toEqual(ACTOR);
+    expect(await tokens.verificar(await tokens.emitir(ACTOR))).toMatchObject(ACTOR);
 
     expect(lineas).toEqual([]);
+  });
+
+  it('E9-H02: verificar devuelve cuándo vence el token (su exp), para cerrar a tiempo el stream del dashboard', async () => {
+    const { tokens } = tokensConLog();
+    const antes = Date.now();
+
+    const verificado = await tokens.verificar(await tokens.emitir(ACTOR));
+
+    const vence = verificado?.venceEn.getTime() ?? 0;
+    expect(vence).toBeGreaterThanOrEqual(
+      Math.floor(antes / 1000) * 1000 + VIGENCIA_ACCESO_SEG * 1000,
+    );
+    expect(vence).toBeLessThanOrEqual(Date.now() + VIGENCIA_ACCESO_SEG * 1000);
   });
 });
 

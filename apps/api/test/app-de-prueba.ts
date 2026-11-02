@@ -6,6 +6,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { crearAlmacenEnDisco } from '../src/shared/adapters/almacen-disco.js';
 import { crearProcesadorExportaciones } from '../src/modules/exportaciones/index.js';
+import { crearDifusorDeVersiones } from '../src/modules/reportes/index.js';
+import { SIN_AVISOS } from '../src/shared/avisos/index.js';
 import {
   crearTokensAcceso,
   type LimitadorIntentos,
@@ -42,7 +44,7 @@ export const SIN_CACHE: Cache = {
   obtener: () => Promise.resolve(null),
   guardar: () => Promise.resolve(),
   contador: () => Promise.resolve(null),
-  incrementar: () => Promise.resolve(),
+  incrementar: () => Promise.resolve(null),
 };
 
 /** Dependencias de crearApp para pruebas; cada prueba reemplaza solo lo que le importa. */
@@ -68,6 +70,12 @@ export function dependenciasDePrueba(cambios: Partial<DependenciasApp> = {}): De
     exportaciones: crearProcesadorExportaciones({
       almacen,
       cache: SIN_CACHE,
+      logger: pino({ level: 'silent' }),
+    }),
+    avisos: SIN_AVISOS,
+    difusorEventos: crearDifusorDeVersiones({
+      cache: SIN_CACHE,
+      avisos: SIN_AVISOS,
       logger: pino({ level: 'silent' }),
     }),
     ...cambios,

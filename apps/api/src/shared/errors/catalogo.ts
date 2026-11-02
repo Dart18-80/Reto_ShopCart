@@ -244,6 +244,13 @@ export const CATALOGO = {
   },
   EXPORTACION_NO_LISTA: { http: 409, mensaje: 'La exportación todavía no está lista.' },
   EXPORTACION_EXPIRADA: { http: 410, mensaje: 'La exportación expiró. Vuelve a solicitarla.' },
+
+  // Dashboard en tiempo real (E9-H02, A-25). Nace en la API.
+  CONEXIONES_MAXIMAS: {
+    http: 429,
+    mensaje:
+      'Ya tienes demasiadas conexiones abiertas al dashboard en tiempo real. Cierra alguna pestaña.',
+  },
 } as const satisfies Record<string, EntradaCatalogo>;
 
 export type CodigoError = keyof typeof CATALOGO;

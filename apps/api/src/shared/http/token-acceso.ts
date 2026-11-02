@@ -19,9 +19,12 @@ const cargaSchema = z.object({
   jti: z.string().min(1),
   // A-07: autenticar rechaza el token si la versión de sesión del usuario ya subió.
   versionSesion: z.number().int().min(0),
+  exp: z.number().int().positive(),
 });
 
 export type RolDeUsuario = (typeof ROLES_DE_USUARIO)[number];
+
+const MS_POR_SEGUNDO = 1000;
 
 export interface ActorDelToken {
   idUsuario: number;
@@ -29,10 +32,15 @@ export interface ActorDelToken {
   versionSesion: number;
 }
 
+/** Un token válido: su actor y cuándo vence (E9-H02: el stream del dashboard se cierra a esa hora). */
+export interface TokenVerificado extends ActorDelToken {
+  venceEn: Date;
+}
+
 export interface TokensAcceso {
   emitir(actor: ActorDelToken): Promise<string>;
   /** null si la firma no es válida, si venció o si su contenido no cumple el esquema. */
-  verificar(token: string): Promise<ActorDelToken | null>;
+  verificar(token: string): Promise<TokenVerificado | null>;
 }
 
 /**
@@ -78,8 +86,13 @@ export function crearTokensAcceso(secreto: string, logger: Logger): TokensAcceso
           );
           return null;
         }
-        const { sub, rol, versionSesion } = carga.data;
-        return { idUsuario: Number(sub), rol, versionSesion };
+        const { sub, rol, versionSesion, exp } = carga.data;
+        return {
+          idUsuario: Number(sub),
+          rol,
+          versionSesion,
+          venceEn: new Date(exp * MS_POR_SEGUNDO),
+        };
       } catch (error) {
         // Firma inválida, token vencido o mal formado: todos son "no autenticado" para quien llama.
         registrarRechazo(logger, error);

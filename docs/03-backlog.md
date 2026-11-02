@@ -742,5 +742,5 @@ Se detalla en historias al cerrar la Fase 1.
 | E8-H02 | Revisión contra penalizaciones | Must | 0.5 | En revisión |
 | E8-H03 | Ensayo en máquina limpia | Must | 0.25 | En revisión |
 | E9-H01 | OpenTelemetry y Grafana LGTM | Must | 2.0 | En revisión |
-| E9-H02 | Dashboard en tiempo real con SSE | Must | 1.5 | Lista |
+| E9-H02 | Dashboard en tiempo real con SSE | Must | 1.5 | En revisión |
 | E9-H03 | Guía de defensa | Must | 1.5 | Lista |

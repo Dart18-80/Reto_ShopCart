@@ -8,5 +8,6 @@ export interface Cache {
   guardar(clave: string, valor: string, segundos: number): Promise<void>;
   /** El valor de un contador (0 si todavía no existe); null si Redis no responde. */
   contador(clave: string): Promise<number | null>;
-  incrementar(clave: string): Promise<void>;
+  /** El valor nuevo del contador (E9-H02: la versión que se avisa); null si Redis no responde. */
+  incrementar(clave: string): Promise<number | null>;
 }

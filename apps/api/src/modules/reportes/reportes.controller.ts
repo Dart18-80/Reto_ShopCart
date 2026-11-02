@@ -6,8 +6,18 @@ import {
   consultaCarritosSchema,
   consultaRangoSchema,
   consultaVentasSchema,
+  encabezadosEventosSchema,
 } from './reportes.schemas.js';
 import type { ReportesService } from './reportes.service.js';
+import type { TiempoRealService } from './reportes.tiempo-real.js';
+
+// E9-H02: sin caché, sin buffering de nginx y con la conexión abierta.
+const ENCABEZADOS_SSE = {
+  'Content-Type': 'text/event-stream; charset=utf-8',
+  'Cache-Control': 'no-cache, no-transform',
+  Connection: 'keep-alive',
+  'X-Accel-Buffering': 'no',
+};
 
 export interface ReportesController {
   resumen: RequestHandler;
@@ -15,6 +25,7 @@ export interface ReportesController {
   ventasPorCategoria: RequestHandler;
   topProductos: RequestHandler;
   carritosAbandonados: RequestHandler;
+  eventos: RequestHandler;
 }
 
 const conVentasEnTexto = <T extends { ventas: Decimal }>(fila: T) => ({
@@ -22,7 +33,10 @@ const conVentasEnTexto = <T extends { ventas: Decimal }>(fila: T) => ({
   ventas: montoATexto(fila.ventas),
 });
 
-export function crearReportesController(servicio: ReportesService): ReportesController {
+export function crearReportesController(
+  servicio: ReportesService,
+  tiempoReal: TiempoRealService,
+): ReportesController {
   return {
     resumen: manejar({ query: consultaRangoSchema }, async ({ query }, res) => {
       const resumen = await servicio.resumen(query);
@@ -58,6 +72,24 @@ export function crearReportesController(servicio: ReportesService): ReportesCont
         montoPotencial: montoATexto(carrito.montoPotencial),
       }));
       res.json(paginar(datos, total, query));
+    }),
+
+    // Los encabezados salen con el primer evento: si el difusor rechaza la conexión (429), todavía se puede responder.
+    eventos: manejar({ encabezados: encabezadosEventosSchema }, async ({ encabezados }, res) => {
+      const desconectar = await tiempoReal.conectar(
+        encabezados.authorization,
+        encabezados['last-event-id'],
+        {
+          escribir: (texto) => {
+            if (!res.headersSent) res.writeHead(200, ENCABEZADOS_SSE);
+            res.write(texto);
+          },
+          cerrar: () => res.end(),
+        },
+      );
+      res.on('close', desconectar);
+      // El cliente pudo cerrar mientras se conectaba.
+      if (res.closed) desconectar();
     }),
   };
 }

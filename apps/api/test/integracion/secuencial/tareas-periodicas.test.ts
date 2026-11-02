@@ -17,6 +17,7 @@ import { PasarelaSinRespuesta, type PasarelaPago } from '../../../src/shared/pas
 import { leerError } from '../../unit/respuestas.js';
 import { dependenciasDePrueba, SIN_CACHE } from '../../app-de-prueba.js';
 import { crearInvalidadorReportes } from '../../../src/modules/reportes/index.js';
+import { SIN_AVISOS } from '../../../src/shared/avisos/index.js';
 import { iniciarSesion, leerSesion } from '../auth/apoyo-auth.js';
 import { usarBaseDePruebas } from '../base-de-pruebas.js';
 import { comoCliente, hashDe, varianteVendible } from '../carrito/apoyo-carrito.js';
@@ -45,7 +46,7 @@ const tareas = [
     pasarela: crearPasarelaSimulada(),
     logger: pino({ level: 'silent' }),
   }),
-  ...crearTareasDeCarrito(crearInvalidadorReportes(SIN_CACHE)),
+  ...crearTareasDeCarrito(crearInvalidadorReportes(SIN_CACHE, SIN_AVISOS)),
   ...crearTareasDeSistema(),
 ];
 // 01 §6.2: la conciliación espera 2 minutos después del vencimiento del arrendamiento.
@@ -520,7 +521,7 @@ describe('reintento de reembolsos y cancelaciones (E6-H03, N-09)', () => {
     const [tarea] = crearTareasDePedidos({
       pasarela,
       logger: pino({ level: 'silent' }),
-      reportes: crearInvalidadorReportes(SIN_CACHE),
+      reportes: crearInvalidadorReportes(SIN_CACHE, SIN_AVISOS),
     });
     if (tarea === undefined) throw new Error('Falta la tarea de reembolsos');
     return tarea;

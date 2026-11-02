@@ -2,7 +2,8 @@ import type { Logger } from 'pino';
 import { registrarApagadoOrdenado } from './apagado.js';
 import { crearApp } from './app.js';
 import { crearTareasDeCarrito } from './modules/carrito/index.js';
-import { crearInvalidadorReportes } from './modules/reportes/index.js';
+import { crearDifusorDeVersiones, crearInvalidadorReportes } from './modules/reportes/index.js';
+import { crearAvisosRedis } from './shared/adapters/avisos-redis.js';
 import { crearCacheRedis } from './shared/adapters/cache-redis.js';
 import { crearAlmacenEnDisco } from './shared/adapters/almacen-disco.js';
 import {
@@ -57,7 +58,14 @@ async function iniciar(): Promise<void> {
   // E9-H01: cada operación de la pasarela es un span propio.
   const pasarela = conTrazas(crearPasarelaSimulada());
   const cache = crearCacheRedis(redis, logger);
-  const reportes = crearInvalidadorReportes(cache);
+  // E9-H02 (A-25): el canal entre réplicas (con su propia conexión de suscripción) y los streams de esta réplica.
+  const avisos = crearAvisosRedis(redis, logger.child({ modulo: 'reportes' }));
+  const difusorEventos = crearDifusorDeVersiones({
+    cache,
+    avisos,
+    logger: logger.child({ modulo: 'reportes' }),
+  });
+  const reportes = crearInvalidadorReportes(cache, avisos);
   const almacen = crearAlmacenEnDisco(config.directorioAlmacen);
   const exportaciones = crearProcesadorExportaciones({ almacen, cache, logger });
 
@@ -91,6 +99,8 @@ async function iniciar(): Promise<void> {
     cache,
     almacen,
     exportaciones,
+    avisos,
+    difusorEventos,
   });
 
   // Express 5 también llama a este callback si listen falla (por ejemplo, puerto ocupado).
@@ -133,13 +143,19 @@ async function iniciar(): Promise<void> {
           .detener()
           .then(() => exportaciones.detener())
           .then(() => pool.close()),
-      () => redis.quit(),
+      () => avisos.cerrar().then(() => redis.quit()),
       // E9-H01: lo último que se exportó (spans y logs del apagado) sale antes de terminar.
       detenerTelemetria,
     ],
     logger,
     salir: (codigo) => process.exit(codigo),
     esperaMaximaMs: ESPERA_APAGADO_MS,
+    // E9-H02: los streams del dashboard no terminan solos; el cliente reconecta a la otra réplica.
+    alIniciar: [
+      () => {
+        difusorEventos.cerrarTodas();
+      },
+    ],
   });
 }
 

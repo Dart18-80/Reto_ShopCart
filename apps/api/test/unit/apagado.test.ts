@@ -1,5 +1,5 @@
 import { EventEmitter, once } from 'node:events';
-import { createServer, request as peticionHttp, type Server } from 'node:http';
+import { createServer, request as peticionHttp, type Server, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { Writable } from 'node:stream';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -60,7 +60,11 @@ function pedir(puerto: number): Promise<string> {
   });
 }
 
-function preparar({ esperaMaximaMs = 2_000, cierres = [() => Promise.resolve()] } = {}) {
+function preparar({
+  esperaMaximaMs = 2_000,
+  cierres = [() => Promise.resolve()],
+  alIniciar = [] as (() => void)[],
+} = {}) {
   const proceso = new EventEmitter();
   const { logger, lineas } = loggerEnMemoria();
   const recursos = cierres.map((cierre) => vi.fn(cierre));
@@ -78,11 +82,44 @@ function preparar({ esperaMaximaMs = 2_000, cierres = [() => Promise.resolve()] 
     logger,
     salir,
     esperaMaximaMs,
+    alIniciar,
   });
   return { proceso, recursos, salir, salida, lineas };
 }
 
+/** Un servidor con una respuesta que no termina sola (como un stream SSE) y cómo cerrarla desde fuera. */
+async function iniciarServidorConStream() {
+  const abiertas = new Set<ServerResponse>();
+  const nuevo = createServer((_req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+    res.write(': abierto\n\n');
+    abiertas.add(res);
+  });
+  servidor = nuevo;
+  await new Promise<void>((listo) => nuevo.listen(0, '127.0.0.1', listo));
+  return {
+    puerto: (nuevo.address() as AddressInfo).port,
+    cerrarStreams: vi.fn(() => {
+      for (const res of abiertas) res.end();
+    }),
+  };
+}
+
 describe('apagado ordenado (E0-H04)', () => {
+  it('E9-H02: antes de cerrar el servidor cierra los streams abiertos; si no, el apagado esperaría hasta forzar la salida', async () => {
+    const { puerto, cerrarStreams } = await iniciarServidorConStream();
+    const { proceso, salida } = preparar({ esperaMaximaMs: 1_000, alIniciar: [cerrarStreams] });
+    const recibida = peticionRecibida();
+    const stream = pedir(puerto);
+    await recibida;
+
+    proceso.emit('SIGTERM', 'SIGTERM');
+
+    await expect(stream).resolves.toContain(': abierto');
+    expect(await salida).toBe(0);
+    expect(cerrarStreams).toHaveBeenCalledTimes(1);
+  });
+
   it('con SIGTERM termina las peticiones en curso, cierra los recursos y sale con 0', async () => {
     const puerto = await iniciarServidor();
     const { proceso, recursos, salida } = preparar();

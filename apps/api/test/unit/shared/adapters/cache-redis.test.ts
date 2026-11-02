@@ -34,13 +34,20 @@ describe('crearCacheRedis (A-11, RNF-2)', () => {
     expect(leido).toBe('{"x":1}');
   });
 
+  it('E9-H02: incrementar devuelve la versión nueva (el resultado de INCR)', async () => {
+    const { cache, cliente } = preparar();
+    cliente.incr.mockResolvedValueOnce(8);
+
+    await expect(cache.incrementar('reportes:ventas:version')).resolves.toBe(8);
+  });
+
   it('un contador que no existe vale 0', async () => {
     const { cache } = preparar();
 
     await expect(cache.contador('reportes:version')).resolves.toBe(0);
   });
 
-  it('con Redis caído no lanza: obtener y contador responden null y guardar e incrementar no hacen nada', async () => {
+  it('con Redis caído no lanza: obtener, contador e incrementar responden null y guardar no hace nada', async () => {
     const { cache, cliente } = preparar();
     cliente.get.mockRejectedValue(CAIDO);
     cliente.set.mockRejectedValue(CAIDO);
@@ -49,7 +56,7 @@ describe('crearCacheRedis (A-11, RNF-2)', () => {
     await expect(cache.obtener('k')).resolves.toBeNull();
     await expect(cache.contador('reportes:version')).resolves.toBeNull();
     await expect(cache.guardar('k', 'v', 60)).resolves.toBeUndefined();
-    await expect(cache.incrementar('reportes:version')).resolves.toBeUndefined();
+    await expect(cache.incrementar('reportes:version')).resolves.toBeNull();
   });
 
   it('registra solo los cambios de estado: una advertencia al caer y un aviso al volver', async () => {

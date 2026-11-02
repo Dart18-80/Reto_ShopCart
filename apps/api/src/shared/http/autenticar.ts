@@ -20,8 +20,20 @@ interface DependenciasAutenticar {
 
 const BEARER = /^Bearer\s+(\S+)$/i;
 
-function tokenDe(req: Request): string | undefined {
-  return BEARER.exec(req.get('Authorization') ?? '')?.[1];
+/** El token de un encabezado `Authorization: Bearer …`; undefined si no lo hay. */
+export function tokenDeAutorizacion(encabezado: string | undefined): string | undefined {
+  return BEARER.exec(encabezado ?? '')?.[1];
+}
+
+const tokenDe = (req: Request): string | undefined => tokenDeAutorizacion(req.get('Authorization'));
+
+/** A-07: el token es de una versión de sesión anterior (el usuario se desactivó, cambió de rol o de contraseña). */
+export async function sesionRevocada(
+  { idUsuario, versionSesion }: ActorDelToken,
+  versiones: Pick<VersionesSesion, 'vigente'>,
+): Promise<boolean> {
+  const vigente = await versiones.vigente(idUsuario);
+  return vigente !== null && versionSesion < vigente;
 }
 
 /**
@@ -29,15 +41,10 @@ function tokenDe(req: Request): string | undefined {
  * contexto de la petición. Cualquier falla responde 401 NO_AUTENTICADO.
  */
 export function crearAutenticar({ tokens, versiones }: DependenciasAutenticar): RequestHandler {
-  async function esDeUnaVersionAnterior({ idUsuario, versionSesion }: ActorDelToken) {
-    const vigente = await versiones.vigente(idUsuario);
-    return vigente !== null && versionSesion < vigente;
-  }
-
   return async (req, _res, next) => {
     const token = tokenDe(req);
     const actor = token === undefined ? null : await tokens.verificar(token);
-    if (actor === null || (await esDeUnaVersionAnterior(actor))) {
+    if (actor === null || (await sesionRevocada(actor, versiones))) {
       next(new AppError('NO_AUTENTICADO'));
       return;
     }

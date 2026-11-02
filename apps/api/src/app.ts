@@ -8,7 +8,11 @@ import { crearModuloCarrito } from './modules/carrito/index.js';
 import { crearModuloCatalogo } from './modules/catalogo/index.js';
 import { crearModuloCheckout } from './modules/checkout/index.js';
 import { crearModuloPedidos } from './modules/pedidos/index.js';
-import { crearInvalidadorReportes, crearModuloReportes } from './modules/reportes/index.js';
+import {
+  crearInvalidadorReportes,
+  crearModuloReportes,
+  type DifusorDeVersiones,
+} from './modules/reportes/index.js';
 import { crearModuloBitacora } from './modules/bitacora/index.js';
 import { crearModuloConfiguracion } from './modules/configuracion/index.js';
 import { crearModuloCupones } from './modules/cupones/index.js';
@@ -29,6 +33,7 @@ import {
 import { registrarPeticiones } from './shared/observability/index.js';
 import type { PasarelaPago } from './shared/pasarela/index.js';
 import { relojDelSistema, type Reloj } from './shared/reloj/index.js';
+import type { AvisosDeVersion } from './shared/avisos/index.js';
 import type { Cache } from './shared/cache/index.js';
 import type { AlmacenArchivos } from './shared/almacen/index.js';
 import {
@@ -65,6 +70,10 @@ export interface DependenciasApp {
   almacen: AlmacenArchivos;
   /** A-24: el consumidor de la cola de exportaciones de esta réplica (el mismo que usan las tareas). */
   exportaciones: ProcesadorExportaciones;
+  /** E9-H02 (A-25): el canal entre réplicas de los avisos de versión de los reportes. */
+  avisos: AvisosDeVersion;
+  /** E9-H02: los streams del dashboard en tiempo real de esta réplica (uno por proceso: lo cierra el apagado). */
+  difusorEventos: DifusorDeVersiones;
   /** La hora actual (las pruebas la fijan). */
   reloj?: Reloj;
 }
@@ -82,9 +91,11 @@ export function crearApp({
   cache,
   almacen,
   exportaciones,
+  avisos,
+  difusorEventos,
   reloj = relojDelSistema,
 }: DependenciasApp): Express {
-  const reportes = crearInvalidadorReportes(cache);
+  const reportes = crearInvalidadorReportes(cache, avisos);
   const app = express();
   app.disable('x-powered-by');
   // nginx está delante: req.ip y el protocolo salen de X-Forwarded-* (necesario para rate limit en E2).
@@ -132,7 +143,16 @@ export function crearApp({
   v1.use(crearModuloConfiguracion({ autenticar, reportes }));
   v1.use(crearModuloCheckout({ autenticar, pasarela, logger, reloj, reportes }));
   v1.use(crearModuloPedidos({ autenticar, pasarela, logger, reportes }));
-  v1.use(crearModuloReportes({ autenticar, cache, logger }));
+  v1.use(
+    crearModuloReportes({
+      autenticar,
+      cache,
+      logger,
+      difusor: difusorEventos,
+      tokens: tokensAcceso,
+      versiones: versionesSesion,
+    }),
+  );
   v1.use(crearModuloBitacora({ autenticar }));
   v1.use(
     crearModuloExportaciones({
