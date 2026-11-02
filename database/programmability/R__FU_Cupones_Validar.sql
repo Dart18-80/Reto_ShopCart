@@ -29,14 +29,16 @@ RETURN
                  FROM   dbo.FU_Carrito_Lineas(@IDCarrito) AS l
                  JOIN   dbo.Producto AS p ON p.IDProducto = l.IDProducto
                  LEFT JOIN dbo.Cupon AS cc ON cc.IDCupon = @IDCupon) AS t
+    -- DeEsteCarrito descuenta de UsosComprometidos lo que este carrito tiene comprometido, vigente o no: una
+    -- reserva vencida sigue en el contador hasta que la tarea de expiración la libera.
     OUTER APPLY (SELECT COUNT(CASE WHEN s.IDCarrito = @IDCarrito THEN 1 END) AS DeEsteCarrito,
-                        COUNT(CASE WHEN u.IDUsuario = @IDUsuario AND s.IDCarrito <> @IDCarrito THEN 1 END) AS DelCliente
+                        COUNT(CASE WHEN u.IDUsuario = @IDUsuario AND s.IDCarrito <> @IDCarrito
+                                    AND s.FechaExpiracion > SYSUTCDATETIME() THEN 1 END) AS DelCliente
                  FROM   dbo.UsoCupon AS u
                  JOIN   dbo.SesionCheckout AS s ON s.IDSesionCheckout = u.IDSesionCheckout
                  WHERE  u.IDCupon = @IDCupon
                    AND  u.Estado = 'Reservado'
-                   AND  s.Estado = 'Activa'
-                   AND  s.FechaExpiracion > SYSUTCDATETIME()) AS reservados
+                   AND  s.Estado = 'Activa') AS reservados
     OUTER APPLY (SELECT COUNT(*) AS Usos
                  FROM   dbo.UsoCupon AS u
                  WHERE  u.IDCupon = @IDCupon AND u.IDUsuario = @IDUsuario AND u.Estado = 'Confirmado') AS confirmados

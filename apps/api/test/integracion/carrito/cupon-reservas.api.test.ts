@@ -92,6 +92,22 @@ describe('reservas de uso del cupón (E4-H05, N-12)', () => {
     expect(consulta.resumen).toMatchObject({ cupon: { codigo }, cuponRetirado: null });
   });
 
+  it('la reserva de este mismo carrito que ya venció pero aún no se libera tampoco cuenta: el cupón sigue', async () => {
+    const { IDVariante } = await varianteVendible('30.00', 10);
+    const cliente = await clienteNuevo(app);
+    await agregar(app, comoCliente(cliente.token), IDVariante);
+    const { codigo, idCupon } = await cupon({ limiteUsosTotal: 1, limiteUsosPorCliente: 1 });
+    const idSesion = await reservarUso(cliente.idUsuario, IDVariante, idCupon);
+    await aplicar(comoCliente(cliente.token), codigo);
+    await ejecutarSP('SP_Pruebas_VencerSesionCheckout', {
+      IDSesionCheckout: { tipo: sql.Int, valor: idSesion },
+    });
+
+    const consulta = leerCarrito(await verCarrito(app, comoCliente(cliente.token)));
+
+    expect(consulta.resumen).toMatchObject({ cupon: { codigo }, cuponRetirado: null });
+  });
+
   it('un uso reservado del cliente en otra sesión activa cuenta para su límite', async () => {
     const { IDVariante } = await varianteVendible('30.00', 10);
     const cliente = await clienteNuevo(app);
