@@ -63,6 +63,18 @@ registroOpenApi.registerPath({
   responses: { 200: respuestaCarrito('Carrito actualizado'), ...respuestasError(401, 403, 404) },
 });
 
+registroOpenApi.registerPath({
+  method: 'post',
+  path: `${RUTA}/avisos/vistos`,
+  tags: ['Carrito'],
+  summary: 'Marca como vistas las alertas "El precio cambió de Q… a Q…" (N-02)',
+  security: seguridad,
+  responses: {
+    200: respuestaCarrito('Carrito sin alertas pendientes'),
+    ...respuestasError(401, 403),
+  },
+});
+
 export function crearCarritoRouter(
   controller: CarritoController,
   autenticar: RequestHandler,
@@ -75,5 +87,6 @@ export function crearCarritoRouter(
   router.post('/carrito/lineas', ...clienteOInvitado, controller.agregarLinea);
   router.patch('/carrito/lineas/:idLinea', ...clienteOInvitado, controller.actualizarCantidad);
   router.delete('/carrito/lineas/:idLinea', ...clienteOInvitado, controller.eliminarLinea);
+  router.post('/carrito/avisos/vistos', ...clienteOInvitado, controller.marcarAvisosVistos);
   return router;
 }

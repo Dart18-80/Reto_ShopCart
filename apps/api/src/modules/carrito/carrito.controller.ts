@@ -22,6 +22,15 @@ const aRespuesta = (carrito: Carrito) => ({
     ...linea,
     precioUnitario: montoATexto(linea.precioUnitario),
     totalLinea: montoATexto(linea.totalLinea),
+    garantiaHasta: linea.garantiaHasta.toISOString(),
+    aviso:
+      linea.aviso === null
+        ? null
+        : {
+            tipo: linea.aviso.tipo,
+            precioAnterior:
+              linea.aviso.precioAnterior === null ? null : montoATexto(linea.aviso.precioAnterior),
+          },
   })),
   resumen: {
     ...carrito.resumen,
@@ -43,6 +52,7 @@ export interface CarritoController {
   agregarLinea: RequestHandler;
   actualizarCantidad: RequestHandler;
   eliminarLinea: RequestHandler;
+  marcarAvisosVistos: RequestHandler;
 }
 
 export function crearCarritoController(
@@ -95,6 +105,14 @@ export function crearCarritoController(
           res,
           await servicio.actualizarCantidad(comprador, params.idLinea, body.cantidad),
         );
+      },
+    ),
+
+    marcarAvisosVistos: manejar(
+      { cookies: cookiesCarritoSchema },
+      async ({ cookies, cliente }, res) => {
+        const comprador = compradorDe(cookies[COOKIE_CARRITO], cliente);
+        enviarCarrito(res, await servicio.marcarAvisosVistos(comprador));
       },
     ),
 

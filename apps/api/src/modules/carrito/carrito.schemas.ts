@@ -2,7 +2,7 @@ import { montoSchema } from '@shopcart/shared';
 import { idEnRutaSchema, idSchema } from '../../shared/http/index.js';
 import { z } from '../../shared/openapi/zod.js';
 import { ESTADOS_EXISTENCIA } from '../catalogo/index.js';
-import { ESTADOS_LINEA } from './carrito.types.js';
+import { ESTADOS_LINEA, TIPOS_AVISO } from './carrito.types.js';
 
 // Tope técnico de una línea, lejos del desborde de INT; el límite real es el disponible (N-06).
 const CANTIDAD_MAXIMA = 1_000_000;
@@ -51,6 +51,10 @@ const lineaCarritoSchema = z
       estado: z.enum(ESTADOS_EXISTENCIA),
       unidadesRestantes: z.number().int().nullable(),
     }),
+    garantiaHasta: z.iso.datetime(),
+    aviso: z
+      .object({ tipo: z.enum(TIPOS_AVISO), precioAnterior: montoSchema.nullable() })
+      .nullable(),
   })
   .openapi('LineaCarrito');
 

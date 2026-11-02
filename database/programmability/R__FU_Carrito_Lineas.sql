@@ -3,6 +3,8 @@
 -- Precio efectivo (01 §6.5): mientras la garantía está vigente, el menor entre el garantizado y el vigente;
 -- vencida, el vigente. Estado: NoDisponible (producto o variante desactivados; solo se elimina), Agotado,
 -- CantidadExcedida (con "Ajustar a X") o Disponible. La cantidad nunca se corrige sola.
+-- Aviso (N-02): CambioDePrecio (alerta guardada al vencer la garantía, hasta que el cliente la vea),
+-- PrecioGarantizado (garantía vigente y el precio subió) o BajoDePrecio (el vigente es menor que el garantizado).
 -- N-06: la existencia solo se muestra como etiqueta; la cifra, en el umbral o por debajo.
 CREATE OR ALTER FUNCTION dbo.FU_Carrito_Lineas (@IDCarrito INT)
 RETURNS TABLE
@@ -24,6 +26,10 @@ RETURN
                  WHEN d.Disponible <= u.Umbral         THEN 'UltimasUnidades'
                  ELSE 'Disponible' END AS EstadoExistencia,
             CASE WHEN d.Disponible > 0 AND d.Disponible <= u.Umbral THEN d.Disponible END AS UnidadesRestantes,
+            l.FechaGarantiaHasta,
+            av.Aviso,
+            CASE av.Aviso WHEN 'CambioDePrecio' THEN l.PrecioAnteriorAviso
+                          WHEN 'BajoDePrecio'   THEN pg.Precio END AS AvisoPrecioAnterior,
             l.FechaAgregado
     FROM    dbo.LineaCarrito AS l
     JOIN    dbo.Variante       AS v  ON v.IDVariante = l.IDVariante
@@ -43,5 +49,10 @@ RETURN
                              WHEN d.Disponible <= 0                                THEN 'Agotado'
                              WHEN l.Cantidad > d.Disponible                        THEN 'CantidadExcedida'
                              ELSE 'Disponible' END AS Estado) AS est
+    CROSS APPLY (SELECT CASE WHEN l.PrecioAnteriorAviso IS NOT NULL                      THEN 'CambioDePrecio'
+                             WHEN l.FechaGarantiaHasta > SYSUTCDATETIME() AND pv.Precio > pg.Precio
+                                                                                     THEN 'PrecioGarantizado'
+                             WHEN pv.Precio < pg.Precio                              THEN 'BajoDePrecio'
+                        END AS Aviso) AS av
     WHERE   l.IDCarrito = @IDCarrito;
 GO

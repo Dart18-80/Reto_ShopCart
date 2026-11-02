@@ -95,6 +95,10 @@ export function crearCarritoService({ repositorio, limitadorCreacion }: Dependen
       cantidad: number,
     ): Promise<Carrito> => repositorio.actualizarCantidad(idLinea, cantidad, hashDe(comprador)),
 
+    async marcarAvisosVistos(comprador: Comprador): Promise<Carrito> {
+      return (await repositorio.marcarAvisosVistos(hashDe(comprador))) ?? CARRITO_VACIO;
+    },
+
     eliminarLinea: (comprador: Comprador, idLinea: number): Promise<Carrito> =>
       repositorio.eliminarLinea(idLinea, hashDe(comprador)),
   };

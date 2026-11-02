@@ -7,7 +7,14 @@ import {
 } from '../../shared/db/index.js';
 import { aMonto } from '../../shared/dinero/index.js';
 import type { EstadoExistencia } from '../catalogo/index.js';
-import type { Carrito, CookieInvitado, EstadoLinea, NuevaLinea } from './carrito.types.js';
+import type {
+  AvisoPrecio,
+  Carrito,
+  CookieInvitado,
+  EstadoLinea,
+  NuevaLinea,
+  TipoAviso,
+} from './carrito.types.js';
 
 interface FilaLinea {
   IDLineaCarrito: number;
@@ -24,6 +31,9 @@ interface FilaLinea {
   AjustarA: number | null;
   EstadoExistencia: EstadoExistencia;
   UnidadesRestantes: number | null;
+  FechaGarantiaHasta: Date;
+  Aviso: TipoAviso | null;
+  AvisoPrecioAnterior: number | null;
 }
 
 interface FilaResumen {
@@ -34,6 +44,11 @@ interface FilaResumen {
   Total: number;
   PuedePagar: boolean;
 }
+
+const aAviso = (tipo: TipoAviso | null, precioAnterior: number | null): AvisoPrecio | null =>
+  tipo === null
+    ? null
+    : { tipo, precioAnterior: precioAnterior === null ? null : aMonto(precioAnterior) };
 
 const aCarrito = (lineas: FilaLinea[], resumen: FilaResumen): Carrito => ({
   lineas: lineas.map((fila) => ({
@@ -50,6 +65,8 @@ const aCarrito = (lineas: FilaLinea[], resumen: FilaResumen): Carrito => ({
     estado: fila.Estado,
     ajustarA: fila.AjustarA,
     existencia: { estado: fila.EstadoExistencia, unidadesRestantes: fila.UnidadesRestantes },
+    garantiaHasta: fila.FechaGarantiaHasta,
+    aviso: aAviso(fila.Aviso, fila.AvisoPrecioAnterior),
   })),
   resumen: {
     lineas: resumen.Lineas,
@@ -94,6 +111,11 @@ export const carritoRepository = {
       HashTokenInvitado: hashInvitado(cookie.hashActual),
       HashTokenNuevo: hashInvitado(cookie.hashNuevo),
     });
+  },
+
+  /** null si quien pide no tiene un carrito Activo. */
+  marcarAvisosVistos(hash: Buffer | null): Promise<Carrito | null> {
+    return carritoDe('SP_Carrito_MarcarAvisosVistos', { HashTokenInvitado: hashInvitado(hash) });
   },
 
   async actualizarCantidad(

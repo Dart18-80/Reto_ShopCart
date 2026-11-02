@@ -35,6 +35,8 @@ usarBaseDePruebas();
 const app = crearApp(dependenciasDePrueba());
 const ID_INEXISTENTE = 2_147_483_647;
 const TOKEN_256_BITS_BASE64URL = /^[A-Za-z0-9_-]{43}$/;
+// Las pruebas que llenan un carrito hacen unas 50 peticiones seguidas.
+const TIMEOUT_CARRITO_LLENO_MS = 30_000;
 
 let tokenAdmin: string;
 let tokenOperador: string;
@@ -410,21 +412,29 @@ describe('totales (E4-H01, RF-04)', () => {
 });
 
 describe('límite de líneas (E4-H01, N-05)', () => {
-  it('admite 50 líneas: la 51 responde 422 LIMITE_LINEAS y sumar a una existente sigue funcionando', async () => {
-    const variantes = await variantesVendibles('1.00', 5, 51);
-    const cliente = await clienteNuevo(app);
-    for (const { IDVariante } of variantes.slice(0, 50)) {
-      expect((await agregar(app, comoCliente(cliente.token), IDVariante)).status).toBe(200);
-    }
+  it(
+    'admite 50 líneas: la 51 responde 422 LIMITE_LINEAS y sumar a una existente sigue funcionando',
+    async () => {
+      const variantes = await variantesVendibles('1.00', 5, 51);
+      const cliente = await clienteNuevo(app);
+      for (const { IDVariante } of variantes.slice(0, 50)) {
+        expect((await agregar(app, comoCliente(cliente.token), IDVariante)).status).toBe(200);
+      }
 
-    const excedida = await agregar(app, comoCliente(cliente.token), variantes[50]?.IDVariante ?? 0);
-    const suma = await agregar(app, comoCliente(cliente.token), variantes[0]?.IDVariante ?? 0);
+      const excedida = await agregar(
+        app,
+        comoCliente(cliente.token),
+        variantes[50]?.IDVariante ?? 0,
+      );
+      const suma = await agregar(app, comoCliente(cliente.token), variantes[0]?.IDVariante ?? 0);
 
-    expect(excedida.status).toBe(422);
-    expect(leerError(excedida).codigo).toBe('LIMITE_LINEAS');
-    expect(suma.status).toBe(200);
-    expect(leerCarrito(suma).resumen.lineas).toBe(50);
-  });
+      expect(excedida.status).toBe(422);
+      expect(leerError(excedida).codigo).toBe('LIMITE_LINEAS');
+      expect(suma.status).toBe(200);
+      expect(leerCarrito(suma).resumen.lineas).toBe(50);
+    },
+    TIMEOUT_CARRITO_LLENO_MS,
+  );
 });
 
 describe('concurrencia (E4-H01, 01 §6.6)', () => {
@@ -442,23 +452,27 @@ describe('concurrencia (E4-H01, 01 §6.6)', () => {
     ]);
   });
 
-  it('con 49 líneas, de cinco altas simultáneas de variantes nuevas solo entra una', async () => {
-    const variantes = await variantesVendibles('1.00', 5, 54);
-    const cliente = await clienteNuevo(app);
-    for (const { IDVariante } of variantes.slice(0, 49)) {
-      await agregar(app, comoCliente(cliente.token), IDVariante);
-    }
+  it(
+    'con 49 líneas, de cinco altas simultáneas de variantes nuevas solo entra una',
+    async () => {
+      const variantes = await variantesVendibles('1.00', 5, 54);
+      const cliente = await clienteNuevo(app);
+      for (const { IDVariante } of variantes.slice(0, 49)) {
+        await agregar(app, comoCliente(cliente.token), IDVariante);
+      }
 
-    const respuestas = await Promise.all(
-      variantes
-        .slice(49)
-        .map(({ IDVariante }) => agregar(app, comoCliente(cliente.token), IDVariante)),
-    );
+      const respuestas = await Promise.all(
+        variantes
+          .slice(49)
+          .map(({ IDVariante }) => agregar(app, comoCliente(cliente.token), IDVariante)),
+      );
 
-    expect(respuestas.filter((r) => r.status === 200)).toHaveLength(1);
-    expect(respuestas.filter((r) => r.status === 422)).toHaveLength(4);
-    expect(await carritosDelCliente(cliente.idUsuario)).toMatchObject([{ Lineas: 50 }]);
-  });
+      expect(respuestas.filter((r) => r.status === 200)).toHaveLength(1);
+      expect(respuestas.filter((r) => r.status === 422)).toHaveLength(4);
+      expect(await carritosDelCliente(cliente.idUsuario)).toMatchObject([{ Lineas: 50 }]);
+    },
+    TIMEOUT_CARRITO_LLENO_MS,
+  );
 
   it('cinco sumas simultáneas de 2 unidades con 5 disponibles nunca pasan de 5', async () => {
     const { IDVariante } = await varianteVendible('1.00', 5);

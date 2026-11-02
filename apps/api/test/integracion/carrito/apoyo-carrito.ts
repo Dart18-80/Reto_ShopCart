@@ -28,6 +28,13 @@ export const lineaSchema = z.strictObject({
   estado: z.enum(['Disponible', 'CantidadExcedida', 'Agotado', 'NoDisponible']),
   ajustarA: z.number().nullable(),
   existencia: existenciaSchema,
+  garantiaHasta: z.iso.datetime(),
+  aviso: z
+    .strictObject({
+      tipo: z.enum(['PrecioGarantizado', 'BajoDePrecio', 'CambioDePrecio']),
+      precioAnterior: z.string().nullable(),
+    })
+    .nullable(),
 });
 
 export const carritoSchema = z.strictObject({
@@ -99,6 +106,15 @@ export const cambiarCantidad = (
     .patch(`/api/v1/carrito/lineas/${String(idLinea)}`)
     .set(comprador)
     .send({ cantidad });
+
+export const marcarAvisosVistos = (app: Express, comprador: Comprador) =>
+  request(app).post('/api/v1/carrito/avisos/vistos').set(comprador);
+
+export function vencerGarantia(idLinea: number) {
+  return ejecutarSP('SP_Pruebas_VencerGarantiaCarrito', {
+    IDLineaCarrito: { tipo: sql.Int, valor: idLinea },
+  });
+}
 
 export const quitarLinea = (app: Express, comprador: Comprador, idLinea: number) =>
   request(app)

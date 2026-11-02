@@ -4,6 +4,16 @@ import type { EstadoExistencia } from '../catalogo/index.js';
 export const ESTADOS_LINEA = ['Disponible', 'CantidadExcedida', 'Agotado', 'NoDisponible'] as const;
 export type EstadoLinea = (typeof ESTADOS_LINEA)[number];
 
+export const TIPOS_AVISO = ['PrecioGarantizado', 'BajoDePrecio', 'CambioDePrecio'] as const;
+export type TipoAviso = (typeof TIPOS_AVISO)[number];
+
+/** N-02: "Precio garantizado hasta…", "¡Bajó de precio!" o "El precio cambió de Q… a Q…". */
+export interface AvisoPrecio {
+  tipo: TipoAviso;
+  /** BajoDePrecio: el garantizado; CambioDePrecio: el último que vio el cliente. */
+  precioAnterior: Decimal | null;
+}
+
 export interface LineaCarrito {
   idLinea: number;
   idVariante: number;
@@ -19,6 +29,8 @@ export interface LineaCarrito {
   /** N-06: la acción "Ajustar a X", solo en CantidadExcedida. */
   ajustarA: number | null;
   existencia: { estado: EstadoExistencia; unidadesRestantes: number | null };
+  garantiaHasta: Date;
+  aviso: AvisoPrecio | null;
 }
 
 export interface ResumenCarrito {

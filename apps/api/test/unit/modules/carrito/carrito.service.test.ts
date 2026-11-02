@@ -41,6 +41,7 @@ function preparar({ conCookie = CARRITO, permitido = true }: Opciones = {}) {
       Promise.resolve(CARRITO),
     ),
     eliminarLinea: vi.fn((_id: number, _hash: Buffer | null) => Promise.resolve(CARRITO)),
+    marcarAvisosVistos: vi.fn((_hash: Buffer | null) => Promise.resolve(conCookie)),
   } satisfies CarritoRepository;
   const consumir = vi.fn((_clave: string) =>
     Promise.resolve({ permitido, segundosParaReintentar: permitido ? 0 : 30 }),
