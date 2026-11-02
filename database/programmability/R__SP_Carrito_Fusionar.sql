@@ -137,7 +137,12 @@ BEGIN
             SET    Estado = 'Fusionado', FechaCierre = @Ahora
             WHERE  IDCarrito = @IDCarritoInvitado;
 
-            UPDATE dbo.Carrito SET FechaUltimaActividad = @Ahora WHERE IDCarrito = @IDCarritoCliente;
+            -- N-12: el cupón del invitado pasa si el cliente no tenía uno; se revalida al consultar.
+            UPDATE dbo.Carrito
+            SET    FechaUltimaActividad = @Ahora,
+                   IDCupon = COALESCE(IDCupon, (SELECT i.IDCupon FROM dbo.Carrito AS i
+                                                WHERE i.IDCarrito = @IDCarritoInvitado))
+            WHERE  IDCarrito = @IDCarritoCliente;
 
             -- N-05: el contenido del carrito cambió; un pago iniciado con el anterior ya no corresponde.
             EXEC dbo.SP_Checkout_CancelarSesionActiva @IDCliente;

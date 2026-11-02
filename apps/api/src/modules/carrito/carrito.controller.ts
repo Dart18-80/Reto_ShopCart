@@ -4,6 +4,7 @@ import { manejar, obtenerContexto, type ClienteHttp } from '../../shared/http/in
 import {
   actualizarCantidadSchema,
   agregarLineaSchema,
+  aplicarCuponSchema,
   COOKIE_CARRITO,
   cookiesCarritoSchema,
   paramsIdLineaSchema,
@@ -22,6 +23,7 @@ const aRespuesta = (carrito: Carrito) => ({
     ...linea,
     precioUnitario: montoATexto(linea.precioUnitario),
     totalLinea: montoATexto(linea.totalLinea),
+    descuentoLinea: montoATexto(linea.descuentoLinea),
     garantiaHasta: linea.garantiaHasta.toISOString(),
     aviso:
       linea.aviso === null
@@ -53,6 +55,8 @@ export interface CarritoController {
   actualizarCantidad: RequestHandler;
   eliminarLinea: RequestHandler;
   marcarAvisosVistos: RequestHandler;
+  aplicarCupon: RequestHandler;
+  quitarCupon: RequestHandler;
 }
 
 export function crearCarritoController(
@@ -115,6 +119,19 @@ export function crearCarritoController(
         enviarCarrito(res, await servicio.marcarAvisosVistos(comprador));
       },
     ),
+
+    aplicarCupon: manejar(
+      { body: aplicarCuponSchema, cookies: cookiesCarritoSchema },
+      async ({ body, cookies, cliente }, res) => {
+        const comprador = compradorDe(cookies[COOKIE_CARRITO], cliente);
+        enviarCarrito(res, await servicio.aplicarCupon(comprador, body.codigo));
+      },
+    ),
+
+    quitarCupon: manejar({ cookies: cookiesCarritoSchema }, async ({ cookies, cliente }, res) => {
+      const comprador = compradorDe(cookies[COOKIE_CARRITO], cliente);
+      enviarCarrito(res, await servicio.quitarCupon(comprador));
+    }),
 
     eliminarLinea: manejar(
       { params: paramsIdLineaSchema, cookies: cookiesCarritoSchema },

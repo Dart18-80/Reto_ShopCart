@@ -1,10 +1,12 @@
 -- RF-04, N-05: el carrito Activo de quien pregunta. Con sesión de Cliente, el suyo (@IDUsuarioActor) y la
 -- cookie se ignora; sin sesión, el del invitado (@HashTokenInvitado). Sin carrito, ningún conjunto (la API
--- responde un carrito vacío). Dos conjuntos: las líneas (FU_Carrito_Lineas) y el resumen. Nunca devuelve
--- el ID del carrito.
+-- responde un carrito vacío). Dos conjuntos: las líneas (FU_Carrito_Lineas, con su descuento) y el resumen.
+-- Nunca devuelve el ID del carrito.
 -- 01 §6.5, N-02: antes de leer, las líneas con la garantía vencida se re-anclan a la versión de precio
 -- vigente; si el precio subió respecto del último que vio el cliente, queda la alerta "cambió de Q… a Q…"
 -- (PrecioAnteriorAviso) hasta que la marque como vista. La garantía no se renueva.
+-- N-12: el cupón se revalida en cada consulta; si dejó de ser válido se quita y el resumen trae el motivo
+-- (solo en esa respuesta). El descuento se reparte por línea con FU_Cupones_CalculoDescuento.
 CREATE OR ALTER PROCEDURE dbo.SP_Carrito_Obtener
     @HashTokenInvitado BINARY(32)       = NULL,
     @IDUsuarioActor    INT              = NULL,
@@ -19,9 +21,10 @@ BEGIN
 
     DECLARE @IDCliente      INT        = CASE WHEN @RolActor = 'Cliente' THEN @IDUsuarioActor END;
     DECLARE @HashDelCarrito BINARY(32) = CASE WHEN @IDCliente IS NULL THEN @HashTokenInvitado END;
-    DECLARE @IDCarrito INT;
+    DECLARE @IDCarrito INT, @IDCupon INT, @RetiradoNumero INT, @RetiradoMensaje NVARCHAR(200),
+            @RetiradoCodigo VARCHAR(30);
 
-    SELECT @IDCarrito = c.IDCarrito
+    SELECT @IDCarrito = c.IDCarrito, @IDCupon = c.IDCupon
     FROM   dbo.Carrito AS c
     WHERE  c.Estado = 'Activo'
       AND  (   (@IDCliente IS NOT NULL AND c.IDUsuario = @IDCliente AND c.IDUsuario IS NOT NULL)
@@ -70,21 +73,67 @@ BEGIN
             RETURN;
     END
 
+    IF @IDCupon IS NOT NULL
+        SELECT @RetiradoNumero = v.NumeroError, @RetiradoMensaje = v.Mensaje
+        FROM   dbo.FU_Cupones_Validar(@IDCupon, @IDCliente, @IDCarrito) AS v;
+
+    IF @RetiradoNumero IS NOT NULL
+    BEGIN
+        BEGIN TRY
+            BEGIN TRAN;
+
+            EXEC dbo.SP_Carrito_BloquearActivo @IDCliente, @HashDelCarrito, @IDCarrito OUTPUT;
+
+            -- Solo si sigue siendo el mismo cupón: otra petición pudo cambiarlo mientras tanto.
+            UPDATE dbo.Carrito SET IDCupon = NULL WHERE IDCarrito = @IDCarrito AND IDCupon = @IDCupon;
+
+            COMMIT;
+        END TRY
+        BEGIN CATCH
+            IF @@TRANCOUNT > 0 ROLLBACK;
+            THROW;
+        END CATCH
+
+        IF @IDCarrito IS NULL
+            RETURN;
+        SELECT @RetiradoCodigo = cu.Codigo FROM dbo.Cupon AS cu WHERE cu.IDCupon = @IDCupon;
+        SET @IDCupon = (SELECT c.IDCupon FROM dbo.Carrito AS c WHERE c.IDCarrito = @IDCarrito);
+    END
+
+    DECLARE @Lineas TABLE (
+        IDLineaCarrito INT PRIMARY KEY, IDVariante INT, IDProducto INT, Producto NVARCHAR(150), SKU VARCHAR(50),
+        DescripcionAtributos NVARCHAR(200), Imagen NVARCHAR(500), Cantidad INT, PrecioUnitario DECIMAL(12,2),
+        TotalLinea DECIMAL(15,2), DescuentoLinea DECIMAL(15,2), Estado VARCHAR(20), AjustarA INT,
+        EstadoExistencia VARCHAR(20), UnidadesRestantes INT, FechaGarantiaHasta DATETIME2(3), Aviso VARCHAR(20),
+        AvisoPrecioAnterior DECIMAL(12,2), FechaAgregado DATETIME2(3));
+
+    INSERT INTO @Lineas
     SELECT l.IDLineaCarrito, l.IDVariante, l.IDProducto, l.Producto, l.SKU, l.DescripcionAtributos, l.Imagen,
-           l.Cantidad, l.PrecioUnitario, l.TotalLinea, l.Estado, l.AjustarA, l.EstadoExistencia,
-           l.UnidadesRestantes, l.FechaGarantiaHasta, l.Aviso, l.AvisoPrecioAnterior
+           l.Cantidad, l.PrecioUnitario, l.TotalLinea, COALESCE(dc.DescuentoLinea, 0), l.Estado, l.AjustarA,
+           l.EstadoExistencia, l.UnidadesRestantes, l.FechaGarantiaHasta, l.Aviso, l.AvisoPrecioAnterior,
+           l.FechaAgregado
     FROM   dbo.FU_Carrito_Lineas(@IDCarrito) AS l
+    LEFT JOIN dbo.FU_Cupones_CalculoDescuento(@IDCupon, @IDCarrito) AS dc ON dc.IDLineaCarrito = l.IDLineaCarrito;
+
+    SELECT l.IDLineaCarrito, l.IDVariante, l.IDProducto, l.Producto, l.SKU, l.DescripcionAtributos, l.Imagen,
+           l.Cantidad, l.PrecioUnitario, l.TotalLinea, l.DescuentoLinea, l.Estado, l.AjustarA, l.EstadoExistencia,
+           l.UnidadesRestantes, l.FechaGarantiaHasta, l.Aviso, l.AvisoPrecioAnterior
+    FROM   @Lineas AS l
     ORDER BY l.FechaAgregado, l.IDLineaCarrito;
 
-    -- El descuento es 0 hasta que el carrito tenga cupón (E4-H05).
     SELECT COUNT(*)                                                       AS Lineas,
            COALESCE(SUM(CONVERT(BIGINT, l.Cantidad)), 0)                  AS Unidades,
            CONVERT(DECIMAL(15,2), COALESCE(SUM(l.TotalLinea), 0))         AS Subtotal,
-           CONVERT(DECIMAL(15,2), 0)                                      AS Descuento,
-           CONVERT(DECIMAL(15,2), COALESCE(SUM(l.TotalLinea), 0))         AS Total,
+           CONVERT(DECIMAL(15,2), COALESCE(SUM(l.DescuentoLinea), 0))     AS Descuento,
+           CONVERT(DECIMAL(15,2), COALESCE(SUM(l.TotalLinea - l.DescuentoLinea), 0)) AS Total,
            -- N-06: el checkout exige al menos una línea y que todas estén Disponible.
            CONVERT(BIT, CASE WHEN COUNT(*) > 0 AND COUNT(*) = COUNT(CASE WHEN l.Estado = 'Disponible' THEN 1 END)
-                             THEN 1 ELSE 0 END)                           AS PuedePagar
-    FROM   dbo.FU_Carrito_Lineas(@IDCarrito) AS l;
+                             THEN 1 ELSE 0 END)                           AS PuedePagar,
+           (SELECT cu.Codigo FROM dbo.Cupon AS cu WHERE cu.IDCupon = @IDCupon)      AS CodigoCupon,
+           (SELECT cu.Descripcion FROM dbo.Cupon AS cu WHERE cu.IDCupon = @IDCupon) AS DescripcionCupon,
+           @RetiradoCodigo                                                AS CuponRetiradoCodigo,
+           @RetiradoNumero                                                AS CuponRetiradoNumero,
+           @RetiradoMensaje                                               AS CuponRetiradoMensaje
+    FROM   @Lineas AS l;
 END
 GO

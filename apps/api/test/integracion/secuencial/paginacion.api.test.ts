@@ -5,6 +5,7 @@ import { crearApp } from '../../../src/app.js';
 import { dependenciasDePrueba } from '../../app-de-prueba.js';
 import { iniciarSesion, leerSesion } from '../auth/apoyo-auth.js';
 import { usarBaseDePruebas } from '../base-de-pruebas.js';
+import { varianteVendible } from '../carrito/apoyo-carrito.js';
 
 usarBaseDePruebas();
 
@@ -65,9 +66,9 @@ describe('paginación: el total es real aunque la página pedida esté vacía', 
   });
 
   it('/api/v1/inventario/kardex', async () => {
-    const [variante] = (await listado('/api/v1/inventario/existencias', { tamano: '1' }, operador))
-      .datos;
-    const consulta = { variante: String(variante?.idVariante), tamano: '1' };
+    // Una variante propia con existencia: tiene al menos un movimiento en el kardex.
+    const { IDVariante } = await varianteVendible('10.00', 3);
+    const consulta = { variante: String(IDVariante), tamano: '1' };
 
     const primera = await listado('/api/v1/inventario/kardex', consulta, operador);
     const lejana = await listado(

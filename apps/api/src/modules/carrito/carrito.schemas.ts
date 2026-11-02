@@ -31,6 +31,11 @@ export const actualizarCantidadSchema = z
   .strict()
   .openapi('ActualizarCantidadCarrito');
 
+export const aplicarCuponSchema = z
+  .object({ codigo: z.string().trim().min(1).max(30) })
+  .strict()
+  .openapi('AplicarCupon');
+
 export const paramsIdLineaSchema = z.object({ idLinea: idEnRutaSchema });
 
 const lineaCarritoSchema = z
@@ -45,6 +50,7 @@ const lineaCarritoSchema = z
     cantidad: z.number().int(),
     precioUnitario: montoSchema,
     totalLinea: montoSchema,
+    descuentoLinea: montoSchema,
     estado: z.enum(ESTADOS_LINEA),
     ajustarA: z.number().int().nullable(),
     existencia: z.object({
@@ -68,6 +74,11 @@ export const carritoSchema = z
       descuento: montoSchema,
       total: montoSchema,
       puedePagar: z.boolean(),
+      cupon: z.object({ codigo: z.string(), descripcion: z.string() }).nullable(),
+      cuponRetirado: z
+        .object({ codigo: z.string(), motivo: z.string(), mensaje: z.string() })
+        .nullable()
+        .openapi({ description: 'N-12: el cupón dejó de ser válido y se quitó en esta consulta' }),
     }),
   })
   .openapi('Carrito');

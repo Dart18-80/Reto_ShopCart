@@ -7,6 +7,7 @@ import {
   type ParametrosSP,
 } from '../../shared/db/index.js';
 import { aMonto } from '../../shared/dinero/index.js';
+import { codigoPorNumeroSql } from '../../shared/errors/index.js';
 import type { EstadoExistencia } from '../catalogo/index.js';
 import type {
   AvisoFusion,
@@ -15,6 +16,7 @@ import type {
   CookieInvitado,
   EstadoLinea,
   NuevaLinea,
+  ResumenCarrito,
   TipoAviso,
 } from './carrito.types.js';
 
@@ -29,6 +31,7 @@ interface FilaLinea {
   Cantidad: number;
   PrecioUnitario: number;
   TotalLinea: number;
+  DescuentoLinea: number;
   Estado: EstadoLinea;
   AjustarA: number | null;
   EstadoExistencia: EstadoExistencia;
@@ -45,6 +48,11 @@ interface FilaResumen {
   Descuento: number;
   Total: number;
   PuedePagar: boolean;
+  CodigoCupon: string | null;
+  DescripcionCupon: string | null;
+  CuponRetiradoCodigo: string | null;
+  CuponRetiradoNumero: number | null;
+  CuponRetiradoMensaje: string | null;
 }
 
 interface FilaAvisoFusion {
@@ -80,6 +88,7 @@ const aCarrito = (lineas: FilaLinea[], resumen: FilaResumen): Carrito => ({
     cantidad: fila.Cantidad,
     precioUnitario: aMonto(fila.PrecioUnitario),
     totalLinea: aMonto(fila.TotalLinea),
+    descuentoLinea: aMonto(fila.DescuentoLinea),
     estado: fila.Estado,
     ajustarA: fila.AjustarA,
     existencia: { estado: fila.EstadoExistencia, unidadesRestantes: fila.UnidadesRestantes },
@@ -93,8 +102,26 @@ const aCarrito = (lineas: FilaLinea[], resumen: FilaResumen): Carrito => ({
     descuento: aMonto(resumen.Descuento),
     total: aMonto(resumen.Total),
     puedePagar: resumen.PuedePagar,
+    cupon:
+      resumen.CodigoCupon === null || resumen.DescripcionCupon === null
+        ? null
+        : { codigo: resumen.CodigoCupon, descripcion: resumen.DescripcionCupon },
+    cuponRetirado: aCuponRetirado(resumen),
   },
 });
+
+function aCuponRetirado(resumen: FilaResumen): ResumenCarrito['cuponRetirado'] {
+  const {
+    CuponRetiradoCodigo: codigo,
+    CuponRetiradoNumero: numero,
+    CuponRetiradoMensaje: mensaje,
+  } = resumen;
+  if (codigo === null || numero === null || mensaje === null) return null;
+  const motivo = codigoPorNumeroSql(numero);
+  if (motivo === undefined)
+    throw new Error(`SP_Carrito_Obtener devolvió un motivo sin catalogar: ${String(numero)}`);
+  return { codigo, motivo, mensaje };
+}
 
 /** Los SPs de carrito devuelven el carrito completo, o ningún conjunto si no hay carrito Activo. */
 async function carritoDe(nombre: NombreSP, parametros: ParametrosSP): Promise<Carrito | null> {
@@ -134,6 +161,19 @@ export const carritoRepository = {
   /** null si quien pide no tiene un carrito Activo. */
   marcarAvisosVistos(hash: Buffer | null): Promise<Carrito | null> {
     return carritoDe('SP_Carrito_MarcarAvisosVistos', { HashTokenInvitado: hashInvitado(hash) });
+  },
+
+  /** N-12: aplica el cupón como vista previa; null si quien pide no tiene carrito (no ocurre: el SP lanza 50403). */
+  aplicarCupon(codigo: string, hash: Buffer | null): Promise<Carrito | null> {
+    return carritoDe('SP_Carrito_AplicarCupon', {
+      Codigo: { tipo: sql.VarChar(30), valor: codigo },
+      HashTokenInvitado: hashInvitado(hash),
+    });
+  },
+
+  /** null si quien pide no tiene un carrito Activo. */
+  quitarCupon(hash: Buffer | null): Promise<Carrito | null> {
+    return carritoDe('SP_Carrito_QuitarCupon', { HashTokenInvitado: hashInvitado(hash) });
   },
 
   /** N-05: el carrito del invitado se fusiona con el del cliente de la petición. */

@@ -6,6 +6,7 @@ import type { CarritoController } from './carrito.controller.js';
 import {
   actualizarCantidadSchema,
   agregarLineaSchema,
+  aplicarCuponSchema,
   carritoSchema,
   paramsIdLineaSchema,
 } from './carrito.schemas.js';
@@ -75,6 +76,28 @@ registroOpenApi.registerPath({
   },
 });
 
+registroOpenApi.registerPath({
+  method: 'put',
+  path: `${RUTA}/cupon`,
+  tags: ['Carrito'],
+  summary:
+    'Aplica un cupón como vista previa (N-12): cada causa de rechazo tiene su código; el mínimo trae lo que falta',
+  security: seguridad,
+  request: { body: json(aplicarCuponSchema) },
+  responses: {
+    200: respuestaCarrito('Carrito con el descuento repartido por línea'),
+    ...respuestasError(400, 401, 403, 422),
+  },
+});
+registroOpenApi.registerPath({
+  method: 'delete',
+  path: `${RUTA}/cupon`,
+  tags: ['Carrito'],
+  summary: 'Quita el cupón del carrito (idempotente)',
+  security: seguridad,
+  responses: { 200: respuestaCarrito('Carrito sin cupón'), ...respuestasError(401, 403) },
+});
+
 export function crearCarritoRouter(
   controller: CarritoController,
   autenticar: RequestHandler,
@@ -88,5 +111,7 @@ export function crearCarritoRouter(
   router.patch('/carrito/lineas/:idLinea', ...clienteOInvitado, controller.actualizarCantidad);
   router.delete('/carrito/lineas/:idLinea', ...clienteOInvitado, controller.eliminarLinea);
   router.post('/carrito/avisos/vistos', ...clienteOInvitado, controller.marcarAvisosVistos);
+  router.put('/carrito/cupon', ...clienteOInvitado, controller.aplicarCupon);
+  router.delete('/carrito/cupon', ...clienteOInvitado, controller.quitarCupon);
   return router;
 }

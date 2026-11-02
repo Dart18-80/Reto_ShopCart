@@ -18,6 +18,8 @@ const CARRITO: Carrito = {
     descuento: new Decimal(0),
     total: new Decimal('20.00'),
     puedePagar: true,
+    cupon: null,
+    cuponRetirado: null,
   },
 };
 const LINEA: NuevaLinea = { idVariante: 7, cantidad: 2 };
@@ -41,6 +43,8 @@ function preparar({ conCookie = CARRITO, permitido = true }: Opciones = {}) {
     ),
     eliminarLinea: vi.fn((_id: number, _hash: Buffer | null) => Promise.resolve(CARRITO)),
     marcarAvisosVistos: vi.fn((_hash: Buffer | null) => Promise.resolve(conCookie)),
+    aplicarCupon: vi.fn((_codigo: string, _hash: Buffer | null) => Promise.resolve(CARRITO)),
+    quitarCupon: vi.fn((_hash: Buffer | null) => Promise.resolve(conCookie)),
   } satisfies Parameters<typeof crearCarritoService>[0]['repositorio'];
   const consumir = vi.fn((_clave: string) =>
     Promise.resolve({ permitido, segundosParaReintentar: permitido ? 0 : 30 }),

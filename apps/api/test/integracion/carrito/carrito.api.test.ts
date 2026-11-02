@@ -115,6 +115,8 @@ describe('carrito de invitado (E4-H01, N-05)', () => {
         descuento: '0.00',
         total: '0.00',
         puedePagar: false,
+        cupon: null,
+        cuponRetirado: null,
       },
     });
   });
@@ -407,6 +409,8 @@ describe('totales (E4-H01, RF-04)', () => {
       descuento: '0.00',
       total: '100.29',
       puedePagar: true,
+      cupon: null,
+      cuponRetirado: null,
     });
   });
 });

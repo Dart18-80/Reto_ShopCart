@@ -17,7 +17,13 @@ import type {
 interface Dependencias {
   repositorio: Pick<
     CarritoRepository,
-    'obtener' | 'agregarLinea' | 'marcarAvisosVistos' | 'actualizarCantidad' | 'eliminarLinea'
+    | 'obtener'
+    | 'agregarLinea'
+    | 'marcarAvisosVistos'
+    | 'actualizarCantidad'
+    | 'eliminarLinea'
+    | 'aplicarCupon'
+    | 'quitarCupon'
   >;
   /** 01 §5.3: creación de carritos de invitado por IP. */
   limitadorCreacion: LimitadorIntentos;
@@ -35,6 +41,8 @@ const CARRITO_VACIO: Carrito = {
     descuento: new Decimal(0),
     total: new Decimal(0),
     puedePagar: false,
+    cupon: null,
+    cuponRetirado: null,
   },
 };
 
@@ -97,6 +105,15 @@ export function crearCarritoService({ repositorio, limitadorCreacion }: Dependen
       idLinea: number,
       cantidad: number,
     ): Promise<Carrito> => repositorio.actualizarCantidad(idLinea, cantidad, hashDe(comprador)),
+
+    // N-12: cada causa de rechazo responde su propio código; lo decide el SP con FU_Cupones_Validar.
+    async aplicarCupon(comprador: Comprador, codigo: string): Promise<Carrito> {
+      return (await repositorio.aplicarCupon(codigo, hashDe(comprador))) ?? CARRITO_VACIO;
+    },
+
+    async quitarCupon(comprador: Comprador): Promise<Carrito> {
+      return (await repositorio.quitarCupon(hashDe(comprador))) ?? CARRITO_VACIO;
+    },
 
     async marcarAvisosVistos(comprador: Comprador): Promise<Carrito> {
       return (await repositorio.marcarAvisosVistos(hashDe(comprador))) ?? CARRITO_VACIO;

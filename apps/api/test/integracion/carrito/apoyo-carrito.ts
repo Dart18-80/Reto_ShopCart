@@ -25,6 +25,7 @@ export const lineaSchema = z.strictObject({
   cantidad: z.number(),
   precioUnitario: z.string(),
   totalLinea: z.string(),
+  descuentoLinea: z.string(),
   estado: z.enum(['Disponible', 'CantidadExcedida', 'Agotado', 'NoDisponible']),
   ajustarA: z.number().nullable(),
   existencia: existenciaSchema,
@@ -46,6 +47,10 @@ export const carritoSchema = z.strictObject({
     descuento: z.string(),
     total: z.string(),
     puedePagar: z.boolean(),
+    cupon: z.strictObject({ codigo: z.string(), descripcion: z.string() }).nullable(),
+    cuponRetirado: z
+      .strictObject({ codigo: z.string(), motivo: z.string(), mensaje: z.string() })
+      .nullable(),
   }),
 });
 

@@ -1,4 +1,5 @@
 import type { Decimal } from 'decimal.js';
+import type { CodigoError } from '../../shared/errors/index.js';
 import type { EstadoExistencia } from '../catalogo/index.js';
 
 export const ESTADOS_LINEA = ['Disponible', 'CantidadExcedida', 'Agotado', 'NoDisponible'] as const;
@@ -25,6 +26,8 @@ export interface LineaCarrito {
   cantidad: number;
   precioUnitario: Decimal;
   totalLinea: Decimal;
+  /** N-02: la parte del descuento del cupón que le toca a la línea. */
+  descuentoLinea: Decimal;
   estado: EstadoLinea;
   /** N-06: la acción "Ajustar a X", solo en CantidadExcedida. */
   ajustarA: number | null;
@@ -40,6 +43,9 @@ export interface ResumenCarrito {
   descuento: Decimal;
   total: Decimal;
   puedePagar: boolean;
+  cupon: { codigo: string; descripcion: string } | null;
+  /** N-12: el cupón dejó de ser válido y se quitó en esta consulta (solo en esa respuesta). */
+  cuponRetirado: { codigo: string; motivo: CodigoError; mensaje: string } | null;
 }
 
 /** N-05: el carrito nunca expone su ID; se resuelve desde la sesión o la cookie. */
