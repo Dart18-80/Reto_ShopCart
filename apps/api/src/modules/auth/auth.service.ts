@@ -12,6 +12,7 @@ import {
 } from '../../shared/http/index.js';
 import { hashearContrasena, verificarContrasena } from './auth.contrasenas.js';
 import { DIAS_VIGENCIA_REFRESH } from './auth.refresh.js';
+import type { InvalidadorReportes } from '../reportes/index.js';
 import type { AuthRepository } from './auth.repository.js';
 import type { DatosLogin, DatosRegistro } from './auth.schemas.js';
 import { asignarCarritoDeInvitado, fusionarCarritoDeInvitado } from '../carrito/index.js';
@@ -34,6 +35,8 @@ interface Dependencias {
   >;
   tokens: TokensAcceso;
   logger: Logger;
+  /** A-11: el carrito de invitado que pasa al cliente cambia los carritos abandonados. */
+  reportes: InvalidadorReportes;
 }
 
 // Fábricas y no constantes: nunca se comparte un objeto mutable entre peticiones.
@@ -49,7 +52,7 @@ const fusionPendiente = (): CarritoAlAbrirSesion => ({
   ],
 });
 
-export function crearAuthService({ repositorio, tokens, logger }: Dependencias) {
+export function crearAuthService({ repositorio, tokens, logger, reportes }: Dependencias) {
   // A-18: los SPs del carrito toman al cliente del contexto. Solo esa llamada corre como él; el resto de la
   // petición sigue siendo anónima (el login no lleva token).
   function comoCliente<T>(usuario: UsuarioSesion, accion: () => Promise<T>): Promise<T> {
@@ -73,7 +76,7 @@ export function crearAuthService({ repositorio, tokens, logger }: Dependencias) 
   ): Promise<CarritoAlAbrirSesion> {
     if (tokenInvitado === undefined || usuario.rol !== 'Cliente') return sinCambiosEnElCarrito();
     try {
-      const avisos = await comoCliente(usuario, () => pasar(tokenInvitado));
+      const avisos = await comoCliente(usuario, () => reportes.tras(pasar(tokenInvitado)));
       return { cookieConsumida: true, avisos };
     } catch (error) {
       logger.error(

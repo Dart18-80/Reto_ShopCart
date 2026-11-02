@@ -1,5 +1,6 @@
 import type { RequestHandler, Router } from 'express';
 import type { Logger } from 'pino';
+import type { InvalidadorReportes } from '../reportes/index.js';
 import type { Tarea } from '../../shared/jobs/index.js';
 import type { PasarelaPago } from '../../shared/pasarela/index.js';
 import type { Reloj } from '../../shared/reloj/index.js';
@@ -17,6 +18,7 @@ interface DependenciasCheckout {
   pasarela: PasarelaPago;
   logger: Logger;
   reloj: Reloj;
+  reportes: InvalidadorReportes;
 }
 
 /** Monta /checkout (Cliente). */
@@ -25,6 +27,7 @@ export function crearModuloCheckout({
   pasarela,
   logger,
   reloj,
+  reportes,
 }: DependenciasCheckout): Router {
   const servicio = crearCheckoutService({ repositorio: checkoutRepository });
   const pago = crearPagoService({
@@ -32,6 +35,7 @@ export function crearModuloCheckout({
     pedidos: pedidosParaCheckout,
     pasarela,
     logger: logger.child({ modulo: 'checkout' }),
+    reportes,
   });
   return crearCheckoutRouter(crearCheckoutController(servicio, pago, reloj), autenticar);
 }

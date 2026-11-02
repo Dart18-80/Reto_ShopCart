@@ -13,6 +13,7 @@ import {
   type TarjetaPago,
 } from '../../shared/pasarela/index.js';
 import type { Pedido, PedidosParaCheckout } from '../pedidos/index.js';
+import type { InvalidadorReportes } from '../reportes/index.js';
 import type { CheckoutRepository } from './checkout.repository.js';
 import type { Arrendamiento, CambioIntento, PagoRealizado } from './checkout.types.js';
 
@@ -34,6 +35,8 @@ interface Dependencias {
   pedidos: PedidosParaCheckout;
   pasarela: PasarelaPago;
   logger: Logger;
+  /** A-11: un pedido creado cambia las ventas y deja de contar su carrito como abandonado. */
+  reportes: InvalidadorReportes;
   /** Espera entre los intentos de anulación (las pruebas la reemplazan). */
   esperar?: (ms: number) => Promise<unknown>;
 }
@@ -53,6 +56,7 @@ export function crearPagoService({
   pedidos,
   pasarela,
   logger,
+  reportes,
   esperar = dormir,
 }: Dependencias) {
   /**
@@ -218,6 +222,8 @@ export function crearPagoService({
     } catch (error) {
       pedido = await pedidoTrasFalla(error, arrendamiento, idTransaccion);
     }
+    // El pedido ya está confirmado (su COMMIT ocurrió): los reportes lo ven desde ahora.
+    await reportes.invalidar();
     await capturar(arrendamiento, idTransaccion);
     return { pedido, creado: true };
   }

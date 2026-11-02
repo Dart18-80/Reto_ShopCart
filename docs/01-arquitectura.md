@@ -422,13 +422,37 @@ Se ejecutan **dentro de cada réplica de la API** con un planificador interno (`
 
 ---
 
-## 9. Caché de reportes (extra, A-11)
+## 9. Caché de reportes (A-11, E7-H04)
 
-- **Patrón:** *cache-aside* en Redis con **invalidación por versión**. Las claves incluyen una versión global: `reportes:v{N}:ventas:dia:2026-10-01:2026-10-31`.
-- **Invalidación:** cada evento que cambia los reportes (pedido creado, cancelado o devolución registrada) ejecuta `INCR reportes:version` después del commit. Las claves viejas quedan huérfanas y expiran por TTL (10 min). No hace falta borrar claves por patrón, y es imposible servir datos desactualizados después de un cambio.
-- **Si Redis cae:** se consulta directo a SQL Server. El dashboard es más lento, pero correcto.
+- **Patrón:** *cache-aside* en la capa de servicio de reportes, detrás del puerto `Cache` (adaptador `crearCacheRedis`). Llave `reportes:v{version}:{reporte}:{hash}`, donde el hash es el SHA-256 de los filtros normalizados (sin los ausentes y con las claves ordenadas). TTL corto: `SEGUNDOS_CACHE_REPORTES = 60`.
+- **Versión global en Redis** (`reportes:version`). El servicio la lee **antes** de consultar la base. Si una escritura la incrementa mientras tanto, el resultado (quizá ya viejo) queda guardado bajo la versión anterior, que nadie vuelve a leer: nunca se sirve un dato anterior a una escritura confirmada.
+- **Invalidación:** cada escritura que cambia lo que leen las vistas del dashboard llama a `InvalidadorReportes.tras(escritura)`. Este espera el commit y después hace `INCR reportes:version`. Una escritura que falla no invalida.
+- **Por qué llaves con versión:** no hay que borrar claves (un borrado por patrón es costoso y deja una ventana entre el borrado y la siguiente lectura), ni coordinar a las réplicas. Las dos leen la misma versión de Redis, y las llaves viejas quedan huérfanas hasta que vence su TTL.
+- **El TTL corto** acota dos casos que la versión no cubre: los reportes que dependen de la hora (el rango por defecto de los últimos 30 días y los carritos que se vuelven abandonados con el paso del tiempo) y un `INCR` que falló.
+- **Redis caído o con error:** el adaptador nunca lanza. Sin versión, el servicio consulta la base directo; el dashboard es más lento, pero correcto. El fallo se registra solo cuando cambia el estado (una advertencia al caer y un aviso al volver). Un valor guardado que no se puede leer cuenta como ausente.
 
----
+**Escrituras que invalidan.** La lista sale de lo que leen `VW_Dashboard_HechosVenta`, `VW_Dashboard_VentasPorCategoria`, `VW_Carrito_Abandonados` y `SP_Dashboard_*`:
+
+| Dato que leen los reportes | Escritura | Servicio |
+|---|---|---|
+| `Pedido`, `DetallePedido` (ventas, envío) y el carrito que pasa a `Convertido` | Crear el pedido al pagar | `checkout.pago` |
+| `Pedido.IDEstadoPedido = Cancelado` | Cancelar un pedido (cliente o gestión) | `pedidos.reembolsos` |
+| `Devolucion`, `DetalleDevolucion` | Registrar una devolución | `pedidos.reembolsos` |
+| `Carrito.FechaUltimaActividad`, `LineaCarrito` | Agregar, cambiar o quitar una línea; aplicar o quitar el cupón | `carrito.service` |
+| `Carrito.IDUsuario` y sus líneas | Pasar el carrito de invitado al cliente al registrarse o al iniciar sesión | `auth.service` |
+| `Carrito.Estado = Expirado` | Expirar los carritos de invitado (job, solo si expiró alguno) | `carrito.tareas` |
+| El precio vigente (`FU_Catalogo_PrecioVigente`) | Cambiar el precio de una variante | `catalogo.service` |
+| `Categoria.Nombre`, `Producto.Nombre` | Renombrar una categoría o un producto | `catalogo.service` |
+| `LineaCarrito` borradas con la variante | Borrar un producto o una variante sin historial | `catalogo.service` |
+| `ParametroSistema.HorasCarritoAbandonado` | Cambiar la configuración | `configuracion.service` |
+| `Usuario.Nombre` (cliente del carrito abandonado) | Cambiar el nombre (perfil o administración) | `usuarios.service` |
+
+**No invalidan, a propósito:**
+- Los cambios de estado de gestión (`Pagado` → `Entregado`), porque los reportes solo excluyen `Cancelado`.
+- El reembolso y la conciliación, que no cambian ventas ni carritos.
+- El generador de datos demo, que corre en el migrador antes de que la API arranque.
+
+**Costo conocido:** cualquier cambio en un carrito invalida todos los reportes, aunque el carrito no estuviera abandonado. Con tráfico de compras real conviene separar la versión de ventas de la de carritos (ver §14).
 
 ## 10. Seguridad
 
@@ -513,7 +537,7 @@ Estado: 🟡 Propuesta · 🔍 En análisis · ✅ Confirmada · ✏️ Modifica
 | A-08 | Zod para validar entradas y generar OpenAPI; esquemas compartidos con el frontend | class-validator: duplica tipos. OpenAPI escrito a mano: se desalinea | ✅ |
 | A-09 | Migrador propio con versionado `V###` + `R__`, checksum y tabla de historial | Flyway: agrega Java a la imagen. Scripts sin control: no reproducible | ✅ |
 | A-10 | Búsqueda con `LIKE` sobre una columna calculada que no distingue mayúsculas ni tildes (`COLLATE Latin1_General_CI_AI`): "camion" encuentra "Camión". El `LIKE '%texto%'` recorre solo la tabla `Producto` (cientos de filas, no los pedidos), y los filtros de categoría, precio y disponibilidad sí usan índices | Full-Text Search: no viene en la imagen oficial de Docker. Queda como mejora documentada | ✅ |
-| A-11 | Caché de reportes en Redis con invalidación por versión | Borrado por patrón: frágil y costoso. Sin caché: se pierde el extra | ✅ |
+| A-11 | Caché de reportes en Redis (cache-aside en el servicio, puerto `Cache`) con **invalidación por versión** (`reportes:v{version}:…`): cada escritura de la lista de §9 hace `INCR` después de su commit, la versión se lee antes de consultar la base y el TTL es corto (60 s). No se borra nada ni se coordinan réplicas: una llave vieja queda huérfana | Borrado por patrón: costoso, con una ventana entre el borrado y la siguiente lectura en otra réplica. Invalidar por evento entre réplicas: necesita un canal de avisos. Sin caché: cada vista del dashboard recalcula todo | ✅ |
 | A-12 | Fechas en UTC (`DATETIME2(3)`) + columna `FechaPagoLocal DATE` (Guatemala) para agrupar reportes | `AT TIME ZONE` en cada consulta: no aprovecha índices | ✅ |
 | A-13 | Contadores con `CHECK` para límites (cupón, devoluciones, reembolsos, existencia) | Solo `COUNT`/`SUM` en el SP: correcto con bloqueo, pero sin defensa ante un bug | ✅ |
 | A-14 | Parámetros del sistema en una tabla tipada de una sola fila (`ParametroSistema`) | Tabla clave-valor: sin tipos ni `CHECK` | ✅ |
@@ -534,6 +558,7 @@ Estado: 🟡 Propuesta · 🔍 En análisis · ✅ Confirmada · ✏️ Modifica
 | Señal | Evolución |
 |---|---|
 | El dashboard pasa de 1 s con millones de pedidos | Vistas indexadas (materializadas) por día y categoría, o una tabla de agregados mantenida en la misma transacción del pedido |
+| La caché de reportes se invalida demasiado con tráfico de compras | Separar la versión de ventas (`reportes:ventas:v…`) de la de carritos, o invalidar los carritos solo si el carrito tocado ya estaba abandonado (que el SP lo devuelva) |
 | El kardex y la bitácora crecen sin límite | Particionar por mes y archivar los periodos cerrados |
 | Más réplicas de la API o jobs pesados | Extraer los jobs a un worker y pasar los reembolsos a una cola (outbox → broker) |
 | Picos de lectura en el catálogo | Caché del catálogo en Redis o en una CDN, y réplica de lectura de SQL Server para reportes |

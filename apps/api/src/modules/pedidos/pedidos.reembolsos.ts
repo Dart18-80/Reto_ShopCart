@@ -7,6 +7,7 @@ import {
   TIMEOUT_PASARELA_MS,
   type PasarelaPago,
 } from '../../shared/pasarela/index.js';
+import type { InvalidadorReportes } from '../reportes/index.js';
 import type { PedidosRepository } from './pedidos.repository.js';
 import type { ListarReembolsos, RegistrarDevolucion } from './pedidos.schemas.js';
 import type {
@@ -43,6 +44,8 @@ interface Dependencias {
   >;
   pasarela: PasarelaPago;
   logger: Logger;
+  /** A-11: cancelar y devolver cambian las ventas de los reportes. */
+  reportes: InvalidadorReportes;
 }
 
 /**
@@ -50,7 +53,7 @@ interface Dependencias {
  * devolución, nunca dentro de su transacción. La llave del reembolso es fija, así la petición, el Admin y
  * el job nunca reembolsan dos veces.
  */
-export function crearReembolsosService({ repositorio, pasarela, logger }: Dependencias) {
+export function crearReembolsosService({ repositorio, pasarela, logger, reportes }: Dependencias) {
   /**
    * Una cancelación devuelve según lo que la pasarela tiene: una autorización sin capturar se anula y una
    * captura se reembolsa. Cubre la carrera en la que el cobro se capturó justo antes de cancelar.
@@ -185,7 +188,7 @@ export function crearReembolsosService({ repositorio, pasarela, logger }: Depend
     procesar,
 
     async cancelar(idPedido: number, motivo: string): Promise<Cancelacion> {
-      const idReembolso = await repositorio.cancelar(idPedido, motivo);
+      const idReembolso = await reportes.tras(repositorio.cancelar(idPedido, motivo));
       const estado = await procesarTrasConfirmar(idReembolso, { idPedido });
       const pedido = await repositorio.obtener(idPedido);
       if (pedido === null) throw new Error(`El pedido ${String(idPedido)} cancelado no existe`);
@@ -196,9 +199,8 @@ export function crearReembolsosService({ repositorio, pasarela, logger }: Depend
       idPedido: number,
       datos: RegistrarDevolucion,
     ): Promise<DevolucionRegistrada> {
-      const { idDevolucion, idReembolso, montoReembolso } = await repositorio.registrarDevolucion(
-        idPedido,
-        datos,
+      const { idDevolucion, idReembolso, montoReembolso } = await reportes.tras(
+        repositorio.registrarDevolucion(idPedido, datos),
       );
       const estado = await procesarTrasConfirmar(idReembolso, { idPedido, idDevolucion });
       const pedido = await repositorio.obtener(idPedido);

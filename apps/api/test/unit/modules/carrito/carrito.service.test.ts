@@ -1,6 +1,9 @@
 import { Decimal } from 'decimal.js';
 import { describe, expect, it, vi } from 'vitest';
-import { crearCarritoService } from '../../../../src/modules/carrito/carrito.service.js';
+import {
+  crearCarritoService,
+  type CarritoService,
+} from '../../../../src/modules/carrito/carrito.service.js';
 import type {
   Carrito,
   CookieInvitado,
@@ -8,6 +11,7 @@ import type {
 } from '../../../../src/modules/carrito/carrito.types.js';
 import { AppError } from '../../../../src/shared/errors/index.js';
 import { hashearTokenOpaco, type LimitadorIntentos } from '../../../../src/shared/http/index.js';
+import { invalidadorDePrueba } from '../../invalidador-de-prueba.js';
 
 const CARRITO: Carrito = {
   lineas: [],
@@ -51,10 +55,12 @@ function preparar({ conCookie = CARRITO, permitido = true }: Opciones = {}) {
     Promise.resolve({ permitido, segundosParaReintentar: permitido ? 0 : 30 }),
   );
   const limitadorCreacion: LimitadorIntentos = { consumir };
+  const { reportes, invalidaciones } = invalidadorDePrueba();
   return {
-    servicio: crearCarritoService({ repositorio, limitadorCreacion }),
+    servicio: crearCarritoService({ repositorio, limitadorCreacion, reportes }),
     repositorio,
     consumir,
+    invalidaciones,
   };
 }
 
@@ -150,5 +156,36 @@ describe('carrito.service (E4-H01, N-05)', () => {
 
     expect(repositorio.actualizarCantidad).toHaveBeenCalledWith(4, 3, hashearTokenOpaco(TOKEN));
     expect(repositorio.eliminarLinea).toHaveBeenCalledWith(4, hashearTokenOpaco(TOKEN));
+  });
+});
+
+describe('carrito.service: caché de reportes (E7-H04, A-11)', () => {
+  const cliente = { tipo: 'cliente' as const };
+
+  it.each([
+    [
+      'agregar una línea',
+      (s: CarritoService) => s.agregarLinea(cliente, { idVariante: 1, cantidad: 1 }),
+    ],
+    ['cambiar la cantidad', (s: CarritoService) => s.actualizarCantidad(cliente, 1, 2)],
+    ['quitar una línea', (s: CarritoService) => s.eliminarLinea(cliente, 1)],
+    ['aplicar un cupón', (s: CarritoService) => s.aplicarCupon(cliente, 'DEMO10')],
+    ['quitar el cupón', (s: CarritoService) => s.quitarCupon(cliente)],
+  ])('%s invalida los reportes después de escribir', async (_caso, escribir) => {
+    const { servicio, invalidaciones } = preparar();
+
+    await escribir(servicio);
+
+    expect(invalidaciones).toHaveBeenCalledTimes(1);
+  });
+
+  it('una escritura que falla no invalida; consultar tampoco', async () => {
+    const { servicio, repositorio, invalidaciones } = preparar();
+    repositorio.eliminarLinea.mockRejectedValueOnce(new Error('LINEA_NO_ENCONTRADA'));
+
+    await servicio.eliminarLinea(cliente, 1).catch(() => undefined);
+    await servicio.obtener(cliente);
+
+    expect(invalidaciones).not.toHaveBeenCalled();
   });
 });

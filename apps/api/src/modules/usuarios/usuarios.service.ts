@@ -11,6 +11,7 @@ import {
   type Sesion,
   type Sesiones,
 } from '../auth/index.js';
+import type { InvalidadorReportes } from '../reportes/index.js';
 import type { UsuariosRepository } from './usuarios.repository.js';
 import type {
   ActualizarPerfil,
@@ -24,9 +25,11 @@ interface Dependencias {
   repositorio: UsuariosRepository;
   sesiones: Sesiones;
   versiones: Pick<VersionesSesion, 'publicar'>;
+  /** A-11: el nombre del cliente aparece en los carritos abandonados. */
+  reportes: InvalidadorReportes;
 }
 
-export function crearUsuariosService({ repositorio, sesiones, versiones }: Dependencias) {
+export function crearUsuariosService({ repositorio, sesiones, versiones, reportes }: Dependencias) {
   async function perfilConHash(): Promise<PerfilConHash> {
     const perfil = await repositorio.obtenerPerfil();
     if (perfil === null) throw new AppError('NO_ENCONTRADO');
@@ -41,7 +44,7 @@ export function crearUsuariosService({ repositorio, sesiones, versiones }: Depen
 
     // PATCH: el SP mezcla los cambios con lo guardado bajo bloqueo; telefono en null lo quita.
     actualizarPerfil: (cambios: ActualizarPerfil): Promise<Usuario> =>
-      repositorio.actualizarPerfil(cambios),
+      reportes.tras(repositorio.actualizarPerfil(cambios)),
 
     /**
      * N-15, A-07: verifica la contraseña actual; el SP guarda la nueva, revoca todos los refresh tokens y
@@ -80,10 +83,8 @@ export function crearUsuariosService({ repositorio, sesiones, versiones }: Depen
 
     // A-07: con otro rol, el SP sube la versión de sesión y su access token deja de servir de inmediato.
     async actualizar(idUsuario: number, cambios: ActualizarUsuario): Promise<Usuario> {
-      const { usuario, versionSesion } = await repositorio.actualizar(
-        idUsuario,
-        cambios.nombre ?? null,
-        cambios.rol ?? null,
+      const { usuario, versionSesion } = await reportes.tras(
+        repositorio.actualizar(idUsuario, cambios.nombre ?? null, cambios.rol ?? null),
       );
       if (cambios.rol !== undefined) await versiones.publicar(idUsuario, versionSesion);
       return usuario;

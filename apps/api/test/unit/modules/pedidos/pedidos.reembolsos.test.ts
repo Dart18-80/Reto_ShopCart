@@ -10,6 +10,7 @@ import type {
   ResultadoReembolso,
 } from '../../../../src/modules/pedidos/pedidos.types.js';
 import type { EstadoEnPasarela } from '../../../../src/shared/pasarela/index.js';
+import { invalidadorDePrueba } from '../../invalidador-de-prueba.js';
 
 const TARJETA = { marca: 'Visa', ultimosDigitos: '4242' };
 const CAPTURADA: EstadoEnPasarela = { estado: 'Capturada', idTransaccion: 'txn-1', ...TARJETA };
@@ -53,12 +54,14 @@ function preparar(
     reembolsar: vi.fn(() => Promise.resolve({ idReembolso: 'SIMR-1' })),
     consultar: vi.fn(() => Promise.resolve(enPasarela)),
   };
+  const { reportes, invalidaciones } = invalidadorDePrueba();
   const servicio = crearReembolsosService({
     repositorio,
     pasarela,
     logger,
+    reportes,
   });
-  return { servicio, repositorio, pasarela };
+  return { servicio, repositorio, pasarela, invalidaciones };
 }
 
 const PEDIDO_CANCELADO: Pedido = {
@@ -213,5 +216,30 @@ describe('pedidos.reembolsos (E6-H03, N-09)', () => {
 
     expect(estado).toBe('Pendiente');
     expect(registrado.join('')).toContain('Reclamo desplazado');
+  });
+});
+
+describe('reembolsos: caché de reportes (E7-H04, A-11)', () => {
+  it('cancelar y devolver invalidan los reportes después del commit, aunque el reembolso quede pendiente', async () => {
+    const { servicio, repositorio, pasarela, invalidaciones } = preparar(CANCELACION, CAPTURADA);
+    repositorio.obtener.mockResolvedValue(PEDIDO_CANCELADO);
+    pasarela.reembolsar.mockRejectedValue(new Error('pasarela caída'));
+
+    await servicio.cancelar(10, 'Ya no lo necesito');
+    await servicio.registrarDevolucion(10, {
+      motivo: 'Talla equivocada',
+      lineas: [{ idDetallePedido: 1, cantidad: 1 }],
+    });
+
+    expect(invalidaciones).toHaveBeenCalledTimes(2);
+  });
+
+  it('una cancelación rechazada por el SP no invalida', async () => {
+    const { servicio, repositorio, invalidaciones } = preparar(CANCELACION, CAPTURADA);
+    repositorio.cancelar.mockRejectedValueOnce(new Error('NO_CANCELABLE'));
+
+    await servicio.cancelar(10, 'Ya no lo necesito').catch(() => undefined);
+
+    expect(invalidaciones).not.toHaveBeenCalled();
   });
 });

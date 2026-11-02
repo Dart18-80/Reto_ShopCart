@@ -1,6 +1,7 @@
 import { pino } from 'pino';
 import type { DependenciasApp } from '../src/app.js';
 import { crearPasarelaSimulada } from '../src/shared/adapters/pasarela-simulada.js';
+import type { Cache } from '../src/shared/cache/index.js';
 import {
   crearTokensAcceso,
   type LimitadorIntentos,
@@ -26,6 +27,17 @@ export function versionesSesionEnMemoria(): VersionesSesion {
   };
 }
 
+/**
+ * Sin caché de reportes (se comporta como Redis caído): cada prueba lee la base, aunque otra aplicación de
+ * prueba haya escrito sin invalidar. Las pruebas de la caché pasan una real (E7-H04).
+ */
+export const SIN_CACHE: Cache = {
+  obtener: () => Promise.resolve(null),
+  guardar: () => Promise.resolve(),
+  contador: () => Promise.resolve(null),
+  incrementar: () => Promise.resolve(),
+};
+
 /** Dependencias de crearApp para pruebas; cada prueba reemplaza solo lo que le importa. */
 export function dependenciasDePrueba(cambios: Partial<DependenciasApp> = {}): DependenciasApp {
   return {
@@ -42,6 +54,7 @@ export function dependenciasDePrueba(cambios: Partial<DependenciasApp> = {}): De
     },
     versionesSesion: versionesSesionEnMemoria(),
     pasarela: crearPasarelaSimulada(),
+    cache: SIN_CACHE,
     ...cambios,
   };
 }

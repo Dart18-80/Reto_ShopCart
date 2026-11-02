@@ -4,6 +4,7 @@ import type { UsuariosRepository } from '../../../../src/modules/usuarios/usuari
 import { crearUsuariosService } from '../../../../src/modules/usuarios/usuarios.service.js';
 import type { PerfilConHash, Usuario } from '../../../../src/modules/usuarios/usuarios.types.js';
 import type { VersionesSesion } from '../../../../src/shared/http/index.js';
+import { invalidadorDePrueba } from '../../invalidador-de-prueba.js';
 
 const CONTRASENA = 'Actual2026';
 const CLIENTE = { ip: '203.0.113.7', userAgent: 'pruebas' };
@@ -37,8 +38,9 @@ async function preparar() {
     ),
   };
   const versiones = { publicar: vi.fn<VersionesSesion['publicar']>(() => Promise.resolve()) };
-  const servicio = crearUsuariosService({ repositorio, sesiones, versiones });
-  return { servicio, repositorio, sesiones, versiones };
+  const { reportes, invalidaciones } = invalidadorDePrueba();
+  const servicio = crearUsuariosService({ repositorio, sesiones, versiones, reportes });
+  return { servicio, repositorio, sesiones, versiones, invalidaciones };
 }
 
 describe('usuarios.service (E2-H04, N-15)', () => {
@@ -128,5 +130,16 @@ describe('usuarios.service (E2-H04, N-15)', () => {
 
     expect(versiones.publicar).toHaveBeenCalledOnce();
     expect(versiones.publicar).toHaveBeenCalledWith(7, VERSION_NUEVA);
+  });
+});
+
+describe('usuarios.service: caché de reportes (E7-H04, A-11)', () => {
+  it('cambiar el nombre (perfil o administración) invalida los reportes', async () => {
+    const { servicio, invalidaciones } = await preparar();
+
+    await servicio.actualizarPerfil({ nombre: 'Ana' });
+    await servicio.actualizar(5, { nombre: 'Ana' });
+
+    expect(invalidaciones).toHaveBeenCalledTimes(2);
   });
 });

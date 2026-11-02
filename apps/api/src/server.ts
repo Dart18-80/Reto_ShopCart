@@ -2,6 +2,8 @@ import type { Logger } from 'pino';
 import { registrarApagadoOrdenado } from './apagado.js';
 import { crearApp } from './app.js';
 import { crearTareasDeCarrito } from './modules/carrito/index.js';
+import { crearInvalidadorReportes } from './modules/reportes/index.js';
+import { crearCacheRedis } from './shared/adapters/cache-redis.js';
 import { crearTareasDeCheckout } from './modules/checkout/index.js';
 import { crearTareasDePedidos } from './modules/pedidos/index.js';
 import { crearTareasDeSistema } from './modules/sistema/index.js';
@@ -45,6 +47,8 @@ async function iniciar(): Promise<void> {
   configurarBaseDatos(conexionMssql(pool), logger);
   const redis = conectarRedis(config.redis, logger);
   const pasarela = crearPasarelaSimulada();
+  const cache = crearCacheRedis(redis, logger);
+  const reportes = crearInvalidadorReportes(cache);
 
   const app = crearApp({
     logger,
@@ -69,6 +73,7 @@ async function iniciar(): Promise<void> {
     },
     versionesSesion: crearVersionesSesionRedis(redis, logger),
     pasarela,
+    cache,
   });
 
   // Express 5 también llama a este callback si listen falla (por ejemplo, puerto ocupado).
@@ -89,8 +94,8 @@ async function iniciar(): Promise<void> {
   const planificador = crearPlanificador(
     [
       ...crearTareasDeCheckout({ pasarela, logger }),
-      ...crearTareasDePedidos({ pasarela, logger }),
-      ...crearTareasDeCarrito(),
+      ...crearTareasDePedidos({ pasarela, logger, reportes }),
+      ...crearTareasDeCarrito(reportes),
       ...crearTareasDeSistema(),
     ],
     logger.child({ modulo: 'jobs' }),

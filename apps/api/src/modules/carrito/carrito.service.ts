@@ -5,6 +5,7 @@ import {
   hashearTokenOpaco,
   type LimitadorIntentos,
 } from '../../shared/http/index.js';
+import type { InvalidadorReportes } from '../reportes/index.js';
 import type { CarritoRepository } from './carrito.repository.js';
 import type {
   Carrito,
@@ -27,6 +28,8 @@ interface Dependencias {
   >;
   /** 01 §5.3: creación de carritos de invitado por IP. */
   limitadorCreacion: LimitadorIntentos;
+  /** A-11: las líneas y la actividad del carrito definen los carritos abandonados. */
+  reportes: InvalidadorReportes;
 }
 
 const SIN_IP = 'desconocida';
@@ -56,7 +59,7 @@ function hashDe(comprador: Comprador): Buffer | null {
     : null;
 }
 
-export function crearCarritoService({ repositorio, limitadorCreacion }: Dependencias) {
+export function crearCarritoService({ repositorio, limitadorCreacion, reportes }: Dependencias) {
   // N-05: creación perezosa con un token nuevo, nunca con uno que mandó el cliente.
   async function crearCarritoInvitado(
     linea: NuevaLinea,
@@ -78,6 +81,20 @@ export function crearCarritoService({ repositorio, limitadorCreacion }: Dependen
     return { carrito, tokenNuevo: null };
   }
 
+  async function agregarLinea(comprador: Comprador, linea: NuevaLinea): Promise<CarritoConCookie> {
+    if (comprador.tipo === 'cliente') return agregarAlCarritoDelCliente(linea);
+
+    const hashActual = hashDe(comprador);
+    const carrito =
+      hashActual === null
+        ? null
+        : await repositorio.agregarLinea(linea, { hashActual, hashNuevo: null });
+    // Sin cookie, o con una cuyo carrito ya no está Activo: se crea otro.
+    return carrito === null
+      ? crearCarritoInvitado(linea, comprador.ip)
+      : { carrito, tokenNuevo: null };
+  }
+
   return {
     async obtener(comprador: Comprador): Promise<ConsultaCarrito> {
       const hash = hashDe(comprador);
@@ -88,34 +105,23 @@ export function crearCarritoService({ repositorio, limitadorCreacion }: Dependen
       };
     },
 
-    async agregarLinea(comprador: Comprador, linea: NuevaLinea): Promise<CarritoConCookie> {
-      if (comprador.tipo === 'cliente') return agregarAlCarritoDelCliente(linea);
-
-      const hashActual = hashDe(comprador);
-      const carrito =
-        hashActual === null
-          ? null
-          : await repositorio.agregarLinea(linea, { hashActual, hashNuevo: null });
-      // Sin cookie, o con una cuyo carrito ya no está Activo: se crea otro.
-      return carrito === null
-        ? crearCarritoInvitado(linea, comprador.ip)
-        : { carrito, tokenNuevo: null };
-    },
+    agregarLinea: (comprador: Comprador, linea: NuevaLinea): Promise<CarritoConCookie> =>
+      reportes.tras(agregarLinea(comprador, linea)),
 
     // Una línea de otro carrito responde 404, igual que una inexistente (RF-01): lo decide el SP.
     actualizarCantidad: (
       comprador: Comprador,
       idLinea: number,
       cantidad: number,
-    ): Promise<Carrito> => repositorio.actualizarCantidad(idLinea, cantidad, hashDe(comprador)),
+    ): Promise<Carrito> =>
+      reportes.tras(repositorio.actualizarCantidad(idLinea, cantidad, hashDe(comprador))),
 
     // N-12: cada causa de rechazo responde su propio código; lo decide el SP con FU_Cupones_Validar.
-    async aplicarCupon(comprador: Comprador, codigo: string): Promise<Carrito> {
-      return repositorio.aplicarCupon(codigo, hashDe(comprador));
-    },
+    aplicarCupon: (comprador: Comprador, codigo: string): Promise<Carrito> =>
+      reportes.tras(repositorio.aplicarCupon(codigo, hashDe(comprador))),
 
     async quitarCupon(comprador: Comprador): Promise<Carrito> {
-      return (await repositorio.quitarCupon(hashDe(comprador))) ?? carritoVacio();
+      return (await reportes.tras(repositorio.quitarCupon(hashDe(comprador)))) ?? carritoVacio();
     },
 
     async marcarAvisosVistos(comprador: Comprador): Promise<Carrito> {
@@ -123,7 +129,7 @@ export function crearCarritoService({ repositorio, limitadorCreacion }: Dependen
     },
 
     eliminarLinea: (comprador: Comprador, idLinea: number): Promise<Carrito> =>
-      repositorio.eliminarLinea(idLinea, hashDe(comprador)),
+      reportes.tras(repositorio.eliminarLinea(idLinea, hashDe(comprador))),
   };
 }
 

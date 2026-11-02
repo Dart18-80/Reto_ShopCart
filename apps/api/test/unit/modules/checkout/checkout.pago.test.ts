@@ -14,6 +14,7 @@ import {
   type EstadoEnPasarela,
   type ResultadoAutorizacion,
 } from '../../../../src/shared/pasarela/index.js';
+import { invalidadorDePrueba } from '../../invalidador-de-prueba.js';
 
 const ID_INTENTO = 7;
 const TOKEN = 'token-1';
@@ -84,14 +85,16 @@ function preparar(registro: RegistroIntento, logger: Logger = pino({ level: 'sil
     reembolsar: vi.fn(() => Promise.reject(new Error('no se usa'))),
     consultar: vi.fn((): Promise<EstadoEnPasarela> => Promise.resolve({ estado: 'NoExiste' })),
   };
+  const { reportes, invalidaciones } = invalidadorDePrueba();
   const servicio = crearPagoService({
     repositorio,
     pedidos,
     pasarela,
     logger,
+    reportes,
     esperar: () => Promise.resolve(),
   });
-  return { servicio, repositorio, pedidos, pasarela };
+  return { servicio, repositorio, pedidos, pasarela, invalidaciones };
 }
 
 // N-03: quien pierde el arrendamiento responde PAGO_EN_CURSO y el cliente reintenta tras el arrendamiento.
@@ -530,5 +533,33 @@ describe('checkout.pago (E5-H03)', () => {
     pedidos.obtener.mockResolvedValueOnce(null);
 
     await expect(servicio.pagar(SOLICITUD)).rejects.toThrow('El pedido 5 del pago no existe');
+  });
+});
+
+describe('checkout.pago: caché de reportes (E7-H04, A-11)', () => {
+  it('un pedido creado invalida los reportes antes de responder', async () => {
+    const { servicio, invalidaciones } = preparar(AUTORIZAR);
+
+    await servicio.pagar(SOLICITUD);
+
+    expect(invalidaciones).toHaveBeenCalledTimes(1);
+  });
+
+  it('un pago rechazado o un pedido que ya existía no invalida', async () => {
+    const rechazado = preparar(AUTORIZAR);
+    rechazado.pasarela.autorizar.mockResolvedValueOnce({
+      tipo: 'Rechazada',
+      codigo: 'FONDOS_INSUFICIENTES',
+      mensaje: 'Fondos insuficientes.',
+      marca: 'Visa',
+      ultimosDigitos: '0002',
+    });
+    const repetido = preparar({ accion: 'Pedido', idPedido: 10 });
+
+    await rechazado.servicio.pagar(SOLICITUD).catch(() => undefined);
+    await repetido.servicio.pagar(SOLICITUD);
+
+    expect(rechazado.invalidaciones).not.toHaveBeenCalled();
+    expect(repetido.invalidaciones).not.toHaveBeenCalled();
   });
 });

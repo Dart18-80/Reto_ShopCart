@@ -1,5 +1,6 @@
 import type { RequestHandler, Router } from 'express';
 import type { Logger } from 'pino';
+import type { InvalidadorReportes } from '../reportes/index.js';
 import type { Tarea } from '../../shared/jobs/index.js';
 import type { PasarelaPago } from '../../shared/pasarela/index.js';
 import { crearPedidosController } from './pedidos.controller.js';
@@ -16,13 +17,15 @@ interface DependenciasPedidos {
   autenticar: RequestHandler;
   pasarela: PasarelaPago;
   logger: Logger;
+  reportes: InvalidadorReportes;
 }
 
-const crearReembolsos = ({ pasarela, logger }: Omit<DependenciasPedidos, 'autenticar'>) =>
+const crearReembolsos = ({ pasarela, logger, reportes }: Omit<DependenciasPedidos, 'autenticar'>) =>
   crearReembolsosService({
     repositorio: pedidosRepository,
     pasarela,
     logger: logger.child({ modulo: 'pedidos' }),
+    reportes,
   });
 
 /** Monta /pedidos (Cliente), /admin/pedidos (Operador y Admin) y /admin/reembolsos (Admin). */

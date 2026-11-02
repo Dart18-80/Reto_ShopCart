@@ -1,12 +1,16 @@
 import { Decimal } from 'decimal.js';
 import { describe, expect, it, vi } from 'vitest';
 import type { CatalogoRepository } from '../../../../src/modules/catalogo/catalogo.repository.js';
-import { crearCatalogoService } from '../../../../src/modules/catalogo/catalogo.service.js';
+import {
+  crearCatalogoService,
+  type CatalogoService,
+} from '../../../../src/modules/catalogo/catalogo.service.js';
 import type {
   Categoria,
   ProductoAdmin,
   ProductoTienda,
 } from '../../../../src/modules/catalogo/catalogo.types.js';
+import { invalidadorDePrueba } from '../../invalidador-de-prueba.js';
 
 const CATEGORIA: Categoria = { idCategoria: 4, nombre: 'Camisas', descripcion: null, activo: true };
 const PRODUCTO: ProductoAdmin = {
@@ -52,7 +56,8 @@ function preparar() {
     historialPrecios: vi.fn(() => Promise.resolve([])),
     cambiarPrecio: vi.fn(() => Promise.resolve([])),
   } satisfies CatalogoRepository;
-  return { servicio: crearCatalogoService({ repositorio }), repositorio };
+  const { reportes, invalidaciones } = invalidadorDePrueba();
+  return { servicio: crearCatalogoService({ repositorio, reportes }), repositorio, invalidaciones };
 }
 
 describe('catalogo.service: categorías (E3-H01, N-14)', () => {
@@ -164,5 +169,35 @@ describe('catalogo.service: búsqueda (E3-H05)', () => {
 
     expect(repositorio.buscarProductos).toHaveBeenCalledWith(filtros);
     expect(respuesta.paginacion).toEqual({ pagina: 1, tamano: 2, total: 5, totalPaginas: 3 });
+  });
+});
+
+describe('catalogo.service: caché de reportes (E7-H04, A-11)', () => {
+  it.each([
+    [
+      'renombrar una categoría',
+      (s: CatalogoService) => s.actualizarCategoria(1, { nombre: 'Calzado' }),
+    ],
+    ['renombrar un producto', (s: CatalogoService) => s.actualizarProducto(1, { nombre: 'Tenis' })],
+    ['borrar un producto', (s: CatalogoService) => s.eliminarProducto(1)],
+    ['borrar una variante', (s: CatalogoService) => s.eliminarVariante(1)],
+    [
+      'cambiar un precio',
+      (s: CatalogoService) => s.cambiarPrecio(1, { precio: new Decimal('10.00') }),
+    ],
+  ])('%s invalida los reportes', async (_caso, escribir) => {
+    const { servicio, invalidaciones } = preparar();
+
+    await escribir(servicio);
+
+    expect(invalidaciones).toHaveBeenCalledTimes(1);
+  });
+
+  it('crear una categoría no toca los reportes', async () => {
+    const { servicio, invalidaciones } = preparar();
+
+    await servicio.crearCategoria({ nombre: 'Nueva' });
+
+    expect(invalidaciones).not.toHaveBeenCalled();
   });
 });

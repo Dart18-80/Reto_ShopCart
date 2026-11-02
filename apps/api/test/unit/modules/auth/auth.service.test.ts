@@ -14,6 +14,7 @@ import {
   ejecutarConContexto,
   obtenerContexto,
 } from '../../../../src/shared/http/index.js';
+import { invalidadorDePrueba } from '../../invalidador-de-prueba.js';
 
 // El servicio usa el carrito por su index.ts: aquí se reemplaza para probar la política de N-05.
 vi.mock('../../../../src/modules/carrito/index.js', () => ({
@@ -67,9 +68,16 @@ function repositorioFalso(guardadas: Credenciales | null) {
     ),
     revocarSesion: vi.fn<AuthRepository['revocarSesion']>(() => Promise.resolve()),
   };
+  const { reportes, invalidaciones } = invalidadorDePrueba();
   return {
     repositorio,
-    servicio: crearAuthService({ repositorio, tokens, logger: pino({ level: 'silent' }) }),
+    invalidaciones,
+    servicio: crearAuthService({
+      repositorio,
+      tokens,
+      logger: pino({ level: 'silent' }),
+      reportes,
+    }),
   };
 }
 

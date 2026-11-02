@@ -1,5 +1,6 @@
 import type { Router } from 'express';
 import type { Logger } from 'pino';
+import type { InvalidadorReportes } from '../reportes/index.js';
 import type { ClienteHttp, TokensAcceso } from '../../shared/http/index.js';
 import { crearAuthController } from './auth.controller.js';
 import { authRepository } from './auth.repository.js';
@@ -17,10 +18,16 @@ interface DependenciasAuth {
   tokens: TokensAcceso;
   limitadores: LimitadoresAuth;
   logger: Logger;
+  reportes: InvalidadorReportes;
 }
 
-export function crearModuloAuth({ tokens, limitadores, logger }: DependenciasAuth): Router {
-  const servicio = crearAuthService({ repositorio: authRepository, tokens, logger });
+export function crearModuloAuth({
+  tokens,
+  limitadores,
+  logger,
+  reportes,
+}: DependenciasAuth): Router {
+  const servicio = crearAuthService({ repositorio: authRepository, tokens, logger, reportes });
   return crearAuthRouter(crearAuthController(servicio), limitadores);
 }
 
@@ -29,7 +36,11 @@ export interface Sesiones {
   abrir(identidad: IdentidadSesion, cliente: ClienteHttp): Promise<Sesion>;
 }
 
-export function crearSesiones(tokens: TokensAcceso, logger: Logger): Sesiones {
-  const servicio = crearAuthService({ repositorio: authRepository, tokens, logger });
+export function crearSesiones(
+  tokens: TokensAcceso,
+  logger: Logger,
+  reportes: InvalidadorReportes,
+): Sesiones {
+  const servicio = crearAuthService({ repositorio: authRepository, tokens, logger, reportes });
   return { abrir: (identidad, cliente) => servicio.abrirSesion(identidad, cliente) };
 }

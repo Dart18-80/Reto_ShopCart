@@ -700,7 +700,7 @@ Se detalla en historias al cerrar la Fase 1.
 | E7-H01 | Dashboard | Must | 1.0 | Hecha |
 | E7-H02 | Consulta de la bitácora | Must | 0.25 | Hecha |
 | E7-H03 | Generador de datos demo | Should | 1.25 | Hecha |
-| E7-H04 | Caché de reportes con invalidación | Must | 0.75 | Lista |
+| E7-H04 | Caché de reportes con invalidación | Must | 0.75 | En revisión |
 | E7-H05 | Exportación asíncrona de reportes (Excel y PDF) | Must | 2.5 | Lista |
 | E8-H01 | README de la Fase 1 | Must | 0.75 | En revisión |
 | E8-H02 | Revisión contra penalizaciones | Must | 0.5 | En revisión |

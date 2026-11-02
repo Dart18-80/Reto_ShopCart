@@ -1,4 +1,5 @@
 import type { RequestHandler, Router } from 'express';
+import type { InvalidadorReportes } from '../reportes/index.js';
 import type { LimitadorIntentos, VersionesSesion } from '../../shared/http/index.js';
 import type { Sesiones } from '../auth/index.js';
 import { crearUsuariosController } from './usuarios.controller.js';
@@ -11,6 +12,7 @@ interface DependenciasUsuarios {
   sesiones: Sesiones;
   versiones: Pick<VersionesSesion, 'publicar'>;
   limitadorContrasena: LimitadorIntentos;
+  reportes: InvalidadorReportes;
 }
 
 export function crearModuloUsuarios({
@@ -18,11 +20,13 @@ export function crearModuloUsuarios({
   sesiones,
   versiones,
   limitadorContrasena,
+  reportes,
 }: DependenciasUsuarios): Router {
   const servicio = crearUsuariosService({
     repositorio: usuariosRepository,
     sesiones,
     versiones,
+    reportes,
   });
   return crearUsuariosRouter(crearUsuariosController(servicio), autenticar, limitadorContrasena);
 }

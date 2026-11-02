@@ -1,5 +1,6 @@
 import { AppError } from '../../shared/errors/index.js';
 import { paginar, type RespuestaPaginada } from '../../shared/http/index.js';
+import type { InvalidadorReportes } from '../reportes/index.js';
 import type { CatalogoRepository } from './catalogo.repository.js';
 import type {
   ActualizarCategoria,
@@ -29,6 +30,8 @@ import type {
 
 interface Dependencias {
   repositorio: CatalogoRepository;
+  /** A-11: los nombres, el precio vigente y las variantes borradas cambian lo que muestran los reportes. */
+  reportes: InvalidadorReportes;
 }
 
 function productoExistente<T extends ProductoAdmin | ProductoTienda>(producto: T | null): T {
@@ -38,7 +41,7 @@ function productoExistente<T extends ProductoAdmin | ProductoTienda>(producto: T
 
 // N-14: las reglas del catálogo (nombres únicos, categoría activa, conjunto de atributos, combinación y
 // SKU únicos, historial) las garantiza el SP bajo bloqueo; el servicio solo orquesta.
-export function crearCatalogoService({ repositorio }: Dependencias) {
+export function crearCatalogoService({ repositorio, reportes }: Dependencias) {
   return {
     listarCategorias: (): Promise<CategoriaPublica[]> => repositorio.listarCategorias(),
 
@@ -46,7 +49,7 @@ export function crearCatalogoService({ repositorio }: Dependencias) {
       repositorio.crearCategoria(datos),
 
     actualizarCategoria: (id: number, cambios: ActualizarCategoria): Promise<Categoria> =>
-      repositorio.actualizarCategoria(id, cambios),
+      reportes.tras(repositorio.actualizarCategoria(id, cambios)),
 
     activarCategoria: (id: number): Promise<Categoria> =>
       repositorio.cambiarEstadoCategoria(id, true),
@@ -89,7 +92,7 @@ export function crearCatalogoService({ repositorio }: Dependencias) {
       repositorio.crearProducto(datos),
 
     actualizarProducto: (id: number, cambios: ActualizarProducto): Promise<ProductoAdmin> =>
-      repositorio.actualizarProducto(id, cambios),
+      reportes.tras(repositorio.actualizarProducto(id, cambios)),
 
     activarProducto: (id: number): Promise<ProductoAdmin> =>
       repositorio.cambiarEstadoProducto(id, true),
@@ -97,7 +100,8 @@ export function crearCatalogoService({ repositorio }: Dependencias) {
     desactivarProducto: (id: number): Promise<ProductoAdmin> =>
       repositorio.cambiarEstadoProducto(id, false),
 
-    eliminarProducto: (id: number): Promise<void> => repositorio.eliminarProducto(id),
+    eliminarProducto: (id: number): Promise<void> =>
+      reportes.tras(repositorio.eliminarProducto(id)),
 
     guardarImagenes: (id: number, datos: GuardarImagenes): Promise<ProductoAdmin> =>
       repositorio.guardarImagenes(id, datos),
@@ -114,14 +118,15 @@ export function crearCatalogoService({ repositorio }: Dependencias) {
     desactivarVariante: (id: number): Promise<ProductoAdmin> =>
       repositorio.cambiarEstadoVariante(id, false),
 
-    eliminarVariante: (id: number): Promise<void> => repositorio.eliminarVariante(id),
+    eliminarVariante: (id: number): Promise<void> =>
+      reportes.tras(repositorio.eliminarVariante(id)),
 
     historialPrecios: (idVariante: number): Promise<VersionPrecio[]> =>
       repositorio.historialPrecios(idVariante),
 
     // N-02: el SP cierra la versión vigente e inserta la nueva en una transacción.
     cambiarPrecio: (idVariante: number, datos: CambiarPrecio): Promise<VersionPrecio[]> =>
-      repositorio.cambiarPrecio(idVariante, datos),
+      reportes.tras(repositorio.cambiarPrecio(idVariante, datos)),
   };
 }
 

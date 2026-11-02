@@ -8,7 +8,7 @@ import { crearModuloCarrito } from './modules/carrito/index.js';
 import { crearModuloCatalogo } from './modules/catalogo/index.js';
 import { crearModuloCheckout } from './modules/checkout/index.js';
 import { crearModuloPedidos } from './modules/pedidos/index.js';
-import { crearModuloReportes } from './modules/reportes/index.js';
+import { crearInvalidadorReportes, crearModuloReportes } from './modules/reportes/index.js';
 import { crearModuloBitacora } from './modules/bitacora/index.js';
 import { crearModuloConfiguracion } from './modules/configuracion/index.js';
 import { crearModuloCupones } from './modules/cupones/index.js';
@@ -29,6 +29,7 @@ import {
 import { registrarPeticiones } from './shared/observability/index.js';
 import type { PasarelaPago } from './shared/pasarela/index.js';
 import { relojDelSistema, type Reloj } from './shared/reloj/index.js';
+import type { Cache } from './shared/cache/index.js';
 import { generarDocumentoOpenApi } from './shared/openapi/index.js';
 
 const LIMITE_CUERPO_JSON = '100kb';
@@ -51,6 +52,8 @@ export interface DependenciasApp {
   versionesSesion: VersionesSesion;
   /** N-03: el adaptador de la pasarela (la simulada, con estado en SQL Server). */
   pasarela: PasarelaPago;
+  /** A-11: la caché de reportes (Redis); nunca lanza. */
+  cache: Cache;
   /** La hora actual (las pruebas la fijan). */
   reloj?: Reloj;
 }
@@ -65,8 +68,10 @@ export function crearApp({
   limitadores,
   versionesSesion,
   pasarela,
+  cache,
   reloj = relojDelSistema,
 }: DependenciasApp): Express {
+  const reportes = crearInvalidadorReportes(cache);
   const app = express();
   app.disable('x-powered-by');
   // nginx está delante: req.ip y el protocolo salen de X-Forwarded-* (necesario para rate limit en E2).
@@ -92,10 +97,10 @@ export function crearApp({
 
   const v1 = express.Router();
   v1.use(crearModuloSistema({ redis: verificadorRedis, instancia, logger }));
-  v1.use('/auth', crearModuloAuth({ tokens: tokensAcceso, limitadores, logger }));
+  v1.use('/auth', crearModuloAuth({ tokens: tokensAcceso, limitadores, logger, reportes }));
 
   const autenticar = crearAutenticar({ tokens: tokensAcceso, versiones: versionesSesion });
-  const sesiones = crearSesiones(tokensAcceso, logger);
+  const sesiones = crearSesiones(tokensAcceso, logger, reportes);
   v1.use(
     '/usuarios',
     crearModuloUsuarios({
@@ -103,22 +108,24 @@ export function crearApp({
       sesiones,
       versiones: versionesSesion,
       limitadorContrasena: limitadores.cambioContrasena,
+      reportes,
     }),
   );
   v1.use(crearModuloDirecciones({ autenticar }));
-  v1.use(crearModuloCatalogo({ autenticar }));
+  v1.use(crearModuloCatalogo({ autenticar, reportes }));
   v1.use('/inventario', crearModuloInventario({ autenticar }));
   v1.use(crearModuloCupones({ autenticar }));
   v1.use(crearModuloEnvios({ autenticar }));
-  v1.use(crearModuloConfiguracion({ autenticar }));
-  v1.use(crearModuloCheckout({ autenticar, pasarela, logger, reloj }));
-  v1.use(crearModuloPedidos({ autenticar, pasarela, logger }));
-  v1.use(crearModuloReportes({ autenticar }));
+  v1.use(crearModuloConfiguracion({ autenticar, reportes }));
+  v1.use(crearModuloCheckout({ autenticar, pasarela, logger, reloj, reportes }));
+  v1.use(crearModuloPedidos({ autenticar, pasarela, logger, reportes }));
+  v1.use(crearModuloReportes({ autenticar, cache }));
   v1.use(crearModuloBitacora({ autenticar }));
   v1.use(
     crearModuloCarrito({
       autenticar,
       limitadorCreacion: limitadores.carritoInvitado,
+      reportes,
     }),
   );
   app.use('/api/v1', v1);
