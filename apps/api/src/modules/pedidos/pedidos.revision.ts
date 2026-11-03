@@ -121,7 +121,7 @@ export function crearRevisionService({
     const enPasarela = await enLaPasarela(() => pasarela.consultarReembolso(llave));
     if (enPasarela.estado !== 'Procesado') return;
     await repositorio.completarReembolsoProcesado(idReembolso, enPasarela.idReembolso);
-    throw new AppError('REEMBOLSO_YA_PROCESADO');
+    throw new AppError('REEMBOLSO_YA_PROCESADO', { detalles: { estado: 'Completado' } });
   }
 
   /**
@@ -143,7 +143,7 @@ export function crearRevisionService({
       reembolso.fechaActualizacion,
       SEGUNDOS_ANTES_DE_RESOLVER_A_MANO,
     );
-    throw new AppError('REEMBOLSO_SIN_COBRO');
+    throw new AppError('REEMBOLSO_SIN_COBRO', { detalles: { estado: 'NoAplica' } });
   }
 
   async function pedidoResuelto(idPedido: number | null): Promise<Pedido | null> {

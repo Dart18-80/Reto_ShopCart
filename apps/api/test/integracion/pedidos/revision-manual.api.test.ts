@@ -452,7 +452,10 @@ describe('reembolsos Fallido resueltos a mano (E9-H04)', () => {
     const respuesta = await resolverReembolso(tokenAdmin, idReembolso);
 
     expect(respuesta.status).toBe(409);
-    expect(leerError(respuesta).codigo).toBe('REEMBOLSO_SIN_COBRO');
+    expect(leerError(respuesta)).toMatchObject({
+      codigo: 'REEMBOLSO_SIN_COBRO',
+      detalles: { estado: 'NoAplica' },
+    });
     expect(await reembolsoDe(idPedido)).toMatchObject({
       Estado: 'NoAplica',
       IDTransaccionReembolso: null,
@@ -523,7 +526,10 @@ describe('reembolsos Fallido resueltos a mano (E9-H04)', () => {
     const otraVez = await resolverReembolso(tokenAdmin, idReembolso);
 
     expect(respuesta.status).toBe(409);
-    expect(leerError(respuesta).codigo).toBe('REEMBOLSO_YA_PROCESADO');
+    expect(leerError(respuesta)).toMatchObject({
+      codigo: 'REEMBOLSO_YA_PROCESADO',
+      detalles: { estado: 'Completado' },
+    });
     expect(await reembolsoDe(idPedido)).toMatchObject({
       Estado: 'Completado',
       IDTransaccionReembolso: enLaPasarela.reembolsos[0]?.IDReembolso,

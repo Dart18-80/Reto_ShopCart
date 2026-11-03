@@ -278,6 +278,7 @@ describe('resolución manual de un reembolso Fallido (E9-H04, decisión del PO)'
     await expect(servicio.resolverReembolso(5, RESOLUCION)).rejects.toMatchObject({
       codigo: 'REEMBOLSO_SIN_COBRO',
       status: 409,
+      detalles: { estado: 'NoAplica' },
     });
     expect(repositorio.marcarReembolsoNoAplica).toHaveBeenCalledWith(
       5,
@@ -352,6 +353,7 @@ describe('resolución manual de un reembolso Fallido (E9-H04, decisión del PO)'
     await expect(servicio.resolverReembolso(5, RESOLUCION)).rejects.toMatchObject({
       codigo: 'REEMBOLSO_YA_PROCESADO',
       status: 409,
+      detalles: { estado: 'Completado' },
     });
     expect(repositorio.completarReembolsoProcesado).toHaveBeenCalledWith(5, 'SIMR-1');
     expect(repositorio.resolverReembolso).not.toHaveBeenCalled();

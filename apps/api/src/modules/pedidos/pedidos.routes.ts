@@ -12,6 +12,7 @@ import {
   devolucionRegistradaSchema,
   pagoEnRevisionSchema,
   pedidoSchema,
+  errorResolucionReembolsoSchema,
   reembolsoSchema,
   resolucionPagoSchema,
   resumenPedidoGestionSchema,
@@ -165,7 +166,12 @@ registroOpenApi.registerPath({
   request: { params: paramsIdReembolsoSchema, body: json(resolverReembolsoSchema) },
   responses: {
     200: { description: 'El reembolso resuelto', ...json(z.object({ datos: reembolsoSchema })) },
-    ...respuestasError(400, 401, 403, 404, 409, 504),
+    ...respuestasError(400, 401, 403, 404, 504),
+    409: {
+      description:
+        'Conflicto de estado. Con REEMBOLSO_YA_PROCESADO y REEMBOLSO_SIN_COBRO el reembolso sí cambió: detalles.estado dice en qué estado quedó (Completado o NoAplica)',
+      ...json(errorResolucionReembolsoSchema),
+    },
   },
 });
 registroOpenApi.registerPath({

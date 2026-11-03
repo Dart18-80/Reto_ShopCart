@@ -142,6 +142,21 @@ export const cancelacionSchema = z
   })
   .openapi('Cancelacion');
 
+/**
+ * E9-H04 (decisión del PO): REEMBOLSO_YA_PROCESADO y REEMBOLSO_SIN_COBRO responden 409 aunque el reembolso sí cambió;
+ * `detalles.estado` dice en qué estado quedó (Completado o NoAplica), sin tener que releerlo.
+ */
+export const errorResolucionReembolsoSchema = z
+  .object({
+    error: z.object({
+      codigo: z.string(),
+      mensaje: z.string(),
+      detalles: z.object({ estado: z.enum(ESTADOS_REEMBOLSO) }).optional(),
+      requestId: z.uuid(),
+    }),
+  })
+  .openapi('ErrorResolucionReembolso');
+
 export const reembolsoSchema = z
   .object({
     idReembolso: z.number().int(),
