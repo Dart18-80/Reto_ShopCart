@@ -6,7 +6,9 @@ RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/web/package.json apps/web/
 COPY packages/shared/package.json packages/shared/
-# "..." instala también las dependencias de workspace de la web (@shopcart/shared).
+COPY packages/contrato/package.json packages/contrato/
+# "..." instala también las dependencias de workspace de la web (@shopcart/shared y @shopcart/contrato; de este
+# solo se usan tipos, que el build borra, así que no hace falta copiar su código).
 RUN pnpm install --frozen-lockfile --filter @shopcart/web...
 COPY tsconfig.base.json ./
 COPY packages/shared/tsconfig.json packages/shared/tsconfig.build.json packages/shared/

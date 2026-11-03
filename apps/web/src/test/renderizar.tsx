@@ -1,21 +1,23 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { render } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
+import { crearQueryClient } from '../shared/api';
 
 interface OpcionesRenderizar {
   /** URL inicial del router en memoria. */
   ruta?: string;
 }
 
-// Provisional (F1-H01): F1-H03 usa el QueryClient de la aplicación con sus reintentos apagados y F1-H04 agrega la
-// sesión con un rol.
+// El QueryClient de la aplicación con los reintentos apagados: un error se ve en el primer intento. F1-H04
+// agrega la sesión con un rol.
 function crearQueryClientDePrueba() {
-  return new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  });
+  const queryClient = crearQueryClient();
+  const { queries } = queryClient.getDefaultOptions();
+  queryClient.setDefaultOptions({ queries: { ...queries, retry: false } });
+  return queryClient;
 }
 
 /** Monta `ui` con un QueryClient nuevo sin reintentos y un router en memoria que muestra `ui` en toda ruta. */
