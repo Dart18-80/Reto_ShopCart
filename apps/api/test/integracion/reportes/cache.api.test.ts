@@ -151,10 +151,10 @@ describe('caché de reportes con invalidación por versión (E7-H04, A-11)', () 
         .set(comoCliente(cliente.token)),
       z.object({ lineas: z.array(z.object({ idDetallePedido: z.number() })) }),
     );
-    const { FechaLocal: hoy } = await unaFila<{ FechaLocal: string }>('SP_Pruebas_FechaLocal', {
-      FechaUtc: { tipo: sql.DateTime2(3), valor: new Date() },
-    });
-    const antes = await resumenDelDia(replica1, hoy);
+    // Un día propio: otros archivos registran devoluciones hoy en paralelo. Registrar la devolución invalida; moverla
+    // a ese día directo en la base no, así que el reporte solo la ve si la invalidación funcionó.
+    const dia = enElAnio('03-10');
+    expect(Number((await resumenDelDia(replica1, dia)).devoluciones)).toBe(0);
 
     const devolucion = await request(replica2)
       .post(`/api/v1/admin/pedidos/${String(pedido.idPedido)}/devoluciones`)
@@ -163,10 +163,16 @@ describe('caché de reportes con invalidación por versión (E7-H04, A-11)', () 
         motivo: 'Talla equivocada',
         lineas: [{ idDetallePedido: lineas[0]?.idDetallePedido, cantidad: 1 }],
       });
-    const despues = await resumenDelDia(replica1, hoy);
+    const { devolucion: registrada } = leerDatos(
+      devolucion,
+      z.object({ devolucion: z.object({ idDevolucion: z.number() }) }),
+    );
+    await ejecutarSP('SP_Pruebas_MoverFechaDevolucion', {
+      IDDevolucion: { tipo: sql.Int, valor: registrada.idDevolucion },
+      FechaUtc: { tipo: sql.DateTime2(3), valor: new Date(`${dia}T18:00:00Z`) },
+    });
 
-    expect(devolucion.status).toBe(201);
-    expect(Number(despues.devoluciones) - Number(antes.devoluciones)).toBeCloseTo(50, 2);
+    expect(Number((await resumenDelDia(replica1, dia)).devoluciones)).toBeCloseTo(50, 2);
   });
 
   it('tocar un carrito abandonado o cambiar el precio de su variante se ve en los carritos abandonados', async () => {
