@@ -13,7 +13,8 @@ import {
 } from './contrato.ts';
 import { FOTO, RAIZ_CONTRATO } from './documento.ts';
 
-const MODULOS_WEB = fileURLToPath(new URL('../../../apps/web/src/modules', import.meta.url));
+// Los *.api.ts de los módulos y el de la sesión (shared/api/sesion/sesion.api.ts: refresh y logout, F1-H04).
+const FUENTES_WEB = fileURLToPath(new URL('../../../apps/web/src', import.meta.url));
 const ESTRICTO = process.argv.includes('--estricto');
 
 const leerJson = async <T>(archivo: string) =>
@@ -21,8 +22,8 @@ const leerJson = async <T>(archivo: string) =>
 
 async function rutasDeLaWeb() {
   const fuentes = [];
-  for await (const archivo of glob('*/*.api.ts', { cwd: MODULOS_WEB })) {
-    fuentes.push(await readFile(join(MODULOS_WEB, archivo), 'utf8'));
+  for await (const archivo of glob('**/*.api.ts', { cwd: FUENTES_WEB })) {
+    fuentes.push(await readFile(join(FUENTES_WEB, archivo), 'utf8'));
   }
   return fuentes.flatMap(rutasUsadas);
 }

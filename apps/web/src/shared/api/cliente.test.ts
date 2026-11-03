@@ -1,7 +1,7 @@
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
 import { servidor } from '../../test/servidor';
-import { crearClienteApi } from './cliente';
+import { crearClienteApi, type SesionDelCliente } from './cliente';
 import { ErrorApi } from './ErrorApi';
 
 const REQUEST_ID = '6f1c2a9e-0b6d-4c1e-9a55-1b8f0b7c3d21';
@@ -20,7 +20,14 @@ async function errorDe(llamada: Promise<unknown>): Promise<ErrorApi> {
   throw new Error('La llamada debía lanzar un ErrorApi');
 }
 
-const sinSesion = crearClienteApi({ obtenerToken: () => null });
+/** Una sesión que no cambia: estas pruebas son del cliente; la renovación se prueba en conexion.test.tsx. */
+const sesionFija = (token: string | null): SesionDelCliente => ({
+  token: () => token,
+  esperarRehidratacion: () => Promise.resolve(),
+  renovar: () => Promise.resolve(null),
+});
+
+const sinSesion = crearClienteApi(sesionFija(null));
 
 describe('cliente api: errores del backend → ErrorApi (A-06)', () => {
   it('un 400 de validación conserva los detalles por campo', async () => {
@@ -104,7 +111,7 @@ describe('cliente api: token y respuestas exitosas', () => {
       }),
     );
 
-    await crearClienteApi({ obtenerToken: () => 'token-de-prueba' }).GET('/api/v1/carrito');
+    await crearClienteApi(sesionFija('token-de-prueba')).GET('/api/v1/carrito');
 
     expect(autorizacion).toBe('Bearer token-de-prueba');
   });
