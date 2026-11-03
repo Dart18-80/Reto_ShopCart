@@ -10,7 +10,7 @@
 --                    intento (UX_Reembolso_PorIntento: uno solo, nunca más de lo capturado), con una llave
 --                    determinista; lo procesa el flujo de siempre. El intento queda Anulado: un reintento con su
 --                    llave responde PAGO_NO_COMPLETADO
--- Bajo bloqueo, en el orden de la cancelación (pedido → intento): si ya no está EnRevision, 50707 (resolver dos
+-- Bajo bloqueo, primero el pedido y después el intento: si ya no está EnRevision, 50707 (resolver dos
 -- veces responde 409); si la resolución no corresponde a su caso, 50708. La resolución queda en el intento (quién,
 -- cuándo y el motivo) y en la bitácora (TR_Pedidos_PagoBitacora). Solo el Administrador.
 -- Devuelve el intento resuelto, su pedido y el reembolso creado.
@@ -42,7 +42,10 @@ BEGIN
     BEGIN TRY
         BEGIN TRAN;
 
-        -- El pedido se bloquea antes que el intento, como en la cancelación: sin ciclos entre las dos.
+        -- El pedido se bloquea primero, como en todo camino que llega al intento. En SinCobro el intento se toma
+        -- antes que las variantes y el cupón (excepción al orden de la cancelación): no hay ciclo, porque el
+        -- bloqueo del pedido serializa a quien toque este intento y ningún proceso toma variantes y luego el
+        -- intento de un pedido existente.
         SET @IDPedido = (SELECT p.IDPedido FROM dbo.Pedido AS p WHERE p.IDIntentoPago = @IDIntentoPago);
         IF @IDPedido IS NOT NULL
             SELECT @Bloqueado = p.IDPedido

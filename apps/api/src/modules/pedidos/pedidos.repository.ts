@@ -335,6 +335,8 @@ export const pedidosRepository = {
       IDPedido: { tipo: sql.Int, valor: idPedido },
       Motivo: { tipo: sql.NVarChar(250), valor: motivo },
     });
+    // Invariante: SP_Pedidos_Cancelar rechaza un pago EnRevision (50706) y solo SinCobro cancela con el intento
+    // Anulado, así que siempre deja un reembolso.
     if (fila === undefined || fila.IDReembolso === null)
       throw new Error('SP_Pedidos_Cancelar no devolvió el reembolso');
     return fila.IDReembolso;
