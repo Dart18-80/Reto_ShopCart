@@ -76,6 +76,7 @@ packages/
 **React Router 8 en modo *data*** (`createBrowserRouter`; `RouterProvider` desde `react-router/dom`).
 
 - **Una sola definición de rutas con sus roles**, de la que salen el guardián y los menús. Es imposible que el menú muestre un enlace que el guardián bloquea, o al revés.
+- **Cada ruta declara quién entra:** los roles con sesión y si un invitado también, copiados del `autorizar(...)` de su ruta del backend. El carrito admite invitados y Clientes, no al personal (`autorizarSiHaySesion('Cliente')`).
 - **Tres áreas con carga diferida y su propio `errorElement`:**
 
 | Área | Quién | Contenido |
@@ -84,7 +85,7 @@ packages/
 | Cuenta | Cualquier usuario con sesión | Perfil, contraseña, direcciones (Cliente) |
 | Backoffice | Operador y Admin (los menús cambian por rol) | Catálogo, precios, inventario, pedidos, devoluciones, revisión de pagos, cupones, envíos, configuración, usuarios, bitácora, dashboard, exportaciones |
 
-  Un Cliente nunca descarga el código del backoffice, y si una pantalla falla solo cae su área.
+  Un Cliente nunca descarga el código del backoffice (el layout y cada página se cargan dentro de su guardián), y si una pantalla falla solo cae su área.
 - **El guardián es experiencia de usuario; la autoridad es el backend (RF-01).**
   - Sin sesión → login, y al entrar regresa a la URL que pedía.
   - Con sesión pero sin el rol → página "Sin permiso" (el equivalente de un 403), no una redirección silenciosa.

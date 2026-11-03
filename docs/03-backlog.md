@@ -769,7 +769,7 @@ El orden de construcción, por módulos (F1, módulos 1 a 11 y F6), está en [`0
 | F1-H02 | Contrato: foto del OpenAPI, tipos y cobertura | Must | 0.75 | Hecha |
 | F1-H03 | Cliente `api`, `ErrorApi` y `QueryClient` | Must | 0.75 | Hecha |
 | F1-H04 | Sesión con renovación transparente | Must | 1.5 | Hecha |
-| F1-H05 | Rutas, áreas, layouts y control por rol | Must | 1.0 | Lista |
+| F1-H05 | Rutas, áreas, layouts y control por rol | Must | 1.0 | Hecha |
 | F1-H06 | Componentes de datos: `EstadoVista`, `TablaServidor` y URL | Must | 1.0 | Lista |
 | F1-H07 | Formularios, formato y prenda | Must | 1.0 | Lista |
 | F1-H08 | Base de E2E y pruebas transversales | Must | 0.75 | Lista |

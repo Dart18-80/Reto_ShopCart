@@ -1,8 +1,10 @@
-import { QueryClientProvider } from '@tanstack/react-query';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { createBrowserRouter } from 'react-router';
+import { RouterProvider } from 'react-router/dom';
 import { crearQueryClient, sesion } from '../shared/api';
-import { Aplicacion } from './Aplicacion';
+import { Proveedores } from './Proveedores';
+import { crearRutas } from './router';
 
 /** Arranca la aplicación en `raiz`. Devuelve el QueryClient y cómo desmontarla (las pruebas lo usan). */
 export function iniciarAplicacion(raiz: HTMLElement) {
@@ -16,12 +18,13 @@ export function iniciarAplicacion(raiz: HTMLElement) {
     queryClient.clear();
   });
 
+  const router = createBrowserRouter(crearRutas());
   const root = createRoot(raiz);
   root.render(
     <StrictMode>
-      <QueryClientProvider client={queryClient}>
-        <Aplicacion />
-      </QueryClientProvider>
+      <Proveedores queryClient={queryClient}>
+        <RouterProvider router={router} />
+      </Proveedores>
     </StrictMode>,
   );
 
