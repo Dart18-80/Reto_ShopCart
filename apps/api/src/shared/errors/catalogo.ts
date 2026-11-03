@@ -252,6 +252,12 @@ export const CATALOGO = {
     numeroSql: 50709,
     mensaje: 'Solo se resuelve a mano un reembolso Fallido.',
   },
+  // Decisión del PO (E9-H04): un pedido solo avanza desde Pagado con su cobro Capturado.
+  PAGO_NO_CAPTURADO: {
+    http: 409,
+    numeroSql: 50710,
+    mensaje: 'El cobro de este pedido aún no se confirma.',
+  },
   COBRO_SIN_CAPTURA: {
     http: 409,
     mensaje:

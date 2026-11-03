@@ -3,6 +3,7 @@
 -- La transición debe existir en TransicionEstadoPedido para el rol del actor (50701); TR_Pedidos_ValidarTransicion
 -- lo vuelve a exigir ante cualquier UPDATE. Cancelado, DevueltoParcial y Devuelto no se alcanzan por aquí: los
 -- escriben la cancelación (con su reembolso) y el SP de devoluciones (que deriva el estado de lo devuelto).
+-- Desde Pagado exige el cobro Capturado (50710); el trigger también.
 -- Escribe el estado y su HistorialEstadoPedido (usuario, fecha y hora, anterior, nuevo y motivo) en la misma
 -- transacción y devuelve el pedido (SP_Pedidos_ObtenerDetalle).
 CREATE OR ALTER PROCEDURE dbo.SP_Pedidos_CambiarEstado
@@ -42,10 +43,13 @@ BEGIN
         SELECT @IDActual = p.IDEstadoPedido FROM dbo.Pedido AS p WITH (UPDLOCK, ROWLOCK) WHERE p.IDPedido = @IDPedido;
         IF @IDActual IS NULL
             THROW 50001, N'El pedido no existe.', 1;
-        -- Decisión del PO (cierre de la Fase 1): con el pago en revisión manual (V019), el pedido no avanza.
-        IF EXISTS (SELECT 1 FROM dbo.Pedido AS p JOIN dbo.IntentoPago AS i ON i.IDIntentoPago = p.IDIntentoPago
-                   WHERE p.IDPedido = @IDPedido AND i.Estado = 'EnRevision')
-            THROW 50706, N'El pago de este pedido está en verificación: no puede avanzar hasta resolverlo.', 1;
+        -- Decisión del PO (E9-H04): desde Pagado solo se avanza con el cobro Capturado (no con la captura
+        -- pendiente ni con el pago EnRevision). Así un intento EnRevision con pedido solo existe en Pagado, donde
+        -- SinCobro lo puede cancelar. Capturado es final: leerlo sin bloqueo no deja pasar nada indebido.
+        IF @EstadoEsperado = 'Pagado'
+           AND NOT EXISTS (SELECT 1 FROM dbo.Pedido AS p JOIN dbo.IntentoPago AS i ON i.IDIntentoPago = p.IDIntentoPago
+                           WHERE p.IDPedido = @IDPedido AND i.Estado = 'Capturado')
+            THROW 50710, N'El cobro de este pedido aún no se confirma.', 1;
 
         -- sqlserver-sp §9.4: concurrencia optimista sobre el estado.
         UPDATE dbo.Pedido

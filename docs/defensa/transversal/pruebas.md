@@ -105,8 +105,8 @@ El detalle de cada escenario de falla está en [infraestructura.md](infraestruct
 | RF-06 todo o nada en la reserva | [reservar-existencia.test.ts:58](../../../apps/api/test/integracion/inventario/reservar-existencia.test.ts#L58 "todo o nada") | integración |
 | RF-06 sin cobro doble | [pagar.api.test.ts:152](../../../apps/api/test/integracion/checkout/pagar.api.test.ts#L152 "doble clic con la misma llave") | integración |
 | RF-06 timeout y reintento en otra réplica | [pagar.api.test.ts:262](../../../apps/api/test/integracion/checkout/pagar.api.test.ts#L262 "el reintento de 0119 en la otra réplica") | integración |
-| RF-07 transiciones en tres capas | [estados.api.test.ts:113](../../../apps/api/test/integracion/pedidos/estados.api.test.ts#L113 "segunda capa (SP)"), [estados.api.test.ts:152](../../../apps/api/test/integracion/pedidos/estados.api.test.ts#L152 "tercera defensa (trigger)") | integración |
-| N-08 mapa del servicio = tabla | [estados.api.test.ts:219](../../../apps/api/test/integracion/pedidos/estados.api.test.ts#L219 "cada (origen, destino, rol) del mapa está en la tabla") | integración |
+| RF-07 transiciones en tres capas | [estados.api.test.ts:114](../../../apps/api/test/integracion/pedidos/estados.api.test.ts#L114 "segunda capa (SP)"), [estados.api.test.ts:153](../../../apps/api/test/integracion/pedidos/estados.api.test.ts#L153 "tercera defensa (trigger)") | integración |
+| N-08 mapa del servicio = tabla | [estados.api.test.ts:220](../../../apps/api/test/integracion/pedidos/estados.api.test.ts#L220 "cada (origen, destino, rol) del mapa está en la tabla") | integración |
 | M-01 ledger append-only | [ledger.test.ts:19](../../../apps/api/test/integracion/esquema/ledger.test.ts#L19 "rechaza %s") | integración |
 | RF-09 bitácora con actor | [bitacora.test.ts:119](../../../apps/api/test/integracion/esquema/bitacora.test.ts#L119 "una escritura auditada sin contexto falla con CONTEXTO_NO_ESTABLECIDO") | integración |
 | A-18 contexto del actor | [ejecutar-sp.test.ts:51](../../../apps/api/test/integracion/shared/ejecutar-sp.test.ts#L51 "el SP recibe @IDUsuarioActor, @RolActor y @RequestId") | integración |
@@ -172,4 +172,4 @@ La prueba retiene el `sp_getapplock` como si fuera la otra réplica y verifica q
 
 ### ¿Las transiciones de estado se prueban solo en el servicio?
 No: hay una prueba por capa (servicio, SP y trigger) y otra que compara el mapa del servicio con la tabla `TransicionEstadoPedido`.
-**Muéstralo en:** [estados.api.test.ts:152](../../../apps/api/test/integracion/pedidos/estados.api.test.ts#L152 "un UPDATE directo con una transición inválida se revierte")
+**Muéstralo en:** [estados.api.test.ts:153](../../../apps/api/test/integracion/pedidos/estados.api.test.ts#L153 "un UPDATE directo con una transición inválida se revierte")

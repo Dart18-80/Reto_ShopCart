@@ -3,6 +3,7 @@ import request from 'supertest';
 import { z } from 'zod';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { crearApp } from '../../../src/app.js';
+import { crearPasarelaSimulada } from '../../../src/shared/adapters/pasarela-simulada.js';
 import {
   TRANSICIONES,
   type Transicion,
@@ -13,8 +14,8 @@ import { dependenciasDePrueba } from '../../app-de-prueba.js';
 import { iniciarSesion, leerSesion } from '../auth/apoyo-auth.js';
 import { usarBaseDePruebas } from '../base-de-pruebas.js';
 import { comoCliente } from '../carrito/apoyo-carrito.js';
-import { metodoEnvio } from '../checkout/apoyo-checkout.js';
-import { comoActor } from '../datos-de-prueba.js';
+import { metodoEnvio, moverArrendamiento, pagar } from '../checkout/apoyo-checkout.js';
+import { comoActor, unaFila } from '../datos-de-prueba.js';
 import { pedidoPagado } from './apoyo-pedidos.js';
 
 usarBaseDePruebas();
@@ -230,7 +231,7 @@ describe('el mapa del servicio coincide con TransicionEstadoPedido (E6-H02, N-08
 });
 
 describe('pedido con el pago en revisión (cierre de la Fase 1)', () => {
-  it('no puede avanzar de estado: 409 PAGO_EN_REVISION y el cliente lo ve "EnVerificacion"', async () => {
+  it('no puede avanzar de estado: 409 PAGO_NO_CAPTURADO y el cliente lo ve "EnVerificacion"', async () => {
     const { cliente, pedido } = await pedidoPagado(app, estandar);
     await ejecutarSP('SP_Pruebas_PonerPagoEnRevision', {
       IDPedido: { tipo: sql.Int, valor: pedido.idPedido },
@@ -243,7 +244,7 @@ describe('pedido con el pago en revisión (cierre de la Fase 1)', () => {
     const lista = await request(app).get('/api/v1/pedidos').set(comoCliente(cliente.token));
 
     expect(respuesta.status).toBe(409);
-    expect(leerError(respuesta)).toMatchObject({ codigo: 'PAGO_EN_REVISION' });
+    expect(leerError(respuesta)).toMatchObject({ codigo: 'PAGO_NO_CAPTURADO' });
     expect(leerDatos(detalle, z.object({ estadoPago: z.string(), estado: z.string() }))).toEqual({
       estadoPago: 'EnVerificacion',
       estado: 'Pagado',
@@ -261,5 +262,86 @@ describe('pedido con el pago en revisión (cierre de la Fase 1)', () => {
       .set(comoCliente(cliente.token));
 
     expect(leerDatos(detalle, z.object({ estadoPago: z.string() })).estadoPago).toBe('Confirmado');
+  });
+});
+
+describe('el pedido solo avanza desde Pagado con el cobro capturado (decisión del PO, E9-H04)', () => {
+  const capturaCaida = crearApp(
+    dependenciasDePrueba({
+      pasarela: {
+        ...crearPasarelaSimulada(),
+        capturar: () => Promise.reject(new Error('pasarela caída')),
+      },
+    }),
+  );
+
+  const intentoDe = (idPedido: number) =>
+    unaFila<{ IDIntentoPago: string; Estado: string }>('SP_Pruebas_LeerIntentoDePedido', {
+      IDPedido: { tipo: sql.Int, valor: idPedido },
+    });
+
+  it('con la captura pendiente el Operador no puede preparar: 409 PAGO_NO_CAPTURADO y nada cambia', async () => {
+    const { pedido } = await pedidoPagado(capturaCaida, estandar);
+    expect((await intentoDe(pedido.idPedido)).Estado).toBe('Autorizado');
+
+    const respuesta = await cambiar(pedido.idPedido, 'Pagado', 'EnPreparacion');
+
+    expect(respuesta.status).toBe(409);
+    expect(leerError(respuesta)).toMatchObject({
+      codigo: 'PAGO_NO_CAPTURADO',
+      mensaje: 'El cobro de este pedido aún no se confirma.',
+    });
+    expect(await historialDe(pedido.idPedido)).toHaveLength(1);
+  });
+
+  it('tras la captura (el reintento con la misma llave), el Operador sí lo prepara', async () => {
+    const { cliente, pedido, llave } = await pedidoPagado(capturaCaida, estandar);
+    const intento = await intentoDe(pedido.idPedido);
+    await moverArrendamiento(intento.IDIntentoPago, -1);
+    expect((await pagar(app, cliente.token, llave)).status).toBe(200);
+    expect((await intentoDe(pedido.idPedido)).Estado).toBe('Capturado');
+
+    const respuesta = await cambiar(pedido.idPedido, 'Pagado', 'EnPreparacion');
+
+    expect(respuesta.status).toBe(200);
+  });
+
+  it('la base es la autoridad: el SP rechaza sin pasar por el servicio', async () => {
+    const { pedido } = await pedidoPagado(capturaCaida, estandar);
+
+    const llamada = comoActor(operador.idUsuario, 'Operador', () =>
+      ejecutarSP('SP_Pedidos_CambiarEstado', {
+        IDPedido: { tipo: sql.Int, valor: pedido.idPedido },
+        EstadoEsperado: { tipo: sql.VarChar(20), valor: 'Pagado' },
+        EstadoNuevo: { tipo: sql.VarChar(20), valor: 'EnPreparacion' },
+      }),
+    );
+
+    await expect(llamada).rejects.toMatchObject({ codigo: 'PAGO_NO_CAPTURADO', status: 409 });
+  });
+
+  it('un UPDATE directo también se rechaza (TR_Pedidos_ValidarTransicion) y se revierte', async () => {
+    const { pedido } = await pedidoPagado(capturaCaida, estandar);
+
+    const directo = comoActor(operador.idUsuario, 'Operador', () =>
+      ejecutarSP('SP_Pruebas_CambiarEstadoPedido', {
+        IDPedido: { tipo: sql.Int, valor: pedido.idPedido },
+        CodigoEstado: { tipo: sql.VarChar(20), valor: 'EnPreparacion' },
+      }),
+    );
+
+    await expect(directo).rejects.toMatchObject({ codigo: 'PAGO_NO_CAPTURADO' });
+    expect(await historialDe(pedido.idPedido)).toHaveLength(1);
+  });
+
+  it('con la captura pendiente el pedido sí se puede cancelar (la regla solo frena el avance)', async () => {
+    const { cliente, pedido } = await pedidoPagado(capturaCaida, estandar);
+
+    const respuesta = await request(app)
+      .post(`/api/v1/pedidos/${String(pedido.idPedido)}/cancelar`)
+      .set(comoCliente(cliente.token))
+      .send({ motivo: 'Ya no lo necesito' });
+
+    expect(respuesta.status).toBe(200);
   });
 });

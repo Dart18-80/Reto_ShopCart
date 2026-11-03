@@ -103,6 +103,24 @@ describe('triggers con varias filas en un solo UPDATE', () => {
     ]);
   });
 
+  it('TR_Pedidos_ValidarTransicion rechaza el UPDATE completo si un solo pedido no tiene el cobro capturado', async () => {
+    const [capturado, sinCaptura] = [
+      await crearPedido(await crearUsuario()),
+      await crearPedido(await crearUsuario()),
+    ];
+    await ejecutarSP('SP_Pruebas_PonerPagoEnRevision', {
+      IDPedido: { tipo: sql.Int, valor: sinCaptura },
+    });
+    const idOperador = await crearUsuario();
+
+    const intento = comoActor(idOperador, 'Operador', () =>
+      cambiarEstados(capturado, 'EnPreparacion', sinCaptura, 'EnPreparacion'),
+    );
+
+    await expect(intento).rejects.toMatchObject({ codigo: 'PAGO_NO_CAPTURADO' });
+    expect(await leerBitacora('Pedido', capturado)).toEqual([]);
+  });
+
   it('TR_Cupones_Bitacora registra una fila por cupón, cada una con su valor anterior', async () => {
     const [cupon1, cupon2] = [await crearCupon(5), await crearCupon(5)];
     const idAdministrador = await crearUsuario();
