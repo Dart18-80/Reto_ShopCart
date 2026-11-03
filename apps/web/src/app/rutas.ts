@@ -1,23 +1,3 @@
-import {
-  Boxes,
-  ClipboardList,
-  Download,
-  FileClock,
-  LayoutDashboard,
-  MapPin,
-  Package,
-  Settings,
-  ShieldAlert,
-  ShoppingBag,
-  ShoppingCart,
-  Store,
-  TicketPercent,
-  Truck,
-  Undo2,
-  UserRound,
-  Users,
-  type LucideIcon,
-} from 'lucide-react';
 import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
 import type { EstadoSesion } from '../shared/api';
 import {
@@ -33,9 +13,12 @@ import {
 
 export type Area = 'tienda' | 'cuenta' | 'backoffice';
 
+/** Los grupos de la barra lateral del backoffice (Figma, Barra lateral backoffice). */
+export type GrupoMenu = 'Ventas' | 'Catálogo' | 'Administración';
+
 export interface EntradaMenu {
   etiqueta: string;
-  icono: LucideIcon;
+  grupo?: GrupoMenu;
 }
 
 export interface DefinicionPagina {
@@ -58,6 +41,8 @@ export const RAIZ_DE_AREA: Record<Area, string> = {
   backoffice: '/backoffice',
 };
 
+export const RUTA_CARRITO = '/carrito';
+
 /** Carga diferida de una página exportada con nombre: el paquete de cada página se descarga al visitarla. */
 const diferida = <M>(cargar: () => Promise<M>, elegir: (modulo: M) => ComponentType) =>
   lazy(async () => ({ default: elegir(await cargar()) }));
@@ -71,17 +56,16 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ruta: '/',
     area: 'tienda',
     acceso: PUBLICO,
-    menu: { etiqueta: 'Catálogo', icono: Store },
+    menu: { etiqueta: 'Catálogo' },
     pagina: diferida(
       () => import('../modules/catalogo/paginas/CatalogoPagina'),
       (m) => m.CatalogoPagina,
     ),
   },
   {
-    ruta: '/carrito',
+    ruta: RUTA_CARRITO,
     area: 'tienda',
     acceso: INVITADO_O_CLIENTE,
-    menu: { etiqueta: 'Carrito', icono: ShoppingCart },
     pagina: diferida(
       () => import('../modules/carrito/paginas/CarritoPagina'),
       (m) => m.CarritoPagina,
@@ -100,7 +84,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ruta: '/pedidos',
     area: 'tienda',
     acceso: SOLO_CLIENTE,
-    menu: { etiqueta: 'Mis pedidos', icono: ShoppingBag },
+    menu: { etiqueta: 'Mis pedidos' },
     pagina: diferida(
       () => import('../modules/pedidos/paginas/MisPedidosPagina'),
       (m) => m.MisPedidosPagina,
@@ -119,7 +103,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ruta: '/cuenta/perfil',
     area: 'cuenta',
     acceso: CON_SESION,
-    menu: { etiqueta: 'Perfil', icono: UserRound },
+    menu: { etiqueta: 'Perfil' },
     pagina: diferida(
       () => import('../modules/usuarios/paginas/PerfilPagina'),
       (m) => m.PerfilPagina,
@@ -129,7 +113,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ruta: '/cuenta/direcciones',
     area: 'cuenta',
     acceso: SOLO_CLIENTE,
-    menu: { etiqueta: 'Direcciones', icono: MapPin },
+    menu: { etiqueta: 'Direcciones' },
     pagina: diferida(
       () => import('../modules/direcciones/paginas/DireccionesPagina'),
       (m) => m.DireccionesPagina,
@@ -139,7 +123,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ruta: '/backoffice/dashboard',
     area: 'backoffice',
     acceso: SOLO_ADMINISTRADOR,
-    menu: { etiqueta: 'Dashboard', icono: LayoutDashboard },
+    menu: { etiqueta: 'Dashboard', grupo: 'Ventas' },
     pagina: diferida(
       () => import('../modules/reportes/paginas/DashboardPagina'),
       (m) => m.DashboardPagina,
@@ -149,57 +133,67 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ruta: '/backoffice/pedidos',
     area: 'backoffice',
     acceso: PERSONAL,
-    menu: { etiqueta: 'Pedidos', icono: ClipboardList },
+    menu: { etiqueta: 'Pedidos', grupo: 'Ventas' },
     pagina: diferida(
       () => import('../modules/pedidos/paginas/GestionPedidosPagina'),
       (m) => m.GestionPedidosPagina,
     ),
   },
   {
-    ruta: '/backoffice/inventario',
-    area: 'backoffice',
-    acceso: PERSONAL,
-    menu: { etiqueta: 'Inventario', icono: Boxes },
-    pagina: diferida(
-      () => import('../modules/inventario/paginas/InventarioPagina'),
-      (m) => m.InventarioPagina,
-    ),
-  },
-  {
-    ruta: '/backoffice/catalogo',
-    area: 'backoffice',
-    acceso: SOLO_ADMINISTRADOR,
-    menu: { etiqueta: 'Catálogo', icono: Package },
-    pagina: diferida(
-      () => import('../modules/catalogo/paginas/GestionCatalogoPagina'),
-      (m) => m.GestionCatalogoPagina,
-    ),
-  },
-  {
-    ruta: '/backoffice/reembolsos',
-    area: 'backoffice',
-    acceso: SOLO_ADMINISTRADOR,
-    menu: { etiqueta: 'Reembolsos', icono: Undo2 },
-    pagina: diferida(
-      () => import('../modules/pedidos/paginas/ReembolsosPagina'),
-      (m) => m.ReembolsosPagina,
-    ),
-  },
-  {
     ruta: '/backoffice/pagos-en-revision',
     area: 'backoffice',
     acceso: SOLO_ADMINISTRADOR,
-    menu: { etiqueta: 'Pagos en revisión', icono: ShieldAlert },
+    menu: { etiqueta: 'Pagos en revisión', grupo: 'Ventas' },
     pagina: diferida(
       () => import('../modules/pedidos/paginas/PagosEnRevisionPagina'),
       (m) => m.PagosEnRevisionPagina,
     ),
   },
   {
+    ruta: '/backoffice/reembolsos',
+    area: 'backoffice',
+    acceso: SOLO_ADMINISTRADOR,
+    menu: { etiqueta: 'Reembolsos', grupo: 'Ventas' },
+    pagina: diferida(
+      () => import('../modules/pedidos/paginas/ReembolsosPagina'),
+      (m) => m.ReembolsosPagina,
+    ),
+  },
+  {
+    ruta: '/backoffice/exportaciones',
+    area: 'backoffice',
+    acceso: SOLO_ADMINISTRADOR,
+    menu: { etiqueta: 'Exportaciones', grupo: 'Ventas' },
+    pagina: diferida(
+      () => import('../modules/exportaciones/paginas/ExportacionesPagina'),
+      (m) => m.ExportacionesPagina,
+    ),
+  },
+  {
+    ruta: '/backoffice/catalogo',
+    area: 'backoffice',
+    acceso: SOLO_ADMINISTRADOR,
+    menu: { etiqueta: 'Productos y precios', grupo: 'Catálogo' },
+    pagina: diferida(
+      () => import('../modules/catalogo/paginas/GestionCatalogoPagina'),
+      (m) => m.GestionCatalogoPagina,
+    ),
+  },
+  {
+    ruta: '/backoffice/inventario',
+    area: 'backoffice',
+    acceso: PERSONAL,
+    menu: { etiqueta: 'Inventario', grupo: 'Catálogo' },
+    pagina: diferida(
+      () => import('../modules/inventario/paginas/InventarioPagina'),
+      (m) => m.InventarioPagina,
+    ),
+  },
+  {
     ruta: '/backoffice/cupones',
     area: 'backoffice',
     acceso: SOLO_ADMINISTRADOR,
-    menu: { etiqueta: 'Cupones', icono: TicketPercent },
+    menu: { etiqueta: 'Cupones', grupo: 'Catálogo' },
     pagina: diferida(
       () => import('../modules/cupones/paginas/CuponesPagina'),
       (m) => m.CuponesPagina,
@@ -209,7 +203,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ruta: '/backoffice/envios',
     area: 'backoffice',
     acceso: SOLO_ADMINISTRADOR,
-    menu: { etiqueta: 'Envíos', icono: Truck },
+    menu: { etiqueta: 'Envíos', grupo: 'Administración' },
     pagina: diferida(
       () => import('../modules/envios/paginas/MetodosEnvioPagina'),
       (m) => m.MetodosEnvioPagina,
@@ -219,7 +213,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ruta: '/backoffice/configuracion',
     area: 'backoffice',
     acceso: SOLO_ADMINISTRADOR,
-    menu: { etiqueta: 'Configuración', icono: Settings },
+    menu: { etiqueta: 'Configuración', grupo: 'Administración' },
     pagina: diferida(
       () => import('../modules/configuracion/paginas/ConfiguracionPagina'),
       (m) => m.ConfiguracionPagina,
@@ -229,7 +223,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ruta: '/backoffice/usuarios',
     area: 'backoffice',
     acceso: SOLO_ADMINISTRADOR,
-    menu: { etiqueta: 'Usuarios', icono: Users },
+    menu: { etiqueta: 'Usuarios', grupo: 'Administración' },
     pagina: diferida(
       () => import('../modules/usuarios/paginas/UsuariosPagina'),
       (m) => m.UsuariosPagina,
@@ -239,23 +233,19 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ruta: '/backoffice/bitacora',
     area: 'backoffice',
     acceso: SOLO_ADMINISTRADOR,
-    menu: { etiqueta: 'Bitácora', icono: FileClock },
+    menu: { etiqueta: 'Bitácora', grupo: 'Administración' },
     pagina: diferida(
       () => import('../modules/bitacora/paginas/BitacoraPagina'),
       (m) => m.BitacoraPagina,
     ),
   },
-  {
-    ruta: '/backoffice/exportaciones',
-    area: 'backoffice',
-    acceso: SOLO_ADMINISTRADOR,
-    menu: { etiqueta: 'Exportaciones', icono: Download },
-    pagina: diferida(
-      () => import('../modules/exportaciones/paginas/ExportacionesPagina'),
-      (m) => m.ExportacionesPagina,
-    ),
-  },
 ];
+
+/** Si esta sesión puede abrir una ruta de la definición (el encabezado lo usa para el carrito). */
+export function puedeAbrir(ruta: string, estado: EstadoSesion): boolean {
+  const pagina = PAGINAS.find((p) => p.ruta === ruta);
+  return pagina !== undefined && permisoPara(pagina.acceso, estado) === 'permitido';
+}
 
 export interface PaginaDeMenu extends DefinicionPagina {
   menu: EntradaMenu;

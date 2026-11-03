@@ -5,7 +5,7 @@ export function LayoutTienda() {
   return (
     <div className="flex min-h-dvh flex-col">
       <EncabezadoTienda />
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
+      <main className="flex w-full flex-1 flex-col gap-6 p-4 md:p-8">
         <Outlet />
       </main>
     </div>

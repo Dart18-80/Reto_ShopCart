@@ -16,7 +16,7 @@ export function SelectorTema() {
         elegirTema(siguiente);
       }}
     >
-      <Icono aria-hidden />
+      <Icono aria-hidden className="size-5" />
     </Button>
   );
 }

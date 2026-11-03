@@ -18,7 +18,7 @@ type RespuestaRefresh = Respuesta<'/api/v1/auth/refresh', 'post'>;
 
 const ENTRADAS_SOLO_ADMINISTRADOR = [
   'Dashboard',
-  'Catálogo',
+  'Productos y precios',
   'Reembolsos',
   'Pagos en revisión',
   'Cupones',
@@ -58,6 +58,9 @@ describe('router: guardián por rol', () => {
     for (const etiqueta of ENTRADAS_SOLO_ADMINISTRADOR) {
       expect(within(menu).queryByRole('link', { name: etiqueta })).not.toBeInTheDocument();
     }
+    expect(within(menu).getByRole('list', { name: 'Ventas' })).toBeInTheDocument();
+    expect(within(menu).getByRole('list', { name: 'Catálogo' })).toBeInTheDocument();
+    expect(within(menu).queryByRole('list', { name: 'Administración' })).not.toBeInTheDocument();
   });
 
   it('un Operador que entra por URL a una página del Administrador ve Sin permiso', async () => {
@@ -82,18 +85,54 @@ describe('router: guardián por rol', () => {
     expect(router.state.location.pathname).toBe('/backoffice/pedidos');
   });
 
-  it('la tienda muestra a cada quien su menú: el Cliente ve su carrito y sus pedidos, el personal el backoffice', async () => {
-    const { unmount } = renderizarRutas(crearRutas(), { ruta: '/', rol: 'Cliente' });
+  it('la tienda muestra a cada quien su encabezado: invitado, Cliente y personal', async () => {
+    const invitado = renderizarRutas(crearRutas(), { ruta: '/' });
     await screen.findByRole('heading', { name: 'Catálogo' });
+    expect(screen.getByRole('link', { name: 'Ingresar' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Carrito' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Mis pedidos' })).not.toBeInTheDocument();
+    invitado.unmount();
+
+    const cliente = renderizarRutas(crearRutas(), { ruta: '/', rol: 'Cliente' });
+    await screen.findByRole('heading', { name: 'Catálogo' });
+    expect(screen.getByRole('link', { name: 'Mi cuenta' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Carrito' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Mis pedidos' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Backoffice' })).not.toBeInTheDocument();
-    unmount();
+    cliente.unmount();
 
     renderizarRutas(crearRutas(), { ruta: '/', rol: 'Administrador' });
     await screen.findByRole('heading', { name: 'Catálogo' });
     expect(screen.getByRole('link', { name: 'Backoffice' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Carrito' })).not.toBeInTheDocument();
+  });
+
+  it('el buscador del encabezado lleva al catálogo con el texto en la URL', async () => {
+    const { usuario, router } = renderizarRutas(crearRutas(), { ruta: '/carrito' });
+    await screen.findByRole('heading', { name: 'Carrito' });
+
+    await usuario.type(
+      screen.getByRole('searchbox', { name: 'Buscar productos' }),
+      'camisa{Enter}',
+    );
+
+    expect(router.state.location.pathname).toBe('/');
+    expect(new URLSearchParams(router.state.location.search).get('texto')).toBe('camisa');
+  });
+
+  it('cerrar sesión desde la barra lateral del backoffice lleva a ingresar', async () => {
+    servidor.use(http.post('/api/v1/auth/logout', () => new HttpResponse(null, { status: 204 })));
+    const { usuario, router } = renderizarRutas(crearRutas(), {
+      ruta: '/backoffice/pedidos',
+      rol: 'Operador',
+    });
+    await screen.findByRole('heading', { name: 'Gestión de pedidos' });
+    expect(screen.getByText('Luis Operador')).toBeInTheDocument();
+
+    await usuario.click(screen.getByRole('button', { name: 'Cerrar sesión' }));
+
+    expect(await screen.findByRole('heading', { name: 'Ingresar' })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/ingresar');
   });
 
   it('una ruta desconocida muestra No encontrado', async () => {
