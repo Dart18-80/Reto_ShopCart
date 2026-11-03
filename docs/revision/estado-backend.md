@@ -1,6 +1,6 @@
 # Estado del backend (Fase 1)
 
-Revisión completa sobre `fd600e4` (2026-11-02), al cierre de la Fase 1: E0 a E9 están **Hecha** en el tablero (`docs/03-backlog.md` §5). Cada cifra se recalculó sobre ese commit, con scripts sobre el código, el router real, los reportes JSON de Vitest y el reporte de cobertura; nada se copió de una revisión anterior, salvo la medición de rendimiento de §7, que dice de cuándo es.
+Revisión completa sobre `1be3c26` (2026-11-02), al cierre de la Fase 1: E0 a E9 están **Hecha** en el tablero (`docs/03-backlog.md` §5) salvo E9-H04 (revisión manual de pagos), **En revisión**. Cada cifra se recalculó sobre ese commit, con scripts sobre el código, el router real, los reportes JSON de Vitest y el reporte de cobertura; nada se copió de una revisión anterior, salvo la medición de rendimiento de §7, que dice de cuándo es.
 
 | § | Contenido |
 |---|---|
@@ -16,11 +16,11 @@ Revisión completa sobre `fd600e4` (2026-11-02), al cierre de la Fase 1: E0 a E9
 
 ## 0. Resumen y verificación
 
-- **Alcance:** 15 módulos, 95 rutas (93 en `/api/v1` y 2 de Swagger), 125 stored procedures, 9 vistas, 15 funciones de tabla, 10 triggers y 41 tablas (3 de ellas ledger append-only).
-- **Pruebas:** 526 unitarias de la API, 757 de integración (incluidas 5 de telemetría), 251 unitarias y 11 de integración del migrador, 2 de concurrencia (RNF-3), 28 de entorno y 2 de humo de la imagen.
-- **Cobertura combinada** (unitarias e integración en una sola corrida, `pnpm test:cobertura`): **líneas 94.5 %, ramas 86.45 %, funciones 95.04 %, sentencias 93.22 %** (en la verificación final; entre corridas varía una o dos líneas, porque un reintento depende del tiempo).
-- **Coherencia:** el router y 01 coinciden en las 95 rutas; los objetos de base y los 65 códigos de error coinciden con 02; los 60 IDs citados en el código existen en `docs/` (§3).
-- **Riesgos abiertos:** ningún CRÍTICO ni ALTO. Queda una decisión pendiente del PO: cómo resuelve el Admin un intento de pago `EnRevision` (§8).
+- **Alcance:** 15 módulos, 98 rutas (96 en `/api/v1` y 2 de Swagger), 130 stored procedures, 9 vistas, 15 funciones de tabla, 12 triggers y 41 tablas (3 de ellas ledger append-only).
+- **Pruebas:** 551 unitarias de la API, 779 de integración (incluidas 5 de telemetría), 258 unitarias y 11 de integración del migrador, 2 de concurrencia (RNF-3), 28 de entorno y 2 de humo de la imagen.
+- **Cobertura combinada** (unitarias e integración en una sola corrida, `pnpm test:cobertura`): **líneas 94.68 %, ramas 86.93 %, funciones 95.03 %, sentencias 93.49 %** (en la verificación final; entre corridas varía una o dos líneas, porque un reintento depende del tiempo).
+- **Coherencia:** el router y 01 coinciden en las 98 rutas; los objetos de base y los 71 códigos de error coinciden con 02; los 60 IDs citados en el código existen en `docs/` (§3).
+- **Riesgos abiertos:** ningún CRÍTICO ni ALTO. La revisión manual de pagos (E9-H04) ya resuelve los intentos `EnRevision`; queda una decisión del PO para el caso de un pedido ya despachado cuyo pago resulta sin cobro (§8).
 
 **Verificación desde cero** sobre `99a2781`: en un clon nuevo con `core.autocrlf=true`, con el entorno de Docker levantado desde cero (123 s), todas las suites en verde, sin el perfil de observabilidad y con él. También `pnpm ledger:verificar` y `pnpm test:cobertura` (1,283 pruebas en una sola corrida).
 
@@ -52,20 +52,20 @@ Pruebas: casos (archivos), del reporte JSON de Vitest. Las de integración se as
 | envios | 2 | 2 | MetodoEnvio | — | FU_Envios_Costos, FU_Envios_EnvioGratis | TR_Envios_Bitacora | 2 (1) | 0 (0)¹ | 98 % · 87 % |
 | configuracion | 2 | 2 | ParametroSistema | — | — | TR_Configuracion_Bitacora | 0 (0) | 12 (1) | 100 % · 96 % |
 | checkout | 4 | 11 + 4 `SP_Pasarela_*` | SesionCheckout, LineaSesionCheckout, Reserva, IntentoPago, PasarelaAutorizacion, PasarelaReembolso | — | — | — | 51 (4) | 65 (4) | 95 % · 89 % |
-| pedidos | 9 | 14 | Pedido, DetallePedido, Devolucion, DetalleDevolucion, Reembolso, HistorialEstadoPedido, EstadoPedido, TransicionEstadoPedido | VW_Pedidos_Historial | — | TR_Pedidos_Bitacora, TR_Pedidos_ValidarTransicion | 19 (2) | 46 (4) | 95 % · 78 % |
+| pedidos | 12 | 19 | Pedido, DetallePedido, Devolucion, DetalleDevolucion, Reembolso, HistorialEstadoPedido, EstadoPedido, TransicionEstadoPedido | VW_Pedidos_Historial | — | TR_Pedidos_Bitacora, TR_Pedidos_PagoBitacora, TR_Pedidos_ReembolsoBitacora, TR_Pedidos_ValidarTransicion | 34 (3) | 63 (5) | 95 % · 82 % |
 | reportes | 6 | 5 (`SP_Dashboard_*`) | — (lee vistas) | VW_Dashboard_HechosVenta, VW_Dashboard_VentasPorCategoria | — | — | 32 (2) | 18 (3) | 99 % · 85 % |
 | bitacora | 1 | 1 | Bitacora | — | — | — | 1 (1) | 5 (2) | 100 % · 100 % |
-| exportaciones | 4 | 10 | SolicitudExportacion, EstadoExportacion | VW_Exportaciones_Solicitudes | — | — | 40 (4) | 11 (1) | 92 % · 78 % |
+| exportaciones | 4 | 10 | SolicitudExportacion, EstadoExportacion | VW_Exportaciones_Solicitudes | — | — | 40 (4) | 16 (1) | 94 % · 81 % |
 | sistema | 1 | 5 | SolicitudIdempotente | — | FU_Sistema_FechaLocal | — | 8 (1) | 1 (1) | 98 % · 81 % |
-| shared, app y transversales | 2 (Swagger) | 1 (`SP_Semilla_GenerarDatosDemo`) | HistorialMigracion (migrador) | — | — | — | 311 (33) | 180 (21) | 88 % · 86 % |
-| **Total API** | **95** | **125** | **41** | **9** | **15** | **10** | **526 (55)** | **757 (65)** | **94.5 % · 86.45 %** |
-| Migrador (`database/migrator`) | — | — | — | — | — | — | 251 (7) | 11 (2) | — |
+| shared, app y transversales | 2 (Swagger) | 1 (`SP_Semilla_GenerarDatosDemo`) | HistorialMigracion (migrador) | — | — | — | 321 (35) | 180 (21) | 88 % · 87 % |
+| **Total API** | **98** | **130** | **41** | **9** | **15** | **12** | **551 (58)** | **779 (66)** | **94.68 % · 86.93 %** |
+| Migrador (`database/migrator`) | — | — | — | — | — | — | 258 (7) | 11 (2) | — |
 
 ¹ Los casos de envíos viven en `test/integracion/carrito/envios.api.test.ts` y `secuencial/configuracion-envios.api.test.ts` (contados en carrito y configuración).
 
-Además: 2 pruebas de concurrencia (`test/concurrencia`), 28 de entorno en 6 archivos (`test/entorno`: seguridad HTTP, contenedores sin root, RNF-2, apagado ordenado, observabilidad y tiempo real) y 2 de humo de la imagen (`test/humo`). Los 84 SPs y 3 triggers de prueba de `database/test/` solo existen en `shopcart_test` y no se cuentan.
+Además: 2 pruebas de concurrencia (`test/concurrencia`), 28 de entorno en 6 archivos (`test/entorno`: seguridad HTTP, contenedores sin root, RNF-2, apagado ordenado, observabilidad y tiempo real) y 2 de humo de la imagen (`test/humo`). Los 88 SPs y 3 triggers de prueba de `database/test/` solo existen en `shopcart_test` y no se cuentan.
 
-**Cobertura por pieza compartida** (líneas · ramas): `shared/adapters` 97 % · 85 %, `shared/db` 98 % · 91 %, `shared/errors` 100 % · 94 %, `shared/http` 98 % · 97 %, `shared/jobs` 100 % · 93 %, `shared/observability` 73 % · 50 %, `shared/config` y `shared/dinero` 100 % · 100 %. Lo más bajo es el arranque (`server.ts`, `telemetria.ts`, `apagado.ts`: 56 % · 50 %) y la telemetría: la prueba de seguridad de trazas levanta la API compilada en otro proceso, que v8 no mide; el apagado se prueba aparte (`unit/apagado.test.ts`, `entorno/apagado.test.ts`).
+**Cobertura por pieza compartida** (líneas · ramas): `shared/adapters` 97 % · 85 %, `shared/db` 97 % · 91 %, `shared/errors` 100 % · 94 %, `shared/http` 99 % · 97 %, `shared/jobs` 100 % · 93 %, `shared/observability` 73 % · 50 %, `shared/config` y `shared/dinero` 100 % · 100 %. Lo más bajo es el arranque (`server.ts`, `telemetria.ts`, `apagado.ts`: 56 % · 50 %) y la telemetría: la prueba de seguridad de trazas levanta la API compilada en otro proceso, que v8 no mide; el apagado se prueba aparte (`unit/apagado.test.ts`, `entorno/apagado.test.ts`).
 
 ## 2. Matriz de criterios y pruebas
 
@@ -93,6 +93,8 @@ Rutas relativas a `apps/api/test/`, salvo las que empiezan con `database/`. Los 
 | RF-07 | Una reserva vencida libera la existencia sola | `integracion/secuencial/tareas-periodicas.test.ts` › "una sesión vencida pasa a Expirada y libera sus reservas y el uso del cupón" | integración |
 | RF-07 | No se devuelve más de lo vendido | `integracion/pedidos/devoluciones.api.test.ts` › "no se devuelve más de lo vendido: 422 DEVOLUCION_EXCEDE_VENDIDO con lo que queda por línea" | integración |
 | RF-07 | Cada cambio de estado registra quién, cuándo, de qué a qué | `integracion/pedidos/estados.api.test.ts` › "recorre Pagado → EnPreparacion → Despachado → Entregado y registra quién, cuándo, de qué a qué y por qué" | integración |
+| N-09 (E9-H04) | El Admin resuelve un pago `EnRevision` con la evidencia de la pasarela; dos resoluciones a la vez: una pasa | `integracion/pedidos/revision-manual.api.test.ts` › "CobroVerificado con la captura en la pasarela: el intento queda Capturado, el pedido avanza y queda en la bitácora", "CobroVerificado sin captura en la pasarela se rechaza y no cambia nada", "SinCobro cancela el pedido por el flujo de siempre, sin reembolso, con el motivo del Admin", "Reembolsar un cobro sin pedido: reembolso por el monto del intento, devuelto en la pasarela", "dos resoluciones simultáneas del mismo intento: una pasa y la otra recibe 409", "el SP, bajo bloqueo, rechaza la segunda resolución del mismo intento con 50707", "Operador y Cliente reciben 403 al resolver un pago"; `unit/modules/pedidos/pedidos.revision.test.ts` | integración + unitaria |
+| N-09 (E9-H04) | Un pedido con el pago `EnRevision` no se cancela; un reembolso `Fallido` se resuelve a mano | `integracion/pedidos/cancelacion.api.test.ts` › "el cliente recibe 409 PAGO_EN_REVISION con un mensaje claro y nada cambia", "la gestión tampoco lo cancela: SinCobro es la única vía"; `integracion/pedidos/revision-manual.api.test.ts` › "pasa a ResueltoManual con motivo, referencia, quién y cuándo, y queda en la bitácora", "el reintento del Admin ya no lo toca y resolverlo otra vez responde 409" | integración |
 | RF-08 | Paginación y filtros en el servidor | `integracion/pedidos/consulta.api.test.ts` › "filtra por cliente y por estado, con el cliente de cada pedido", "el rango de fechas usa FechaPagoLocal (días de Guatemala), con los extremos incluidos"; `integracion/secuencial/paginacion.api.test.ts` (5 listados y kardex); `integracion/secuencial/bitacora-paginacion.api.test.ts` | integración |
 | RF-08 | Reportes sin cancelados y con devoluciones descontadas | `integracion/reportes/dashboard.api.test.ts` › "el resumen cuenta pedidos no cancelados en su día de pago: …", "las devoluciones se restan en su propio día de Guatemala (05:59 UTC → día anterior; 06:00 → mismo día)", "ventas por categoría y top productos del periodo" | integración |
 | RF-09 | La bitácora no se modifica ni se elimina, y se puede demostrar | `integracion/esquema/ledger.test.ts` › "%s rechaza %s" (Bitacora, MovimientoKardex e HistorialEstadoPedido × Modificar/Eliminar, error 37359); `database/migrator/test/integracion/ledger.test.ts` › "genera el digest, lo guarda fuera de la base y verifica el ledger contra todos los guardados", "si un digest guardado no corresponde a la base, la verificación falla" | integración |
@@ -117,7 +119,7 @@ Rutas relativas a `apps/api/test/`, salvo las que empiezan con `database/`. Los 
 
 ### 3.1 Endpoints de 01 vs el router
 
-El router registra **95 rutas**: 93 bajo `/api/v1` en los 15 `*.routes.ts`, y `GET /api/docs/openapi.json` y `/api/docs` fuera de `/api/v1` (`apps/api/src/app.ts:178`, `:181`). 01 §5.2 (`docs/01-arquitectura.md:210-224`) las nombra todas: 87 con su método y ruta, y 8 abreviadas sin ambigüedad («… `/activar` y `/desactivar`» en catálogo y usuarios, y los `GET` del dashboard que comparten el método de la fila). **95 de 95 coinciden**; ninguna ruta del router falta en 01 y ningún endpoint de 01 falta en el router. A-24 (`POST /admin/reportes/{reporte}/exportaciones`, 01:567) y A-25 (`GET /admin/reportes/eventos`, 01:568) coinciden con `exportaciones.routes.ts:49` y `reportes.routes.ts:120`.
+El router registra **98 rutas**: 96 bajo `/api/v1` en los 15 `*.routes.ts`, y `GET /api/docs/openapi.json` y `/api/docs` fuera de `/api/v1` (`apps/api/src/app.ts:178`, `:181`). 01 §5.2 las nombra todas: 90 con su método y ruta, y 8 abreviadas sin ambigüedad («… `/activar` y `/desactivar`» en catálogo y usuarios, y los `GET` del dashboard que comparten el método de la fila); las 3 de E9-H04 están en la fila de pedidos. **98 de 98 coinciden**; ninguna ruta del router falta en 01 y ningún endpoint de 01 falta en el router. A-24 (`POST /admin/reportes/{reporte}/exportaciones`, 01:567) y A-25 (`GET /admin/reportes/eventos`, 01:568) coinciden con `exportaciones.routes.ts:49` y `reportes.routes.ts:120`.
 
 Sin diferencias.
 
@@ -127,18 +129,18 @@ Cada `R__*.sql` crea un solo objeto con el nombre de su archivo.
 
 | Tipo | En `database/programmability` | En 02 | Faltan en database/ | Faltan en 02 |
 |---|---|---|---|---|
-| SPs | 125 | 125 (§5) | 0 | 0 |
+| SPs | 130 | 130 (§5) | 0 | 0 |
 | Vistas | 9 | 9 (§4) | 0 | 0 |
 | Funciones | 15 | 15 (§4) | 0 | 0 |
-| Triggers | 10 | 10, con su nombre (§3.9 y §3.10) | 0 | 0 |
+| Triggers | 12 | 12, con su nombre (§3.9 y §3.10) | 0 | 0 |
 
-La API invoca por nombre 111 SPs distintos y los 111 existen. Los 14 que no invoca: los 12 que 02 §5 marca **(interno)**, `SP_Pedidos_ListarTransiciones` (lo usa una prueba, como dice 02 §5) y `SP_Semilla_GenerarDatosDemo` (lo ejecuta `S006__datos_demo.sql`).
+La API invoca por nombre 115 SPs distintos y los 115 existen. Los 15 que no invoca: los 13 que 02 §5 marca **(interno)** (el decimotercero es `SP_Pedidos_AplicarCancelacion`, el cuerpo de la cancelación que comparten `SP_Pedidos_Cancelar` y la resolución `SinCobro`), `SP_Pedidos_ListarTransiciones` (lo usa una prueba, como dice 02 §5) y `SP_Semilla_GenerarDatosDemo` (lo ejecuta `S006__datos_demo.sql`).
 
 Sin diferencias.
 
 ### 3.3 Códigos de 02 §8 vs catalogo.ts
 
-**65 de 65 códigos coinciden** en nombre, número y HTTP entre 02 §8 y `apps/api/src/shared/errors/catalogo.ts`: 53 con número y 12 que nacen en la API. Los SPs lanzan 50 números distintos (44 con `THROW` literal y 6 por `THROW @NumeroError` desde `FU_Cupones_Validar`) y los 50 tienen su `numeroSql`. Los tres `numeroSql` que ningún SP lanza tienen su razón:
+**71 de 71 códigos coinciden** en nombre, número y HTTP entre 02 §8 y `apps/api/src/shared/errors/catalogo.ts`: 56 con número y 15 que nacen en la API (E9-H04 agregó 50707, 50708 y 50709, y `COBRO_SIN_CAPTURA`, `COBRO_CAPTURADO` y `PASARELA_SIN_RESPUESTA`). Los SPs lanzan 53 números distintos (47 con `THROW` literal y 6 por `THROW @NumeroError` desde `FU_Cupones_Validar`) y los 53 tienen su `numeroSql`. Los tres `numeroSql` que ningún SP lanza tienen su razón:
 
 | Código | 02 §8 | catalogo.ts | Por qué no hay `THROW` |
 |---|---|---|---|
@@ -171,7 +173,7 @@ Sin diferencias.
 |---|---|---|
 | Frontend SPA (Vite + React): tienda, backoffice y dashboard con gráficas, renovación transparente del token | Fase 2 (F1–F4) | 00:53; 03-backlog §4 (:682-693); README:5, :464; `apps/web/public/index.html:11` |
 | Pantalla del dashboard en tiempo real (cliente `fetch` con streaming) | Fase 2 (el backend está hecho) | 01:568 (A-25); 03-backlog:691 (F4) |
-| Pantallas de revisión manual de pagos (`EnRevision`, reembolsos `Fallido`) | Fase 2. Para los reembolsos hay API (listar y reintentar); para los intentos `EnRevision`, no (§8) | README:465; 00:174 (N-03), :185 (N-09); `pedidos.routes.ts:185-186` |
+| Pantallas de revisión manual de pagos (`EnRevision`, reembolsos `Fallido`) | Fase 2. La API está completa (E9-H04): listar y resolver pagos en revisión, y reintentar o resolver a mano un reembolso | README §8; 00 (N-09); `pedidos.routes.ts` |
 | Script de carga pesada (`database/load/L001`) | F5 (el generador ya acepta `@Pedidos`) | 00:157; 02:940; 03-backlog:692; README:466 |
 | Índice para el filtro de carritos abandonados | F5 (15 ms con 50k, §7) | 03-backlog:692 |
 | Correo (puerto `Notificador` + Mailpit): exportación terminada y recuperación de contraseña | Fuera de la Fase 1 | 00:196 (N-15); README:275, :276 |
@@ -247,8 +249,8 @@ Barrido por ventanas de 6 líneas normalizadas sobre `apps/api/src` (sin vacías
 | Duplicación | Dónde | Estado |
 |---|---|---|
 | Esquema OpenAPI del sobre de paginación | 8 `*.routes.ts` | **Resuelto en 2d6f6fb:** `respuestaPaginadaSchema(fila)` en `shared/openapi`, con una prueba que impide declarar otro |
-| La regla «desde ≤ hasta» con el mismo mensaje | `bitacora.schemas.ts:10-16`, `pedidos.schemas.ts:15-21`, `reportes.schemas.ts:7-13` | Abierto: candidato a un esquema compartido de rango de fechas |
-| La lista de los 5 reportes | `exportaciones.types.ts:4` (`REPORTES_EXPORTABLES`) y `reportes.cache.ts:12` (`REPORTES`), además del `CHECK` de `SolicitudExportacion.Reporte` | Abierto: un reporte nuevo obliga a tocar las dos constantes |
+| La regla «desde ≤ hasta» con el mismo mensaje | `bitacora.schemas.ts`, `pedidos.schemas.ts`, `reportes.schemas.ts` | **Resuelto en d2b786e:** `rangoDeFechasSchema` en `shared/http`, extendido con `safeExtend` |
+| La lista de los 5 reportes | `exportaciones.types.ts` y `reportes.cache.ts`, además del `CHECK` de `SolicitudExportacion.Reporte` | **Resuelto en a867a56:** `REPORTES_EXPORTABLES = REPORTES`; una prueba de integración exporta cada reporte, así que el `CHECK` no puede quedar atrás (dfda798) |
 | Fragmentos de `registerPath` y la lista de dependencias de `crearApp` | `cupones.routes.ts`, `usuarios.routes.ts`; `app.ts` y `server.ts` | No es lógica: la forma de declarar OpenAPI y la firma de la composición |
 
 ### 5.5 Excepciones a las reglas de CLAUDE.md vigentes
@@ -330,8 +332,11 @@ Ningún riesgo CRÍTICO ni ALTO abierto. Los que quedan:
 
 | Riesgo | Origen | Estado | Evidencia |
 |---|---|---|---|
-| Un intento de pago `EnRevision` no tiene endpoint para resolverlo: el pedido queda bloqueado (cancelar o avanzar responde 409 `PAGO_EN_REVISION`) y un cobro capturado sin pedido solo se ve en el log | Revisión manual (cierre de la Fase 1) | **Pendiente de decisión del PO:** propuesta de endpoints de resolución con motivo y bitácora, entregada con esta revisión | `R__SP_Checkout_ResolverIntentoConciliado.sql`; `pedidos.routes.ts:185-186` (solo reembolsos) |
-| Reintentar un reembolso `Fallido` no queda en la bitácora (la tabla `Reembolso` no tiene trigger de bitácora) | Revisión manual | Abierto; entra en la misma propuesta | `R__SP_Pedidos_ReintentarReembolso.sql` |
+| Un pedido que avanzó (por ejemplo, `Despachado`) mientras su cobro esperaba la captura, y cuyo intento después queda `EnRevision` sin cobro, no tiene salida: `SinCobro` responde 50702 (ya no se cancela) y `CobroVerificado` exige la captura | Revisión de E9-H04 | **Pendiente de decisión del PO.** Mientras tanto, el pedido queda en la lista del Admin y nada se cobra ni se reembolsa | `R__SP_Pedidos_AplicarCancelacion.sql` (50702); `pedidos.revision.ts` |
+| `SinCobro` anula una autorización vigente en la pasarela antes de la transacción; si el SP rechaza después (otra resolución ganó, o el pedido ya no se cancela), la autorización queda anulada y el intento sigue `EnRevision` | Revisión de E9-H04 | Aceptado: es el lado seguro (nunca queda dinero retenido) y otra resolución vuelve a consultar la pasarela | `pedidos.revision.ts` |
+| Resolver a mano un reembolso `Fallido` no consulta la pasarela: si la pasarela sí lo había devuelto, el cliente recibiría dos veces | Revisión de E9-H04 | Aceptado por diseño: el Admin lo resuelve con la referencia de la devolución que hizo (decisión del PO) y queda en la bitácora | `R__SP_Pedidos_ResolverReembolso.sql` |
+| La lista de pagos en revisión muestra al Admin la marca y los últimos 4 dígitos de la tarjeta | Revisión de E9-H04 | Aceptado: es lo mismo que guarda el pedido; nunca el número completo ni el CVV | `R__SP_Pedidos_ListarPagosEnRevision.sql` |
+| `V023` cambia columnas, índices y `CHECK` de `Reembolso` en varios lotes; una falla a la mitad dejaría la tabla a medio migrar | Revisión de E9-H04 | Aceptado: se aplica una vez sobre una base que el migrador prueba desde cero en cada corrida | `database/migrations/V023__revision_manual_de_pagos.sql` |
 | nginx es punto único de falla | E0-H05 | Aceptado: mejora de producción (Ingress o ALB) | 01:77 |
 | Filas de un SP sin validar en ejecución (`as T[]`) | Revisión de E0 | Mitigado: política aceptada; montos convertidos con `aMonto` y probados | ejecutar-sp.ts:83; integracion/shared/montos.test.ts |
 | Con Redis caído, la revocación por versión de sesión espera hasta 15 min | E2 (N-15) | Mitigado: acotado a la vida del access token | integracion/adaptadores/versiones-sesion.test.ts |
@@ -340,8 +345,6 @@ Ningún riesgo CRÍTICO ni ALTO abierto. Los que quedan:
 | La última página de listados grandes cuesta ~350 ms con 50k y crece lineal con el OFFSET | Rendimiento | Mitigado: bajo 1 s; candidato a paginar las llaves antes de armar las filas en `SP_Pedidos_Listar` | §7 |
 | El filtro de carritos abandonados no tiene índice | Cierre de E6/E7 | Mitigado: 15 ms con 50k; el índice sigue en F5 | §7; 03-backlog:692 |
 | 3 vulnerabilidades moderadas transitivas en producción (`uuid`, `minimatch` vía `exceljs`) | Verificación de entrega | Abierto: ninguna recibe entrada del usuario | §6 |
-| El migrador no rechaza las contraseñas de ejemplo de `.env.example` en producción (la API sí lo hace con las suyas) | Revisión de seguridad (cierre) | Abierto, baja severidad: el migrador corre una vez y con el mismo `.env` | database/migrator/src/config.ts; apps/api/src/shared/config/index.ts:110 |
 | `SP_Semilla_GenerarDatosDemo` es ejecutable por `shopcart_app`; lo protege `@RolActor = 'Sistema'`, que es un parámetro | Revisión de seguridad (cierre) | Aceptado: el mismo modelo de confianza de todos los SPs (A-18) e idempotente | R__SP_Semilla_GenerarDatosDemo.sql |
-| La regla de rango de fechas y la lista de reportes están duplicadas | Calidad (§5.4) | Abierto, baja severidad | §5.4 |
 
-**Resueltos y verificados hasta este cierre** (no se repiten arriba): Redis como root (380fae3); SQL Server sin fijar (fa31800) y el resto de las imágenes sin digest (859d08d); el respaldo de `filter-branch` con `Co-Authored-By` (solo local, borrado); la documentación desalineada (3c09179, a2a841e, c365608, 047aa14); el sobre de paginación duplicado (2d6f6fb); los `.tmp` de exportaciones huérfanos (a0af0d6); desactivar todos los métodos de envío (d25ba49); el apagado con el mismo plazo que `docker stop` (029c3b6); el orden de capas sin lint (250d796); N-15 por acción, confirmado por el PO (0ea1585); la verificación criptográfica del ledger (5569ca7); el cliente que no podía cambiar lo que él mismo reservó y el cupón retirado por una reserva vencida propia (2502250, ab3a5b1); los hallazgos de la revisión de E9 (20b8356, 8c42bb5).
+**Resueltos y verificados hasta este cierre** (no se repiten arriba): Redis como root (380fae3); SQL Server sin fijar (fa31800) y el resto de las imágenes sin digest (859d08d); el respaldo de `filter-branch` con `Co-Authored-By` (solo local, borrado); la documentación desalineada (3c09179, a2a841e, c365608, 047aa14); el sobre de paginación duplicado (2d6f6fb); los `.tmp` de exportaciones huérfanos (a0af0d6); desactivar todos los métodos de envío (d25ba49); el apagado con el mismo plazo que `docker stop` (029c3b6); el orden de capas sin lint (250d796); N-15 por acción, confirmado por el PO (0ea1585); la verificación criptográfica del ledger (5569ca7); el cliente que no podía cambiar lo que él mismo reservó y el cupón retirado por una reserva vencida propia (2502250, ab3a5b1); los hallazgos de la revisión de E9 (20b8356, 8c42bb5); la revisión manual de pagos `EnRevision` y de reembolsos `Fallido`, con la bitácora de `IntentoPago` y `Reembolso` (d2dda66); el cobro capturado sin reembolso posible si se cancelaba un pedido con el pago `EnRevision`, ahora prohibido por decisión del PO (ec10d1c); las contraseñas de ejemplo en el migrador (f18b635); la regla de rango de fechas y la lista de reportes duplicadas (d2b786e, a867a56).

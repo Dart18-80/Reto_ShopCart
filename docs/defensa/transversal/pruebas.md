@@ -10,16 +10,16 @@ Conteos hechos sobre el repositorio: archivos `*.test.ts` y declaraciones `it(` 
 
 | Piso | Carpeta | Archivos | Declaraciones `it` (de ellas `it.each`) | Casos al correr | Contra qué corre |
 |---|---|---|---|---|---|
-| Unitarias de la API | `apps/api/test/unit` | 55 | 432 (31) | 526 | Nada externo: puertos falsos y `vi.fn` |
-| Unitarias del migrador | `database/migrator/test/*.test.ts` | 7 | 94 (10) | 251 | Archivos del repositorio |
-| Integración de la API | `apps/api/test/integracion` | 64 (43 `*.api.test.ts` con supertest) | 633 (41) | 752 | `shopcart_test` + Redis base 1 |
-| Integración del migrador | `database/migrator/test/integracion` | 1 | 9 | 9 | SQL Server real, `shopcart_test` |
+| Unitarias de la API | `apps/api/test/unit` | 58 | 449 (34) | 551 | Nada externo: puertos falsos y `vi.fn` |
+| Unitarias del migrador | `database/migrator/test/*.test.ts` | 7 | 97 (10) | 258 | Archivos del repositorio |
+| Integración de la API | `apps/api/test/integracion` | 65 (44 `*.api.test.ts` con supertest) | 651 (42) | 774 | `shopcart_test` + Redis base 1 |
+| Integración del migrador | `database/migrator/test/integracion` | 2 | 11 | 11 | SQL Server real, `shopcart_test` |
 | Telemetría | `apps/api/test/telemetria` | 1 | 5 | 5 | API compilada + receptor OTLP en memoria |
 | Concurrencia (RNF-3) | `apps/api/test/concurrencia` | 1 | 2 | 2 | nginx en `http://localhost:8080` |
 | Entorno | `apps/api/test/entorno` | 6 | 19 (4) | 28: 26 sin el perfil de observabilidad (2 omitidas) y 27 con él (1 omitida) | Docker Compose levantado |
 | Humo de la imagen | `apps/api/test/humo` | 1 | 2 | 2 | La imagen `shopcart-api:local` |
 
-Los SPs de prueba son 84 `R__SP_Pruebas_*` y 3 triggers `R__TR_Pruebas_*` en [database/test](../../../database/test).
+Los SPs de prueba son 88 `R__SP_Pruebas_*` y 3 triggers `R__TR_Pruebas_*` en [database/test](../../../database/test).
 
 ## Scripts
 
