@@ -1,0 +1,27 @@
+{
+  "name": "@shopcart/contrato",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "FE-13: foto versionada del OpenAPI de la API y sus tipos generados.",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "exportar": "node scripts/exportar.ts",
+    "verificar": "node scripts/verificar.ts",
+    "cobertura": "node scripts/cobertura.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "openapi-typescript": "^7.13.0",
+    "typescript": "~6.0.3",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
+  }
+}

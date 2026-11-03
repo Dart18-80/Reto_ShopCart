@@ -1,0 +1,7 @@
+[
+  {
+    "metodo": "GET",
+    "ruta": "/api/v1/health",
+    "motivo": "Healthcheck de Docker y de nginx (RNF-4); ninguna pantalla lo consume."
+  }
+]

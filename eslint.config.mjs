@@ -8,7 +8,14 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default defineConfig(
-  globalIgnores(['**/node_modules/', '**/dist/', '**/coverage/', 'docs/']),
+  globalIgnores([
+    '**/node_modules/',
+    '**/dist/',
+    '**/coverage/',
+    'docs/',
+    // FE-13: tipos generados por pnpm openapi:exportar.
+    'packages/contrato/src/openapi.ts',
+  ]),
   js.configs.recommended,
   {
     files: ['**/*.{ts,tsx}'],

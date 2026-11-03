@@ -6,3 +6,7 @@ CLAUDE.md
 .claude/
 LICENSE
 *.sql
+
+# FE-13: generados por pnpm openapi:exportar; su formato lo fija el exportador.
+packages/contrato/openapi.json
+packages/contrato/src/openapi.ts

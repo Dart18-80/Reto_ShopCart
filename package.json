@@ -8,7 +8,7 @@
     "node": ">=24"
   },
   "scripts": {
-    "lint": "eslint . && prettier --check .",
+    "lint": "eslint . && prettier --check . && pnpm openapi:verificar",
     "format": "prettier --write .",
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "pnpm -r --if-present test",
@@ -19,7 +19,10 @@
     "test:cobertura": "pnpm --filter @shopcart/migrator migrar:pruebas && pnpm --filter @shopcart/api test:cobertura",
     "test:concurrencia": "pnpm --filter @shopcart/api test:concurrencia",
     "test:entorno": "pnpm --filter @shopcart/api test:entorno",
-    "test:humo": "docker compose build api-1 && pnpm --filter @shopcart/api test:humo"
+    "test:humo": "docker compose build api-1 && pnpm --filter @shopcart/api test:humo",
+    "openapi:exportar": "pnpm --filter @shopcart/contrato exportar",
+    "openapi:verificar": "pnpm --filter @shopcart/contrato verificar",
+    "contrato:cobertura": "pnpm --filter @shopcart/contrato cobertura"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
