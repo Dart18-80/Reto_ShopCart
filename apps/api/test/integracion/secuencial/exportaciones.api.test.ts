@@ -17,6 +17,7 @@ import {
   crearTareasDeExportaciones,
 } from '../../../src/modules/exportaciones/index.js';
 import { exportacionesRepository } from '../../../src/modules/exportaciones/exportaciones.repository.js';
+import { REPORTES } from '../../../src/modules/reportes/index.js';
 import { crearAlmacenEnDisco } from '../../../src/shared/adapters/almacen-disco.js';
 import { ejecutarSP } from '../../../src/shared/db/index.js';
 import { leerDatos, leerError } from '../../unit/respuestas.js';
@@ -183,6 +184,19 @@ describe('exportación asíncrona de reportes (E7-H05, A-24)', () => {
       estado: 'Completada',
       archivo: `${RUTA}/${String(solicitada.idExportacion)}/archivo`,
     });
+  });
+
+  // La lista de reportes vive en un solo lugar (REPORTES); el CHECK de SolicitudExportacion.Reporte debe aceptarlos
+  // todos, y cada uno se genera.
+  it.each(REPORTES)('el reporte %s se exporta hasta Completada', async (reporte) => {
+    const respuesta = await solicitar(replica1, reporte, {
+      formato: 'pdf',
+      filtros: { desde: enElAnio('02-01'), hasta: enElAnio('02-28') },
+    });
+
+    expect(respuesta.status).toBe(202);
+    const { idExportacion } = leerDatos(respuesta, exportacionSchema);
+    expect(await hastaQueTermine(idExportacion)).toMatchObject({ estado: 'Completada' });
   });
 
   it('una solicitud igual (los mismos filtros en otro orden) devuelve la misma exportación', async () => {
