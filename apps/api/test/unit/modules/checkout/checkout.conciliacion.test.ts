@@ -50,6 +50,7 @@ function preparar(
     anular: vi.fn(() => Promise.resolve()),
     reembolsar: vi.fn(() => Promise.reject(new Error('no se usa'))),
     consultar: vi.fn(() => Promise.resolve(enPasarela ?? { estado: 'NoExiste' as const })),
+    consultarReembolso: vi.fn(() => Promise.reject(new Error('no se usa'))),
   };
   const servicio = crearConciliacionService({
     repositorio,

@@ -37,5 +37,11 @@ export function conTrazas(pasarela: PasarelaPago): PasarelaPago {
         span.setAttribute(ATRIBUTOS.resultadoPasarela, estado.estado);
         return estado;
       }),
+    consultarReembolso: (llave) =>
+      enSpan('pasarela.consultarReembolso', {}, async (span) => {
+        const reembolso = await pasarela.consultarReembolso(llave);
+        span.setAttribute(ATRIBUTOS.resultadoPasarela, reembolso.estado);
+        return reembolso;
+      }),
   };
 }

@@ -3,11 +3,13 @@ import { crearRevisionService } from '../../../../src/modules/pedidos/pedidos.re
 import type {
   PagoParaResolver,
   PagoResuelto,
+  ReembolsoParaResolver,
   ResolucionPago,
 } from '../../../../src/modules/pedidos/pedidos.types.js';
 import {
   PasarelaSinRespuesta,
   type EstadoEnPasarela,
+  type ReembolsoEnPasarela,
 } from '../../../../src/shared/pasarela/index.js';
 import { invalidadorDePrueba } from '../../invalidador-de-prueba.js';
 import { pedidoDePrueba } from './pedido-de-prueba.js';
@@ -25,17 +27,25 @@ const CON_PEDIDO: PagoParaResolver = {
 };
 const SIN_PEDIDO: PagoParaResolver = { ...CON_PEDIDO, idPedido: null };
 const PEDIDO = pedidoDePrueba();
+const REEMBOLSO_FALLIDO: ReembolsoParaResolver = { estado: 'Fallido', llave: LLAVE };
+const NO_PROCESADO: ReembolsoEnPasarela = { estado: 'NoExiste' };
+const PROCESADO: ReembolsoEnPasarela = { estado: 'Procesado', idReembolso: 'SIMR-1' };
+const RESOLUCION = { motivo: 'Devuelto por transferencia', referencia: 'TRF-1' };
 
 function preparar({
   pago = CON_PEDIDO,
   enPasarela = CAPTURADA,
   resuelto = {},
   anulacion = Promise.resolve(),
+  reembolso = REEMBOLSO_FALLIDO,
+  reembolsoEnPasarela = NO_PROCESADO,
 }: {
   pago?: PagoParaResolver | null;
   enPasarela?: EstadoEnPasarela | Error;
   resuelto?: Partial<PagoResuelto>;
   anulacion?: Promise<void>;
+  reembolso?: ReembolsoParaResolver | null;
+  reembolsoEnPasarela?: ReembolsoEnPasarela | Error;
 } = {}) {
   const repositorio = {
     listarPagosEnRevision: vi.fn(),
@@ -53,6 +63,8 @@ function preparar({
           ...resuelto,
         }),
     ),
+    obtenerReembolsoParaResolver: vi.fn(() => Promise.resolve(reembolso)),
+    completarReembolsoProcesado: vi.fn(() => Promise.resolve()),
     resolverReembolso: vi.fn(),
     obtener: vi.fn((idPedido: number) => Promise.resolve(idPedido === 3 ? PEDIDO : null)),
   };
@@ -61,6 +73,11 @@ function preparar({
       enPasarela instanceof Error ? Promise.reject(enPasarela) : Promise.resolve(enPasarela),
     ),
     anular: vi.fn(() => anulacion),
+    consultarReembolso: vi.fn(() =>
+      reembolsoEnPasarela instanceof Error
+        ? Promise.reject(reembolsoEnPasarela)
+        : Promise.resolve(reembolsoEnPasarela),
+    ),
   };
   const reembolsos = { procesarTrasConfirmar: vi.fn(() => Promise.resolve('Completado' as const)) };
   const { reportes, invalidaciones } = invalidadorDePrueba();
@@ -206,5 +223,62 @@ describe('revisión manual de pagos (E9-H04)', () => {
     await expect(
       servicio.resolverPago(7, { resolucion: 'CobroVerificado', motivo: 'x' }),
     ).rejects.toThrow(/pedido 99/);
+  });
+});
+
+describe('resolución manual de un reembolso Fallido (E9-H04, decisión del PO)', () => {
+  it('si la pasarela no lo procesó, lo resuelve a mano con la referencia del Admin', async () => {
+    const { servicio, repositorio, pasarela } = preparar();
+
+    await servicio.resolverReembolso(5, RESOLUCION);
+
+    expect(pasarela.consultarReembolso).toHaveBeenCalledWith(LLAVE);
+    expect(repositorio.resolverReembolso).toHaveBeenCalledWith(5, RESOLUCION);
+    expect(repositorio.completarReembolsoProcesado).not.toHaveBeenCalled();
+  });
+
+  it('si la pasarela ya lo procesó (la respuesta se perdió), queda Completado y la resolución se rechaza', async () => {
+    const { servicio, repositorio } = preparar({ reembolsoEnPasarela: PROCESADO });
+
+    await expect(servicio.resolverReembolso(5, RESOLUCION)).rejects.toMatchObject({
+      codigo: 'REEMBOLSO_YA_PROCESADO',
+      status: 409,
+    });
+    expect(repositorio.completarReembolsoProcesado).toHaveBeenCalledWith(5, 'SIMR-1');
+    expect(repositorio.resolverReembolso).not.toHaveBeenCalled();
+  });
+
+  it('un reembolso inexistente responde 404 sin consultar la pasarela', async () => {
+    const { servicio, pasarela } = preparar({ reembolso: null });
+
+    await expect(servicio.resolverReembolso(5, RESOLUCION)).rejects.toMatchObject({
+      codigo: 'NO_ENCONTRADO',
+      status: 404,
+    });
+    expect(pasarela.consultarReembolso).not.toHaveBeenCalled();
+  });
+
+  it('uno que ya no está Fallido responde 409 sin consultar la pasarela', async () => {
+    const { servicio, pasarela } = preparar({
+      reembolso: { ...REEMBOLSO_FALLIDO, estado: 'Completado' },
+    });
+
+    await expect(servicio.resolverReembolso(5, RESOLUCION)).rejects.toMatchObject({
+      codigo: 'REEMBOLSO_NO_FALLIDO',
+    });
+    expect(pasarela.consultarReembolso).not.toHaveBeenCalled();
+  });
+
+  it('si la pasarela no responde, 504 y nada cambia', async () => {
+    const { servicio, repositorio } = preparar({
+      reembolsoEnPasarela: new PasarelaSinRespuesta('consultarReembolso'),
+    });
+
+    await expect(servicio.resolverReembolso(5, RESOLUCION)).rejects.toMatchObject({
+      codigo: 'PASARELA_SIN_RESPUESTA',
+      status: 504,
+    });
+    expect(repositorio.resolverReembolso).not.toHaveBeenCalled();
+    expect(repositorio.completarReembolsoProcesado).not.toHaveBeenCalled();
   });
 });

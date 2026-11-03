@@ -26,6 +26,7 @@ const pasarelaFalsa: PasarelaPago = {
   anular: () => Promise.reject(new PasarelaSinRespuesta('anular')),
   reembolsar: () => Promise.resolve({ idReembolso: 'r-1' }),
   consultar: () => Promise.resolve({ estado: 'NoExiste' }),
+  consultarReembolso: () => Promise.resolve({ estado: 'Procesado', idReembolso: 'r-1' }),
 };
 
 describe('pasarela con trazas (E9-H01)', () => {
@@ -40,6 +41,7 @@ describe('pasarela con trazas (E9-H01)', () => {
       monto: new Decimal('5.00'),
     });
     await pasarela.consultar('llave-1');
+    await pasarela.consultarReembolso('llave-2');
 
     expect(
       telemetria.spans().map((s) => [s.name, s.attributes['shopcart.pasarela.resultado']]),
@@ -48,6 +50,7 @@ describe('pasarela con trazas (E9-H01)', () => {
       ['pasarela.capturar', 'Ok'],
       ['pasarela.reembolsar', 'Ok'],
       ['pasarela.consultar', 'NoExiste'],
+      ['pasarela.consultarReembolso', 'Procesado'],
     ]);
   });
 

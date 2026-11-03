@@ -268,6 +268,12 @@ export const CATALOGO = {
     mensaje:
       'La pasarela muestra el cobro capturado: verifica el cobro en lugar de cancelar sin cobro.',
   },
+  // Decisión del PO (E9-H04): la pasarela ya había devuelto el dinero; resolverlo a mano lo devolvería dos veces.
+  REEMBOLSO_YA_PROCESADO: {
+    http: 409,
+    mensaje:
+      'La pasarela ya había procesado este reembolso: quedó Completado y no se resuelve a mano.',
+  },
   PASARELA_SIN_RESPUESTA: {
     http: 504,
     mensaje: 'La pasarela no respondió. Vuelve a intentarlo.',

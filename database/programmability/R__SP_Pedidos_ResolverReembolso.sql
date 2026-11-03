@@ -3,6 +3,8 @@
 -- Para los montos ya cuenta como reembolsado: Pedido.MontoReembolsado se sumó al crearlo. Bajo bloqueo: solo
 -- desde Fallido (50709; resolver dos veces responde 409). El job y el reintento nunca lo vuelven a tomar (solo
 -- toman Pendiente y Fallido). Queda en la bitácora (TR_Pedidos_ReembolsoBitacora). Solo el Administrador.
+-- Antes, el servicio consulta el reembolso en la pasarela por su llave: si ya lo procesó, no llega aquí
+-- (SP_Pedidos_CompletarReembolsoProcesado lo deja Completado).
 CREATE OR ALTER PROCEDURE dbo.SP_Pedidos_ResolverReembolso
     @IDReembolso    INT,
     @Motivo         NVARCHAR(250),

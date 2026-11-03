@@ -105,7 +105,7 @@ El apagado ordenado tiene 10 s. Sin colector, vaciar los lotes esperaría el tim
 | Los spans de Redis solo llevan el comando | [seguridad-trazas.test.ts:187](../../../apps/api/test/telemetria/seguridad-trazas.test.ts#L187 "los spans de Redis solo llevan el comando") |
 | Los logs del pago llevan el `trace_id` de su traza | [seguridad-trazas.test.ts:196](../../../apps/api/test/telemetria/seguridad-trazas.test.ts#L196 "los logs de la petición de pago llevan el trace_id") |
 
-Además, los spans de la pasarela nunca llevan la tarjeta: [pasarela-con-trazas.test.ts:64](../../../apps/api/test/unit/shared/observability/pasarela-con-trazas.test.ts#L64 "nunca lleva la tarjeta").
+Además, los spans de la pasarela nunca llevan la tarjeta: [pasarela-con-trazas.test.ts:67](../../../apps/api/test/unit/shared/observability/pasarela-con-trazas.test.ts#L67 "nunca lleva la tarjeta").
 
 ## Alternativas descartadas
 

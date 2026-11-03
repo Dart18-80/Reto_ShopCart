@@ -333,7 +333,6 @@ Ningún riesgo CRÍTICO ni ALTO abierto. Los que quedan:
 | Riesgo | Origen | Estado | Evidencia |
 |---|---|---|---|
 | `SinCobro` anula una autorización vigente en la pasarela antes de la transacción; si el SP rechaza después (otra resolución ganó, o el pedido ya no se cancela), la autorización queda anulada y el intento sigue `EnRevision` | Revisión de E9-H04 | Aceptado por el PO: es el lado seguro (nunca queda dinero retenido) y otra resolución vuelve a consultar la pasarela | `pedidos.revision.ts` |
-| Resolver a mano un reembolso `Fallido` no consulta la pasarela: si la pasarela sí lo había devuelto, el cliente recibiría dos veces | Revisión de E9-H04 | Aceptado por diseño: el Admin lo resuelve con la referencia de la devolución que hizo (decisión del PO) y queda en la bitácora | `R__SP_Pedidos_ResolverReembolso.sql` |
 | La lista de pagos en revisión muestra al Admin la marca y los últimos 4 dígitos de la tarjeta | Revisión de E9-H04 | Aceptado: es lo mismo que guarda el pedido; nunca el número completo ni el CVV | `R__SP_Pedidos_ListarPagosEnRevision.sql` |
 | `V023` cambia columnas, índices y `CHECK` de `Reembolso` en varios lotes; una falla a la mitad dejaría la tabla a medio migrar | Revisión de E9-H04 | Aceptado: se aplica una vez sobre una base que el migrador prueba desde cero en cada corrida | `database/migrations/V023__revision_manual_de_pagos.sql` |
 | nginx es punto único de falla | E0-H05 | Aceptado: mejora de producción (Ingress o ALB) | 01:77 |

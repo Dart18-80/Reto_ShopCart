@@ -23,10 +23,12 @@ interface Dependencias {
     | 'listarPagosEnRevision'
     | 'obtenerPagoEnRevision'
     | 'resolverPago'
+    | 'obtenerReembolsoParaResolver'
+    | 'completarReembolsoProcesado'
     | 'resolverReembolso'
     | 'obtener'
   >;
-  pasarela: Pick<PasarelaPago, 'consultar' | 'anular'>;
+  pasarela: Pick<PasarelaPago, 'consultar' | 'anular' | 'consultarReembolso'>;
   reembolsos: Pick<ReembolsosService, 'procesarTrasConfirmar'>;
   /** A-11: SinCobro cancela el pedido y cambia las ventas de los reportes. */
   reportes: InvalidadorReportes;
@@ -131,8 +133,21 @@ export function crearRevisionService({
       return { ...resuelto, pedido: await pedidoResuelto(idPedido), reembolso };
     },
 
-    resolverReembolso: (idReembolso: number, datos: ResolverReembolso): Promise<Reembolso> =>
-      repositorio.resolverReembolso(idReembolso, datos),
+    async resolverReembolso(idReembolso: number, datos: ResolverReembolso): Promise<Reembolso> {
+      const reembolso = await repositorio.obtenerReembolsoParaResolver(idReembolso);
+      if (reembolso === null) {
+        throw new AppError('NO_ENCONTRADO', { mensaje: 'El reembolso no existe.' });
+      }
+      if (reembolso.estado !== 'Fallido') throw new AppError('REEMBOLSO_NO_FALLIDO');
+      // Decisión del PO: si la pasarela lo procesó y se perdió la respuesta, el dinero ya volvió; devolverlo a mano
+      // sería reembolsar dos veces. Mientras está Fallido nadie más lo procesa (solo se toma un Pendiente).
+      const enPasarela = await enLaPasarela(() => pasarela.consultarReembolso(reembolso.llave));
+      if (enPasarela.estado === 'Procesado') {
+        await repositorio.completarReembolsoProcesado(idReembolso, enPasarela.idReembolso);
+        throw new AppError('REEMBOLSO_YA_PROCESADO');
+      }
+      return repositorio.resolverReembolso(idReembolso, datos);
+    },
   };
 }
 

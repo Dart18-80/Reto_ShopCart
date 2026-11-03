@@ -85,6 +85,7 @@ function preparar(registro: RegistroIntento, logger: Logger = pino({ level: 'sil
     anular: vi.fn(() => Promise.resolve()),
     reembolsar: vi.fn(() => Promise.reject(new Error('no se usa'))),
     consultar: vi.fn((): Promise<EstadoEnPasarela> => Promise.resolve({ estado: 'NoExiste' })),
+    consultarReembolso: vi.fn(() => Promise.reject(new Error('no se usa'))),
   };
   const { reportes, invalidaciones } = invalidadorDePrueba();
   const servicio = crearPagoService({

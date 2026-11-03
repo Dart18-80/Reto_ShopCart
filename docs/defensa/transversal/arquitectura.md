@@ -30,7 +30,7 @@ Cada dependencia externa es una interfaz pequeña en `shared/` y un adaptador en
 
 | Puerto | Interfaz | Adaptador real (compuesto en `server.ts`) |
 | --- | --- | --- |
-| Pasarela de pago (N-03) | [index.ts:68](../../../apps/api/src/shared/pasarela/index.ts#L68 "export interface PasarelaPago") | [server.ts:59](../../../apps/api/src/server.ts#L59 "conTrazas(crearPasarelaSimulada())") |
+| Pasarela de pago (N-03) | [index.ts:72](../../../apps/api/src/shared/pasarela/index.ts#L72 "export interface PasarelaPago") | [server.ts:59](../../../apps/api/src/server.ts#L59 "conTrazas(crearPasarelaSimulada())") |
 | Caché de reportes (A-11) | [index.ts:5](../../../apps/api/src/shared/cache/index.ts#L5 "export interface Cache") | [server.ts:60](../../../apps/api/src/server.ts#L60 "crearCacheRedis(redis, logger)") |
 | Versión de sesión (A-07) | [autenticar.ts:10](../../../apps/api/src/shared/http/autenticar.ts#L10 "export interface VersionesSesion") | [server.ts:97](../../../apps/api/src/server.ts#L97 "crearVersionesSesionRedis(redis, logger)") |
 | Rate limiting (A-07) | [limitar-intentos.ts:5](../../../apps/api/src/shared/http/limitar-intentos.ts#L5 "export interface LimitadorIntentos") | [server.ts:79](../../../apps/api/src/server.ts#L79 "crearLimitadorRedis(redis, logger, { prefijo: 'limite:login'") |
@@ -132,7 +132,7 @@ Lo verifica el lint: el controlador no importa el repositorio; el servicio no im
 ### Si mañana cambian la pasarela simulada por una real, ¿qué tocan?
 
 Un adaptador nuevo que cumpla `PasarelaPago` y una línea en `server.ts`. El servicio de pago no cambia.
-**Muéstralo en:** [index.ts:68](../../../apps/api/src/shared/pasarela/index.ts#L68 "export interface PasarelaPago")
+**Muéstralo en:** [index.ts:72](../../../apps/api/src/shared/pasarela/index.ts#L72 "export interface PasarelaPago")
 
 ### ¿El controlador tiene lógica de negocio?
 

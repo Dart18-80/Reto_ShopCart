@@ -6,7 +6,8 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { crearApp } from '../../../src/app.js';
 import { crearPasarelaSimulada } from '../../../src/shared/adapters/pasarela-simulada.js';
-import { ejecutarSP } from '../../../src/shared/db/index.js';
+import { ejecutarSP, ejecutarSPConjuntos } from '../../../src/shared/db/index.js';
+import { PasarelaSinRespuesta } from '../../../src/shared/pasarela/index.js';
 import { leerDatos, leerError } from '../../unit/respuestas.js';
 import { dependenciasDePrueba } from '../../app-de-prueba.js';
 import { iniciarSesion, leerSesion } from '../auth/apoyo-auth.js';
@@ -343,9 +344,30 @@ describe('pagos en revisión (E9-H04)', () => {
 });
 
 describe('reembolsos Fallido resueltos a mano (E9-H04)', () => {
-  async function reembolsoFallido() {
-    const { cliente, pedido } = await pedidoPagado(app, estandar);
-    const cancelacion = await request(app)
+  const real = crearPasarelaSimulada();
+  // La pasarela nunca recibe el reembolso: el caso que el Admin sí resuelve a mano.
+  const sinReembolsos = crearApp(
+    dependenciasDePrueba({
+      pasarela: { ...real, reembolsar: () => Promise.reject(new Error('pasarela caída')) },
+    }),
+  );
+  // La pasarela reembolsa, pero la respuesta se pierde.
+  const respuestaPerdida = crearApp(
+    dependenciasDePrueba({
+      pasarela: {
+        ...real,
+        reembolsar: async (solicitud) => {
+          await real.reembolsar(solicitud);
+          throw new PasarelaSinRespuesta('reembolsar');
+        },
+      },
+    }),
+  );
+
+  /** Agotados sus intentos, como lo deja el job; con la pasarela que se indique al cancelar. */
+  async function reembolsoFallido(conPasarela = sinReembolsos) {
+    const { cliente, pedido, llave } = await pedidoPagado(app, estandar);
+    const cancelacion = await request(conPasarela)
       .post(`/api/v1/admin/pedidos/${String(pedido.idPedido)}/cancelar`)
       .set(comoCliente(tokenAdmin))
       .send({ motivo: 'Prueba' });
@@ -356,8 +378,66 @@ describe('reembolsos Fallido resueltos a mano (E9-H04)', () => {
     await ejecutarSP('SP_Pruebas_FallarReembolso', {
       IDReembolso: { tipo: sql.Int, valor: reembolso.idReembolso },
     });
-    return { cliente, idReembolso: reembolso.idReembolso };
+    return { cliente, idPedido: pedido.idPedido, llave, idReembolso: reembolso.idReembolso };
   }
+
+  async function reembolsoDe(idPedido: number) {
+    const [, reembolsos] = await ejecutarSPConjuntos<
+      [unknown[], { Estado: string; IDTransaccionReembolso: string | null }[]]
+    >('SP_Pruebas_LeerCancelacion', { IDPedido: { tipo: sql.Int, valor: idPedido } });
+    const [reembolso] = reembolsos ?? [];
+    if (reembolso === undefined) throw new Error('El pedido no tiene reembolso');
+    return reembolso;
+  }
+
+  it('antes de resolverlo consulta la pasarela: si ya lo procesó (respuesta perdida), queda Completado, 409 y nunca se reembolsa dos veces', async () => {
+    const { idPedido, llave, idReembolso } = await reembolsoFallido(respuestaPerdida);
+    const enLaPasarela = await enPasarela(llave);
+    expect(enLaPasarela.reembolsos).toHaveLength(1);
+
+    const respuesta = await resolverReembolso(tokenAdmin, idReembolso);
+    const otraVez = await resolverReembolso(tokenAdmin, idReembolso);
+
+    expect(respuesta.status).toBe(409);
+    expect(leerError(respuesta).codigo).toBe('REEMBOLSO_YA_PROCESADO');
+    expect(await reembolsoDe(idPedido)).toMatchObject({
+      Estado: 'Completado',
+      IDTransaccionReembolso: enLaPasarela.reembolsos[0]?.IDReembolso,
+    });
+    expect(leerError(otraVez).codigo).toBe('REEMBOLSO_NO_FALLIDO');
+    expect((await enPasarela(llave)).reembolsos).toHaveLength(1);
+  });
+
+  it('el SP, bajo bloqueo, solo completa un Fallido: repetirlo no cambia nada y un ResueltoManual responde 50709', async () => {
+    const completar = (idReembolso: number) =>
+      comoActor(idAdmin, 'Administrador', () =>
+        pedidosRepository.completarReembolsoProcesado(idReembolso, 'SIMR-PRUEBA'),
+      );
+    const procesado = await reembolsoFallido();
+    const resuelto = await reembolsoFallido();
+    await resolverReembolso(tokenAdmin, resuelto.idReembolso);
+
+    await completar(procesado.idReembolso);
+    await completar(procesado.idReembolso);
+
+    expect(await reembolsoDe(procesado.idPedido)).toMatchObject({
+      Estado: 'Completado',
+      IDTransaccionReembolso: 'SIMR-PRUEBA',
+    });
+    await expect(completar(resuelto.idReembolso)).rejects.toMatchObject({
+      codigo: 'REEMBOLSO_NO_FALLIDO',
+    });
+  });
+
+  it('si la pasarela no lo tiene, procede con la referencia del Admin y no reembolsa en la pasarela', async () => {
+    const { idPedido, llave, idReembolso } = await reembolsoFallido();
+
+    const respuesta = await resolverReembolso(tokenAdmin, idReembolso);
+
+    expect(respuesta.status).toBe(200);
+    expect(await reembolsoDe(idPedido)).toMatchObject({ Estado: 'ResueltoManual' });
+    expect((await enPasarela(llave)).reembolsos).toEqual([]);
+  });
 
   it('pasa a ResueltoManual con motivo, referencia, quién y cuándo, y queda en la bitácora', async () => {
     const { idReembolso } = await reembolsoFallido();

@@ -29,6 +29,7 @@ import type {
   ReembolsoParaProcesar,
   ResolucionPago,
   ResultadoActualizacionReembolso,
+  ReembolsoParaResolver,
   ResultadoReembolso,
   ResumenPedido,
   ResumenPedidoGestion,
@@ -492,6 +493,26 @@ export const pedidosRepository = {
       idPedido: fila.IDPedido,
       idReembolso: fila.IDReembolso,
     };
+  },
+
+  /** null si el reembolso no existe. */
+  async obtenerReembolsoParaResolver(idReembolso: number): Promise<ReembolsoParaResolver | null> {
+    const [fila] = await ejecutarSP<{ Estado: EstadoReembolso; LlaveIdempotencia: string }>(
+      'SP_Pedidos_ObtenerReembolsoParaResolver',
+      { IDReembolso: { tipo: sql.Int, valor: idReembolso } },
+    );
+    return fila === undefined ? null : { estado: fila.Estado, llave: fila.LlaveIdempotencia };
+  },
+
+  /** E9-H04: la pasarela ya lo procesó; queda Completado con su transacción. */
+  async completarReembolsoProcesado(
+    idReembolso: number,
+    idTransaccionReembolso: string,
+  ): Promise<void> {
+    await ejecutarSP('SP_Pedidos_CompletarReembolsoProcesado', {
+      IDReembolso: { tipo: sql.Int, valor: idReembolso },
+      IDTransaccionReembolso: { tipo: sql.VarChar(64), valor: idTransaccionReembolso },
+    });
   },
 
   /** E9-H04: un reembolso Fallido pasa a ResueltoManual. */

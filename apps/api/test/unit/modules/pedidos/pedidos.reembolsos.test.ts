@@ -54,6 +54,7 @@ function preparar(
     anular: vi.fn(() => Promise.resolve()),
     reembolsar: vi.fn(() => Promise.resolve({ idReembolso: 'SIMR-1' })),
     consultar: vi.fn(() => Promise.resolve(enPasarela)),
+    consultarReembolso: vi.fn(() => Promise.reject(new Error('no se usa'))),
   };
   const { reportes, invalidaciones } = invalidadorDePrueba();
   const servicio = crearReembolsosService({

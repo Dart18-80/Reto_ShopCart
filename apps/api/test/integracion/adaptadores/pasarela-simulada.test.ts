@@ -192,6 +192,25 @@ describe('contrato completo del puerto (cierre de E5)', () => {
     ).rejects.toMatchObject({ codigo: 'LLAVE_REUTILIZADA' });
   });
 
+  it('consultarReembolso: NoExiste antes de reembolsar y, después, el mismo reembolso desde otra réplica', async () => {
+    const pasarela = crearPasarelaSimulada();
+    const a = await pasarela.autorizar({ llave: randomUUID(), monto: MONTO, tarjeta: APROBADA });
+    if (a.tipo !== 'Autorizada') throw new Error('Debía autorizarse');
+    await pasarela.capturar(a.idTransaccion);
+    const llave = randomUUID();
+
+    const antes = await pasarela.consultarReembolso(llave);
+    const { idReembolso } = await pasarela.reembolsar({
+      llave,
+      idTransaccion: a.idTransaccion,
+      monto: new Decimal('10.00'),
+    });
+    const despues = await crearPasarelaSimulada().consultarReembolso(llave);
+
+    expect(antes).toEqual({ estado: 'NoExiste' });
+    expect(despues).toEqual({ estado: 'Procesado', idReembolso });
+  });
+
   it('declina una tarjeta vencida según su reloj (vale hasta el último día de su mes)', async () => {
     const pasarela = crearPasarelaSimulada({ ahora: () => new Date('2026-11-01T00:00:00Z') });
     const vencida = { ...APROBADA, mesVencimiento: 10, anioVencimiento: 2026 };

@@ -160,12 +160,12 @@ registroOpenApi.registerPath({
   path: '/api/v1/admin/reembolsos/{id}/resolver',
   tags: ['Pedidos'],
   summary:
-    'E9-H04: resuelve a mano un reembolso Fallido (ResueltoManual, con motivo y referencia); cuenta como reembolsado',
+    'E9-H04: resuelve a mano un reembolso Fallido (ResueltoManual, con motivo y referencia); cuenta como reembolsado. Antes consulta la pasarela: si ya lo procesó, queda Completado y responde 409 REEMBOLSO_YA_PROCESADO',
   security: seguridad,
   request: { params: paramsIdReembolsoSchema, body: json(resolverReembolsoSchema) },
   responses: {
     200: { description: 'El reembolso resuelto', ...json(z.object({ datos: reembolsoSchema })) },
-    ...respuestasError(400, 401, 403, 404, 409),
+    ...respuestasError(400, 401, 403, 404, 409, 504),
   },
 });
 registroOpenApi.registerPath({

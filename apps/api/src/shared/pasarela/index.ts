@@ -53,6 +53,10 @@ export type EstadoEnPasarela =
   | ({ estado: 'Autorizada' | 'Capturada' | 'Anulada'; idTransaccion: string } & DatosTarjeta)
   | ({ estado: 'Rechazada'; codigo: string; mensaje: string } & DatosTarjeta);
 
+/** N-09 (E9-H04): lo que la pasarela sabe del reembolso de una llave, aunque su respuesta se haya perdido. */
+export type ReembolsoEnPasarela =
+  { estado: 'NoExiste' } | { estado: 'Procesado'; idReembolso: string };
+
 /**
  * La pasarela no respondió (timeout o red): no se sabe si autorizó. Nunca se crea un pedido así; el
  * reintento con la misma llave (o la conciliación) lo resuelve.
@@ -79,4 +83,5 @@ export interface PasarelaPago {
     monto: Decimal;
   }): Promise<{ idReembolso: string }>;
   consultar(llave: string): Promise<EstadoEnPasarela>;
+  consultarReembolso(llave: string): Promise<ReembolsoEnPasarela>;
 }

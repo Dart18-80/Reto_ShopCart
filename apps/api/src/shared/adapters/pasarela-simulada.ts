@@ -9,6 +9,7 @@ import {
   ultimosDigitos,
   type EstadoEnPasarela,
   type PasarelaPago,
+  type ReembolsoEnPasarela,
   type ResultadoAutorizacion,
   type TarjetaPago,
 } from '../pasarela/index.js';
@@ -144,11 +145,21 @@ export function crearPasarelaSimulada(reloj: Reloj = relojDelSistema): PasarelaP
     return fila === undefined ? { estado: 'NoExiste' } : aEstado(fila);
   }
 
+  async function consultarReembolso(llave: string): Promise<ReembolsoEnPasarela> {
+    const [fila] = await ejecutarSP<{ IDReembolso: string }>('SP_Pasarela_ConsultarReembolso', {
+      LlaveIdempotencia: { tipo: sql.UniqueIdentifier, valor: llave },
+    });
+    return fila === undefined
+      ? { estado: 'NoExiste' }
+      : { estado: 'Procesado', idReembolso: fila.IDReembolso };
+  }
+
   return {
     autorizar: (solicitud) => conLimite('autorizar', autorizar(solicitud)),
     capturar: (idTransaccion) => conLimite('capturar', cambiarEstado(idTransaccion, 'Capturada')),
     anular: (idTransaccion) => conLimite('anular', cambiarEstado(idTransaccion, 'Anulada')),
     reembolsar: (solicitud) => conLimite('reembolsar', reembolsar(solicitud)),
     consultar: (llave) => conLimite('consultar', consultar(llave)),
+    consultarReembolso: (llave) => conLimite('consultarReembolso', consultarReembolso(llave)),
   };
 }

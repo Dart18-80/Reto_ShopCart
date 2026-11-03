@@ -89,7 +89,7 @@ Antes, `POST /checkout/sesion` bloquea el carrito y las variantes en orden de `I
 - **Pago en curso o arrendamiento perdido:** `409 PAGO_EN_CURSO` con `Retry-After` ([middleware.ts:44](../../../apps/api/src/shared/errors/middleware.ts#L44 "Retry-After")).
 - **Llave reutilizada:** `422 LLAVE_REUTILIZADA` ([catalogo.ts:185](../../../apps/api/src/shared/errors/catalogo.ts#L185 "LLAVE_REUTILIZADA")).
 - **Tarjeta rechazada:** `402 PAGO_RECHAZADO` con `intentosRestantes` en `detalles` ([checkout.pago.ts:377](../../../apps/api/src/modules/checkout/checkout.pago.ts#L377 "detalles: { intentosRestantes, sesionCancelada }")); al quinto, la sesión se cancela y libera, y una sexta llave nueva responde `404` porque ya no hay sesión `Activa` ([pagar.api.test.ts:319](../../../apps/api/test/integracion/checkout/pagar.api.test.ts#L319 "el quinto cancela la sesión y libera")). `409 MAX_INTENTOS` (50605) queda como defensa para una sesión `Activa` que ya tenga el máximo, algo que el flujo normal no produce.
-- **Pasarela que no responde (10 s o `4000…0119`):** se libera el arrendamiento y `504 PAGO_SIN_CONFIRMAR` ([checkout.pago.ts:249](../../../apps/api/src/modules/checkout/checkout.pago.ts#L249 "PAGO_SIN_CONFIRMAR")); el límite lo impone el adaptador ([pasarela-simulada.ts:69](../../../apps/api/src/shared/adapters/pasarela-simulada.ts#L69 "new PasarelaSinRespuesta(operacion)")).
+- **Pasarela que no responde (10 s o `4000…0119`):** se libera el arrendamiento y `504 PAGO_SIN_CONFIRMAR` ([checkout.pago.ts:249](../../../apps/api/src/modules/checkout/checkout.pago.ts#L249 "PAGO_SIN_CONFIRMAR")); el límite lo impone el adaptador ([pasarela-simulada.ts:70](../../../apps/api/src/shared/adapters/pasarela-simulada.ts#L70 "new PasarelaSinRespuesta(operacion)")).
 - **Falla la captura:** el pedido ya existe, se responde 201 y la conciliación captura después ([checkout.pago.ts:103](../../../apps/api/src/modules/checkout/checkout.pago.ts#L103 "la conciliación (E5-H04) captura después")).
 - **Falla la anulación:** tres intentos en la misma petición y, si siguen fallando, el intento queda `Autorizado` para la conciliación ([checkout.pago.ts:150](../../../apps/api/src/modules/checkout/checkout.pago.ts#L150 "intento === INTENTOS_ANULACION")).
 - **Cerrado por la conciliación sin cobro:** el reintento recibe `409 PAGO_NO_COMPLETADO` ([R__SP_Checkout_ResolverIntentoConciliado.sql:86](../../../database/programmability/R__SP_Checkout_ResolverIntentoConciliado.sql#L86 "PAGO_NO_COMPLETADO")). **Cobro capturado sin pedido:** `409 PAGO_EN_REVISION` ([checkout.pago.ts:310](../../../apps/api/src/modules/checkout/checkout.pago.ts#L310 "PAGO_EN_REVISION")).
@@ -119,7 +119,7 @@ El `UNIQUE` de la llave y el arrendamiento: la segunda petición con la misma ll
 ### ¿Qué pasa con la tarjeta 4000 0000 0000 0119?
 
 La pasarela simulada autoriza y "pierde" la respuesta la primera vez; la API libera el arrendamiento y responde `504 PAGO_SIN_CONFIRMAR`. El reintento con la misma llave recibe la misma autorización y termina con un solo cobro.
-**Muéstralo en:** [pasarela-simulada.ts:109](../../../apps/api/src/shared/adapters/pasarela-simulada.ts#L109 "fila.Nueva && tarjeta.numero === TIEMPO_AGOTADO")
+**Muéstralo en:** [pasarela-simulada.ts:110](../../../apps/api/src/shared/adapters/pasarela-simulada.ts#L110 "fila.Nueva && tarjeta.numero === TIEMPO_AGOTADO")
 
 ### ¿Y si el reintento cae en la otra réplica?
 

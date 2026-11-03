@@ -151,6 +151,12 @@ export interface PagoEnRevision {
 }
 
 /** Lo que el servicio necesita antes de resolver: la llave para consultar la pasarela. */
+/** E9-H04: lo que el servicio necesita antes de resolver a mano un reembolso. */
+export interface ReembolsoParaResolver {
+  estado: EstadoReembolso;
+  llave: string;
+}
+
 export interface PagoParaResolver {
   idIntentoPago: number;
   llave: string;
