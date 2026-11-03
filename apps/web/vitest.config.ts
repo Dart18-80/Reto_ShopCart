@@ -20,6 +20,8 @@ export default mergeConfig(
             include: ['src/**/*.test.{ts,tsx}'],
             exclude: PRUEBAS_DE_NODE,
             environment: 'jsdom',
+            // El navegador simulado no está en Guatemala: una fecha que no fije America/Guatemala se nota (FE-10).
+            env: { TZ: 'UTC' },
             setupFiles: ['src/test/configuracion.ts'],
           },
         },
