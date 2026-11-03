@@ -165,7 +165,8 @@ Convención de la API (`01-arquitectura.md` §5.1): `?pagina=1&tamano=20&orden=f
 **Componente propio `TablaServidor<T>`, sin TanStack Table:** con todo del lado del servidor, una librería de tablas solo guardaría un estado que aquí vive en la URL. La tabla recibe definiciones de columnas tipadas y el resultado de la consulta.
 
 - **El estado vive en la URL** (`useParametrosUrl`), validado con **el mismo esquema de *query* del backend** movido a `shared`: la tabla solo ofrece ordenar por las columnas que acepta la lista blanca, y el tipado lo garantiza.
-- Cambiar un filtro regresa a la página 1; el texto libre espera 300 ms; una página fuera de rango salta a la última que existe.
+- Cambiar un filtro regresa a la página 1; el texto libre espera 300 ms; una página fuera de rango salta a la última que existe (con total 0, a la 1, nunca a la 0).
+- **Historial:** ordenar, paginar y los filtros de selección agregan una entrada; una búsqueda de texto libre ocupa una sola (la primera edición la agrega y las siguientes la reemplazan), así «atrás» vuelve a la vista anterior a la búsqueda.
 - **Estados:** carga inicial con filas esqueleto; cambio de página u orden conservando los datos anteriores (`placeholderData: keepPreviousData`) con un indicador discreto; vacío que distingue "todavía no hay registros" de "ningún resultado con estos filtros" (con botón para limpiarlos); error con el mensaje, reintentar y el `requestId`.
 - **Responsive:** tabla en pantallas anchas; bajo el punto `md`, cada fila se muestra como tarjeta con las mismas definiciones de columnas, que declaran su `prioridad`.
 - Encabezados con `aria-sort` y controles con etiqueta accesible.

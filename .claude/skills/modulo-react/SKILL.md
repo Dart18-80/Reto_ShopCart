@@ -118,19 +118,31 @@ export function useCancelarPedido(id: number) {
 
 ```tsx
 export function MisPedidosPagina() {
-  const [consulta, setConsulta] = useParametrosUrl(consultaPedidosSchema);
-  const pedidos = usePedidos(consulta);
+  const parametros = useParametrosUrl(consultaPedidosSchema);
+  const pedidos = usePedidos(parametros.valores);
 
   return (
     <EstadoVista
       consulta={pedidos}
       vacio={{ titulo: 'Todavía no tienes pedidos', accion: <EnlaceCatalogo /> }}
     >
-      {(datos) => <ListaPedidos pedidos={datos.datos} paginacion={datos.paginacion} onPagina={…} />}
+      {(datos) => (
+        <>
+          <ListaPedidos pedidos={datos.datos} />
+          <Paginacion
+            paginacion={datos.paginacion}
+            onPagina={(pagina) => parametros.cambiar({ pagina })}
+          />
+        </>
+      )}
     </EstadoVista>
   );
 }
 ```
+
+- **`useParametrosUrl(esquema)` devuelve un objeto:** `valores` (la URL validada; un campo inválido cae a su valor por defecto), `cambiar(cambios, { historial })`, `hayFiltros` y `limpiarFiltros()`. Todo cambio que no sea de `pagina` vuelve a la página 1. En la URL solo queda lo que difiere del valor por defecto.
+- **Historial:** ordenar, paginar y los filtros de selección **agregan** una entrada (`historial: 'agregar'`, el valor por defecto); el texto libre usa `historial: 'texto'` (lo hace `FiltroTexto`): la primera edición agrega una entrada y las siguientes la reemplazan, así «atrás» vuelve a la vista anterior a la búsqueda. Las correcciones (página fuera de rango) usan `'reemplazar'`.
+- **`EstadoVista`** recibe `consulta`, `vacio` (`{ titulo, descripcion?, accion? }`), `esVacio?` (por defecto, `datos` vacío), `esqueleto?` y `children(datos)`. Si una consulta que ya tenía datos falla al recargar, los datos se quedan con el aviso del error arriba.
 
 - **Toda consulta se muestra a través de `EstadoVista`** (o de `TablaServidor`, que lo usa por dentro): carga con esqueleto, vacío con un mensaje útil y error con el mensaje del backend, reintentar y el `requestId`.
 - **Las páginas solo componen.** Sin `if` de negocio, sin formatear montos a mano, sin llamar a `api`.
@@ -165,26 +177,47 @@ const formulario = useFormularioApi({
 ## 7. Tablas y listados (FE-06)
 
 ```tsx
+// Las opciones de orden salen del esquema de query del backend, movido a @shopcart/shared.
+type OrdenPedidos = ConsultaPedidosGestion['orden'];
+
 const columnas: ColumnaTabla<FilaPedido, OrdenPedidos>[] = [
-  { id: 'fecha', etiqueta: 'Fecha', celda: (p) => <FechaHora valor={p.fechaPago} />, ordenable: 'fecha', prioridad: 1 },
+  { id: 'pedido', etiqueta: 'Pedido', celda: (p) => `#${p.idPedido}`, prioridad: 1 },
+  { id: 'fecha', etiqueta: 'Fecha', celda: (p) => <FechaHora valor={p.fechaPago} />, ordenable: 'fecha', prioridad: 2 },
   { id: 'cliente', etiqueta: 'Cliente', celda: (p) => p.cliente.nombre, prioridad: 2 },
-  { id: 'total', etiqueta: 'Total', celda: (p) => <Monto valor={p.total} />, ordenable: 'total', prioridad: 1 },
+  { id: 'estado', etiqueta: 'Estado', celda: (p) => <EstadoDePedido estado={p.estado} />, prioridad: 1 },
+  { id: 'total', etiqueta: 'Total', celda: (p) => <Monto valor={p.total} />, ordenable: 'total', prioridad: 1, alineacion: 'fin' },
 ];
 
-<TablaServidor
-  columnas={columnas}
-  consulta={usePedidosGestion(consulta)}
-  parametros={[consulta, setConsulta]}
-  filtros={<FiltrosPedidos />}
-  vacio={…}
-/>
+export function GestionPedidosPagina() {
+  const parametros = useParametrosUrl(consultaPedidosGestionSchema);
+  return (
+    <TablaServidor
+      titulo="Pedidos"
+      columnas={columnas}
+      consulta={usePedidosGestion(parametros.valores)}
+      parametros={parametros}
+      claveFila={(p) => p.idPedido}
+      vacio={{ titulo: 'Todavía no hay pedidos pagados' }}
+      filtros={
+        <>
+          <FiltroTexto parametros={parametros} campo="texto" etiqueta="Cliente" placeholder="Nombre o correo" />
+          <SelectorEstado
+            valor={parametros.valores.estado}
+            onCambiar={(estado) => parametros.cambiar({ estado })}
+          />
+        </>
+      }
+    />
+  );
+}
 ```
 
-- **Toda tabla de datos del servidor usa `TablaServidor`.** El estado (página, tamaño, orden, dirección y filtros) vive en la URL, validado con **el esquema de *query* del backend** movido a `shared`.
-- `ordenable` solo acepta valores del `enum` de `orden` de ese esquema: si la lista blanca del backend no lo tiene, no compila.
-- Cada columna declara su `prioridad`: bajo el punto `md`, las filas se muestran como tarjetas con las columnas de prioridad 1.
-- Cambiar un filtro regresa a la página 1 (`TablaServidor` lo hace); el texto libre pasa por `useDebounce` de 300 ms.
-- Las cuadrículas (el catálogo de la tienda) usan las mismas piezas: `useParametrosUrl`, `Paginacion` y `EstadoVista`.
+- **Toda tabla de datos del servidor usa `TablaServidor`.** El estado (página, tamaño, orden, dirección y filtros) vive en la URL, validado con **el esquema de *query* del backend** movido a `shared`. El hook de la consulta usa `placeholderData: keepPreviousData`.
+- `ordenable` solo acepta valores del `enum` de `orden` de ese esquema: si la lista blanca del backend no lo tiene, no compila. El encabezado ordenable es un `<button>` dentro del `<th>`, que lleva el `aria-sort`.
+- Cada columna declara su `prioridad`: bajo el punto `md` (lo decide `usePantallaAncha`, que monta solo una de las dos vistas), las filas se muestran como tarjetas con las columnas de prioridad 1. Los montos van con `alineacion: 'fin'`.
+- **La tabla ya resuelve:** página fuera de rango → la última (con total 0, la 1); «Actualizando…» en una región `aria-live="polite"` y `aria-busy` mientras llega la página nueva; el vacío con filtros («Ningún resultado con estos filtros» y *Limpiar filtros*) distinto del `vacio` de la vista; el error con *Reintentar* y el `requestId`.
+- Los filtros escriben con `parametros.cambiar(...)`; el texto libre, con `FiltroTexto` (300 ms de espera y una sola entrada del historial por búsqueda).
+- Las cuadrículas (el catálogo de la tienda) usan las mismas piezas: `useParametrosUrl`, `Paginacion`, `FiltroTexto` y `EstadoVista`.
 
 ## 8. Rutas y control por rol (FE-04)
 
