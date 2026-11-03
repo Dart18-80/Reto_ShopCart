@@ -6,13 +6,13 @@ Las reglas críticas viven en los SPs y en los constraints (A-02), así que se p
 
 ## La pirámide real
 
-Conteos hechos sobre el repositorio: archivos `*.test.ts` y declaraciones `it(` / `it.each(` (un `it.each` se expande en varios casos al correr). Las cifras de casos ejecutados salen de correr cada suite en un clon nuevo con `core.autocrlf=true` sobre `9c1d9a9` (2 nov 2026), todas en verde.
+Conteos hechos sobre el repositorio: archivos `*.test.ts` y declaraciones `it(` / `it.each(` (un `it.each` se expande en varios casos al correr). Las cifras de casos ejecutados salen de correr cada suite en un clon nuevo con `core.autocrlf=true` sobre `f870306` (2 nov 2026), todas en verde.
 
 | Piso | Carpeta | Archivos | Declaraciones `it` (de ellas `it.each`) | Casos al correr | Contra qué corre |
 |---|---|---|---|---|---|
-| Unitarias de la API | `apps/api/test/unit` | 58 | 449 (34) | 551 | Nada externo: puertos falsos y `vi.fn` |
-| Unitarias del migrador | `database/migrator/test/*.test.ts` | 7 | 97 (10) | 258 | Archivos del repositorio |
-| Integración de la API | `apps/api/test/integracion` | 65 (44 `*.api.test.ts` con supertest) | 651 (42) | 774 | `shopcart_test` + Redis base 1 |
+| Unitarias de la API | `apps/api/test/unit` | 58 | 454 (34) | 556 | Nada externo: puertos falsos y `vi.fn` |
+| Unitarias del migrador | `database/migrator/test/*.test.ts` | 7 | 97 (10) | 259 | Archivos del repositorio |
+| Integración de la API | `apps/api/test/integracion` | 65 (44 `*.api.test.ts` con supertest) | 662 (42) | 785 | `shopcart_test` + Redis base 1 |
 | Integración del migrador | `database/migrator/test/integracion` | 2 | 11 | 11 | SQL Server real, `shopcart_test` |
 | Telemetría | `apps/api/test/telemetria` | 1 | 5 | 5 | API compilada + receptor OTLP en memoria |
 | Concurrencia (RNF-3) | `apps/api/test/concurrencia` | 1 | 2 | 2 | nginx en `http://localhost:8080` |
