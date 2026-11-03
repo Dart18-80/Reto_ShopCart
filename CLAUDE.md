@@ -9,6 +9,7 @@ Eres el **desarrollador** de ShopCart. Diego es el Product Owner y el arquitecto
    - `docs/00-vision-y-contexto.md`: decisiones de negocio (`N-xx`), no funcionales (`RNF-xx`) y generales (`D-xx`).
    - `docs/01-arquitectura.md`: decisiones de arquitectura (`A-xx`), flujos críticos, errores y API.
    - `docs/02-modelo-datos.md`: tablas, constraints, índices, SPs, vistas, funciones y códigos de error (`M-xx`).
+   - `docs/05-arquitectura-frontend.md`: decisiones del frontend (`FE-xx`), estructura, sesión, estado, contrato, pruebas y orden de construcción.
    - `docs/enunciado-shopcart.md`: el enunciado oficial del reto.
 3. Si vas a tocar algo que no conoces del repositorio, léelo antes de cambiarlo.
 
@@ -33,6 +34,14 @@ Eres el **desarrollador** de ShopCart. Diego es el Product Owner y el arquitecto
 - **Todo lo externo pasa por un puerto** (`PasarelaPago`, `Cache`, `VersionesSesion`, `Reloj`). Los adaptadores se inyectan en `app.ts`.
 - **La API es stateless** (RNF-2): nada de estado en memoria que deba compartirse entre réplicas. Redis solo guarda lo que se puede perder; lo crítico vive en SQL Server.
 - **Aislamiento entre clientes (RF-01):** los endpoints del cliente **nunca reciben su `IDUsuario`**: sale del token. Los SPs de recursos propios filtran con `@IDUsuarioActor`. Un recurso ajeno responde `404`, igual que uno inexistente. El carrito no expone su ID.
+
+### Frontend (`05-arquitectura-frontend.md`)
+
+- **El backend es la autoridad.** El frontend no decide reglas de negocio, no calcula montos que se muestran y no asume que una operación funcionó antes de que el backend lo confirme. Si una pantalla necesita un dato que la API no envía, es un faltante del backend: detente y pregunta.
+- **Cada estado tiene un solo dueño:** lo del servidor en TanStack Query, lo navegable en la URL, lo que se escribe en el formulario, la sesión en su módulo (05 §6).
+- **Una sola fuente para cada contrato:** los esquemas de entrada se comparten con la API (`packages/shared`) y los tipos de salida se generan del OpenAPI (`packages/contrato`).
+- **Dependencias en una dirección:** `paginas → componentes → hooks → <modulo>.api.ts → shared/api`; entre módulos, solo por `index.ts` (salvo `app/`, que importa las `paginas` con `lazy()`). El lint lo verifica (FE-09).
+- **Un componente nunca importa el cliente `api`.**
 
 ## Reglas de base de datos
 
@@ -62,13 +71,14 @@ Eres el **desarrollador** de ShopCart. Diego es el Product Owner y el arquitecto
 |---|---|---|
 | Skill `sqlserver-sp` | `.claude/skills/sqlserver-sp/` | **Siempre** que crees o modifiques algo en `database/`: plantillas de SP, errores, concurrencia, SQL dinámico seguro, ledger, triggers de bitácora |
 | Skill `modulo-express` | `.claude/skills/modulo-express/` | **Siempre** que crees o modifiques código en `apps/api/`: estructura del módulo, `ejecutarSP`, capas, Zod + OpenAPI, dinero, aislamiento y pruebas |
+| Skill `modulo-react` | `.claude/skills/modulo-react/` | **Siempre** que crees o modifiques código en `apps/web/`, `packages/shared` o `packages/contrato`: estructura del módulo, cliente `api`, sesión, TanStack Query, estados de la vista, formularios, tablas, rutas por rol, montos y fechas y pruebas |
 | Agente `revisor-shopcart` | `.claude/agents/revisor-shopcart.md` | Al cerrar **cada historia de E5**, al cerrar **cada épica** y antes de cada entrega. Revisa contra las penalizaciones del enunciado |
 
 ### Plugins instalados en el proyecto
 
-Con `/kit:init typescript` (kit de Diego, `Dart18-80/claude-kit`): el agente `typescript-reviewer` y los plugins base oficiales `superpowers`, `pr-review-toolkit`, `security-guidance` y `commit-commands`. En la Fase 2 se agrega `/kit:init nextjs` por `react-patterns` y `react-testing` (de ellas no aplica lo de Next.js ni Server Components: el frontend es una SPA con Vite).
+Con `/kit:init typescript` (kit de Diego, `Dart18-80/claude-kit`): el agente `typescript-reviewer` y los plugins base oficiales `superpowers`, `pr-review-toolkit`, `security-guidance` y `commit-commands`.
 
-**No se instalan:** `stack-nestjs` (el enunciado exige Express; lo útil está en `modulo-express`), `stack-redis` (sus locks y sesiones en Redis contradicen A-04 y RNF-2), `stack-prisma` (ORM, penalizado por el enunciado) ni `stack-postgres` (otro motor).
+**No se instalan:** `stack-nextjs` (D-05: Server Components, las form actions de React 19 y Turbopack no aplican a una SPA con Vite; lo útil de `react-patterns` y `react-testing` está en `modulo-react`), `stack-nestjs` (el enunciado exige Express; lo útil está en `modulo-express`), `stack-redis` (sus locks y sesiones en Redis contradicen A-04 y RNF-2), `stack-prisma` (ORM, penalizado por el enunciado) ni `stack-postgres` (otro motor).
 
 ### Flujo por historia
 
@@ -127,6 +137,7 @@ hay algo externo detrás. Si dudas entre una abstracción y código directo, eli
 ## No hacer
 
 - No instales dependencias que no estén en A-16 (`01-arquitectura.md` §13) sin decir cuál y por qué, y esperar la aprobación.
+- No instales dependencias del frontend fuera de FE-14 (`05-arquitectura-frontend.md` §15) sin decir cuál y por qué, y esperar la aprobación.
 - No modifiques migraciones `V###` ya aplicadas: crea una nueva.
 - No desactives pruebas, reglas de lint ni chequeos de tipos para "hacer pasar" algo.
 - No hagas `git push` ni cambies la configuración de CI: eso lo hace Diego.
@@ -143,6 +154,13 @@ pnpm lint && pnpm typecheck        # calidad
 pnpm test                          # pruebas unitarias
 pnpm test:integracion              # pruebas contra la base shopcart_test
 pnpm test:concurrencia             # RNF-3 (requiere el entorno levantado)
+
+# Frontend, a partir de F1 (05 §9 y §13)
+pnpm --filter @shopcart/web test   # unitarias y de componentes de la web (Vitest + MSW)
+pnpm test:e2e                      # Playwright contra el backend real (requiere el entorno levantado)
+pnpm openapi:exportar              # regenera packages/contrato/openapi.json y sus tipos
+pnpm openapi:verificar             # falla si la foto del contrato no coincide (corre dentro de pnpm lint)
+pnpm contrato:cobertura            # rutas del contrato sin consumir ni justificar
 ```
 
 Swagger: `http://localhost:8080/api/docs`. Entorno de Diego: Windows con Docker Desktop sobre WSL2.

@@ -698,7 +698,7 @@ Encargo del PO al cierre de la Fase 1: el Admin resuelve con evidencia un intent
 
 ## 4. Semana 2 (Fase 2: frontend y proyecto completo) — vista general
 
-Se detalla en historias al cerrar la Fase 1.
+El orden de construcción, por módulos (F1, módulos 1 a 11 y F6), está en [`05-arquitectura-frontend.md`](./05-arquitectura-frontend.md) §16. Las historias de la Fase 2 se agregan en la sección 6 de este backlog, módulo por módulo.
 
 | Épica | Contenido |
 |---|---|
