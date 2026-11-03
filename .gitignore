@@ -32,3 +32,7 @@ __pycache__/
 
 # M-01: los digests del ledger que guarda `pnpm ledger:verificar` (fuera de la base y del repositorio)
 .ledger/
+
+# resultados de Playwright (FE-12)
+test-results/
+playwright-report/

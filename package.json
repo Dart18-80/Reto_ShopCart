@@ -22,7 +22,8 @@
     "test:humo": "docker compose build api-1 && pnpm --filter @shopcart/api test:humo",
     "openapi:exportar": "pnpm --filter @shopcart/contrato exportar",
     "openapi:verificar": "pnpm --filter @shopcart/contrato verificar",
-    "contrato:cobertura": "pnpm --filter @shopcart/contrato cobertura"
+    "contrato:cobertura": "pnpm --filter @shopcart/contrato cobertura",
+    "test:e2e": "pnpm --filter @shopcart/web test:e2e"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
