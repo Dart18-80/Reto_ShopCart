@@ -124,6 +124,20 @@ export type ResolucionPago = (typeof RESOLUCIONES_PAGO)[number];
 
 export const CAUSAS_REVISION = ['AutorizacionInexistente', 'CobroSinPedido'] as const;
 
+/** Los estados de IntentoPago (CK_IntentoPago_Estado). */
+export type EstadoIntentoPago =
+  | 'Pendiente'
+  | 'Autorizado'
+  | 'Capturado'
+  | 'Rechazado'
+  | 'Anulado'
+  | 'Fallido'
+  | 'Error'
+  | 'EnRevision';
+
+/** Cómo queda un intento tras resolverlo: Capturado si se verificó el cobro; si no, Anulado. */
+export const ESTADOS_PAGO_RESUELTO = ['Capturado', 'Anulado'] as const;
+
 export interface PagoEnRevision {
   idIntentoPago: number;
   idPedido: number | null;
@@ -140,13 +154,13 @@ export interface PagoEnRevision {
 export interface PagoParaResolver {
   idIntentoPago: number;
   llave: string;
-  estado: string;
+  estado: EstadoIntentoPago;
   idPedido: number | null;
 }
 
 export interface PagoResuelto {
   idIntentoPago: number;
-  estado: string;
+  estado: (typeof ESTADOS_PAGO_RESUELTO)[number];
   resolucion: ResolucionPago;
   motivo: string;
   fechaResolucion: Date;
@@ -177,8 +191,7 @@ export type ResultadoReembolso =
 /** N-09: el pedido cancelado con su reembolso. */
 export interface Cancelacion {
   pedido: Pedido;
-  /** null si el pago estaba en revisión: la autorización ya no existe y no hay cobro que devolver. */
-  reembolso: { idReembolso: number; estado: EstadoReembolso } | null;
+  reembolso: { idReembolso: number; estado: EstadoReembolso };
 }
 
 /** N-10: la devolución registrada con su reembolso. */

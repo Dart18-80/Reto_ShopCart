@@ -11,7 +11,7 @@ import { dependenciasDePrueba } from '../../app-de-prueba.js';
 import { iniciarSesion, leerSesion } from '../auth/apoyo-auth.js';
 import { usarBaseDePruebas } from '../base-de-pruebas.js';
 import { comoCliente } from '../carrito/apoyo-carrito.js';
-import { crearCupon, metodoEnvio } from '../checkout/apoyo-checkout.js';
+import { crearCupon, enPasarela, metodoEnvio } from '../checkout/apoyo-checkout.js';
 import { unaFila } from '../datos-de-prueba.js';
 import { pedidosRepository } from '../../../src/modules/pedidos/pedidos.repository.js';
 import { pedidoPagado } from './apoyo-pedidos.js';
@@ -60,17 +60,6 @@ async function cancelacionDe(idPedido: number) {
   const pedido = pedidos?.[0];
   if (pedido === undefined || reembolsos === undefined) throw new Error('El pedido no existe');
   return { pedido, reembolsos };
-}
-
-async function enPasarela(llave: string) {
-  const fila = await unaFila<{ Estado: string; Reembolsos: string | null }>(
-    'SP_Pruebas_LeerPasarela',
-    { LlaveIdempotencia: { tipo: sql.UniqueIdentifier, valor: llave } },
-  );
-  const reembolsos = z
-    .array(z.object({ IDReembolso: z.string(), Monto: z.number() }))
-    .parse(JSON.parse(fila.Reembolsos ?? '[]'));
-  return { estado: fila.Estado, reembolsos };
 }
 
 const kardexDe = (idVariante: number) =>
@@ -425,24 +414,45 @@ describe('cancelación con reembolso (E6-H03, N-09)', () => {
   });
 });
 
-describe('cancelar un pedido con el pago en revisión (cierre de la Fase 1)', () => {
-  it('se cancela y reintegra la existencia, pero no se reembolsa: el cobro ya se anuló', async () => {
-    const { cliente, pedido } = await pedidoPagado(app, estandar);
+describe('cancelar un pedido con el pago en revisión (E9-H04, decisión del PO)', () => {
+  async function pedidoEnRevision() {
+    const pagado = await pedidoPagado(app, estandar);
     await ejecutarSP('SP_Pruebas_PonerPagoEnRevision', {
-      IDPedido: { tipo: sql.Int, valor: pedido.idPedido },
+      IDPedido: { tipo: sql.Int, valor: pagado.pedido.idPedido },
     });
+    return pagado;
+  }
+
+  it('el cliente recibe 409 PAGO_EN_REVISION con un mensaje claro y nada cambia', async () => {
+    const { cliente, pedido, variantes } = await pedidoEnRevision();
+    const [variante] = variantes;
+    if (variante === undefined) throw new Error('El pedido no tiene líneas');
+    const antes = await kardexDe(variante.idVariante);
 
     const respuesta = await cancelarComoCliente(app, cliente.token, pedido.idPedido);
     const { pedido: guardado, reembolsos } = await cancelacionDe(pedido.idPedido);
 
-    expect(respuesta.status).toBe(200);
-    expect(
-      leerDatos(
-        respuesta,
-        z.object({ reembolso: z.null(), pedido: z.looseObject({ estado: z.string() }) }),
-      ),
-    ).toMatchObject({ reembolso: null, pedido: { estado: 'Cancelado' } });
-    expect(guardado).toMatchObject({ Estado: 'Cancelado', MontoReembolsado: 0 });
+    expect(respuesta.status).toBe(409);
+    expect(leerError(respuesta)).toMatchObject({
+      codigo: 'PAGO_EN_REVISION',
+      mensaje: 'Tu pago está en verificación; podrás cancelar cuando se resuelva.',
+    });
+    expect(guardado).toMatchObject({
+      Estado: 'Pagado',
+      MontoReembolsado: 0,
+      EstadoIntento: 'EnRevision',
+    });
     expect(reembolsos).toEqual([]);
+    expect(await kardexDe(variante.idVariante)).toEqual(antes);
+  });
+
+  it('la gestión tampoco lo cancela: SinCobro es la única vía', async () => {
+    const { pedido } = await pedidoEnRevision();
+
+    const respuesta = await cancelarDesdeGestion(pedido.idPedido);
+
+    expect(respuesta.status).toBe(409);
+    expect(leerError(respuesta)).toMatchObject({ codigo: 'PAGO_EN_REVISION' });
+    expect((await cancelacionDe(pedido.idPedido)).pedido).toMatchObject({ Estado: 'Pagado' });
   });
 });

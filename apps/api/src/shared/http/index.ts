@@ -14,7 +14,7 @@ export {
   type ConsultaPaginacion,
   type RespuestaPaginada,
 } from './paginacion.js';
-export { idEnRutaSchema, idSchema } from './identificadores.js';
+export { idBigintEnRutaSchema, idEnRutaSchema, idSchema } from './identificadores.js';
 export { booleanoConsultaSchema } from './consulta.js';
 export { rangoDeFechasSchema } from './rango-fechas.js';
 export {

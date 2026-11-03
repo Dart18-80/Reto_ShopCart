@@ -6,6 +6,7 @@ import {
   ESTADOS_PAGO,
   ESTADOS_REEMBOLSO,
   ORIGENES_REEMBOLSO,
+  ESTADOS_PAGO_RESUELTO,
   RESOLUCIONES_PAGO,
   type PagoEnRevision,
   type ResolucionDePago,
@@ -137,9 +138,7 @@ export const reembolsoARespuesta = (reembolso: Reembolso) => ({
 export const cancelacionSchema = z
   .object({
     pedido: pedidoSchema,
-    reembolso: z
-      .object({ idReembolso: z.number().int(), estado: z.enum(ESTADOS_REEMBOLSO) })
-      .nullable(),
+    reembolso: z.object({ idReembolso: z.number().int(), estado: z.enum(ESTADOS_REEMBOLSO) }),
   })
   .openapi('Cancelacion');
 
@@ -198,7 +197,7 @@ export const resolucionPagoARespuesta = ({
 export const resolucionPagoSchema = z
   .object({
     idIntentoPago: z.number().int(),
-    estado: z.string(),
+    estado: z.enum(ESTADOS_PAGO_RESUELTO),
     resolucion: z.enum(RESOLUCIONES_PAGO),
     motivo: z.string(),
     fechaResolucion: z.iso.datetime(),

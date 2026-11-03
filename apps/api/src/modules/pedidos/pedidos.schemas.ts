@@ -1,6 +1,7 @@
 import {
   rangoDeFechasSchema,
   consultaPaginacionSchema,
+  idBigintEnRutaSchema,
   idEnRutaSchema,
   idSchema,
 } from '../../shared/http/index.js';
@@ -49,7 +50,7 @@ export const listarReembolsosSchema = consultaPaginacionSchema.extend({
 export type ListarReembolsos = z.infer<typeof listarReembolsosSchema>;
 
 // E9-H04: la revisión manual de pagos y reembolsos (solo Admin).
-export const paramsIdIntentoSchema = z.object({ id: idEnRutaSchema });
+export const paramsIdIntentoSchema = z.object({ id: idBigintEnRutaSchema });
 
 export const listarPagosEnRevisionSchema = consultaPaginacionSchema;
 

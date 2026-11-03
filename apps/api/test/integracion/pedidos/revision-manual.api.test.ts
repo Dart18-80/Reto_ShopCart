@@ -14,13 +14,15 @@ import { usarBaseDePruebas } from '../base-de-pruebas.js';
 import { comoCliente, varianteVendible } from '../carrito/apoyo-carrito.js';
 import {
   clienteConCarrito,
+  enPasarela,
   estadoEnPasarela,
   iniciarPago,
   leerSesionPago,
   metodoEnvio,
   TARJETA_APROBADA,
 } from '../checkout/apoyo-checkout.js';
-import { leerBitacora, unaFila } from '../datos-de-prueba.js';
+import { comoActor, leerBitacora, unaFila } from '../datos-de-prueba.js';
+import { pedidosRepository } from '../../../src/modules/pedidos/pedidos.repository.js';
 import { pedidoPagado } from './apoyo-pedidos.js';
 
 // E9-H04 (decisión del PO): el Admin resuelve con evidencia un pago EnRevision y un reembolso Fallido.
@@ -29,11 +31,14 @@ usarBaseDePruebas();
 
 const app = crearApp(dependenciasDePrueba());
 let tokenAdmin = '';
+let idAdmin = 0;
 let tokenOperador = '';
 let estandar = 0;
 
 beforeAll(async () => {
-  tokenAdmin = leerSesion(await iniciarSesion(app, 'admin@shopcart.gt', 'Admin2026!')).accessToken;
+  const admin = leerSesion(await iniciarSesion(app, 'admin@shopcart.gt', 'Admin2026!'));
+  tokenAdmin = admin.accessToken;
+  idAdmin = admin.usuario.idUsuario;
   tokenOperador = leerSesion(
     await iniciarSesion(app, 'operador@shopcart.gt', 'Operador2026!'),
   ).accessToken;
@@ -179,7 +184,7 @@ describe('pagos en revisión (E9-H04)', () => {
       ResolucionManual: 'CobroVerificado',
       MotivoResolucion: 'Captura en el portal',
     });
-    expect(bitacora?.IDUsuario).not.toBeNull();
+    expect(bitacora?.IDUsuario).toBe(idAdmin);
   });
 
   it('CobroVerificado sin captura en la pasarela se rechaza y no cambia nada', async () => {
@@ -220,6 +225,19 @@ describe('pagos en revisión (E9-H04)', () => {
     });
   });
 
+  it('SinCobro con una autorización vigente la anula en la pasarela: no queda dinero retenido', async () => {
+    const { pedido, llave, idIntento } = await pagoConPedidoEnRevision();
+    await cambiarEnPasarela(llave, 'Autorizada');
+
+    const respuesta = await resolverPago(tokenAdmin, idIntento, 'SinCobro');
+
+    expect(leerDatos(respuesta, resolucionSchema)).toMatchObject({
+      estado: 'Anulado',
+      pedido: { idPedido: pedido.idPedido, estado: 'Cancelado' },
+    });
+    expect(await estadoEnPasarela(llave)).toBe('Anulada');
+  });
+
   it('SinCobro con el cobro capturado en la pasarela se rechaza: el dinero sí llegó', async () => {
     const { idIntento } = await pagoConPedidoEnRevision();
 
@@ -231,6 +249,7 @@ describe('pagos en revisión (E9-H04)', () => {
 
   it('Reembolsar un cobro sin pedido: reembolso por el monto del intento, devuelto en la pasarela', async () => {
     const { llave, idIntento, total } = await cobroSinPedidoEnRevision();
+    const monto = new Decimal(total);
 
     const respuesta = await resolverPago(tokenAdmin, idIntento, 'Reembolsar', 'Cobro sin pedido');
     const resolucion = leerDatos(respuesta, resolucionSchema);
@@ -239,7 +258,13 @@ describe('pagos en revisión (E9-H04)', () => {
       .set(comoCliente(tokenAdmin));
     const reembolso = leerDatos(
       lista,
-      z.array(z.looseObject({ idReembolso: z.number(), idIntentoPago: z.number().nullable() })),
+      z.array(
+        z.looseObject({
+          idReembolso: z.number(),
+          idIntentoPago: z.number().nullable(),
+          idTransaccionReembolso: z.string().nullable(),
+        }),
+      ),
     ).find((r) => r.idReembolso === resolucion.reembolso?.idReembolso);
 
     expect(resolucion).toMatchObject({
@@ -252,9 +277,13 @@ describe('pagos en revisión (E9-H04)', () => {
       idIntentoPago: Number(idIntento),
       idPedido: null,
       origen: 'SinPedido',
-      monto: new Decimal(total).toFixed(2),
+      estado: 'Completado',
+      monto: monto.toFixed(2),
     });
-    expect(await estadoEnPasarela(llave)).toBe('Capturada');
+    expect(reembolso?.idTransaccionReembolso).not.toBeNull();
+    expect((await enPasarela(llave)).reembolsos).toEqual([
+      expect.objectContaining({ Monto: monto.toNumber() }),
+    ]);
   });
 
   it('una resolución que no corresponde al caso responde 422; un intento inexistente, 404', async () => {
@@ -265,6 +294,7 @@ describe('pagos en revisión (E9-H04)', () => {
     const verificarSinPedido = await resolverPago(tokenAdmin, sinPedido, 'CobroVerificado');
     const inexistente = await resolverPago(tokenAdmin, '999999999', 'CobroVerificado');
 
+    expect([reembolsarConPedido.status, verificarSinPedido.status]).toEqual([422, 422]);
     expect(leerError(reembolsarConPedido).codigo).toBe('RESOLUCION_NO_APLICA');
     expect(leerError(verificarSinPedido).codigo).toBe('RESOLUCION_NO_APLICA');
     expect(inexistente.status).toBe(404);
@@ -282,6 +312,18 @@ describe('pagos en revisión (E9-H04)', () => {
 
     expect(respuestas.map((r) => r.status).sort()).toEqual([200, 409]);
     expect(rechazo && leerError(rechazo).codigo).toBe('PAGO_NO_EN_REVISION');
+  });
+
+  it('el SP, bajo bloqueo, rechaza la segunda resolución del mismo intento con 50707', async () => {
+    const { idIntento } = await pagoConPedidoEnRevision();
+    const resolver = () =>
+      comoActor(idAdmin, 'Administrador', () =>
+        pedidosRepository.resolverPago(Number(idIntento), 'CobroVerificado', 'Revisado', 'SIM-1'),
+      );
+
+    await resolver();
+
+    await expect(resolver()).rejects.toMatchObject({ codigo: 'PAGO_NO_EN_REVISION' });
   });
 
   it('Operador y Cliente reciben 403 al resolver un pago', async () => {

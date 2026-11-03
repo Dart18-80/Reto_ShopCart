@@ -215,6 +215,19 @@ export async function estadoEnPasarela(llave: string): Promise<string | undefine
   return fila?.Estado;
 }
 
+/** Lo que la pasarela simulada tiene de una llave: el estado de la autorización y sus reembolsos. */
+export async function enPasarela(llave: string) {
+  const [fila] = await ejecutarSP<{ Estado: string; Reembolsos: string | null }>(
+    'SP_Pruebas_LeerPasarela',
+    { LlaveIdempotencia: { tipo: sql.UniqueIdentifier, valor: llave } },
+  );
+  if (fila === undefined) throw new Error('La pasarela no conoce la llave');
+  const reembolsos = z
+    .array(z.object({ IDReembolso: z.string(), Monto: z.number() }))
+    .parse(JSON.parse(fila.Reembolsos ?? '[]'));
+  return { estado: fila.Estado, reembolsos };
+}
+
 const DIA_MS = 24 * 60 * 60 * 1000;
 
 export interface LimitesCupon {

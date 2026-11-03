@@ -11,6 +11,7 @@ import type { PedidosRepository } from './pedidos.repository.js';
 import type { ListarPagosEnRevision, ResolverPago, ResolverReembolso } from './pedidos.schemas.js';
 import type {
   PagoEnRevision,
+  Pedido,
   Reembolso,
   ResolucionDePago,
   ResolucionPago,
@@ -25,7 +26,7 @@ interface Dependencias {
     | 'resolverReembolso'
     | 'obtener'
   >;
-  pasarela: Pick<PasarelaPago, 'consultar'>;
+  pasarela: Pick<PasarelaPago, 'consultar' | 'anular'>;
   reembolsos: Pick<ReembolsosService, 'procesarTrasConfirmar'>;
   /** A-11: SinCobro cancela el pedido y cambia las ventas de los reportes. */
   reportes: InvalidadorReportes;
@@ -39,6 +40,19 @@ const EXIGE_CAPTURA: Record<ResolucionPago, boolean> = {
   SinCobro: false,
 };
 
+// Reembolsar es para un cobro sin pedido; las otras dos, para un pago con pedido. Mismos mensajes que el SP (50708).
+const NO_APLICA: Record<ResolucionPago, { conPedido: boolean; mensaje: string }> = {
+  CobroVerificado: {
+    conPedido: true,
+    mensaje: 'Este cobro no tiene pedido: solo se puede reembolsar.',
+  },
+  SinCobro: { conPedido: true, mensaje: 'Este cobro no tiene pedido: solo se puede reembolsar.' },
+  Reembolsar: {
+    conPedido: false,
+    mensaje: 'Este pago tiene pedido: verifica el cobro o cancela el pedido sin cobro.',
+  },
+};
+
 /**
  * E9-H04: la revisión manual de un pago EnRevision y de un reembolso Fallido. La pasarela se consulta fuera de
  * toda transacción; el SP vuelve a validar bajo bloqueo (A-02) y es el que decide quién gana entre dos
@@ -50,9 +64,9 @@ export function crearRevisionService({
   reembolsos,
   reportes,
 }: Dependencias) {
-  async function evidenciaDe(llave: string): Promise<EstadoEnPasarela> {
+  async function enLaPasarela<T>(llamada: () => Promise<T>): Promise<T> {
     try {
-      return await pasarela.consultar(llave);
+      return await llamada();
     } catch (error) {
       if (error instanceof PasarelaSinRespuesta) {
         throw new AppError('PASARELA_SIN_RESPUESTA', { cause: error });
@@ -61,10 +75,23 @@ export function crearRevisionService({
     }
   }
 
+  function exigirQueAplique(resolucion: ResolucionPago, idPedido: number | null): void {
+    const { conPedido, mensaje } = NO_APLICA[resolucion];
+    if (conPedido !== (idPedido !== null)) throw new AppError('RESOLUCION_NO_APLICA', { mensaje });
+  }
+
   function exigirEvidencia(resolucion: ResolucionPago, enPasarela: EstadoEnPasarela): void {
     const capturada = enPasarela.estado === 'Capturada';
     if (EXIGE_CAPTURA[resolucion] && !capturada) throw new AppError('COBRO_SIN_CAPTURA');
     if (!EXIGE_CAPTURA[resolucion] && capturada) throw new AppError('COBRO_CAPTURADO');
+  }
+
+  async function pedidoResuelto(idPedido: number | null): Promise<Pedido | null> {
+    if (idPedido === null) return null;
+    const pedido = await repositorio.obtener(idPedido);
+    if (pedido === null)
+      throw new Error(`El pedido ${String(idPedido)} del pago resuelto no existe`);
+    return pedido;
   }
 
   return {
@@ -80,8 +107,14 @@ export function crearRevisionService({
         throw new AppError('NO_ENCONTRADO', { mensaje: 'El intento de pago no existe.' });
       }
       if (pago.estado !== 'EnRevision') throw new AppError('PAGO_NO_EN_REVISION');
-      const enPasarela = await evidenciaDe(pago.llave);
+      exigirQueAplique(resolucion, pago.idPedido);
+      const enPasarela = await enLaPasarela(() => pasarela.consultar(pago.llave));
       exigirEvidencia(resolucion, enPasarela);
+      // Sin cobro tampoco queda una autorización retenida: se anula antes de escribir, y si la pasarela falla
+      // nada cambia.
+      if (enPasarela.estado === 'Autorizada') {
+        await enLaPasarela(() => pasarela.anular(enPasarela.idTransaccion));
+      }
 
       const idTransaccion = enPasarela.estado === 'Capturada' ? enPasarela.idTransaccion : null;
       const escritura = repositorio.resolverPago(idIntentoPago, resolucion, motivo, idTransaccion);
@@ -95,8 +128,7 @@ export function crearRevisionService({
               idReembolso,
               estado: await reembolsos.procesarTrasConfirmar(idReembolso, { idIntentoPago }),
             };
-      const pedido = idPedido === null ? null : await repositorio.obtener(idPedido);
-      return { ...resuelto, pedido, reembolso };
+      return { ...resuelto, pedido: await pedidoResuelto(idPedido), reembolso };
     },
 
     resolverReembolso: (idReembolso: number, datos: ResolverReembolso): Promise<Reembolso> =>

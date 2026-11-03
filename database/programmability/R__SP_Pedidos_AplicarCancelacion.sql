@@ -6,8 +6,9 @@
 --   UsoCupon Revertido (SP_Cupones_RevertirUso) · si el cobro todavía no se capturó (captura pendiente de la
 --   conciliación), el intento pasa a Anulado con un token nuevo (fencing): la conciliación nunca captura el cobro
 --   de un pedido cancelado · Reembolso Pendiente por lo que falta reembolsar (total con envío), con una llave
---   determinista · Pedido.MontoReembolsado += monto (CHECK ≤ Total, A-13). Con el pago en revisión no hay cobro
---   que devolver: ningún reembolso (@IDReembolso NULL).
+--   determinista · Pedido.MontoReembolsado += monto (CHECK ≤ Total, A-13).
+-- E9-H04 (decisión del PO): con el pago EnRevision no se cancela (50706): la única vía es la resolución SinCobro,
+-- que antes cierra el intento como Anulado; sin cobro no hay reembolso (@IDReembolso NULL).
 -- Orden de bloqueo: pedido → variantes (por IDVariante, dentro de SP_Inventario_RegistrarMovimiento) → cupón →
 -- intento.
 CREATE OR ALTER PROCEDURE dbo.SP_Pedidos_AplicarCancelacion
@@ -77,9 +78,12 @@ BEGIN
                TokenArrendamiento = NEWID(), FechaActualizacion = SYSUTCDATETIME()
         WHERE  IDIntentoPago = @IDIntento;
 
-    -- Decisión del PO (cierre de la Fase 1): con el pago en revisión (V019) la autorización ya no existe en la
-    -- pasarela: no hay cobro que devolver, así que no se crea reembolso.
-    IF @EstadoIntento <> 'EnRevision'
+    -- E9-H04: se valida bajo el bloqueo del intento, porque la conciliación lo pone EnRevision sin bloquear el
+    -- pedido. El THROW revierte todo lo anterior (XACT_ABORT).
+    IF @EstadoIntento = 'EnRevision'
+        THROW 50706, N'Tu pago está en verificación; podrás cancelar cuando se resuelva.', 1;
+
+    IF @EstadoIntento <> 'Anulado'
     BEGIN
         -- N-09: un reembolso por cancelación por pedido (UX_Reembolso_CancelacionPorPedido); su llave es
         -- determinista, así la petición, el Admin y el job envían siempre la misma a la pasarela.

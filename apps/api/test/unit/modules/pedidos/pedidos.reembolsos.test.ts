@@ -11,6 +11,7 @@ import type {
 } from '../../../../src/modules/pedidos/pedidos.types.js';
 import type { EstadoEnPasarela } from '../../../../src/shared/pasarela/index.js';
 import { invalidadorDePrueba } from '../../invalidador-de-prueba.js';
+import { pedidoDePrueba } from './pedido-de-prueba.js';
 
 const TARJETA = { marca: 'Visa', ultimosDigitos: '4242' };
 const CAPTURADA: EstadoEnPasarela = { estado: 'Capturada', idTransaccion: 'txn-1', ...TARJETA };
@@ -30,7 +31,7 @@ function preparar(
   logger: Logger = pino({ level: 'silent' }),
 ) {
   const repositorio = {
-    cancelar: vi.fn((): Promise<number | null> => Promise.resolve(3)),
+    cancelar: vi.fn((): Promise<number> => Promise.resolve(3)),
     registrarDevolucion: vi.fn(() =>
       Promise.resolve({ idDevolucion: 1, idReembolso: 3, montoReembolso: new Decimal('10.00') }),
     ),
@@ -64,34 +65,7 @@ function preparar(
   return { servicio, repositorio, pasarela, invalidaciones };
 }
 
-const PEDIDO_CANCELADO: Pedido = {
-  idPedido: 10,
-  numeroPedido: 'SC-000010',
-  estado: 'Cancelado',
-  estadoPago: 'Confirmado',
-  subtotal: new Decimal(0),
-  descuento: new Decimal(0),
-  costoEnvio: new Decimal(0),
-  total: new Decimal(0),
-  baseImponible: new Decimal(0),
-  iva: new Decimal(0),
-  montoReembolsado: new Decimal(0),
-  codigoCupon: null,
-  envio: { nombre: 'Estándar', fechaEstimadaEntrega: '2026-11-05' },
-  fechaPago: new Date('2026-11-01T12:00:00Z'),
-  fechaPagoLocal: '2026-11-01',
-  tarjeta: TARJETA,
-  direccion: {
-    nombreRecibe: 'Ana',
-    telefonoRecibe: '55551234',
-    departamento: 'Guatemala',
-    municipio: 'Guatemala',
-    direccionLinea: 'Zona 1',
-    referencia: null,
-  },
-  lineas: [],
-  historial: [],
-};
+const PEDIDO_CANCELADO = pedidoDePrueba({ idPedido: 10, estado: 'Cancelado' });
 
 const resultadoDe = (repositorio: ReturnType<typeof preparar>['repositorio']) =>
   repositorio.actualizarReembolso.mock.calls[0]?.[1];
@@ -242,19 +216,5 @@ describe('reembolsos: caché de reportes (E7-H04, A-11)', () => {
     await servicio.cancelar(10, 'Ya no lo necesito').catch(() => undefined);
 
     expect(invalidaciones).not.toHaveBeenCalled();
-  });
-});
-
-describe('cancelación con el pago en revisión (cierre de la Fase 1)', () => {
-  it('sin reembolso del SP (la autorización ya no existe), responde reembolso null y no llama a la pasarela', async () => {
-    const { servicio, repositorio, pasarela } = preparar(CANCELACION, CAPTURADA);
-    repositorio.cancelar.mockResolvedValueOnce(null);
-    repositorio.obtener.mockResolvedValueOnce(PEDIDO_CANCELADO);
-
-    const cancelacion = await servicio.cancelar(10, 'Ya no lo necesito');
-
-    expect(cancelacion.reembolso).toBeNull();
-    expect(repositorio.tomarReembolso).not.toHaveBeenCalled();
-    expect(pasarela.reembolsar).not.toHaveBeenCalled();
   });
 });

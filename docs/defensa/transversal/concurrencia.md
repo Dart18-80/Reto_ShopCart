@@ -96,7 +96,7 @@ El migrador lo activa al crear la base ([preparar-servidor.sql:17](../../../data
 
 - Las dos réplicas consumen la cola en competencia, sin `sp_getapplock`: `UPDLOCK, ROWLOCK, READPAST` toma una solicitud que nadie más esté tomando ([R__SP_Exportaciones_Tomar.sql:41](../../../database/programmability/R__SP_Exportaciones_Tomar.sql#L41 "WITH (UPDLOCK, ROWLOCK, READPAST)")) y la arrienda con un token nuevo ([R__SP_Exportaciones_Tomar.sql:48](../../../database/programmability/R__SP_Exportaciones_Tomar.sql#L48 "TokenArrendamiento = @Token")).
 - Solo completa quien tiene el token vigente ([R__SP_Exportaciones_Completar.sql:38](../../../database/programmability/R__SP_Exportaciones_Completar.sql#L38 "TokenArrendamiento = @TokenArrendamiento")): una réplica desplazada no sobrescribe el resultado.
-- Prueba: [exportaciones.api.test.ts:297](../../../apps/api/test/integracion/secuencial/exportaciones.api.test.ts#L297 "una réplica que muere a mitad: otra la retoma al vencer el arrendamiento").
+- Prueba: [exportaciones.api.test.ts:311](../../../apps/api/test/integracion/secuencial/exportaciones.api.test.ts#L311 "una réplica que muere a mitad: otra la retoma al vencer el arrendamiento").
 
 ## Pruebas de concurrencia (RNF-3)
 

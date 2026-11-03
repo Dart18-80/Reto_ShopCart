@@ -2,7 +2,7 @@
 -- N-09, RF-07 (plan E6-H03 §2): cancela el pedido completo en una sola transacción. El Cliente cancela los suyos
 -- (uno ajeno responde 50001, igual que uno inexistente); el Operador y el Admin, cualquiera. Motivo obligatorio.
 -- Lo que hace la cancelación está en SP_Pedidos_AplicarCancelacion. La pasarela se llama después del COMMIT (el
--- servicio). Devuelve el reembolso creado (NULL con el pago en revisión).
+-- servicio). Con el pago EnRevision responde 50706 (E9-H04). Devuelve el reembolso creado.
 CREATE OR ALTER PROCEDURE dbo.SP_Pedidos_Cancelar
     @IDPedido       INT,
     @Motivo         NVARCHAR(250),

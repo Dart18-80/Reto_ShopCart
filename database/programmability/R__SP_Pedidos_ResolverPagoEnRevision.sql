@@ -3,9 +3,9 @@
 -- (fuera de toda transacción) y solo llama si la evidencia respalda la resolución:
 --   CobroVerificado  con pedido: la pasarela tiene el cobro capturado. El intento queda Capturado con la
 --                    transacción y el pedido sigue su flujo
---   SinCobro         con pedido: no hubo captura. El pedido se cancela por el mismo camino que cualquier
---                    cancelación (SP_Pedidos_AplicarCancelacion), con el motivo del Admin y sin reembolso; el
---                    intento queda Anulado
+--   SinCobro         con pedido: no hubo captura. El intento queda Anulado y el pedido se cancela por el mismo
+--                    camino que cualquier cancelación (SP_Pedidos_AplicarCancelacion), con el motivo del Admin:
+--                    con el intento ya Anulado no crea reembolso. Es la única vía que cancela un pedido EnRevision
 --   Reembolsar       sin pedido: el cobro capturado se devuelve con un reembolso Pendiente por el monto del
 --                    intento (UX_Reembolso_PorIntento: uno solo, nunca más de lo capturado), con una llave
 --                    determinista; lo procesa el flujo de siempre. El intento queda Anulado: un reintento con su
@@ -62,6 +62,18 @@ BEGIN
         IF @Resolucion = 'Reembolsar' AND @IDPedido IS NOT NULL
             THROW 50708, N'Este pago tiene pedido: verifica el cobro o cancela el pedido sin cobro.', 1;
 
+        -- El intento se cierra antes de cancelar: SP_Pedidos_AplicarCancelacion rechaza un pago EnRevision y no
+        -- reembolsa uno Anulado.
+        UPDATE dbo.IntentoPago
+        SET    Estado = IIF(@Resolucion = 'CobroVerificado', 'Capturado', 'Anulado'),
+               IDTransaccionPasarela = COALESCE(@IDTransaccion, IDTransaccionPasarela),
+               CodigoRespuesta = IIF(@Resolucion = 'CobroVerificado', NULL, 'PAGO_NO_COMPLETADO'),
+               MensajeRespuesta = NULL,
+               ResolucionManual = @Resolucion, MotivoResolucion = @Motivo250,
+               IDUsuarioResolucion = @IDUsuarioActor, FechaResolucion = SYSUTCDATETIME(),
+               FechaActualizacion = SYSUTCDATETIME()
+        WHERE  IDIntentoPago = @IDIntentoPago;
+
         IF @Resolucion = 'SinCobro'
             EXEC dbo.SP_Pedidos_AplicarCancelacion
                  @IDPedido = @IDPedido, @Motivo = @Motivo250, @IDUsuario = @IDUsuarioActor, @IDCliente = NULL,
@@ -76,16 +88,6 @@ BEGIN
                     SYSUTCDATETIME());
             SET @IDReembolso = SCOPE_IDENTITY();
         END
-
-        UPDATE dbo.IntentoPago
-        SET    Estado = IIF(@Resolucion = 'CobroVerificado', 'Capturado', 'Anulado'),
-               IDTransaccionPasarela = COALESCE(@IDTransaccion, IDTransaccionPasarela),
-               CodigoRespuesta = IIF(@Resolucion = 'CobroVerificado', NULL, 'PAGO_NO_COMPLETADO'),
-               MensajeRespuesta = NULL,
-               ResolucionManual = @Resolucion, MotivoResolucion = @Motivo250,
-               IDUsuarioResolucion = @IDUsuarioActor, FechaResolucion = SYSUTCDATETIME(),
-               FechaActualizacion = SYSUTCDATETIME()
-        WHERE  IDIntentoPago = @IDIntentoPago;
 
         COMMIT;
     END TRY

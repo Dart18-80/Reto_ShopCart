@@ -156,7 +156,7 @@ const aPagoEnRevision = (fila: FilaPagoEnRevision): PagoEnRevision => ({
 
 interface FilaPagoResuelto {
   IDIntentoPago: string;
-  Estado: string;
+  Estado: PagoResuelto['estado'];
   ResolucionManual: ResolucionPago;
   MotivoResolucion: string;
   FechaResolucion: Date;
@@ -329,13 +329,14 @@ export const pedidosRepository = {
     return pedido;
   },
 
-  /** N-09: la transacción de la cancelación. El reembolso Pendiente que dejó; null si el pago estaba en revisión. */
-  async cancelar(idPedido: number, motivo: string): Promise<number | null> {
+  /** N-09: la transacción de la cancelación; devuelve el reembolso Pendiente que dejó. */
+  async cancelar(idPedido: number, motivo: string): Promise<number> {
     const [fila] = await ejecutarSP<{ IDReembolso: number | null }>('SP_Pedidos_Cancelar', {
       IDPedido: { tipo: sql.Int, valor: idPedido },
       Motivo: { tipo: sql.NVarChar(250), valor: motivo },
     });
-    if (fila === undefined) throw new Error('SP_Pedidos_Cancelar no devolvió el reembolso');
+    if (fila === undefined || fila.IDReembolso === null)
+      throw new Error('SP_Pedidos_Cancelar no devolvió el reembolso');
     return fila.IDReembolso;
   },
 
@@ -451,7 +452,7 @@ export const pedidosRepository = {
     const [fila] = await ejecutarSP<{
       IDIntentoPago: string;
       LlaveIdempotencia: string;
-      Estado: string;
+      Estado: PagoParaResolver['estado'];
       IDPedido: number | null;
     }>('SP_Pedidos_ObtenerPagoEnRevision', {
       IDIntentoPago: { tipo: sql.BigInt, valor: idIntentoPago },
