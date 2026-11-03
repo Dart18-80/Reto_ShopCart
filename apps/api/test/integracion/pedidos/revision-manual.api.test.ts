@@ -316,9 +316,15 @@ describe('pagos en revisión (E9-H04)', () => {
 
   it('el SP, bajo bloqueo, rechaza la segunda resolución del mismo intento con 50707', async () => {
     const { idIntento } = await pagoConPedidoEnRevision();
+    const idTransaccion = `SIM-${randomUUID()}`;
     const resolver = () =>
       comoActor(idAdmin, 'Administrador', () =>
-        pedidosRepository.resolverPago(Number(idIntento), 'CobroVerificado', 'Revisado', 'SIM-1'),
+        pedidosRepository.resolverPago(
+          Number(idIntento),
+          'CobroVerificado',
+          'Revisado',
+          idTransaccion,
+        ),
       );
 
     await resolver();
