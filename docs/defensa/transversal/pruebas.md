@@ -6,7 +6,7 @@ Las reglas críticas viven en los SPs y en los constraints (A-02), así que se p
 
 ## La pirámide real
 
-Conteos hechos sobre el repositorio: archivos `*.test.ts` y declaraciones `it(` / `it.each(` (un `it.each` se expande en varios casos al correr). Las cifras de casos ejecutados salen de correr cada suite en un clon nuevo con `core.autocrlf=true` sobre `859d08d` (2 nov 2026), todas en verde.
+Conteos hechos sobre el repositorio: archivos `*.test.ts` y declaraciones `it(` / `it.each(` (un `it.each` se expande en varios casos al correr). Las cifras de casos ejecutados salen de correr cada suite en un clon nuevo con `core.autocrlf=true` sobre `9c1d9a9` (2 nov 2026), todas en verde.
 
 | Piso | Carpeta | Archivos | Declaraciones `it` (de ellas `it.each`) | Casos al correr | Contra qué corre |
 |---|---|---|---|---|---|

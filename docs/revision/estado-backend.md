@@ -22,14 +22,14 @@ Revisión completa sobre `1be3c26` (2026-11-02), al cierre de la Fase 1: E0 a E9
 - **Coherencia:** el router y 01 coinciden en las 98 rutas; los objetos de base y los 71 códigos de error coinciden con 02; los 60 IDs citados en el código existen en `docs/` (§3).
 - **Riesgos abiertos:** ningún CRÍTICO ni ALTO. La revisión manual de pagos (E9-H04) ya resuelve los intentos `EnRevision`; queda una decisión del PO para el caso de un pedido ya despachado cuyo pago resulta sin cobro (§8).
 
-**Verificación desde cero** sobre `99a2781`: en un clon nuevo con `core.autocrlf=true`, con el entorno de Docker levantado desde cero (123 s), todas las suites en verde, sin el perfil de observabilidad y con él. También `pnpm ledger:verificar` y `pnpm test:cobertura` (1,283 pruebas en una sola corrida).
+**Verificación desde cero** en un clon nuevo con `core.autocrlf=true` y el entorno de Docker levantado desde cero, sin el perfil de observabilidad y con él, más `pnpm ledger:verificar` y `pnpm test:cobertura` (1,330 pruebas en una sola corrida). Dos corridas: sobre `9b2a7a6` (entorno en 106 s, construyendo las imágenes) falló una vez `cache.api.test.ts` › "una devolución se ve en el reporte": medía el total de devoluciones de hoy, que otros archivos cambian en paralelo; se corrigió en `9c1d9a9` midiendo en un día propio. Sobre `9c1d9a9` (22 s, con las imágenes ya construidas) todo quedó en verde salvo `defensa.test.ts`: esa corrección movió una línea que cita la guía; se reubicó en el commit siguiente, solo de documentación, con la prueba de citas y las 551 unitarias en verde.
 
 | Suite | Sin el perfil `observabilidad` | Con el perfil |
 |---|---|---|
 | `pnpm lint` y `pnpm typecheck` | verde | — |
-| API unitarias | 526 | — |
-| Migrador | 251 unitarias + 11 de integración | — |
-| API integración (incluida la telemetría) | 757 | 757 |
+| API unitarias | 551 | — |
+| Migrador | 258 unitarias + 11 de integración | — |
+| API integración (incluida la telemetría) | 779 | 779 |
 | Concurrencia (RNF-3) | 2 | 2 |
 | Entorno | 26 (2 omitidas: las del perfil) | 27 (1 omitida: la de sin perfil) |
 | Humo de la imagen | 2 | — |
