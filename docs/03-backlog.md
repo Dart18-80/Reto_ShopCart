@@ -764,4 +764,4 @@ Se detalla en historias al cerrar la Fase 1.
 | E9-H01 | OpenTelemetry y Grafana LGTM | Must | 2.0 | Hecha |
 | E9-H02 | Dashboard en tiempo real con SSE | Must | 1.5 | Hecha |
 | E9-H03 | Guía de defensa | Must | 1.5 | Hecha |
-| E9-H04 | Revisión manual de pagos y reembolsos | Must | 2.0 | Lista |
+| E9-H04 | Revisión manual de pagos y reembolsos | Must | 2.0 | En revisión |

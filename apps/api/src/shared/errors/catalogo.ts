@@ -235,6 +235,37 @@ export const CATALOGO = {
     numeroSql: 50706,
     mensaje: 'El pago de este pedido está en verificación.',
   },
+  // E9-H04 (decisión del PO): la revisión manual de pagos y reembolsos. Las tres últimas nacen en la API, con lo
+  // que la pasarela dice del cobro.
+  PAGO_NO_EN_REVISION: {
+    http: 409,
+    numeroSql: 50707,
+    mensaje: 'Este pago ya no está en revisión: alguien lo resolvió antes.',
+  },
+  RESOLUCION_NO_APLICA: {
+    http: 422,
+    numeroSql: 50708,
+    mensaje: 'Esa resolución no corresponde a este pago.',
+  },
+  REEMBOLSO_NO_FALLIDO: {
+    http: 409,
+    numeroSql: 50709,
+    mensaje: 'Solo se resuelve a mano un reembolso Fallido.',
+  },
+  COBRO_SIN_CAPTURA: {
+    http: 409,
+    mensaje:
+      'La pasarela no muestra el cobro capturado: no se puede dar por verificado ni reembolsar.',
+  },
+  COBRO_CAPTURADO: {
+    http: 409,
+    mensaje:
+      'La pasarela muestra el cobro capturado: verifica el cobro en lugar de cancelar sin cobro.',
+  },
+  PASARELA_SIN_RESPUESTA: {
+    http: 504,
+    mensaje: 'La pasarela no respondió. Vuelve a intentarlo.',
+  },
 
   // Exportaciones (50800–50899, E7-H05). Las dos últimas nacen en la API.
   EXPORTACIONES_PENDIENTES_MAXIMAS: {

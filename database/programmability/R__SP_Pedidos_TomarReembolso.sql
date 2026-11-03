@@ -3,6 +3,7 @@
 -- está Pendiente o ya lo tiene otro, no devuelve filas. Lo llaman la petición que canceló o devolvió (el
 -- Cliente dueño, el Operador o el Admin) y el job (Sistema).
 -- Devuelve lo que necesita la pasarela: la llave del reembolso, el monto, la transacción y la llave del intento.
+-- El intento se alcanza por el pedido o, en un cobro sin pedido (E9-H04), directo desde el reembolso.
 CREATE OR ALTER PROCEDURE dbo.SP_Pedidos_TomarReembolso
     @IDReembolso     INT,
     @SegundosReclamo INT,
@@ -30,7 +31,7 @@ BEGIN
         SET    r.FechaProximoIntento = DATEADD(SECOND, @SegundosReclamo, SYSUTCDATETIME()),
                r.TokenReclamo = NEWID(), r.FechaActualizacion = SYSUTCDATETIME()
         FROM   dbo.Reembolso AS r WITH (UPDLOCK, ROWLOCK)
-        JOIN   dbo.Pedido AS p ON p.IDPedido = r.IDPedido
+        LEFT JOIN dbo.Pedido AS p ON p.IDPedido = r.IDPedido
         WHERE  r.IDReembolso = @IDReembolso AND r.Estado = 'Pendiente'
           AND  (r.FechaProximoIntento IS NULL OR r.FechaProximoIntento <= SYSUTCDATETIME())
           AND  (@RolActor <> 'Cliente' OR p.IDUsuario = @IDUsuarioActor);
@@ -46,8 +47,8 @@ BEGIN
     SELECT r.IDReembolso, r.Origen, r.Monto, r.LlaveIdempotencia, r.TokenReclamo, i.IDTransaccionPasarela,
            i.LlaveIdempotencia AS LlaveIntento
     FROM   dbo.Reembolso AS r
-    JOIN   dbo.Pedido AS p ON p.IDPedido = r.IDPedido
-    JOIN   dbo.IntentoPago AS i ON i.IDIntentoPago = p.IDIntentoPago
+    LEFT JOIN dbo.Pedido AS p ON p.IDPedido = r.IDPedido
+    JOIN   dbo.IntentoPago AS i ON i.IDIntentoPago = COALESCE(p.IDIntentoPago, r.IDIntentoPago)
     WHERE  r.IDReembolso = @IDReembolso AND @Tomado = 1;
 END
 GO

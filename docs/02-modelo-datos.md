@@ -620,12 +620,13 @@ UQ `(IDSesionCheckout, IDVariante)`. **Invariante (lo valida el SP):** `SUM(Desc
 | LlaveIdempotencia | UNIQUEIDENTIFIER | **UQ** |
 | HashSolicitud | BINARY(32) | Para detectar "misma llave, otro contenido" → 422 |
 | Monto | DECIMAL(12,2) | CK > 0 |
-| Estado | VARCHAR(12) | CK `IN ('Pendiente','Autorizado','Capturado','Rechazado','Anulado','Fallido','Error')` (`Fallido`: la conciliación confirmó que la pasarela nunca autorizó; V013) |
+| Estado | VARCHAR(12) | CK `IN ('Pendiente','Autorizado','Capturado','Rechazado','Anulado','Fallido','Error','EnRevision')` (`Fallido`: la conciliación confirmó que la pasarela nunca autorizó, V013; `EnRevision`: pago inconsistente con la pasarela, para revisión manual, V019) |
 | IDTransaccionPasarela | VARCHAR(64) *NULL* | |
 | CodigoRespuesta | VARCHAR(30) *NULL* | p. ej. `FONDOS_INSUFICIENTES` |
 | MensajeRespuesta | NVARCHAR(200) *NULL* | |
 | MarcaTarjeta | VARCHAR(20) *NULL* | |
 | UltimosDigitos | CHAR(4) *NULL* | CK: 4 dígitos |
+| ResolucionManual, MotivoResolucion, IDUsuarioResolucion, FechaResolucion | VARCHAR(16), NVARCHAR(250), INT FK → Usuario, DATETIME2(3), todas *NULL* | V023, E9-H04: cómo resolvió el Admin un pago `EnRevision` (`CobroVerificado`, `SinCobro` o `Reembolsar`); CK: las cuatro juntas o ninguna. Índice filtrado `IX_IntentoPago_EnRevision` para la lista |
 | ArrendadoHasta | DATETIME2(3) *NULL* | V013, N-03: hasta cuándo una petición tiene tomado el intento en curso; `NULL` cuando ya no está en curso |
 | TokenArrendamiento | UNIQUEIDENTIFIER *NULL* | V014, N-03: token de fencing; cada toma del arrendamiento (petición o conciliación) genera uno nuevo y `CrearPedido`, `ActualizarIntentoPago`, `LiberarArrendamiento` y `ResolverIntentoConciliado` verifican bajo `UPDLOCK` que el suyo sigue vigente (si no, `50602` o `Resuelto = 0`) |
 
@@ -753,11 +754,13 @@ UQ `(IDPedido, IDVariante)`. Índices: `IX_DetallePedido_Variante (IDVariante) I
 | Columna | Tipo | Reglas |
 |---|---|---|
 | IDReembolso | INT IDENTITY | PK |
-| IDPedido | INT | FK → Pedido |
+| IDPedido | INT *NULL* | FK → Pedido |
+| IDIntentoPago | BIGINT *NULL* | V023, E9-H04: FK → IntentoPago, solo en un cobro capturado sin pedido. CK `CK_Reembolso_Destino`: exactamente uno de `IDPedido` e `IDIntentoPago`; `UX_Reembolso_PorIntento`: uno por intento, por su monto (nunca más de lo capturado) |
 | IDDevolucion | INT *NULL* | FK → Devolucion |
-| Origen | VARCHAR(12) | CK `IN ('Cancelacion','Devolucion')`; CK: `Devolucion` ⇔ `IDDevolucion IS NOT NULL` |
+| Origen | VARCHAR(12) | CK `IN ('Cancelacion','Devolucion','SinPedido')`; `Devolucion` ⇔ `IDDevolucion IS NOT NULL`; `SinPedido` ⇔ el reembolso apunta al intento |
 | Monto | DECIMAL(12,2) | CK > 0 |
-| Estado | VARCHAR(10) | CK `IN ('Pendiente','Completado','Fallido')` |
+| Estado | VARCHAR(14) | CK `IN ('Pendiente','Completado','Fallido','ResueltoManual')` (`ResueltoManual`: el Admin lo resolvió a mano, E9-H04) |
+| MotivoResolucion, ReferenciaResolucion, IDUsuarioResolucion, FechaResolucion | NVARCHAR(250), NVARCHAR(100), INT FK → Usuario, DATETIME2(3), todas *NULL* | V023: obligatorias solo en `ResueltoManual` (CK) |
 | Intentos | TINYINT | DF 0 |
 | LlaveIdempotencia | UNIQUEIDENTIFIER | **UQ** (se envía a la pasarela) |
 | IDTransaccionReembolso | VARCHAR(64) *NULL* | |
@@ -767,7 +770,7 @@ UQ `(IDPedido, IDVariante)`. Índices: `IX_DetallePedido_Variante (IDVariante) I
 
 Índices: **`UX_Reembolso_CancelacionPorPedido`** UNIQUE `(IDPedido) WHERE Origen = 'Cancelacion'`, `UX_Reembolso_PorDevolucion` UNIQUE `(IDDevolucion) WHERE IDDevolucion IS NOT NULL` e `IX_Reembolso_Pendientes (FechaProximoIntento) WHERE Estado = 'Pendiente'`.
 
-`Pedido.MontoReembolsado` aumenta **al crear** el reembolso, en la misma transacción. El `CHECK` garantiza que nunca se compromete más de lo cobrado.
+`Pedido.MontoReembolsado` aumenta **al crear** el reembolso, en la misma transacción. El `CHECK` garantiza que nunca se compromete más de lo cobrado. Por eso un `ResueltoManual` ya cuenta como reembolsado sin tocar el pedido.
 
 ### 3.10 Bitácora
 
@@ -798,8 +801,10 @@ UQ `(IDPedido, IDVariante)`. Índices: `IX_DetallePedido_Variante (IDVariante) I
 | `Pedido` | `TR_Pedidos_Bitacora` | **Solo cuando cambia `IDEstadoPedido`** | Pedidos |
 | `MetodoEnvio`, `ParametroSistema` | `TR_Envios_Bitacora`, `TR_Configuracion_Bitacora` | Cambios de tarifas y parámetros (N-04) | Envios / Configuracion |
 | `Usuario` | `TR_Usuarios_Bitacora` | Rol y activación, **nunca `HashContrasena`** | Usuarios |
+| `IntentoPago` | `TR_Pedidos_PagoBitacora` | **Solo cuando cambia `Estado`**, con la resolución manual del Admin (E9-H04); nunca datos de la tarjeta | Pedidos |
+| `Reembolso` | `TR_Pedidos_ReembolsoBitacora` | La creación y cada cambio de `Estado`: el job, el reintento del Admin y su resolución manual (E9-H04) | Pedidos |
 
-El décimo trigger es `TR_Pedidos_ValidarTransicion` (§3.9), que valida las transiciones de estado del pedido.
+El duodécimo trigger es `TR_Pedidos_ValidarTransicion` (§3.9), que valida las transiciones de estado del pedido. Los de `IntentoPago` y `Reembolso` usan el módulo `Pedidos`: el `CHECK` de módulo de la tabla ledger `Bitacora` no cambia (M-01).
 
 ### 3.11 Exportaciones (V021, E7-H05, A-24)
 
@@ -893,7 +898,7 @@ Los SPs marcados **(interno)** solo los invocan otros SPs, nunca la API. Así ha
 `SP_Checkout_IniciarSesion` · `SP_Checkout_ObtenerSesion` · `SP_Checkout_CancelarSesion` · `SP_Checkout_CancelarSesionActiva` **(interno)** · `SP_Checkout_RegistrarIntentoPago` (llave, hash, arrendamiento y compare-and-set) · `SP_Checkout_ActualizarIntentoPago` (autorizado, rechazado, anulado, capturado; cancela la sesión al llegar al máximo de rechazos) · `SP_Checkout_LiberarArrendamiento` (timeout de la pasarela) · `SP_Checkout_RenovarArrendamiento` (fencing antes de anular en la pasarela) · `SP_Checkout_ExpirarSesiones` (job; no vence sesiones con un pago con el arrendamiento vivo) · `SP_Checkout_TomarIntentosPorConciliar` (job, `sp_getapplock`: toma los intentos con el arrendamiento vencido hace más de 2 min) · `SP_Checkout_ResolverIntentoConciliado` (job) · `SP_Inventario_LiberarReservas` **(interno)** · `SP_Cupones_ReservarUso` **(interno)** · `SP_Cupones_LiberarUso` **(interno)** · `SP_Pasarela_Autorizar` · `SP_Pasarela_CambiarEstado` (captura o anula) · `SP_Pasarela_Reembolsar` · `SP_Pasarela_Consultar` (solo el adaptador de la pasarela simulada) · `SP_Sistema_PurgarSolicitudesIdempotentes` (job) · `SP_Sistema_BuscarSolicitudIdempotente` **(interno)** · `SP_Sistema_GuardarSolicitudIdempotente` **(interno)**: los usan `SP_Inventario_RegistrarEntrada` y `SP_Inventario_RegistrarAjuste` dentro de su transacción
 
 ### Pedidos
-`SP_Pedidos_CrearPedido` (la transacción atómica de RF-06) · `SP_Pedidos_ListarPropios` (`IX_Pedido_Cliente`) · `SP_Pedidos_ObtenerDetalle` (con `@IDUsuario` si el rol es Cliente) · `SP_Pedidos_ObtenerDeIntento` (el pedido de un intento de pago; lo usa el pago antes de anular tras una falla) · `SP_Pedidos_Listar` (gestión: filtros por estado, cliente y días de Guatemala sobre `FechaPagoLocal`, igual que los reportes; paginado; un índice por filtro: `IX_Pedido_Gestion`, `IX_Pedido_Cliente`, `IX_Pedido_Reportes` y, sin filtros, `IX_Pedido_FechaPago` de V015) · `SP_Pedidos_CambiarEstado` · `SP_Pedidos_Cancelar` (N-09, plan E6-H03) · `SP_Pedidos_TomarReembolso` (compare-and-set antes de llamar a la pasarela, con `Reembolso.TokenReclamo` de V016: un fallo solo cuenta si el reclamo sigue vigente y un éxito de la pasarela siempre deja el reembolso `Completado`) · `SP_Pedidos_ReintentarReembolso` (Admin) · `SP_Pedidos_RegistrarDevolucion` (N-10: líneas bloqueadas por `IDDetallePedido`, plazo desde la primera entrada a `Entregado` del historial, reembolso por unidad al centavo con el residuo en la devolución que completa la línea, sin envío, y estado derivado `DevueltoParcial`/`Devuelto`) · `SP_Pedidos_ListarReembolsos` · `SP_Pedidos_ObtenerReembolsosPendientes` (job) · `SP_Pedidos_ActualizarReembolso` · `SP_Pedidos_ListarTransiciones` (para el test de coincidencia de N-08)
+`SP_Pedidos_CrearPedido` (la transacción atómica de RF-06) · `SP_Pedidos_ListarPropios` (`IX_Pedido_Cliente`) · `SP_Pedidos_ObtenerDetalle` (con `@IDUsuario` si el rol es Cliente) · `SP_Pedidos_ObtenerDeIntento` (el pedido de un intento de pago; lo usa el pago antes de anular tras una falla) · `SP_Pedidos_Listar` (gestión: filtros por estado, cliente y días de Guatemala sobre `FechaPagoLocal`, igual que los reportes; paginado; un índice por filtro: `IX_Pedido_Gestion`, `IX_Pedido_Cliente`, `IX_Pedido_Reportes` y, sin filtros, `IX_Pedido_FechaPago` de V015) · `SP_Pedidos_CambiarEstado` · `SP_Pedidos_Cancelar` (N-09, plan E6-H03) · `SP_Pedidos_TomarReembolso` (compare-and-set antes de llamar a la pasarela, con `Reembolso.TokenReclamo` de V016: un fallo solo cuenta si el reclamo sigue vigente y un éxito de la pasarela siempre deja el reembolso `Completado`) · `SP_Pedidos_ReintentarReembolso` (Admin) · `SP_Pedidos_ListarPagosEnRevision`, `SP_Pedidos_ObtenerPagoEnRevision`, `SP_Pedidos_ResolverPagoEnRevision` y `SP_Pedidos_ResolverReembolso` (Admin, E9-H04: bajo `UPDLOCK`, solo desde `EnRevision` o `Fallido`) · `SP_Pedidos_AplicarCancelacion` **(interno: el cuerpo de la cancelación, que usan `SP_Pedidos_Cancelar` y la resolución `SinCobro`)** · `SP_Pedidos_RegistrarDevolucion` (N-10: líneas bloqueadas por `IDDetallePedido`, plazo desde la primera entrada a `Entregado` del historial, reembolso por unidad al centavo con el residuo en la devolución que completa la línea, sin envío, y estado derivado `DevueltoParcial`/`Devuelto`) · `SP_Pedidos_ListarReembolsos` · `SP_Pedidos_ObtenerReembolsosPendientes` (job) · `SP_Pedidos_ActualizarReembolso` · `SP_Pedidos_ListarTransiciones` (para el test de coincidencia de N-08)
 
 ### Exportaciones (E7-H05, A-24)
 - **Administrador:** `SP_Exportaciones_Solicitar` bloquea la fila del usuario, agrupa una solicitud igual vigente y aplica el máximo de pendientes (50801). `SP_Exportaciones_Obtener` y `SP_Exportaciones_Listar` devuelven solo las propias.
@@ -954,7 +959,7 @@ Rangos por módulo para `THROW`. El catálogo completo, con su código estable y
 | 50400–50499 | Carrito | 50401 `LIMITE_LINEAS` (422) · 50402 `LINEAS_NO_DISPONIBLES` (409) · 50403 `CARRITO_VACIO` (422) |
 | 50500–50599 | Cupones | 50501 `CUPON_NO_EXISTE` · 50502 `CUPON_INACTIVO` · 50503 `CUPON_NO_VIGENTE_AUN` · 50504 `CUPON_VENCIDO` · 50505 `CUPON_AGOTADO` · 50506 `CUPON_LIMITE_CLIENTE` · 50507 `CUPON_MINIMO_NO_ALCANZADO` · 50508 `CUPON_SIN_PRODUCTOS_CATEGORIA` (todos 422) · 50509 `CUPON_USADO_NO_EDITABLE` (409) · 50510 `CUPON_CODIGO_DUPLICADO` (409) · 50511 `CUPON_LIMITE_BAJO_USOS` (422, traduce `CK_Cupon_UsosComprometidos`; `detalles.usosComprometidos`) |
 | 50600–50699 | Checkout y pago | 50601 `SESION_VENCIDA` (409) · 50602 `PAGO_EN_CURSO` (409, con `Retry-After` si es la misma llave) · 50603 `LLAVE_REUTILIZADA` (422) · 50604 `PAGO_RECHAZADO` (402) · 50605 `MAX_INTENTOS` (409) · 50606 `PAGO_SIN_CONFIRMAR` (504: la pasarela no respondió; se puede reintentar con la misma llave y no se cobra dos veces) · 50607 `PAGO_NO_COMPLETADO` (409: la conciliación cerró el intento sin cobro, `Fallido` o `Anulado`; lo recibe un reintento con esa llave) |
-| 50700–50799 | Pedidos | 50701 `TRANSICION_INVALIDA` (409) · 50702 `NO_CANCELABLE` (409) · 50703 `DEVOLUCION_EXCEDE_VENDIDO` (422) · 50704 `PLAZO_DEVOLUCION_VENCIDO` (422) · 50705 `REEMBOLSO_EXCEDE_TOTAL` (422) · 50706 `PAGO_EN_REVISION` (409: el pago del pedido está en revisión manual, V019; el pedido no avanza de estado y el reintento de un cobro sin pedido en revisión también lo recibe) |
+| 50700–50799 | Pedidos | 50701 `TRANSICION_INVALIDA` (409) · 50702 `NO_CANCELABLE` (409) · 50703 `DEVOLUCION_EXCEDE_VENDIDO` (422) · 50704 `PLAZO_DEVOLUCION_VENCIDO` (422) · 50705 `REEMBOLSO_EXCEDE_TOTAL` (422) · 50706 `PAGO_EN_REVISION` (409: el pago del pedido está en revisión manual, V019; el pedido no avanza de estado y el reintento de un cobro sin pedido en revisión también lo recibe) · 50707 `PAGO_NO_EN_REVISION` (409: el pago ya se resolvió) · 50708 `RESOLUCION_NO_APLICA` (422) · 50709 `REEMBOLSO_NO_FALLIDO` (409). Nacen en la API (E9-H04): `COBRO_SIN_CAPTURA` (409), `COBRO_CAPTURADO` (409) y `PASARELA_SIN_RESPUESTA` (504) |
 | 50800–50899 | Exportaciones | 50801 `EXPORTACIONES_PENDIENTES_MAXIMAS` (429). Nacen en la API: `EXPORTACION_NO_LISTA` (409) y `EXPORTACION_EXPIRADA` (410) |
 | 50900–50999 | Envíos | 50901 `METODO_ENVIO_ULTIMO_ACTIVO` (409: siempre queda al menos un método activo, N-04; el SP bloquea todas las filas de `MetodoEnvio`) |
 | — (error del motor) | Ledger | **37359**: SQL Server rechaza `UPDATE`/`DELETE` sobre una tabla ledger append-only. Se produce al **compilar** un SP que lo intente, así que nunca llega a la API y no se mapea a HTTP |

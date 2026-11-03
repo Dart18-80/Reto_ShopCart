@@ -186,6 +186,7 @@ export function crearReembolsosService({ repositorio, pasarela, logger, reportes
 
   return {
     procesar,
+    procesarTrasConfirmar,
 
     async cancelar(idPedido: number, motivo: string): Promise<Cancelacion> {
       const idReembolso = await reportes.tras(repositorio.cancelar(idPedido, motivo), 'ventas');
@@ -236,6 +237,7 @@ export function crearReembolsosService({ repositorio, pasarela, logger, reportes
         Pendiente: 0,
         Completado: 0,
         Fallido: 0,
+        ResueltoManual: 0,
         errores: 0,
       };
       for (const idReembolso of ids) {

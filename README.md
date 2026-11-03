@@ -462,6 +462,6 @@ docker compose start api-1        # nginx la reincorpora sola
 Lo que queda fuera de la Fase 1, a propósito y con su lugar en el plan ([docs/03-backlog.md](docs/03-backlog.md) §4). Las exclusiones del alcance y las mejoras de producto están en §4, «Fuera de alcance y mejoras».
 
 - **Fase 2 · Frontend:** SPA con Vite + React + TypeScript (tienda, backoffice y dashboard con gráficas), renovación transparente del token y estados de carga, vacío y error.
-- **Revisión manual de pagos:** un intento con pedido cuya autorización ya no existe en la pasarela queda `EnRevision` y un reembolso que agota sus 5 intentos queda `Fallido` en la lista del Admin (`GET /api/v1/admin/reembolsos`, con reintento). La Fase 2 les dará pantalla.
+- **Revisión manual de pagos:** la API ya la resuelve (E9-H04, solo Admin): `GET /api/v1/admin/pagos/en-revision` y `POST /api/v1/admin/pagos/{id}/resolver` (`CobroVerificado`, `SinCobro` o `Reembolsar`, con la evidencia de la pasarela), y `POST /api/v1/admin/reembolsos/{id}/resolver` para un reembolso `Fallido` (`ResueltoManual`). La Fase 2 les dará pantalla.
 - **Carga pesada (F5):** el script `database/load/L001` con el generador de datos demo a 50,000 pedidos. Ya se midió en una base desechable: ningún listado ni reporte pasa de 1 s ([docs/revision/estado-backend.md](docs/revision/estado-backend.md) §7).
 - **Producción:** SQL Server Standard o Enterprise en lugar de Developer, HTTPS en nginx y secretos fuera de `.env`.

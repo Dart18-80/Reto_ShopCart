@@ -76,7 +76,7 @@ Solo se concatenan fragmentos constantes; los valores viajan como parámetros de
 
 Todo SP que escribe usa `SET XACT_ABORT ON` y `BEGIN TRY … BEGIN TRAN … COMMIT` con `ROLLBACK` y `THROW` en el `CATCH`: cualquier error revierte todo. Una prueba verifica esa plantilla en todos los SPs que escriben.
 
-**Muéstralo en:** [convenciones-sql.test.ts:43](../../database/migrator/test/convenciones-sql.test.ts#L43 "SET XACT_ABORT ON, TRY/CATCH con transacción y SP_Sistema_EstablecerContexto"). Detalle: [base de datos](transversal/base-de-datos.md).
+**Muéstralo en:** [convenciones-sql.test.ts:44](../../database/migrator/test/convenciones-sql.test.ts#L44 "SET XACT_ABORT ON, TRY/CATCH con transacción y SP_Sistema_EstablecerContexto"). Detalle: [base de datos](transversal/base-de-datos.md).
 
 ### 13. ¿Cómo evitas los deadlocks, y qué pasa si ocurre uno?
 

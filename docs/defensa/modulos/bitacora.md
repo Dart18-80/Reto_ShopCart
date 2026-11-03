@@ -104,7 +104,7 @@ No: append-only es una propiedad de la tabla, no un objeto que se deshabilite; p
 ### ¿Y si un desarrollador agrega un SP y olvida fijar el contexto?
 
 El trigger lanza 50004 y la transacción completa se revierte: no hay escrituras auditadas anónimas ([bitacora.test.ts:119](../../../apps/api/test/integracion/esquema/bitacora.test.ts#L119 "una escritura auditada sin contexto falla con CONTEXTO_NO_ESTABLECIDO")). Además una prueba del migrador revisa que todo SP que escribe llame a `SP_Sistema_EstablecerContexto`.
-**Muéstralo en:** [convenciones-sql.test.ts:43](../../../database/migrator/test/convenciones-sql.test.ts#L43 "TRY/CATCH con transacción y SP_Sistema_EstablecerContexto")
+**Muéstralo en:** [convenciones-sql.test.ts:44](../../../database/migrator/test/convenciones-sql.test.ts#L44 "TRY/CATCH con transacción y SP_Sistema_EstablecerContexto")
 
 ### ¿Por qué el SP fija el contexto y no Node antes de llamarlo?
 

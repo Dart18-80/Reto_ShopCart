@@ -57,7 +57,7 @@ Los SPs de prueba son 84 `R__SP_Pruebas_*` y 3 triggers `R__TR_Pruebas_*` en [da
 - **Actor de la petición:** `comoActor` ejecuta como un usuario y rol dados, el mismo `AsyncLocalStorage` que usa la API (A-18): [datos-de-prueba.ts:54](../../../apps/api/test/integracion/datos-de-prueba.ts#L54 "export function comoActor").
 - **API completa con supertest:** cada `*.api.test.ts` monta `crearApp(dependenciasDePrueba())` contra `shopcart_test`: [pagar.api.test.ts:32](../../../apps/api/test/integracion/checkout/pagar.api.test.ts#L32 "const app = crearApp(dependenciasDePrueba());"). Para simular dos réplicas se crean dos apps: [pagar.api.test.ts:263](../../../apps/api/test/integracion/checkout/pagar.api.test.ts#L263 "instancia: 'api-1'").
 - **Grupos:** las pruebas que cambian estado global de la base corren solas después del grupo paralelo [vitest.integracion.config.ts:35](../../../apps/api/vitest.integracion.config.ts#L35 "name: 'secuencial'").
-- **Excepción deliberada:** algunos SPs de prueba escriben directo sobre un ledger o sobre `ExistenciaFisica` para demostrar que el motor lo rechaza (lo explica [database/test/README.md](../../../database/test/README.md)). Siguen la plantilla de SP: [convenciones-sql.test.ts:42](../../../database/migrator/test/convenciones-sql.test.ts#L42 "it.each(spsQueEscriben").
+- **Excepción deliberada:** algunos SPs de prueba escriben directo sobre un ledger o sobre `ExistenciaFisica` para demostrar que el motor lo rechaza (lo explica [database/test/README.md](../../../database/test/README.md)). Siguen la plantilla de SP: [convenciones-sql.test.ts:43](../../../database/migrator/test/convenciones-sql.test.ts#L43 "it.each(spsQueEscriben").
 
 ## Concurrencia RNF-3 a través de nginx
 

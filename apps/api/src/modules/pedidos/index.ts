@@ -7,6 +7,7 @@ import { crearPedidosController } from './pedidos.controller.js';
 import { pedidosRepository } from './pedidos.repository.js';
 import { crearPedidosRouter } from './pedidos.routes.js';
 import { crearReembolsosService } from './pedidos.reembolsos.js';
+import { crearRevisionService } from './pedidos.revision.js';
 import { crearPedidosService } from './pedidos.service.js';
 import { tareasPedidos } from './pedidos.tareas.js';
 
@@ -28,13 +29,17 @@ const crearReembolsos = ({ pasarela, logger, reportes }: Omit<DependenciasPedido
     reportes,
   });
 
-/** Monta /pedidos (Cliente), /admin/pedidos (Operador y Admin) y /admin/reembolsos (Admin). */
+/** Monta /pedidos (Cliente), /admin/pedidos (Operador y Admin), /admin/reembolsos y /admin/pagos (Admin). */
 export function crearModuloPedidos({ autenticar, ...dependencias }: DependenciasPedidos): Router {
   const servicio = crearPedidosService({ repositorio: pedidosRepository });
-  return crearPedidosRouter(
-    crearPedidosController(servicio, crearReembolsos(dependencias)),
-    autenticar,
-  );
+  const reembolsos = crearReembolsos(dependencias);
+  const revision = crearRevisionService({
+    repositorio: pedidosRepository,
+    pasarela: dependencias.pasarela,
+    reembolsos,
+    reportes: dependencias.reportes,
+  });
+  return crearPedidosRouter(crearPedidosController(servicio, reembolsos, revision), autenticar);
 }
 
 /** A-04: reintento de los reembolsos pendientes (E6-H03). */

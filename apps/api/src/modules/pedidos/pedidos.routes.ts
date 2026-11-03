@@ -10,8 +10,10 @@ import type { PedidosController } from './pedidos.controller.js';
 import {
   cancelacionSchema,
   devolucionRegistradaSchema,
+  pagoEnRevisionSchema,
   pedidoSchema,
   reembolsoSchema,
+  resolucionPagoSchema,
   resumenPedidoGestionSchema,
   resumenPedidoSchema,
 } from './pedidos.respuesta.js';
@@ -19,8 +21,12 @@ import { ESTADOS_REEMBOLSO } from './pedidos.types.js';
 import {
   cambiarEstadoSchema,
   cancelarPedidoSchema,
+  listarPagosEnRevisionSchema,
   listarReembolsosSchema,
+  paramsIdIntentoSchema,
   paramsIdReembolsoSchema,
+  resolverPagoSchema,
+  resolverReembolsoSchema,
   listarPedidosGestionSchema,
   listarPedidosPropiosSchema,
   paramsIdPedidoSchema,
@@ -151,6 +157,46 @@ registroOpenApi.registerPath({
 
 registroOpenApi.registerPath({
   method: 'post',
+  path: '/api/v1/admin/reembolsos/{id}/resolver',
+  tags: ['Pedidos'],
+  summary:
+    'E9-H04: resuelve a mano un reembolso Fallido (ResueltoManual, con motivo y referencia); cuenta como reembolsado',
+  security: seguridad,
+  request: { params: paramsIdReembolsoSchema, body: json(resolverReembolsoSchema) },
+  responses: {
+    200: { description: 'El reembolso resuelto', ...json(z.object({ datos: reembolsoSchema })) },
+    ...respuestasError(400, 401, 403, 404, 409),
+  },
+});
+registroOpenApi.registerPath({
+  method: 'get',
+  path: '/api/v1/admin/pagos/en-revision',
+  tags: ['Pedidos'],
+  summary:
+    'E9-H04: los pagos en revisión manual (con pedido: su autorización ya no existía; sin pedido: un cobro capturado)',
+  security: seguridad,
+  request: { query: listarPagosEnRevisionSchema },
+  responses: {
+    200: { description: 'Página de pagos en revisión', ...pagina(pagoEnRevisionSchema) },
+    ...respuestasError(400, 401, 403),
+  },
+});
+registroOpenApi.registerPath({
+  method: 'post',
+  path: '/api/v1/admin/pagos/{id}/resolver',
+  tags: ['Pedidos'],
+  summary:
+    'E9-H04: resuelve un pago en revisión con la evidencia de la pasarela: CobroVerificado, SinCobro (cancela el pedido) o Reembolsar (cobro sin pedido)',
+  security: seguridad,
+  request: { params: paramsIdIntentoSchema, body: json(resolverPagoSchema) },
+  responses: {
+    200: { description: 'El pago resuelto', ...json(z.object({ datos: resolucionPagoSchema })) },
+    ...respuestasError(400, 401, 403, 404, 409, 422, 504),
+  },
+});
+
+registroOpenApi.registerPath({
+  method: 'post',
   path: '/api/v1/admin/pedidos/{id}/devoluciones',
   tags: ['Pedidos'],
   summary:
@@ -184,5 +230,8 @@ export function crearPedidosRouter(
   router.post('/admin/pedidos/:id/devoluciones', ...gestion, controller.registrarDevolucion);
   router.get('/admin/reembolsos', ...soloAdmin, controller.listarReembolsos);
   router.post('/admin/reembolsos/:id/reintentar', ...soloAdmin, controller.reintentarReembolso);
+  router.post('/admin/reembolsos/:id/resolver', ...soloAdmin, controller.resolverReembolso);
+  router.get('/admin/pagos/en-revision', ...soloAdmin, controller.listarPagosEnRevision);
+  router.post('/admin/pagos/:id/resolver', ...soloAdmin, controller.resolverPago);
   return router;
 }

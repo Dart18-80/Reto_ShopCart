@@ -2,8 +2,13 @@ import { montoSchema } from '@shopcart/shared';
 import { montoATexto } from '../../shared/dinero/index.js';
 import { z } from '../../shared/openapi/zod.js';
 import {
+  CAUSAS_REVISION,
   ESTADOS_PAGO,
   ESTADOS_REEMBOLSO,
+  ORIGENES_REEMBOLSO,
+  RESOLUCIONES_PAGO,
+  type PagoEnRevision,
+  type ResolucionDePago,
   type Cancelacion,
   type DevolucionRegistrada,
   type Pedido,
@@ -126,6 +131,7 @@ export const reembolsoARespuesta = (reembolso: Reembolso) => ({
   fechaProximoIntento: reembolso.fechaProximoIntento?.toISOString() ?? null,
   fechaCompletado: reembolso.fechaCompletado?.toISOString() ?? null,
   fechaCreacion: reembolso.fechaCreacion.toISOString(),
+  fechaResolucion: reembolso.fechaResolucion?.toISOString() ?? null,
 });
 
 export const cancelacionSchema = z
@@ -140,10 +146,11 @@ export const cancelacionSchema = z
 export const reembolsoSchema = z
   .object({
     idReembolso: z.number().int(),
-    idPedido: z.number().int(),
-    numeroPedido: z.string(),
+    idPedido: z.number().int().nullable(),
+    numeroPedido: z.string().nullable(),
+    idIntentoPago: z.number().int().nullable(),
     idDevolucion: z.number().int().nullable(),
-    origen: z.enum(['Cancelacion', 'Devolucion']),
+    origen: z.enum(ORIGENES_REEMBOLSO),
     monto: montoSchema,
     estado: z.enum(ESTADOS_REEMBOLSO),
     intentos: z.number().int(),
@@ -152,8 +159,55 @@ export const reembolsoSchema = z
     fechaProximoIntento: z.iso.datetime().nullable(),
     fechaCompletado: z.iso.datetime().nullable(),
     fechaCreacion: z.iso.datetime(),
+    motivoResolucion: z.string().nullable(),
+    referenciaResolucion: z.string().nullable(),
+    fechaResolucion: z.iso.datetime().nullable(),
   })
   .openapi('Reembolso');
+
+export const pagoEnRevisionARespuesta = (pago: PagoEnRevision) => ({
+  ...pago,
+  monto: montoATexto(pago.monto),
+  fecha: pago.fecha.toISOString(),
+});
+
+export const pagoEnRevisionSchema = z
+  .object({
+    idIntentoPago: z.number().int(),
+    idPedido: z.number().int().nullable(),
+    numeroPedido: z.string().nullable(),
+    cliente: z.object({ idUsuario: z.number().int(), nombre: z.string(), correo: z.string() }),
+    monto: montoSchema,
+    idTransaccion: z.string().nullable(),
+    tarjeta: z.object({ marca: z.string().nullable(), ultimosDigitos: z.string().nullable() }),
+    causa: z.enum(CAUSAS_REVISION),
+    fecha: z.iso.datetime(),
+  })
+  .openapi('PagoEnRevision');
+
+export const resolucionPagoARespuesta = ({
+  pedido,
+  fechaResolucion,
+  ...resto
+}: ResolucionDePago) => ({
+  ...resto,
+  fechaResolucion: fechaResolucion.toISOString(),
+  pedido: pedido === null ? null : pedidoARespuesta(pedido),
+});
+
+export const resolucionPagoSchema = z
+  .object({
+    idIntentoPago: z.number().int(),
+    estado: z.string(),
+    resolucion: z.enum(RESOLUCIONES_PAGO),
+    motivo: z.string(),
+    fechaResolucion: z.iso.datetime(),
+    pedido: pedidoSchema.nullable(),
+    reembolso: z
+      .object({ idReembolso: z.number().int(), estado: z.enum(ESTADOS_REEMBOLSO) })
+      .nullable(),
+  })
+  .openapi('ResolucionPago');
 
 export const devolucionARespuesta = ({ pedido, devolucion, reembolso }: DevolucionRegistrada) => ({
   pedido: pedidoARespuesta(pedido),

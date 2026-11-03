@@ -4,21 +4,28 @@ import type { ReembolsosService } from './pedidos.reembolsos.js';
 import {
   cancelacionARespuesta,
   devolucionARespuesta,
+  pagoEnRevisionARespuesta,
   pedidoARespuesta,
   reembolsoARespuesta,
+  resolucionPagoARespuesta,
   resumenARespuesta,
   resumenGestionARespuesta,
 } from './pedidos.respuesta.js';
 import {
   cambiarEstadoSchema,
   cancelarPedidoSchema,
+  listarPagosEnRevisionSchema,
   listarReembolsosSchema,
+  paramsIdIntentoSchema,
   paramsIdReembolsoSchema,
+  resolverPagoSchema,
+  resolverReembolsoSchema,
   listarPedidosGestionSchema,
   listarPedidosPropiosSchema,
   paramsIdPedidoSchema,
   registrarDevolucionSchema,
 } from './pedidos.schemas.js';
+import type { RevisionService } from './pedidos.revision.js';
 import type { PedidosService } from './pedidos.service.js';
 
 const HTTP_CREADO = 201;
@@ -32,6 +39,9 @@ export interface PedidosController {
   registrarDevolucion: RequestHandler;
   listarReembolsos: RequestHandler;
   reintentarReembolso: RequestHandler;
+  resolverReembolso: RequestHandler;
+  listarPagosEnRevision: RequestHandler;
+  resolverPago: RequestHandler;
 }
 
 // autorizar() ya exigió un rol de gestión: aquí solo se lee del contexto de la petición.
@@ -45,6 +55,7 @@ function rolDeLaPeticion() {
 export function crearPedidosController(
   servicio: PedidosService,
   reembolsos: ReembolsosService,
+  revision: RevisionService,
 ): PedidosController {
   return {
     listarPropios: manejar({ query: listarPedidosPropiosSchema }, async ({ query }, res) => {
@@ -95,5 +106,27 @@ export function crearPedidosController(
       const estado = await reembolsos.reintentar(params.id);
       res.json({ datos: { idReembolso: params.id, estado } });
     }),
+
+    resolverReembolso: manejar(
+      { params: paramsIdReembolsoSchema, body: resolverReembolsoSchema },
+      async ({ params, body }, res) => {
+        res.json({ datos: reembolsoARespuesta(await revision.resolverReembolso(params.id, body)) });
+      },
+    ),
+
+    listarPagosEnRevision: manejar(
+      { query: listarPagosEnRevisionSchema },
+      async ({ query }, res) => {
+        const { filas, total } = await revision.listarPagosEnRevision(query);
+        res.json(paginar(filas.map(pagoEnRevisionARespuesta), total, query));
+      },
+    ),
+
+    resolverPago: manejar(
+      { params: paramsIdIntentoSchema, body: resolverPagoSchema },
+      async ({ params, body }, res) => {
+        res.json({ datos: resolucionPagoARespuesta(await revision.resolverPago(params.id, body)) });
+      },
+    ),
   };
 }

@@ -43,7 +43,7 @@ Ejemplo, `SP_Checkout_IniciarSesion`:
 | `IF @@TRANCOUNT > 0 ROLLBACK` en el `CATCH` | [R__SP_Checkout_IniciarSesion.sql:173](../../../database/programmability/R__SP_Checkout_IniciarSesion.sql#L173 "IF @@TRANCOUNT > 0 ROLLBACK;") |
 | `THROW;` relanza el error original | [R__SP_Checkout_IniciarSesion.sql:177](../../../database/programmability/R__SP_Checkout_IniciarSesion.sql#L177 "THROW;") |
 
-- Una prueba recorre todos los SPs que escriben (salvo los internos, que corren dentro de la transacción de quien los llama) y exige las cuatro piezas ([convenciones-sql.test.ts:43](../../../database/migrator/test/convenciones-sql.test.ts#L43 "SET XACT_ABORT ON, TRY/CATCH con transacción y SP_Sistema_EstablecerContexto")).
+- Una prueba recorre todos los SPs que escriben (salvo los internos, que corren dentro de la transacción de quien los llama) y exige las cuatro piezas ([convenciones-sql.test.ts:44](../../../database/migrator/test/convenciones-sql.test.ts#L44 "SET XACT_ABORT ON, TRY/CATCH con transacción y SP_Sistema_EstablecerContexto")).
 - Un SP interno exige estar dentro de una transacción para no abrir una anidada que revierta la del llamador ([R__SP_Inventario_RegistrarMovimiento.sql:25](../../../database/programmability/R__SP_Inventario_RegistrarMovimiento.sql#L25 "THROW 50005, N'SP_Inventario_RegistrarMovimiento debe ejecutarse dentro de una transacción.'")).
 - `SP_Inventario_RegistrarMovimiento` es el único que modifica `ExistenciaFisica` y escribe el kardex, en el mismo paso ([R__SP_Inventario_RegistrarMovimiento.sql:1](../../../database/programmability/R__SP_Inventario_RegistrarMovimiento.sql#L1 "N-07: único punto que modifica Variante.ExistenciaFisica")). Del mismo modo, `SP_Inventario_ReservarExistencia` es el único que inserta en `Reserva`, y una prueba lo verifica ([penalizaciones.test.ts:281](../../../database/migrator/test/penalizaciones.test.ts#L281 "SP_Inventario_ReservarExistencia es el único que inserta en Reserva")).
 
@@ -146,7 +146,7 @@ Solo en `SP_Catalogo_BuscarProductos`: se concatenan fragmentos constantes, los 
 ### ¿Qué pasa si un SP falla a la mitad?
 
 `XACT_ABORT ON` revierte toda la transacción y el `CATCH` hace `ROLLBACK` y relanza: nunca quedan datos a medias. Una prueba exige esa plantilla en todos los SPs que escriben.
-**Muéstralo en:** [convenciones-sql.test.ts:43](../../../database/migrator/test/convenciones-sql.test.ts#L43 "SET XACT_ABORT ON, TRY/CATCH con transacción y SP_Sistema_EstablecerContexto")
+**Muéstralo en:** [convenciones-sql.test.ts:44](../../../database/migrator/test/convenciones-sql.test.ts#L44 "SET XACT_ABORT ON, TRY/CATCH con transacción y SP_Sistema_EstablecerContexto")
 
 ### ¿Cómo sabe la bitácora quién hizo el cambio si el trigger no recibe parámetros?
 

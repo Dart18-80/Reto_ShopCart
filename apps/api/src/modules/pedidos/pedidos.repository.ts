@@ -11,17 +11,23 @@ import type { Decimal } from 'decimal.js';
 import { aMonto } from '../../shared/dinero/index.js';
 import type {
   CambiarEstado,
+  ListarPagosEnRevision,
   ListarPedidosGestion,
   ListarReembolsos,
   RegistrarDevolucion,
+  ResolverReembolso,
 } from './pedidos.schemas.js';
 import type {
   CambioDeEstado,
   EstadoPago,
   EstadoReembolso,
+  PagoEnRevision,
+  PagoParaResolver,
+  PagoResuelto,
   Pedido,
   Reembolso,
   ReembolsoParaProcesar,
+  ResolucionPago,
   ResultadoActualizacionReembolso,
   ResultadoReembolso,
   ResumenPedido,
@@ -100,8 +106,9 @@ const aFecha = (fecha: Date): string => fecha.toISOString().slice(0, LARGO_FECHA
 
 interface FilaReembolso {
   IDReembolso: number;
-  IDPedido: number;
-  NumeroPedido: string;
+  IDPedido: number | null;
+  NumeroPedido: string | null;
+  IDIntentoPago: string | null;
   IDDevolucion: number | null;
   Origen: Reembolso['origen'];
   Monto: number;
@@ -112,6 +119,49 @@ interface FilaReembolso {
   FechaProximoIntento: Date | null;
   FechaCompletado: Date | null;
   FechaCreacion: Date;
+  MotivoResolucion: string | null;
+  ReferenciaResolucion: string | null;
+  FechaResolucion: Date | null;
+}
+
+// IDIntentoPago es BIGINT: el driver lo entrega como texto; los IDs caben de sobra en un number.
+const aIdIntento = (id: string | number | null): number | null => (id === null ? null : Number(id));
+
+interface FilaPagoEnRevision {
+  IDIntentoPago: string;
+  IDPedido: number | null;
+  NumeroPedido: string | null;
+  IDCliente: number;
+  NombreCliente: string;
+  CorreoCliente: string;
+  Monto: number;
+  IDTransaccionPasarela: string | null;
+  MarcaTarjeta: string | null;
+  UltimosDigitos: string | null;
+  Causa: PagoEnRevision['causa'];
+  Fecha: Date;
+}
+
+const aPagoEnRevision = (fila: FilaPagoEnRevision): PagoEnRevision => ({
+  idIntentoPago: Number(fila.IDIntentoPago),
+  idPedido: fila.IDPedido,
+  numeroPedido: fila.NumeroPedido,
+  cliente: { idUsuario: fila.IDCliente, nombre: fila.NombreCliente, correo: fila.CorreoCliente },
+  monto: aMonto(fila.Monto),
+  idTransaccion: fila.IDTransaccionPasarela,
+  tarjeta: { marca: fila.MarcaTarjeta, ultimosDigitos: fila.UltimosDigitos },
+  causa: fila.Causa,
+  fecha: fila.Fecha,
+});
+
+interface FilaPagoResuelto {
+  IDIntentoPago: string;
+  Estado: string;
+  ResolucionManual: ResolucionPago;
+  MotivoResolucion: string;
+  FechaResolucion: Date;
+  IDPedido: number | null;
+  IDReembolso: number | null;
 }
 
 interface FilaParaProcesar {
@@ -128,6 +178,7 @@ const aReembolso = (fila: FilaReembolso): Reembolso => ({
   idReembolso: fila.IDReembolso,
   idPedido: fila.IDPedido,
   numeroPedido: fila.NumeroPedido,
+  idIntentoPago: aIdIntento(fila.IDIntentoPago),
   idDevolucion: fila.IDDevolucion,
   origen: fila.Origen,
   monto: aMonto(fila.Monto),
@@ -138,6 +189,9 @@ const aReembolso = (fila: FilaReembolso): Reembolso => ({
   fechaProximoIntento: fila.FechaProximoIntento,
   fechaCompletado: fila.FechaCompletado,
   fechaCreacion: fila.FechaCreacion,
+  motivoResolucion: fila.MotivoResolucion,
+  referenciaResolucion: fila.ReferenciaResolucion,
+  fechaResolucion: fila.FechaResolucion,
 });
 
 const aCambio = (fila: FilaHistorial): CambioDeEstado => ({
@@ -275,8 +329,7 @@ export const pedidosRepository = {
     return pedido;
   },
 
-  /** N-09: la transacción de la cancelación; devuelve el reembolso Pendiente que dejó. */
-  /** El reembolso creado; null si el pago estaba en revisión (no hay cobro que devolver). */
+  /** N-09: la transacción de la cancelación. El reembolso Pendiente que dejó; null si el pago estaba en revisión. */
   async cancelar(idPedido: number, motivo: string): Promise<number | null> {
     const [fila] = await ejecutarSP<{ IDReembolso: number | null }>('SP_Pedidos_Cancelar', {
       IDPedido: { tipo: sql.Int, valor: idPedido },
@@ -373,12 +426,81 @@ export const pedidosRepository = {
     const { filas, total } = await ejecutarSPPaginado<FilaReembolso>(
       'SP_Pedidos_ListarReembolsos',
       {
-        Estado: { tipo: sql.VarChar(10), valor: filtros.estado ?? null },
+        Estado: { tipo: sql.VarChar(14), valor: filtros.estado ?? null },
         Pagina: { tipo: sql.Int, valor: filtros.pagina },
         Tamano: { tipo: sql.Int, valor: filtros.tamano },
       },
     );
     return { filas: filas.map(aReembolso), total };
+  },
+
+  /** E9-H04: los pagos EnRevision, los más recientes primero. */
+  async listarPagosEnRevision(filtros: ListarPagosEnRevision): Promise<PaginaSP<PagoEnRevision>> {
+    const { filas, total } = await ejecutarSPPaginado<FilaPagoEnRevision>(
+      'SP_Pedidos_ListarPagosEnRevision',
+      {
+        Pagina: { tipo: sql.Int, valor: filtros.pagina },
+        Tamano: { tipo: sql.Int, valor: filtros.tamano },
+      },
+    );
+    return { filas: filas.map(aPagoEnRevision), total };
+  },
+
+  /** null si el intento no existe. */
+  async obtenerPagoEnRevision(idIntentoPago: number): Promise<PagoParaResolver | null> {
+    const [fila] = await ejecutarSP<{
+      IDIntentoPago: string;
+      LlaveIdempotencia: string;
+      Estado: string;
+      IDPedido: number | null;
+    }>('SP_Pedidos_ObtenerPagoEnRevision', {
+      IDIntentoPago: { tipo: sql.BigInt, valor: idIntentoPago },
+    });
+    if (fila === undefined) return null;
+    return {
+      idIntentoPago: Number(fila.IDIntentoPago),
+      llave: fila.LlaveIdempotencia,
+      estado: fila.Estado,
+      idPedido: fila.IDPedido,
+    };
+  },
+
+  /** E9-H04: el SP vuelve a validar bajo bloqueo que siga EnRevision y que la resolución aplique. */
+  async resolverPago(
+    idIntentoPago: number,
+    resolucion: ResolucionPago,
+    motivo: string,
+    idTransaccion: string | null,
+  ): Promise<PagoResuelto> {
+    const [fila] = await ejecutarSP<FilaPagoResuelto>('SP_Pedidos_ResolverPagoEnRevision', {
+      IDIntentoPago: { tipo: sql.BigInt, valor: idIntentoPago },
+      Resolucion: { tipo: sql.VarChar(16), valor: resolucion },
+      Motivo: { tipo: sql.NVarChar(250), valor: motivo },
+      IDTransaccion: { tipo: sql.VarChar(64), valor: idTransaccion },
+    });
+    if (fila === undefined)
+      throw new Error('SP_Pedidos_ResolverPagoEnRevision no devolvió el intento');
+    return {
+      idIntentoPago: Number(fila.IDIntentoPago),
+      estado: fila.Estado,
+      resolucion: fila.ResolucionManual,
+      motivo: fila.MotivoResolucion,
+      fechaResolucion: fila.FechaResolucion,
+      idPedido: fila.IDPedido,
+      idReembolso: fila.IDReembolso,
+    };
+  },
+
+  /** E9-H04: un reembolso Fallido pasa a ResueltoManual. */
+  async resolverReembolso(idReembolso: number, datos: ResolverReembolso): Promise<Reembolso> {
+    const [fila] = await ejecutarSP<FilaReembolso>('SP_Pedidos_ResolverReembolso', {
+      IDReembolso: { tipo: sql.Int, valor: idReembolso },
+      Motivo: { tipo: sql.NVarChar(250), valor: datos.motivo },
+      Referencia: { tipo: sql.NVarChar(100), valor: datos.referencia },
+    });
+    if (fila === undefined)
+      throw new Error('SP_Pedidos_ResolverReembolso no devolvió el reembolso');
+    return aReembolso(fila);
   },
 
   /** null si el reembolso no existe. */

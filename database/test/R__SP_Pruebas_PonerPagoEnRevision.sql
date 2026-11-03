@@ -10,7 +10,9 @@ BEGIN
     SET NOCOUNT ON;
     SET XACT_ABORT ON;
 
-    EXEC dbo.SP_Sistema_EstablecerContexto @IDUsuarioActor, @RolActor, @RequestId;
+    -- Como la conciliación (rol Sistema) si la prueba no pasa un actor: el trigger de bitácora exige el rol.
+    DECLARE @Rol VARCHAR(20) = COALESCE(@RolActor, 'Sistema');
+    EXEC dbo.SP_Sistema_EstablecerContexto @IDUsuarioActor, @Rol, @RequestId;
 
     BEGIN TRY
         BEGIN TRAN;

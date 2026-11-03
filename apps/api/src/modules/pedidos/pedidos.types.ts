@@ -91,15 +91,19 @@ export interface ResumenPedidoGestion extends ResumenPedido {
 }
 
 /** N-09, N-10: el estado de un reembolso. */
-export const ESTADOS_REEMBOLSO = ['Pendiente', 'Completado', 'Fallido'] as const;
+export const ESTADOS_REEMBOLSO = ['Pendiente', 'Completado', 'Fallido', 'ResueltoManual'] as const;
 export type EstadoReembolso = (typeof ESTADOS_REEMBOLSO)[number];
+
+/** E9-H04: un cobro capturado sin pedido se devuelve con un reembolso SinPedido, que apunta al intento. */
+export const ORIGENES_REEMBOLSO = ['Cancelacion', 'Devolucion', 'SinPedido'] as const;
 
 export interface Reembolso {
   idReembolso: number;
-  idPedido: number;
-  numeroPedido: string;
+  idPedido: number | null;
+  numeroPedido: string | null;
+  idIntentoPago: number | null;
   idDevolucion: number | null;
-  origen: 'Cancelacion' | 'Devolucion';
+  origen: (typeof ORIGENES_REEMBOLSO)[number];
   monto: Decimal;
   estado: EstadoReembolso;
   intentos: number;
@@ -108,6 +112,51 @@ export interface Reembolso {
   fechaProximoIntento: Date | null;
   fechaCompletado: Date | null;
   fechaCreacion: Date;
+  /** E9-H04: la resolución manual de un Fallido (ResueltoManual). */
+  motivoResolucion: string | null;
+  referenciaResolucion: string | null;
+  fechaResolucion: Date | null;
+}
+
+/** E9-H04 (decisión del PO): cómo resuelve el Admin un pago en revisión. */
+export const RESOLUCIONES_PAGO = ['CobroVerificado', 'SinCobro', 'Reembolsar'] as const;
+export type ResolucionPago = (typeof RESOLUCIONES_PAGO)[number];
+
+export const CAUSAS_REVISION = ['AutorizacionInexistente', 'CobroSinPedido'] as const;
+
+export interface PagoEnRevision {
+  idIntentoPago: number;
+  idPedido: number | null;
+  numeroPedido: string | null;
+  cliente: { idUsuario: number; nombre: string; correo: string };
+  monto: Decimal;
+  idTransaccion: string | null;
+  tarjeta: { marca: string | null; ultimosDigitos: string | null };
+  causa: (typeof CAUSAS_REVISION)[number];
+  fecha: Date;
+}
+
+/** Lo que el servicio necesita antes de resolver: la llave para consultar la pasarela. */
+export interface PagoParaResolver {
+  idIntentoPago: number;
+  llave: string;
+  estado: string;
+  idPedido: number | null;
+}
+
+export interface PagoResuelto {
+  idIntentoPago: number;
+  estado: string;
+  resolucion: ResolucionPago;
+  motivo: string;
+  fechaResolucion: Date;
+  idPedido: number | null;
+  idReembolso: number | null;
+}
+
+export interface ResolucionDePago extends Omit<PagoResuelto, 'idPedido' | 'idReembolso'> {
+  pedido: Pedido | null;
+  reembolso: { idReembolso: number; estado: EstadoReembolso } | null;
 }
 
 /** Lo que la pasarela necesita para devolver el dinero de un reembolso tomado (plan E6-H03 §3). */
