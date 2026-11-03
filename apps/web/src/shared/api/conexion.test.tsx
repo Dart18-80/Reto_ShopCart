@@ -1,5 +1,5 @@
 import { QueryClientProvider, useQuery } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
 import { crearCanalesEnMemoria, sesionDePrueba } from '../../test/sesion';
@@ -142,6 +142,46 @@ describe('cliente api con sesión: renovación ante un 401', () => {
 
     expect(error).toMatchObject({ status: 401, codigo: 'NO_AUTENTICADO' });
     expect(refresh.total).toBe(1);
+  });
+
+  it('si el usuario cambió mientras la petición estaba en vuelo, no se reintenta con el token del otro', async () => {
+    const refresh = simularRefresh();
+    const autorizaciones: (string | null)[] = [];
+    let responder: () => void = () => undefined;
+    servidor.use(
+      http.get(CARRITO, ({ request }) => {
+        autorizaciones.push(request.headers.get('Authorization'));
+        return new Promise<Response>((resolver) => {
+          responder = () => {
+            resolver(errorDelBackend(401, 'NO_AUTENTICADO'));
+          };
+        });
+      }),
+    );
+    const { api, sesion } = crearNavegador()();
+    sesion.establecer(sesionDePrueba('token-de-ana', 'Cliente'));
+
+    const peticion = errorDe(api.GET(CARRITO));
+    await waitFor(() => {
+      expect(autorizaciones).toHaveLength(1);
+    });
+    sesion.establecer(sesionDePrueba('token-de-luis', 'Operador'));
+    responder();
+
+    expect((await peticion).status).toBe(401);
+    expect(autorizaciones).toEqual(['Bearer token-de-ana']);
+    expect(refresh.total).toBe(0);
+  });
+
+  it('una petición cancelada no se muestra como falla de red', async () => {
+    servidor.use(http.get(CARRITO, () => new Promise<Response>(() => undefined)));
+    const { api } = crearNavegador()();
+    const cancelacion = new AbortController();
+
+    const peticion = api.GET(CARRITO, { signal: cancelacion.signal });
+    cancelacion.abort();
+
+    await expect(peticion).rejects.toMatchObject({ name: 'AbortError' });
   });
 
   it('un invitado que recibe 401 no dispara el refresh', async () => {

@@ -10,9 +10,13 @@ import {
 } from '../ui/form';
 import { Input } from '../ui/input';
 
+// El campo controla valor, cambios, foco y estilo (Figma: Campo); el resto de las props del input pasa tal cual.
+type PropsQueControlaElCampo =
+  'name' | 'value' | 'defaultValue' | 'onChange' | 'onBlur' | 'ref' | 'className';
+
 interface PropsCampoFormulario<V extends FieldValues> extends Omit<
   ComponentProps<'input'>,
-  'name' | 'value' | 'defaultValue'
+  PropsQueControlaElCampo
 > {
   nombre: FieldPath<V>;
   /** Siempre visible: nunca solo un `placeholder`. */

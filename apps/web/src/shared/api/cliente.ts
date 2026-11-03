@@ -5,14 +5,16 @@ import { ErrorApi } from './ErrorApi';
 /** Lo que el cliente necesita de la sesión (FE-05). */
 export interface SesionDelCliente {
   token(): string | null;
+  idUsuario(): number | null;
   esperarRehidratacion(): Promise<void>;
   renovar(tokenRechazado: string | null): Promise<string | null>;
 }
 
-/** La copia de una petición, tomada antes de enviarla, con el token con que salió. */
+/** La copia de una petición, tomada antes de enviarla, con el token con que salió y de quién era. */
 export interface CopiaDePeticion {
   peticion: Request;
   token: string | null;
+  idUsuario: number | null;
 }
 
 const PREFIJO_BEARER = 'Bearer ';
@@ -30,6 +32,9 @@ function tokenEnviado(peticion: Request): string | null {
     : null;
 }
 
+const esCancelacion = (error: unknown): error is Error =>
+  error instanceof Error && error.name === 'AbortError';
+
 function middlewareDeToken(sesion: SesionDelCliente): Middleware {
   return {
     async onRequest({ request, schemaPath }) {
@@ -45,9 +50,9 @@ function middlewareDeToken(sesion: SesionDelCliente): Middleware {
 async function reenviar(fetch: (peticion: Request) => Promise<Response>, peticion: Request) {
   try {
     return await fetch(peticion);
-  } catch {
+  } catch (error) {
     // Al reintento no lo cubre el onError de openapi-fetch, que solo envuelve el primer envío.
-    throw ErrorApi.deRed();
+    throw esCancelacion(error) ? error : ErrorApi.deRed();
   }
 }
 
@@ -59,7 +64,11 @@ function middlewareDeRenovacion(
   return {
     onRequest({ request, id }) {
       // El cuerpo de una petición se lee una sola vez: la copia para el reintento se toma antes de enviarla.
-      copias.set(id, { peticion: request.clone(), token: tokenEnviado(request) });
+      copias.set(id, {
+        peticion: request.clone(),
+        token: tokenEnviado(request),
+        idUsuario: sesion.idUsuario(),
+      });
     },
     async onResponse({ response, schemaPath, id, options }) {
       const copia = copias.get(id);
@@ -67,7 +76,8 @@ function middlewareDeRenovacion(
       if (response.status !== STATUS_NO_AUTENTICADO || esDeAuth(schemaPath)) return response;
       if (copia === undefined) return response;
       const tokenNuevo = await sesion.renovar(copia.token);
-      if (tokenNuevo === null) return response;
+      // Si mientras tanto otra pestaña inició sesión con otra cuenta, la petición no se reenvía en su nombre.
+      if (tokenNuevo === null || sesion.idUsuario() !== copia.idUsuario) return response;
       copia.peticion.headers.set('Authorization', `${PREFIJO_BEARER}${tokenNuevo}`);
       // El reintento no vuelve a pasar por los middlewares: un segundo 401 llega tal cual a middlewareDeErrores.
       return reenviar(options.fetch, copia.peticion);
@@ -84,8 +94,9 @@ const middlewareDeErrores: Middleware = {
     if (!response.ok) throw await ErrorApi.desdeRespuesta(response);
     return response;
   },
-  onError() {
-    return ErrorApi.deRed();
+  onError({ error }) {
+    // Una petición cancelada (TanStack Query cancela al desmontar) no es una falla de red.
+    return esCancelacion(error) ? error : ErrorApi.deRed();
   },
 };
 

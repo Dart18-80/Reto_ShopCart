@@ -257,3 +257,11 @@
     @apply bg-background text-foreground texto-base;
   }
 }
+
+/* Avisos de sonner (Proveedores.tsx) con los colores del tema, como el componente sonner de shadcn. El :root sube
+   la especificidad sobre la hoja de sonner, que define las mismas variables por tema. */
+:root [data-sonner-toaster][data-theme] {
+  --normal-bg: var(--popover);
+  --normal-text: var(--popover-foreground);
+  --normal-border: var(--border);
+}

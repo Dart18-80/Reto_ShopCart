@@ -23,6 +23,7 @@ async function errorDe(llamada: Promise<unknown>): Promise<ErrorApi> {
 /** Una sesión que no cambia: estas pruebas son del cliente; la renovación se prueba en conexion.test.tsx. */
 const sesionFija = (token: string | null): SesionDelCliente => ({
   token: () => token,
+  idUsuario: () => null,
   esperarRehidratacion: () => Promise.resolve(),
   renovar: () => Promise.resolve(null),
 });

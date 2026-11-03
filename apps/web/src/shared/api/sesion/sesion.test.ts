@@ -77,15 +77,53 @@ describe('sesión: renovación dentro de la pestaña (single-flight)', () => {
     expect(refrescar).not.toHaveBeenCalled();
   });
 
-  it('una petición que salió sin sesión y recibe 401 después de iniciarla se reintenta con el token, sin refresh', async () => {
+  it('una petición que salió sin sesión no renueva aunque ahora haya sesión: no se reenvía como otra identidad', async () => {
     const refrescar = vi.fn<() => Promise<DatosSesion>>();
     const sesion = crearNavegador()({ refrescar });
     sesion.establecer(sesionDePrueba('token-de-ana'));
 
     const token = await sesion.renovar(null);
 
-    expect(token).toBe('token-de-ana');
+    expect(token).toBeNull();
     expect(refrescar).not.toHaveBeenCalled();
+  });
+
+  it('cerrar la sesión mientras una renovación está en vuelo no se revierte cuando el refresh termina', async () => {
+    const refresh = diferida<DatosSesion>();
+    const pestana = crearNavegador();
+    const a = pestana({ refrescar: () => refresh.promesa });
+    const b = pestana();
+    a.establecer(sesionDePrueba('token-viejo'));
+    await entregarMensajes();
+
+    const renovacion = a.renovar('token-viejo');
+    await entregarMensajes();
+    await a.cerrar();
+    refresh.resolver(sesionDePrueba('token-nuevo'));
+    await renovacion;
+    await entregarMensajes();
+
+    expect(a.estado()).toEqual({ tipo: 'invitado' });
+    expect(a.token()).toBeNull();
+    expect(b.estado()).toEqual({ tipo: 'invitado' });
+  });
+
+  it('si otra pestaña cierra la sesión mientras esta renueva, el refresh que llega tarde no la reabre', async () => {
+    const refresh = diferida<DatosSesion>();
+    const pestana = crearNavegador(crearBloqueoDeLaPestana());
+    const a = pestana({ refrescar: () => refresh.promesa });
+    const b = pestana();
+    a.establecer(sesionDePrueba('token-viejo'));
+    await entregarMensajes();
+
+    const renovacion = a.renovar('token-viejo');
+    await entregarMensajes();
+    await b.cerrar();
+    await entregarMensajes();
+    refresh.resolver(sesionDePrueba('token-nuevo'));
+
+    expect(await renovacion).toBeNull();
+    expect(a.estado()).toEqual({ tipo: 'invitado' });
   });
 
   it('una falla de red o un 5xx del refresh no cierra la sesión: el error llega al llamador', async () => {
@@ -240,6 +278,20 @@ describe('sesión: rehidratación al cargar', () => {
     expect(sesion.estado()).toMatchObject({ tipo: 'activa' });
   });
 
+  it('una falla que no es ErrorApi deja la sesión no verificada (nunca trabada en rehidratando)', async () => {
+    const sesion = crearNavegador()({
+      refrescar: () => Promise.reject(new Error('2xx sin cuerpo')),
+    });
+
+    await expect(sesion.rehidratar()).resolves.toBeUndefined();
+
+    expect(sesion.estado()).toMatchObject({
+      tipo: 'noVerificada',
+      error: { codigo: 'RESPUESTA_INESPERADA' },
+    });
+    await expect(sesion.esperarRehidratacion()).resolves.toBeUndefined();
+  });
+
   it('rehidratar dos veces seguidas hace un solo refresh', async () => {
     const refrescar = vi.fn(() => Promise.resolve(sesionDePrueba('token-rehidratado')));
     const sesion = crearNavegador()({ refrescar });
@@ -278,6 +330,22 @@ describe('sesión: aviso de cambio de usuario (para vaciar la caché)', () => {
     await sesion.cerrar();
 
     expect(reaccion).toHaveBeenCalledTimes(3);
+  });
+
+  it('al verificar una sesión que no se pudo verificar, avisa el cambio de usuario (la caché tiene datos de invitado)', async () => {
+    const refrescar = vi
+      .fn<() => Promise<DatosSesion>>()
+      .mockRejectedValueOnce(ErrorApi.deRed())
+      .mockResolvedValueOnce(sesionDePrueba('token-rehidratado'));
+    const sesion = crearNavegador()({ refrescar });
+    const reaccion = vi.fn();
+    sesion.alCambiarUsuario(reaccion);
+
+    await sesion.rehidratar();
+    await sesion.rehidratar();
+
+    expect(sesion.estado()).toMatchObject({ tipo: 'activa' });
+    expect(reaccion).toHaveBeenCalledTimes(1);
   });
 
   it('no avisa al renovar el token del mismo usuario', async () => {

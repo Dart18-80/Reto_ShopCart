@@ -46,7 +46,7 @@ export class ErrorApi extends Error {
   }
 
   get esDeRed(): boolean {
-    return this.status === STATUS_SIN_RESPUESTA;
+    return this.codigo === CODIGO_RED;
   }
 
   static deRed(): ErrorApi {
@@ -54,6 +54,17 @@ export class ErrorApi extends Error {
       status: STATUS_SIN_RESPUESTA,
       codigo: CODIGO_RED,
       mensaje: MENSAJE_RED,
+      detalles: undefined,
+      requestId: null,
+    });
+  }
+
+  /** Una falla del lado de la web que no es una respuesta del backend (un 2xx sin cuerpo, un lock que falla). */
+  static inesperado(): ErrorApi {
+    return new ErrorApi({
+      status: STATUS_SIN_RESPUESTA,
+      codigo: CODIGO_RESPUESTA_INESPERADA,
+      mensaje: MENSAJE_INESPERADO,
       detalles: undefined,
       requestId: null,
     });

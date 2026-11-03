@@ -1,5 +1,5 @@
 import { Search } from 'lucide-react';
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useDebounce } from '../hooks/useDebounce';
 import type { ParametrosUrl } from '../hooks/useParametrosUrl';
 
@@ -22,17 +22,26 @@ export function FiltroTexto<C>({ parametros, campo, etiqueta, placeholder }: Pro
   const enUrl = String(parametros.valores[campo] ?? '');
   const [texto, setTexto] = useState(enUrl);
   const [enUrlAnterior, setEnUrlAnterior] = useState(enUrl);
-  // Si la URL cambia por fuera («atrás», Limpiar filtros), el campo la sigue.
+  // Si la URL cambia por fuera («atrás», Limpiar filtros), el campo la sigue. El eco de lo que este campo escribió
+  // no lo pisa: el esquema recorta, y borraría el espacio que se está escribiendo («gorra |azul»).
   if (enUrl !== enUrlAnterior) {
     setEnUrlAnterior(enUrl);
-    setTexto(enUrl);
+    if (enUrl !== texto.trim()) setTexto(enUrl);
   }
   const textoEstable = useDebounce(texto);
+  const enviado = useRef<string | null>(null);
   const { cambiar } = parametros;
 
   useEffect(() => {
     // Solo cuando la espera terminó sobre lo que hay escrito: tras un «atrás», el texto viejo no vuelve a la URL.
-    if (textoEstable !== texto || textoEstable === enUrl) return;
+    if (textoEstable !== texto) return;
+    if (textoEstable.trim() === enUrl) {
+      enviado.current = textoEstable;
+      return;
+    }
+    // Ya se envió y el esquema lo rechazó (más largo que el máximo): no se reenvía en cada render.
+    if (textoEstable === enviado.current) return;
+    enviado.current = textoEstable;
     const valor = textoEstable.trim() === '' ? undefined : textoEstable;
     // CampoDeTexto<C> garantiza que el campo admite texto o undefined.
     cambiar({ [campo]: valor } as Partial<C>, { historial: 'texto' });

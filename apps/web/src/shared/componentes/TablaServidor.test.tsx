@@ -11,6 +11,7 @@ import {
 } from '../../test/handlers/catalogo';
 import { ANCHO_TELEFONO, simularPantalla } from '../../test/pantalla';
 import { renderizar } from '../../test/renderizar';
+import { ESPERA_TEXTO_LIBRE_MS } from '../hooks/useDebounce';
 import { useParametrosUrl } from '../hooks/useParametrosUrl';
 import { FiltroTexto } from './FiltroTexto';
 import { TablaServidor, type ColumnaTabla } from './TablaServidor';
@@ -207,7 +208,13 @@ describe('TablaServidor: estado en la URL', () => {
       expect(busqueda(router).has('texto')).toBe(false);
     });
     expect(busqueda(router).get('orden')).toBe('precio');
-    expect(buscador).toHaveValue('');
+    // router.state cambia antes de que React vuelva a renderizar: el campo se vacía en el render siguiente.
+    await waitFor(() => {
+      expect(buscador).toHaveValue('');
+    });
+    // Y el texto viejo no vuelve a la URL cuando termina la espera del debounce.
+    await new Promise((resolver) => setTimeout(resolver, ESPERA_TEXTO_LIBRE_MS * 2));
+    expect(busqueda(router).has('texto')).toBe(false);
   });
 });
 

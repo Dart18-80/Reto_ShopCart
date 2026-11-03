@@ -73,19 +73,18 @@ export function useParametrosUrl<S extends z.ZodObject>(esquema: S): ParametrosU
   const valores = useMemo(() => leer(esquema, busqueda), [esquema, busqueda]);
 
   function cambiarCrudo(cambios: Record<string, unknown>, historial: ModoHistorial = 'agregar') {
-    setBusqueda(
-      (previa) => {
-        const siguiente: Record<string, unknown> = { ...leer(esquema, previa), ...cambios };
-        if (!(CAMPO_PAGINA in cambios)) siguiente[CAMPO_PAGINA] = porDefecto[CAMPO_PAGINA];
-        return escribir(siguiente, porDefecto);
-      },
-      {
-        replace:
-          historial === 'reemplazar' ||
-          (historial === 'texto' && esEdicionDeTexto(estadoDelHistorial)),
-        state: historial === 'texto' ? { [MARCA_TEXTO]: true } : null,
-      },
-    );
+    const siguiente: Record<string, unknown> = { ...valores, ...cambios };
+    if (!(CAMPO_PAGINA in cambios)) siguiente[CAMPO_PAGINA] = porDefecto[CAMPO_PAGINA];
+    const nueva = escribir(siguiente, porDefecto);
+    // Un cambio que deja la URL igual no navega: sin esto, un valor que el esquema descarta (solo espacios, un
+    // texto demasiado largo) volvería a escribirse en cada render.
+    if (nueva.toString() === busqueda.toString()) return;
+    setBusqueda(nueva, {
+      replace:
+        historial === 'reemplazar' ||
+        (historial === 'texto' && esEdicionDeTexto(estadoDelHistorial)),
+      state: historial === 'texto' ? { [MARCA_TEXTO]: true } : null,
+    });
   }
 
   const camposDeFiltro = Object.keys(esquema.shape).filter((campo) => !CAMPOS_DE_VISTA.has(campo));

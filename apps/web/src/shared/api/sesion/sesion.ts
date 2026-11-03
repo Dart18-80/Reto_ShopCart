@@ -58,6 +58,10 @@ export function crearSesion({ refrescar, cerrarEnServidor, bloqueo, canal }: Dep
   let estado: EstadoSesion = INVITADO;
   let renovacionEnCurso: Promise<string | null> | null = null;
   let rehidratacion: Promise<void> = Promise.resolve();
+  // Sube con cada cambio de sesión (login, cierre, token de otra pestaña). Un refresh que termina después de un
+  // cambio llega tarde: su resultado se descarta para no reabrir una sesión cerrada.
+  let generacion = 0;
+  let terminoElArranque = false;
   const suscriptores = new Set<() => void>();
   const reaccionesAlCambiarUsuario = new Set<() => void>();
 
@@ -67,8 +71,10 @@ export function crearSesion({ refrescar, cerrarEnServidor, bloqueo, canal }: Dep
     suscriptores.forEach((avisar) => {
       avisar();
     });
-    // Al terminar la rehidratación no se avisa: las peticiones la esperan, así que la caché no tiene datos de otro.
-    if (anterior.tipo !== 'rehidratando' && idUsuarioDe(anterior) !== idUsuarioDe(nuevo)) {
+    // Al terminar la rehidratación del arranque no se avisa: las peticiones la esperan, así que la caché no tiene
+    // datos de otro. Al verificar una sesión no verificada sí, porque la tienda pudo cargar datos de invitado.
+    const terminaElArranque = anterior.tipo === 'rehidratando' && !terminoElArranque;
+    if (!terminaElArranque && idUsuarioDe(anterior) !== idUsuarioDe(nuevo)) {
       reaccionesAlCambiarUsuario.forEach((reaccionar) => {
         reaccionar();
       });
@@ -76,11 +82,13 @@ export function crearSesion({ refrescar, cerrarEnServidor, bloqueo, canal }: Dep
   }
 
   function adoptar(datos: DatosSesion) {
+    generacion += 1;
     token = datos.accessToken;
     fijarEstado({ tipo: 'activa', usuario: datos.usuario });
   }
 
   function cerrarLocal() {
+    generacion += 1;
     token = null;
     fijarEstado(INVITADO);
   }
@@ -94,13 +102,17 @@ export function crearSesion({ refrescar, cerrarEnServidor, bloqueo, canal }: Dep
     // Mientras esperaba el bloqueo, otra pestaña pudo renovar o cerrar la sesión y avisarlo por el canal:
     // pedir otro refresh con la cookie que esa pestaña ya rotó sería un reúso (A-07).
     if (token !== tokenAlPedir) return token;
+    const generacionAlPedir = generacion;
+    const llegoTarde = () => generacion !== generacionAlPedir;
     try {
       const datos = soloSesion(await refrescar());
+      if (llegoTarde()) return token;
       adoptar(datos);
       canal.publicar({ tipo: 'token', sesion: datos });
       return datos.accessToken;
     } catch (error) {
       if (!(error instanceof ErrorApi) || error.status !== STATUS_NO_AUTENTICADO) throw error;
+      if (llegoTarde()) return token;
       // REFRESH_REUTILIZADO, USUARIO_INACTIVO o sin cookie: ninguna pestaña puede renovar.
       cerrarLocal();
       canal.publicar({ tipo: 'cerrada' });
@@ -120,6 +132,7 @@ export function crearSesion({ refrescar, cerrarEnServidor, bloqueo, canal }: Dep
   return {
     estado: () => estado,
     token: () => token,
+    idUsuario: () => idUsuarioDe(estado),
 
     /** Para `useSyncExternalStore`, que la recibe suelta: avisa de cada cambio de estado; devuelve cómo cancelar. */
     suscribir: (avisar: () => void) => {
@@ -138,19 +151,25 @@ export function crearSesion({ refrescar, cerrarEnServidor, bloqueo, canal }: Dep
     },
 
     /**
-     * El refresh al cargar la aplicación (y el Reintentar de una sesión no verificada). Nunca rechaza: una falla
-     * de red o un 5xx deja la sesión no verificada.
+     * El refresh al cargar la aplicación (y el Reintentar de una sesión no verificada). Nunca rechaza: cualquier
+     * falla que no sea un 401 (red, 5xx o una respuesta inesperada) deja la sesión no verificada.
      */
     rehidratar(): Promise<void> {
       if (estado.tipo === 'rehidratando' || estado.tipo === 'activa') return rehidratacion;
       fijarEstado(REHIDRATANDO);
-      rehidratacion = renovarUnaVez(null).then(
-        () => undefined,
-        (error: unknown) => {
-          if (!(error instanceof ErrorApi)) throw error;
-          fijarEstado({ tipo: 'noVerificada', error });
-        },
-      );
+      rehidratacion = renovarUnaVez(null)
+        .then(
+          () => undefined,
+          (error: unknown) => {
+            fijarEstado({
+              tipo: 'noVerificada',
+              error: error instanceof ErrorApi ? error : ErrorApi.inesperado(),
+            });
+          },
+        )
+        .finally(() => {
+          terminoElArranque = true;
+        });
       return rehidratacion;
     },
 
@@ -159,11 +178,12 @@ export function crearSesion({ refrescar, cerrarEnServidor, bloqueo, canal }: Dep
     /**
      * Ante un 401 de una petición que salió con `tokenRechazado` (null si salió sin sesión): devuelve el token con
      * que reintentarla, o null para no reintentar. Solo pide el refresh si hay sesión y ese token es el vigente; si
-     * otra petición o pestaña ya lo cambió, devuelve el vigente.
+     * otra petición o pestaña ya lo cambió, devuelve el vigente (el cliente no reintenta si cambió el usuario).
      */
     renovar(tokenRechazado: string | null): Promise<string | null> {
       // Un invitado con 401 no renueva: no hay sesión que renovar (05 §5).
-      if (token === null || token !== tokenRechazado) return Promise.resolve(token);
+      if (tokenRechazado === null || token === null) return Promise.resolve(null);
+      if (token !== tokenRechazado) return Promise.resolve(token);
       return renovarUnaVez(token);
     },
 
