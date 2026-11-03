@@ -327,4 +327,14 @@ Desde el módulo 5 se puede demostrar una compra completa de punta a punta.
 - **Colección `Prenda`:** los 13 colores de la semilla (Negro, Azul marino, Vino…) como `--prenda-<color>`. Es presentación de la variante, no una regla de negocio: el mapa vive en el frontend.
 - **Ilustración por tipo de prenda:** un SVG por tipo (Camisa, Pantalón, Vestido, Chaqueta, Tenis, Gorra) con `fill="currentColor"`; al elegir un color, la prenda se tiñe. Requiere una semilla nueva (`S007`) que asigne a cada producto su tipo; las semillas aplicadas no se editan.
 - **Componentes base en Figma:** Botón (5 estilos × 2 tamaños), Estado de pedido (los 7 estados de S001, siempre con texto), Existencia, Campo (normal y error), Talla, Muestra de color, Prenda y Tarjeta de producto. Cada uno tiene su descripción con la regla que lo gobierna.
+- **Índice de frames** (página *Pantallas*):
+
+| Pantalla | Frames | Módulo |
+|---|---|---|
+| Catálogo | escritorio [`22:2`](https://www.figma.com/design/x3DB2aj5gZUsAGZFD1TyOG?node-id=22-2) · móvil [`23:516`](https://www.figma.com/design/x3DB2aj5gZUsAGZFD1TyOG?node-id=23-516) | 2 |
+| Detalle de producto | escritorio [`24:314`](https://www.figma.com/design/x3DB2aj5gZUsAGZFD1TyOG?node-id=24-314) · móvil [`24:406`](https://www.figma.com/design/x3DB2aj5gZUsAGZFD1TyOG?node-id=24-406) | 2 |
+| Ingresar | escritorio [`26:414`](https://www.figma.com/design/x3DB2aj5gZUsAGZFD1TyOG?node-id=26-414) · móvil con credenciales incorrectas [`26:460`](https://www.figma.com/design/x3DB2aj5gZUsAGZFD1TyOG?node-id=26-460) | 1 |
+| Backoffice de Pedidos | [`26:519`](https://www.figma.com/design/x3DB2aj5gZUsAGZFD1TyOG?node-id=26-519) | layout del backoffice (F1-H05) y 8 |
+
+- **Componentes de layout** (página *Componentes*): Encabezado tienda, Barra lateral backoffice, Elemento de menú, Paginación, Chip, Selector, Casilla, Cantidad, Aviso, Tarjeta de producto (Normal y Compacta) e íconos.
 - **Al implementar una pantalla:** la historia cita su frame; Claude Code compara una captura de Playwright en 375 y 1280 px con la del frame antes de cerrarla.
