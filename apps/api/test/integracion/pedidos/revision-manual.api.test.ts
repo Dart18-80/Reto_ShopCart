@@ -23,6 +23,7 @@ import {
   TARJETA_APROBADA,
 } from '../checkout/apoyo-checkout.js';
 import { comoActor, leerBitacora, unaFila } from '../datos-de-prueba.js';
+import { SEGUNDOS_ANTES_DE_RESOLVER_A_MANO } from '../../../src/modules/pedidos/pedidos.reembolsos.js';
 import { pedidosRepository } from '../../../src/modules/pedidos/pedidos.repository.js';
 import { pedidoPagado } from './apoyo-pedidos.js';
 
@@ -364,8 +365,11 @@ describe('reembolsos Fallido resueltos a mano (E9-H04)', () => {
     }),
   );
 
-  /** Agotados sus intentos, como lo deja el job; con la pasarela que se indique al cancelar. */
-  async function reembolsoFallido(conPasarela = sinReembolsos) {
+  /**
+   * Agotados sus intentos, como lo deja el job, hace `haceSegundos` (por omisión, más que el plazo para resolverlo a
+   * mano); con la pasarela que se indique al cancelar.
+   */
+  async function reembolsoFallido(conPasarela = sinReembolsos, haceSegundos = 3600) {
     const { cliente, pedido, llave } = await pedidoPagado(app, estandar);
     const cancelacion = await request(conPasarela)
       .post(`/api/v1/admin/pedidos/${String(pedido.idPedido)}/cancelar`)
@@ -377,9 +381,95 @@ describe('reembolsos Fallido resueltos a mano (E9-H04)', () => {
     );
     await ejecutarSP('SP_Pruebas_FallarReembolso', {
       IDReembolso: { tipo: sql.Int, valor: reembolso.idReembolso },
+      HaceSegundos: { tipo: sql.Int, valor: haceSegundos },
     });
     return { cliente, idPedido: pedido.idPedido, llave, idReembolso: reembolso.idReembolso };
   }
+
+  const leerParaResolver = async (idReembolso: number) => {
+    const leido = await comoActor(idAdmin, 'Administrador', () =>
+      pedidosRepository.obtenerReembolsoParaResolver(idReembolso),
+    );
+    if (leido === null) throw new Error('El reembolso no existe');
+    return leido;
+  };
+
+  async function cancelacionDe(idPedido: number) {
+    const [pedidos] = await ejecutarSPConjuntos<[{ MontoReembolsado: number }[], unknown[]]>(
+      'SP_Pruebas_LeerCancelacion',
+      { IDPedido: { tipo: sql.Int, valor: idPedido } },
+    );
+    const [pedido] = pedidos ?? [];
+    if (pedido === undefined) throw new Error('El pedido no existe');
+    return pedido;
+  }
+
+  it('uno que falló hace menos del plazo no se resuelve: 409 REEMBOLSO_RECIENTE, y los SPs también lo exigen', async () => {
+    const { idPedido, idReembolso } = await reembolsoFallido(sinReembolsos, 0);
+    const leido = await leerParaResolver(idReembolso);
+    const comoAdmin = <T>(llamada: () => Promise<T>) =>
+      comoActor(idAdmin, 'Administrador', llamada);
+
+    const respuesta = await resolverReembolso(tokenAdmin, idReembolso);
+
+    expect(respuesta.status).toBe(409);
+    expect(leerError(respuesta).codigo).toBe('REEMBOLSO_RECIENTE');
+    await expect(
+      comoAdmin(() =>
+        pedidosRepository.resolverReembolso(
+          idReembolso,
+          { motivo: 'Devuelto por transferencia', referencia: 'TRF-2026-003' },
+          leido.fechaActualizacion,
+          SEGUNDOS_ANTES_DE_RESOLVER_A_MANO,
+        ),
+      ),
+    ).rejects.toMatchObject({ codigo: 'REEMBOLSO_RECIENTE' });
+    await expect(
+      comoAdmin(() =>
+        pedidosRepository.marcarReembolsoNoAplica(
+          idReembolso,
+          'Sin cobro',
+          leido.fechaActualizacion,
+          SEGUNDOS_ANTES_DE_RESOLVER_A_MANO,
+        ),
+      ),
+    ).rejects.toMatchObject({ codigo: 'REEMBOLSO_RECIENTE' });
+    expect(await reembolsoDe(idPedido)).toMatchObject({ Estado: 'Fallido' });
+  });
+
+  it('si la pasarela muestra el cobro anulado, pasa a NoAplica: sin dinero, con motivo, quién y cuándo, y no cuenta como reembolsado', async () => {
+    const { idPedido, llave, idReembolso } = await reembolsoFallido();
+    await cambiarEnPasarela(llave, 'Anulada');
+
+    const respuesta = await resolverReembolso(tokenAdmin, idReembolso);
+
+    expect(respuesta.status).toBe(409);
+    expect(leerError(respuesta).codigo).toBe('REEMBOLSO_SIN_COBRO');
+    expect(await reembolsoDe(idPedido)).toMatchObject({
+      Estado: 'NoAplica',
+      IDTransaccionReembolso: null,
+    });
+    expect((await cancelacionDe(idPedido)).MontoReembolsado).toBe(0);
+    expect((await enPasarela(llave)).reembolsos).toEqual([]);
+    const [bitacora] = await leerBitacora('Reembolso', idReembolso);
+    expect(bitacora).toMatchObject({ Accion: 'CambioEstado', IDUsuario: idAdmin });
+    expect(JSON.parse(bitacora?.ValorAnterior ?? '{}')).toMatchObject({ Estado: 'Fallido' });
+    expect(JSON.parse(bitacora?.ValorNuevo ?? '{}')).toMatchObject({
+      Estado: 'NoAplica',
+      MotivoResolucion: expect.stringContaining('anuló') as unknown,
+    });
+  });
+
+  it('si la autorización sigue vigente (nunca se capturó), la anula y el reembolso pasa a NoAplica', async () => {
+    const { idPedido, llave, idReembolso } = await reembolsoFallido();
+    await cambiarEnPasarela(llave, 'Autorizada');
+
+    const respuesta = await resolverReembolso(tokenAdmin, idReembolso);
+
+    expect(leerError(respuesta).codigo).toBe('REEMBOLSO_SIN_COBRO');
+    expect(await reembolsoDe(idPedido)).toMatchObject({ Estado: 'NoAplica' });
+    expect(await enPasarela(llave)).toEqual({ estado: 'Anulada', reembolsos: [] });
+  });
 
   async function reembolsoDe(idPedido: number) {
     const [, reembolsos] = await ejecutarSPConjuntos<
@@ -431,10 +521,7 @@ describe('reembolsos Fallido resueltos a mano (E9-H04)', () => {
 
   it('si entre la consulta y la resolución el reembolso volvió a Fallido (otro reintento), el SP responde 409 y no lo resuelve', async () => {
     const { idPedido, idReembolso } = await reembolsoFallido();
-    const leido = await comoActor(idAdmin, 'Administrador', () =>
-      pedidosRepository.obtenerReembolsoParaResolver(idReembolso),
-    );
-    if (leido === null) throw new Error('El reembolso no existe');
+    const leido = await leerParaResolver(idReembolso);
     // Otro Admin lo reintenta y vuelve a agotar sus intentos: sigue Fallido, pero ya no es el que se consultó.
     await request(sinReembolsos)
       .post(`/api/v1/admin/reembolsos/${String(idReembolso)}/reintentar`)
@@ -448,6 +535,7 @@ describe('reembolsos Fallido resueltos a mano (E9-H04)', () => {
         idReembolso,
         { motivo: 'Devuelto por transferencia', referencia: 'TRF-2026-002' },
         leido.fechaActualizacion,
+        SEGUNDOS_ANTES_DE_RESOLVER_A_MANO,
       ),
     );
 

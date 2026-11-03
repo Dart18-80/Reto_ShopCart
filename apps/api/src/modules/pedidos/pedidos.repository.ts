@@ -500,7 +500,9 @@ export const pedidosRepository = {
     const [fila] = await ejecutarSP<{
       Estado: EstadoReembolso;
       LlaveIdempotencia: string;
+      LlaveIntento: string;
       FechaActualizacion: Date;
+      SegundosDesdeActualizacion: number | string;
     }>('SP_Pedidos_ObtenerReembolsoParaResolver', {
       IDReembolso: { tipo: sql.Int, valor: idReembolso },
     });
@@ -508,7 +510,10 @@ export const pedidosRepository = {
     return {
       estado: fila.Estado,
       llave: fila.LlaveIdempotencia,
+      llaveIntento: fila.LlaveIntento,
       fechaActualizacion: fila.FechaActualizacion,
+      // DATEDIFF_BIG llega como texto (BIGINT).
+      segundosDesdeActualizacion: Number(fila.SegundosDesdeActualizacion),
     };
   },
 
@@ -523,17 +528,34 @@ export const pedidosRepository = {
     });
   },
 
-  /** E9-H04: un reembolso Fallido pasa a ResueltoManual, si no cambió desde que se leyó. */
+  /** E9-H04: la pasarela no muestra el cobro capturado; el reembolso Fallido pasa a NoAplica. */
+  async marcarReembolsoNoAplica(
+    idReembolso: number,
+    motivo: string,
+    fechaActualizacionLeida: Date,
+    segundosEsperaMinima: number,
+  ): Promise<void> {
+    await ejecutarSP('SP_Pedidos_MarcarReembolsoNoAplica', {
+      IDReembolso: { tipo: sql.Int, valor: idReembolso },
+      Motivo: { tipo: sql.NVarChar(250), valor: motivo },
+      FechaActualizacionLeida: { tipo: sql.DateTime2(3), valor: fechaActualizacionLeida },
+      SegundosEsperaMinima: { tipo: sql.Int, valor: segundosEsperaMinima },
+    });
+  },
+
+  /** E9-H04: un reembolso Fallido pasa a ResueltoManual, si no cambió desde que se leyó y pasó el plazo. */
   async resolverReembolso(
     idReembolso: number,
     datos: ResolverReembolso,
     fechaActualizacionLeida: Date,
+    segundosEsperaMinima: number,
   ): Promise<Reembolso> {
     const [fila] = await ejecutarSP<FilaReembolso>('SP_Pedidos_ResolverReembolso', {
       IDReembolso: { tipo: sql.Int, valor: idReembolso },
       Motivo: { tipo: sql.NVarChar(250), valor: datos.motivo },
       Referencia: { tipo: sql.NVarChar(100), valor: datos.referencia },
       FechaActualizacionLeida: { tipo: sql.DateTime2(3), valor: fechaActualizacionLeida },
+      SegundosEsperaMinima: { tipo: sql.Int, valor: segundosEsperaMinima },
     });
     if (fila === undefined)
       throw new Error('SP_Pedidos_ResolverReembolso no devolvió el reembolso');

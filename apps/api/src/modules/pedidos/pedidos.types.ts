@@ -91,7 +91,13 @@ export interface ResumenPedidoGestion extends ResumenPedido {
 }
 
 /** N-09, N-10: el estado de un reembolso. */
-export const ESTADOS_REEMBOLSO = ['Pendiente', 'Completado', 'Fallido', 'ResueltoManual'] as const;
+export const ESTADOS_REEMBOLSO = [
+  'Pendiente',
+  'Completado',
+  'Fallido',
+  'ResueltoManual',
+  'NoAplica',
+] as const;
 export type EstadoReembolso = (typeof ESTADOS_REEMBOLSO)[number];
 
 /** E9-H04: un cobro capturado sin pedido se devuelve con un reembolso SinPedido, que apunta al intento. */
@@ -157,7 +163,11 @@ export interface PagoEnRevision {
 export interface ReembolsoParaResolver {
   estado: EstadoReembolso;
   llave: string;
+  /** Para consultar en la pasarela si el cobro se capturó. */
+  llaveIntento: string;
   fechaActualizacion: Date;
+  /** Con el reloj de la base: el servicio prevalida el plazo y el SP lo vuelve a exigir. */
+  segundosDesdeActualizacion: number;
 }
 
 /** Lo que el servicio necesita antes de resolver: la llave para consultar la pasarela. */

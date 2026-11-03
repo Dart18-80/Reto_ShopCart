@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { SEGUNDOS_ANTES_DE_RESOLVER_A_MANO } from '../../../../src/modules/pedidos/pedidos.reembolsos.js';
 import { crearRevisionService } from '../../../../src/modules/pedidos/pedidos.revision.js';
 import type {
   PagoParaResolver,
@@ -27,11 +28,14 @@ const CON_PEDIDO: PagoParaResolver = {
 };
 const SIN_PEDIDO: PagoParaResolver = { ...CON_PEDIDO, idPedido: null };
 const PEDIDO = pedidoDePrueba();
+const LLAVE_INTENTO = '2b9c1d0e-7a6f-4e5d-8c3b-2a1f0e9d8c7b';
 const LEIDO_EN = new Date('2026-11-02T18:00:00.000Z');
 const REEMBOLSO_FALLIDO: ReembolsoParaResolver = {
   estado: 'Fallido',
   llave: LLAVE,
+  llaveIntento: LLAVE_INTENTO,
   fechaActualizacion: LEIDO_EN,
+  segundosDesdeActualizacion: SEGUNDOS_ANTES_DE_RESOLVER_A_MANO,
 };
 const NO_PROCESADO: ReembolsoEnPasarela = { estado: 'NoExiste' };
 const PROCESADO: ReembolsoEnPasarela = { estado: 'Procesado', idReembolso: 'SIMR-1' };
@@ -70,6 +74,7 @@ function preparar({
     ),
     obtenerReembolsoParaResolver: vi.fn(() => Promise.resolve(reembolso)),
     completarReembolsoProcesado: vi.fn(() => Promise.resolve()),
+    marcarReembolsoNoAplica: vi.fn(() => Promise.resolve()),
     resolverReembolso: vi.fn(),
     obtener: vi.fn((idPedido: number) => Promise.resolve(idPedido === 3 ? PEDIDO : null)),
   };
@@ -232,14 +237,77 @@ describe('revisión manual de pagos (E9-H04)', () => {
 });
 
 describe('resolución manual de un reembolso Fallido (E9-H04, decisión del PO)', () => {
-  it('si la pasarela no lo procesó, lo resuelve a mano con la referencia del Admin y la versión leída', async () => {
+  it('si la pasarela no lo procesó y el cobro está capturado, lo resuelve a mano con la versión leída y el plazo', async () => {
     const { servicio, repositorio, pasarela } = preparar();
 
     await servicio.resolverReembolso(5, RESOLUCION);
 
     expect(pasarela.consultarReembolso).toHaveBeenCalledWith(LLAVE);
-    expect(repositorio.resolverReembolso).toHaveBeenCalledWith(5, RESOLUCION, LEIDO_EN);
+    expect(pasarela.consultar).toHaveBeenCalledWith(LLAVE_INTENTO);
+    expect(repositorio.resolverReembolso).toHaveBeenCalledWith(
+      5,
+      RESOLUCION,
+      LEIDO_EN,
+      SEGUNDOS_ANTES_DE_RESOLVER_A_MANO,
+    );
     expect(repositorio.completarReembolsoProcesado).not.toHaveBeenCalled();
+  });
+
+  it('uno que falló hace menos del plazo responde 409 REEMBOLSO_RECIENTE sin consultar la pasarela', async () => {
+    const { servicio, pasarela } = preparar({
+      reembolso: {
+        ...REEMBOLSO_FALLIDO,
+        segundosDesdeActualizacion: SEGUNDOS_ANTES_DE_RESOLVER_A_MANO - 1,
+      },
+    });
+
+    await expect(servicio.resolverReembolso(5, RESOLUCION)).rejects.toMatchObject({
+      codigo: 'REEMBOLSO_RECIENTE',
+      status: 409,
+    });
+    expect(pasarela.consultarReembolso).not.toHaveBeenCalled();
+  });
+
+  it('si el cobro se anuló sin capturarse, lo marca NoAplica con el motivo y responde 409 REEMBOLSO_SIN_COBRO', async () => {
+    const { servicio, repositorio, pasarela } = preparar({ enPasarela: ANULADA });
+
+    await expect(servicio.resolverReembolso(5, RESOLUCION)).rejects.toMatchObject({
+      codigo: 'REEMBOLSO_SIN_COBRO',
+      status: 409,
+    });
+    expect(repositorio.marcarReembolsoNoAplica).toHaveBeenCalledWith(
+      5,
+      expect.stringContaining('anuló'),
+      LEIDO_EN,
+      SEGUNDOS_ANTES_DE_RESOLVER_A_MANO,
+    );
+    expect(pasarela.anular).not.toHaveBeenCalled();
+    expect(repositorio.resolverReembolso).not.toHaveBeenCalled();
+  });
+
+  it('con la autorización vigente (nunca capturada) la anula antes de marcarlo NoAplica', async () => {
+    const { servicio, repositorio, pasarela } = preparar({ enPasarela: AUTORIZADA });
+
+    await expect(servicio.resolverReembolso(5, RESOLUCION)).rejects.toMatchObject({
+      codigo: 'REEMBOLSO_SIN_COBRO',
+    });
+    expect(pasarela.anular).toHaveBeenCalledWith('SIM-1');
+    expect(pasarela.anular.mock.invocationCallOrder[0]).toBeLessThan(
+      repositorio.marcarReembolsoNoAplica.mock.invocationCallOrder[0] ?? 0,
+    );
+  });
+
+  it('si anular la autorización no responde, 504 y nada cambia', async () => {
+    const { servicio, repositorio } = preparar({
+      enPasarela: AUTORIZADA,
+      anulacion: Promise.reject(new PasarelaSinRespuesta('anular')),
+    });
+
+    await expect(servicio.resolverReembolso(5, RESOLUCION)).rejects.toMatchObject({
+      codigo: 'PASARELA_SIN_RESPUESTA',
+    });
+    expect(repositorio.marcarReembolsoNoAplica).not.toHaveBeenCalled();
+    expect(repositorio.resolverReembolso).not.toHaveBeenCalled();
   });
 
   it('si la pasarela ya lo procesó (la respuesta se perdió), queda Completado y la resolución se rechaza', async () => {
@@ -251,6 +319,7 @@ describe('resolución manual de un reembolso Fallido (E9-H04, decisión del PO)'
     });
     expect(repositorio.completarReembolsoProcesado).toHaveBeenCalledWith(5, 'SIMR-1');
     expect(repositorio.resolverReembolso).not.toHaveBeenCalled();
+    expect(repositorio.marcarReembolsoNoAplica).not.toHaveBeenCalled();
   });
 
   it('un reembolso inexistente responde 404 sin consultar la pasarela', async () => {

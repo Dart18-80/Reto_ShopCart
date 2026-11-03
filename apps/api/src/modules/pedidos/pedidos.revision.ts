@@ -6,13 +6,14 @@ import {
   type PasarelaPago,
 } from '../../shared/pasarela/index.js';
 import type { InvalidadorReportes } from '../reportes/index.js';
-import type { ReembolsosService } from './pedidos.reembolsos.js';
+import { SEGUNDOS_ANTES_DE_RESOLVER_A_MANO, type ReembolsosService } from './pedidos.reembolsos.js';
 import type { PedidosRepository } from './pedidos.repository.js';
 import type { ListarPagosEnRevision, ResolverPago, ResolverReembolso } from './pedidos.schemas.js';
 import type {
   PagoEnRevision,
   Pedido,
   Reembolso,
+  ReembolsoParaResolver,
   ResolucionDePago,
   ResolucionPago,
 } from './pedidos.types.js';
@@ -25,6 +26,7 @@ interface Dependencias {
     | 'resolverPago'
     | 'obtenerReembolsoParaResolver'
     | 'completarReembolsoProcesado'
+    | 'marcarReembolsoNoAplica'
     | 'resolverReembolso'
     | 'obtener'
   >;
@@ -53,6 +55,15 @@ const NO_APLICA: Record<ResolucionPago, { conPedido: boolean; mensaje: string }>
     conPedido: false,
     mensaje: 'Este pago tiene pedido: verifica el cobro o cancela el pedido sin cobro.',
   },
+};
+
+// Decisión del PO (E9-H04): sin cobro capturado no hay dinero que devolver; el motivo dice qué mostró la pasarela.
+const SIN_COBRO: Record<Exclude<EstadoEnPasarela['estado'], 'Capturada'>, string> = {
+  NoExiste: 'La pasarela no tiene el cobro: no hubo dinero que devolver.',
+  Rechazada: 'La pasarela rechazó el cobro: no hubo dinero que devolver.',
+  Autorizada:
+    'La autorización nunca se capturó (se anuló al resolver): no hubo dinero que devolver.',
+  Anulada: 'La autorización se anuló sin capturarse: no hubo dinero que devolver.',
 };
 
 /**
@@ -86,6 +97,46 @@ export function crearRevisionService({
     const capturada = enPasarela.estado === 'Capturada';
     if (EXIGE_CAPTURA[resolucion] && !capturada) throw new AppError('COBRO_SIN_CAPTURA');
     if (!EXIGE_CAPTURA[resolucion] && capturada) throw new AppError('COBRO_CAPTURADO');
+  }
+
+  async function reembolsoParaResolver(idReembolso: number): Promise<ReembolsoParaResolver> {
+    const reembolso = await repositorio.obtenerReembolsoParaResolver(idReembolso);
+    if (reembolso === null) {
+      throw new AppError('NO_ENCONTRADO', { mensaje: 'El reembolso no existe.' });
+    }
+    if (reembolso.estado !== 'Fallido') throw new AppError('REEMBOLSO_NO_FALLIDO');
+    // Prevalidación: el SP vuelve a exigir el plazo bajo bloqueo.
+    if (reembolso.segundosDesdeActualizacion < SEGUNDOS_ANTES_DE_RESOLVER_A_MANO) {
+      throw new AppError('REEMBOLSO_RECIENTE');
+    }
+    return reembolso;
+  }
+
+  /** Si la pasarela ya lo devolvió (se perdió la respuesta), queda Completado: resolverlo a mano pagaría dos veces. */
+  async function cerrarSiYaSeProceso(idReembolso: number, { llave }: ReembolsoParaResolver) {
+    const enPasarela = await enLaPasarela(() => pasarela.consultarReembolso(llave));
+    if (enPasarela.estado !== 'Procesado') return;
+    await repositorio.completarReembolsoProcesado(idReembolso, enPasarela.idReembolso);
+    throw new AppError('REEMBOLSO_YA_PROCESADO');
+  }
+
+  /**
+   * Si el cobro nunca se capturó o se anuló, no hay dinero que devolver: queda NoAplica. Una autorización vigente se
+   * anula antes, como en SinCobro, para que no quede dinero retenido.
+   */
+  async function cerrarSiNoHuboCobro(idReembolso: number, reembolso: ReembolsoParaResolver) {
+    const cobro = await enLaPasarela(() => pasarela.consultar(reembolso.llaveIntento));
+    if (cobro.estado === 'Capturada') return;
+    if (cobro.estado === 'Autorizada') {
+      await enLaPasarela(() => pasarela.anular(cobro.idTransaccion));
+    }
+    await repositorio.marcarReembolsoNoAplica(
+      idReembolso,
+      SIN_COBRO[cobro.estado],
+      reembolso.fechaActualizacion,
+      SEGUNDOS_ANTES_DE_RESOLVER_A_MANO,
+    );
+    throw new AppError('REEMBOLSO_SIN_COBRO');
   }
 
   async function pedidoResuelto(idPedido: number | null): Promise<Pedido | null> {
@@ -133,21 +184,21 @@ export function crearRevisionService({
       return { ...resuelto, pedido: await pedidoResuelto(idPedido), reembolso };
     },
 
+    /**
+     * Decisión del PO: antes de aceptar la resolución manual se consulta la pasarela, el reembolso por su llave y el
+     * cobro por la del intento. Si entre la consulta y la escritura alguien lo reintenta, el SP lo detecta por su
+     * fecha de actualización (409).
+     */
     async resolverReembolso(idReembolso: number, datos: ResolverReembolso): Promise<Reembolso> {
-      const reembolso = await repositorio.obtenerReembolsoParaResolver(idReembolso);
-      if (reembolso === null) {
-        throw new AppError('NO_ENCONTRADO', { mensaje: 'El reembolso no existe.' });
-      }
-      if (reembolso.estado !== 'Fallido') throw new AppError('REEMBOLSO_NO_FALLIDO');
-      // Decisión del PO: si la pasarela lo procesó y se perdió la respuesta, el dinero ya volvió; devolverlo a mano
-      // sería reembolsar dos veces. Si entre esta consulta y la resolución alguien lo reintenta, el SP lo detecta
-      // por su fecha de actualización (409).
-      const enPasarela = await enLaPasarela(() => pasarela.consultarReembolso(reembolso.llave));
-      if (enPasarela.estado === 'Procesado') {
-        await repositorio.completarReembolsoProcesado(idReembolso, enPasarela.idReembolso);
-        throw new AppError('REEMBOLSO_YA_PROCESADO');
-      }
-      return repositorio.resolverReembolso(idReembolso, datos, reembolso.fechaActualizacion);
+      const reembolso = await reembolsoParaResolver(idReembolso);
+      await cerrarSiYaSeProceso(idReembolso, reembolso);
+      await cerrarSiNoHuboCobro(idReembolso, reembolso);
+      return repositorio.resolverReembolso(
+        idReembolso,
+        datos,
+        reembolso.fechaActualizacion,
+        SEGUNDOS_ANTES_DE_RESOLVER_A_MANO,
+      );
     },
   };
 }

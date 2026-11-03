@@ -27,6 +27,12 @@ const MS_POR_SEGUNDO = 1000;
 // Mientras se procesa, el reembolso queda tomado lo que tardan sus dos llamadas a la pasarela, con holgura.
 const MARGEN_RECLAMO_MS = 40_000;
 const SEGUNDOS_RECLAMO = (2 * TIMEOUT_PASARELA_MS + MARGEN_RECLAMO_MS) / MS_POR_SEGUNDO;
+/**
+ * Decisión del PO (E9-H04): una llamada a la pasarela que la API cortó por timeout puede seguir en vuelo y devolver el
+ * dinero después. Un reembolso se resuelve a mano solo cuando, desde su última actualización, ya pasó lo que dura un
+ * reclamo: para entonces su último intento terminó también en la pasarela.
+ */
+export const SEGUNDOS_ANTES_DE_RESOLVER_A_MANO = SEGUNDOS_RECLAMO;
 // Acota una ejecución del job; lo que quede lo toma la siguiente.
 const LOTE_JOB = 50;
 
@@ -221,7 +227,9 @@ export function crearReembolsosService({ repositorio, pasarela, logger, reportes
       const estado = await repositorio.reintentarReembolso(idReembolso);
       if (estado === null)
         throw new AppError('NO_ENCONTRADO', { mensaje: 'El reembolso no existe.' });
-      if (estado === 'Completado' || estado === 'ResueltoManual') return estado;
+      if (estado === 'Completado' || estado === 'ResueltoManual' || estado === 'NoAplica') {
+        return estado;
+      }
       return (await procesar(idReembolso)) ?? estado;
     },
 
@@ -234,6 +242,7 @@ export function crearReembolsosService({ repositorio, pasarela, logger, reportes
         Completado: 0,
         Fallido: 0,
         ResueltoManual: 0,
+        NoAplica: 0,
         errores: 0,
       };
       for (const idReembolso of ids) {

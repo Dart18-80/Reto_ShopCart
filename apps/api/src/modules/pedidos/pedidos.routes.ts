@@ -160,7 +160,7 @@ registroOpenApi.registerPath({
   path: '/api/v1/admin/reembolsos/{id}/resolver',
   tags: ['Pedidos'],
   summary:
-    'E9-H04: resuelve a mano un reembolso Fallido (ResueltoManual, con motivo y referencia); cuenta como reembolsado. Antes consulta la pasarela: si ya lo procesó, queda Completado y responde 409 REEMBOLSO_YA_PROCESADO',
+    'E9-H04: resuelve a mano un reembolso Fallido (ResueltoManual, con motivo y referencia); cuenta como reembolsado. Solo pasado un plazo desde su último intento (409 REEMBOLSO_RECIENTE). Antes consulta la pasarela: si ya lo procesó, queda Completado y responde 409 REEMBOLSO_YA_PROCESADO; si el cobro nunca se capturó o se anuló, queda NoAplica y responde 409 REEMBOLSO_SIN_COBRO',
   security: seguridad,
   request: { params: paramsIdReembolsoSchema, body: json(resolverReembolsoSchema) },
   responses: {

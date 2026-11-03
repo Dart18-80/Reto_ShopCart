@@ -258,6 +258,13 @@ export const CATALOGO = {
     numeroSql: 50710,
     mensaje: 'El cobro de este pedido aún no se confirma.',
   },
+  // Decisión del PO (E9-H04): un reembolso se resuelve a mano solo pasado un plazo desde su último intento.
+  REEMBOLSO_RECIENTE: {
+    http: 409,
+    numeroSql: 50711,
+    mensaje:
+      'Este reembolso falló hace muy poco y la pasarela aún podría estar procesándolo. Espera un momento y vuelve a intentarlo.',
+  },
   COBRO_SIN_CAPTURA: {
     http: 409,
     mensaje:
@@ -273,6 +280,12 @@ export const CATALOGO = {
     http: 409,
     mensaje:
       'La pasarela ya había procesado este reembolso: quedó Completado y no se resuelve a mano.',
+  },
+  // Decisión del PO (E9-H04): el cobro nunca se capturó o se anuló; el reembolso quedó NoAplica.
+  REEMBOLSO_SIN_COBRO: {
+    http: 409,
+    mensaje:
+      'La pasarela no muestra el cobro capturado: no hay dinero que devolver. El reembolso quedó como No aplica.',
   },
   PASARELA_SIN_RESPUESTA: {
     http: 504,
