@@ -765,3 +765,177 @@ El orden de construcción, por módulos (F1, módulos 1 a 11 y F6), está en [`0
 | E9-H02 | Dashboard en tiempo real con SSE | Must | 1.5 | Hecha |
 | E9-H03 | Guía de defensa | Must | 1.5 | Hecha |
 | E9-H04 | Revisión manual de pagos y reembolsos | Must | 2.0 | Hecha |
+| F1-H01 | Proyecto web, tema y herramientas | Must | 1.0 | Lista |
+| F1-H02 | Contrato: foto del OpenAPI, tipos y cobertura | Must | 0.75 | Lista |
+| F1-H03 | Cliente `api`, `ErrorApi` y `QueryClient` | Must | 0.75 | Lista |
+| F1-H04 | Sesión con renovación transparente | Must | 1.5 | Lista |
+| F1-H05 | Rutas, áreas, layouts y control por rol | Must | 1.0 | Lista |
+| F1-H06 | Componentes de datos: `EstadoVista`, `TablaServidor` y URL | Must | 1.0 | Lista |
+| F1-H07 | Formularios, formato y prenda | Must | 1.0 | Lista |
+| F1-H08 | Base de E2E y pruebas transversales | Must | 0.75 | Lista |
+
+---
+
+## 6. Fase 2 — Frontend (cierre: lunes 9 nov, 23:59)
+
+> Fuente: [`05-arquitectura-frontend.md`](./05-arquitectura-frontend.md) (FE-01 a FE-15) y la skill `modulo-react`. El diseño de referencia está en Figma (05 §17); Claude Code lo **lee** con el MCP de Figma y nunca lo modifica.
+> Se construye **por módulos** en el orden de 05 §16. Cada módulo se cierra con su E2E contra el backend real y sus rutas cubiertas en `pnpm contrato:cobertura`.
+
+### 6.1 Definición de terminado del frontend (aplica a toda historia `F*`)
+
+1. TypeScript `strict` sin `any`, `@ts-ignore` ni `!` sin justificar; `pnpm lint`, `pnpm typecheck` y `pnpm test` pasan.
+2. Cumple el checklist de la skill `modulo-react` (§13) y la subsección SOLID y clean code de `CLAUDE.md`.
+3. Ninguna dependencia fuera de FE-14 (05 §15) sin aprobación.
+4. Toda vista tiene sus estados de carga, vacío y error; todo monto y fecha pasa por `shared/formato`.
+5. Cada criterio de aceptación tiene su prueba (TDD); si la historia toca un flujo de punta a punta, también su E2E.
+6. `docker compose up -d` desde cero sigue levantando todo y la SPA responde en `http://localhost:8080`.
+7. **Un commit por historia** con formato convencional, sin atribución: `feat(web): F1-H04 sesión con renovación transparente`.
+8. **Resumen de cierre** como en el backend, con una diferencia en "Cómo probarlo": los pasos en el navegador (qué abrir, qué hacer, qué se ve) y el comando de su prueba.
+
+### 6.2 Plan
+
+| Bloque | Contenido | Horas |
+|---|---|---|
+| **F1 Base del frontend** | Proyecto, tema, contrato, cliente `api`, sesión, rutas por rol, componentes compartidos y base de E2E | 7.75 |
+| Módulos 1 a 11 y F6 | Se detallan en historias por bloques, con su frame de Figma, a medida que avanza F1 | — |
+
+---
+
+## F1 · Base del frontend
+
+> Objetivo: una SPA que levanta con Docker, con el tema de Figma, el contrato tipado, la sesión con renovación transparente, las rutas por rol y las piezas compartidas listas, para que cada módulo solo agregue su capa de datos y sus pantallas.
+
+### F1-H01 · Proyecto web, tema y herramientas — `Must` · 1.0 h
+**Alcance**
+- `apps/web` (`@shopcart/web`): Vite + React 19 + TypeScript `strict`, con la configuración base del monorepo. Consume `@shopcart/shared` con la condición `@shopcart/fuente` en `resolve.conditions` de Vite y en `customConditions` del `tsconfig` (01 §12).
+- Estructura de carpetas de 05 §3, sin módulos todavía.
+- **Tailwind CSS + shadcn/ui** inicializado con las primitivas en `src/shared/ui` y `cn()`.
+- **Tema desde Figma:** lee con el MCP de Figma (`get_variable_defs`) las colecciones `Color` (modos Claro y Oscuro), `Forma` y `Prenda` del archivo de 05 §17 y escribe las variables CSS con **los mismos nombres de su *code syntax*** (`--background`, `--primary`, `--oferta`, `--radius-md`, `--prenda-azul-marino`…). Modo oscuro con la clase `.dark`. No inventes valores: si una variable de Figma no tiene equivalente o shadcn necesita una que Figma no tiene, detente y pregunta.
+- Fuentes autoalojadas con `@fontsource/space-grotesk` (títulos y precios) y `@fontsource/public-sans` (texto), según los estilos de texto de Figma.
+- ESLint para `apps/web`: reglas de React Hooks, accesibilidad (`jsx-a11y`) y **fronteras de FE-09** con `eslint-plugin-boundaries`: `paginas → componentes → hooks → <modulo>.api.ts → shared/api`; entre módulos solo por `index.ts`; excepción: `src/app/` importa `modules/*/paginas/*`.
+- Vitest con jsdom, Testing Library y MSW: `src/test/` con el servidor MSW y un `renderizar()` provisional (router en memoria y `QueryClient` sin reintentos; la sesión se agrega en F1-H04).
+- Proxy de Vite: `/api` → `http://localhost:8080` (05 §5).
+- **Dockerfile de `web` en dos etapas:** compila `@shopcart/shared` y la SPA con pnpm, y sirve `dist/` con el nginx actual (misma versión fijada con digest). La carpeta `static/productos` se sigue sirviendo.
+
+**Fuera de alcance:** pantallas, sesión, cliente `api`.
+
+**CA**
+- [ ] `pnpm install && pnpm lint && pnpm typecheck && pnpm test` pasan en limpio.
+- [ ] Un import de `modules/a/hooks/x` desde `modules/b/` hace fallar el lint; un componente que importa `shared/api` también.
+- [ ] `docker compose up -d --build` sirve la SPA en `http://localhost:8080`; recargar una ruta profunda (`/catalogo/x`) devuelve la SPA y no un 404 (el `try_files` de nginx); `/api/v1/health` y `/api/docs` siguen respondiendo.
+- [ ] Las variables CSS de claro y oscuro coinciden una a una con las de Figma (lista en el resumen de cierre).
+
+**Referencias:** FE-01, FE-09, FE-14, FE-15, A-03, 05 §3, §12, §15 y §17.
+
+### F1-H02 · Contrato: foto del OpenAPI, tipos y cobertura — `Must` · 0.75 h
+**Alcance**
+- `packages/contrato` (`@shopcart/contrato`): `openapi.json` y los tipos generados con `openapi-typescript` (solo desarrollo), ambos versionados.
+- `pnpm openapi:exportar`: genera el documento con `generarDocumentoOpenApi()` **sin levantar la API, sin base, sin Redis y sin un `.env` real**, y lo escribe ordenado y con formato estable. Si algún módulo de la API impide importarlo sin efectos (por ejemplo, porque lee la configuración al importarse), detente y propón cómo resolverlo sin cambiar el comportamiento de la API.
+- `pnpm openapi:verificar`, dentro de `pnpm lint`: falla si la foto o los tipos no coinciden con lo que genera el código.
+- `pnpm contrato:cobertura`: cruza las rutas de la foto con las rutas literales usadas en `apps/web/src/modules/*/*.api.ts` y con `packages/contrato/exclusiones.json` (cada exclusión con su motivo: `/health`, Swagger). Imprime por módulo: cubiertas, excluidas y pendientes. Con `--estricto` (que se usa en F6) termina con error si queda alguna pendiente.
+
+**CA**
+- [ ] Ejecutar `openapi:exportar` dos veces seguidas no produce diff.
+- [ ] Cambiar la descripción de un esquema de la API sin reexportar hace fallar `pnpm lint`.
+- [ ] `contrato:cobertura` lista las rutas de `/api/v1` del router (01 §5.2) agrupadas por módulo; hoy todas pendientes salvo las excluidas.
+
+**Referencias:** FE-13, A-08, 05 §9.
+
+### F1-H03 · Cliente `api`, `ErrorApi` y `QueryClient` — `Must` · 0.75 h
+**Alcance**
+- `shared/api`: cliente `api` con `openapi-fetch` tipado con `@shopcart/contrato`, mismo origen y cookies del mismo origen.
+- *Middleware* que agrega `Authorization: Bearer` cuando hay token (por ahora lo lee de una función que F1-H04 implementa).
+- `ErrorApi` (`status`, `codigo`, `mensaje`, `detalles`, `requestId`) a partir del formato de A-06; una falla de red es `ErrorApi` con `codigo: 'RED'` y `status: 0`; una respuesta de error sin el formato esperado se convierte en un error genérico que conserva el `status` y el `X-Request-Id`.
+- Tipos de ayuda `Respuesta<ruta, método>` y `Cuerpo<ruta, método>` (05 §9, skill `modulo-react` §2).
+- `QueryClient` con las reglas de FE-02: reintento solo en red y 5xx (hasta 2), nunca en 4xx ni en mutaciones.
+
+**CA**
+- [ ] Un 400 con `detalles` por campo, un 409 con `detalles` de objeto, un 500 sin cuerpo y una falla de red producen el `ErrorApi` correcto (pruebas con MSW).
+- [ ] La función de reintento no reintenta un `ErrorApi` 4xx y sí uno de red o 5xx (prueba unitaria).
+
+**Referencias:** FE-02, FE-13, A-06, 01 §4.6.
+
+### F1-H04 · Sesión con renovación transparente — `Must` · 1.5 h ⭐ historia grande
+**Alcance:** `shared/api/sesion` exactamente como 05 §5 (FE-05):
+- Token en memoria del módulo; `useSesion()` con `useSyncExternalStore` (usuario, rol, `rehidratando`, `tieneRol()`).
+- `establecer(sesion)` (lo usan el login y el registro del módulo Cuenta), `renovar()` y `cerrar()` (`POST /auth/logout`, limpia la sesión local y avisa a las demás pestañas).
+- **Single-flight** dentro de la pestaña; **Web Locks** (`shopcart-refresh`) y **BroadcastChannel** (`shopcart-sesion`) entre pestañas; la que espera el lock no renueva si ya llegó un token nuevo.
+- *Middleware* del cliente `api`: ante un 401 fuera de `/auth`, espera la renovación y reintenta **una vez** con una copia de la petición tomada antes de enviarla.
+- **Rehidratación** con `POST /auth/refresh` en `main.tsx` antes de montar React.
+- `queryClient.clear()` cuando cambia el usuario o se cierra la sesión.
+- `renderizar()` de las pruebas acepta un rol para montar una sesión simulada.
+
+Escribe primero un plan corto con `writing-plans` (cómo se coordinan promesa, lock y canal, y cómo se prueban) y espera la aprobación de Diego.
+
+**CA**
+- [ ] Cinco peticiones que reciben 401 a la vez producen **un solo** `POST /auth/refresh` y las cinco se completan.
+- [ ] Dos sesiones que comparten lock y canal simulados y renuevan a la vez producen un solo refresh; la segunda usa el token que publicó la primera.
+- [ ] Si el refresh falla (`REFRESH_REUTILIZADO`, `USUARIO_INACTIVO`, sin cookie), la sesión queda cerrada en todas las pestañas y la caché vacía.
+- [ ] Con `StrictMode`, al cargar la aplicación hay un solo refresh.
+- [ ] Después de iniciar y renovar sesión, `localStorage` y `sessionStorage` no contienen el token (prueba explícita).
+- [ ] Un 401 de `/auth/login` llega al llamador como `ErrorApi` y no dispara renovación.
+
+**Referencias:** FE-05, FE-08, A-07, 01 §5.3, 05 §5.
+
+### F1-H05 · Rutas, áreas, layouts y control por rol — `Must` · 1.0 h
+**Alcance**
+- `app/rutas.ts`: **una sola definición** de rutas con roles y entrada de menú, de la que salen el guardián y los menús (05 §4, skill `modulo-react` §8).
+- Tres áreas con `lazy()` y su propio `errorElement`: tienda (pública e invitado/Cliente), cuenta (con sesión) y backoffice (Operador y Administrador; los menús cambian por rol).
+- Guardián: sin sesión → `/ingresar?volver=<ruta>`; sin rol → página **Sin permiso**; mientras rehidrata → estado de carga. Página **No encontrado** para rutas desconocidas.
+- Layouts con los tokens del tema: tienda (marca, enlace al carrito, acceso a la cuenta), backoffice (navegación lateral que en móvil se vuelve menú) y cuenta. Selector de tema claro y oscuro y `Toaster` de `sonner`. Las páginas de cada módulo son marcadores hasta su historia. El aspecto final de los layouts se ajusta cuando esté su frame en Figma.
+- `/ingresar` es un marcador que el módulo Cuenta reemplaza.
+
+**CA**
+- [ ] Un Cliente que entra por URL a `/backoffice/...` ve "Sin permiso"; un invitado que entra a una ruta de cuenta va a `/ingresar?volver=…`.
+- [ ] Un Operador no ve en el menú lo que es solo del Administrador, y entrar por URL le muestra "Sin permiso".
+- [ ] Una prueba recorre la definición: cada entrada de menú apunta a una ruta existente con los mismos roles.
+- [ ] El build genera un paquete separado para el backoffice (se muestra en el resumen la lista de *chunks*).
+- [ ] Un error al renderizar una página del backoffice muestra el `errorElement` del área y la tienda sigue funcionando.
+
+**Referencias:** FE-04, FE-08, RF-01, enunciado §05 (rutas protegidas y menús por rol).
+
+### F1-H06 · Componentes de datos: `EstadoVista`, `TablaServidor` y URL — `Must` · 1.0 h ⭐ historia grande
+**Alcance** (05 §8, skill `modulo-react` §5 y §7):
+- `useParametrosUrl(esquemaZod)`: valida y escribe la URL; un valor inválido cae al valor por defecto del esquema.
+- `useDebounce` (300 ms para texto libre).
+- `EstadoVista`: carga con esqueleto, vacío con título y acción, error con mensaje del backend, botón de reintentar y `requestId`.
+- `Paginacion` y `TablaServidor<T, Orden>`: columnas tipadas con `celda`, `prioridad` y `ordenable` limitado al `enum` de `orden` del esquema; `aria-sort`; cambiar un filtro vuelve a la página 1; página fuera de rango salta a la última; `keepPreviousData` con indicador; vacío que distingue "sin registros" de "sin resultados con estos filtros"; bajo `md`, tarjetas con las columnas de prioridad 1.
+
+Escribe primero un plan corto de la API de `TablaServidor` (props y un ejemplo de uso) y espera la aprobación de Diego: es el componente que más se reutiliza.
+
+**CA**
+- [ ] Una columna con `ordenable` fuera del `enum` no compila (prueba de tipos con `@ts-expect-error`).
+- [ ] Cambiar orden o página actualiza la URL, y recargar conserva la vista; "atrás" vuelve a la vista anterior.
+- [ ] Los tres estados de `EstadoVista` y los dos vacíos de la tabla se prueban con MSW.
+- [ ] En 375 px la tabla se muestra como tarjetas (prueba del componente con el ancho simulado).
+
+**Referencias:** FE-06, enunciado §05 (tablas con paginación, ordenamiento y filtros del servidor; estados de carga, vacío y error).
+
+### F1-H07 · Formularios, formato y prenda — `Must` · 1.0 h
+**Alcance**
+- `useFormularioApi`, `CampoFormulario` y `AvisoFormulario` con el mapeo de errores de 05 §7: 400 → campo (`body.x` → `x`), 409/422 → aviso, 5xx/red → aviso con `requestId`; deshabilita el envío mientras la mutación está en curso.
+- `shared/formato`: `formatearMonto` (texto → GTQ con `Intl`, nunca `number`), `formatearFechaHora` (siempre `America/Guatemala`) y `formatearFechaCalendario` (sin `new Date()`); componentes `Monto` y `FechaHora`.
+- **`Prenda`:** un componente con un SVG por tipo (Camisa, Pantalón, Vestido, Chaqueta, Tenis, Gorra) con `fill="currentColor"`, tomado del componente `Prenda` de Figma con el MCP, y el mapa de nombre de color de la semilla (Negro, Azul marino…) a su variable `--prenda-*`. Un color sin mapa usa un neutro. Este mapa es presentación (FE-15), no regla de negocio.
+
+**CA**
+- [ ] `formatearMonto("9999999999.99")` y `formatearMonto("-12.00")` dan el texto exacto, y una prueba verifica que no se convierte a `number`.
+- [ ] Con el reloj fijado a las 23:30 de Guatemala (otro día en UTC), `formatearFechaHora` muestra el día de Guatemala y `formatearFechaCalendario("2026-11-03")` muestra el 3 de noviembre.
+- [ ] Un 400 con `detalles: [{ campo: "body.nombreRecibe", … }]` marca el campo `nombreRecibe`; un 422 muestra el mensaje del backend en el aviso.
+- [ ] `Prenda` renderiza los seis tipos y toma el color con `currentColor` (prueba de componente).
+
+**Referencias:** FE-03, FE-10, FE-15, A-21, A-12.
+
+### F1-H08 · Base de E2E y pruebas transversales — `Must` · 0.75 h
+**Alcance**
+- Playwright en `apps/web/e2e` contra `SHOPCART_URL` (por defecto `http://localhost:8080`), `pnpm test:e2e` en la raíz (requiere el entorno levantado, como `test:concurrencia`).
+- Fixture `apiAdmin` (token de Administrador por la API pública) y ayudante para crear un cliente de prueba con nombre único por corrida; `iniciarSesionPorApi(page, correo, contraseña)`, que inicia sesión con `page.request` para que la cookie `refresh` quede en el contexto y la SPA rehidrate al abrir.
+- E2E transversales:
+  1. Recargar la página conserva la sesión (rehidratación).
+  2. **Dos pestañas del mismo contexto recargan a la vez** y ninguna pierde la sesión; una tercera recarga sigue con sesión (FE-05).
+  3. Un Cliente que entra por URL al backoffice ve "Sin permiso" (RF-01, FE-04).
+
+**CA**
+- [ ] `pnpm test:e2e` pasa contra `docker compose up -d` desde cero, repetible sin limpiar datos.
+- [ ] Ninguna prueba depende de la semilla demo ni del orden de ejecución.
+
+**Referencias:** FE-12, 05 §13.

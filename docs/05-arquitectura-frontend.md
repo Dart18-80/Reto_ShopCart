@@ -264,6 +264,7 @@ Estado: 🟡 Propuesta · 🔍 En análisis · ✅ Confirmada · ✏️ Modifica
 | FE-12 | Vitest, Testing Library + MSW y Playwright; cada módulo se cierra con su E2E contra el backend real; datos por la API pública (§13) | Solo pruebas con MSW: los errores de contrato llegan tarde. Meta de cobertura en páginas: pruebas que no prueban. *Snapshots*: frágiles y mudos | ✅ |
 | FE-13 | Foto `openapi.json` versionada y verificada en `lint`; tipos con `openapi-typescript`; cliente `openapi-fetch` con *middlewares* de token y renovación; `ErrorApi`; matriz de cobertura automática (§9) | Mover también las respuestas a `shared`: el doble de mudanza sin ganancia. Orval: hooks generados que se saltan FE-02. Tipos a mano: 96 contratos que se desalinean | ✅ |
 | FE-14 | Librerías del frontend aprobadas (§15) | Cualquier otra se pide y se justifica antes de instalarla, igual que A-16 | ✅ |
+| FE-15 | **Dirección visual** (§17): marca ShopCart con la paleta de Don Arturo (azul `#06488A` y rojo `#DE2418` del escudo; navy `#0A121F` y celeste `#38B8F8` del documento del reto para el modo oscuro); Space Grotesk + Public Sans autoalojadas (`@fontsource`); voz de tú; movimiento sutil; un solo sistema para tienda y backoffice; **ilustración por tipo de prenda que toma el color de la variante**. Diseño en Figma como referencia de trabajo; lo que se entrega y evalúa es el frontend real | Paleta propia: el PO pidió apegarse a la del cliente. Fuentes por CDN: la demo dependería de internet. Fotos generadas: derechos, peso y consistencia. Dejar el SVG por categoría: todas las camisas se verían iguales | ✅ |
 
 ---
 
@@ -277,10 +278,12 @@ Versión estable al instalar; la exacta queda en `pnpm-lock.yaml` y cada una se 
 | Rutas | `react-router` (7) |
 | Estado del servidor | `@tanstack/react-query` (y sus devtools solo en desarrollo) |
 | Formularios | `react-hook-form`, `@hookform/resolvers`, `zod` (la misma versión que `shared`) |
+| Fuentes | `@fontsource/space-grotesk`, `@fontsource/public-sans` (FE-15) |
 | Interfaz | `tailwindcss`, las dependencias que instala shadcn/ui (`radix-ui`, `class-variance-authority`, `clsx`, `tailwind-merge`, `lucide-react`, `tw-animate-css`), `sonner` |
 | Gráficas | `recharts` |
 | Contrato | `openapi-fetch`; `openapi-typescript` (solo desarrollo) |
 | Tiempo real | `eventsource-parser` |
+| Calidad (solo desarrollo) | `eslint-plugin-react-hooks`, `eslint-plugin-jsx-a11y` (el lint de fronteras reutiliza `eslint-plugin-boundaries` del monorepo) |
 | Pruebas (solo desarrollo) | `vitest`, `jsdom`, `@testing-library/react`, `@testing-library/user-event`, `@testing-library/jest-dom`, `msw`, `@playwright/test` |
 
 ---
@@ -306,3 +309,16 @@ Orden de construcción (las historias están en `03-backlog.md` §6):
 | F6 | Cierre | README final, ensayo de la demo, matriz completa |
 
 Desde el módulo 5 se puede demostrar una compra completa de punta a punta.
+
+---
+
+## 17. Dirección visual y diseño en Figma (FE-15)
+
+**Archivo de diseño:** [ShopCart — Diseño](https://www.figma.com/design/x3DB2aj5gZUsAGZFD1TyOG). Es la referencia de trabajo del PO; Claude Code lo **lee** con el MCP de Figma (`get_design_context`, `get_variable_defs`) para implementar, no lo modifica.
+
+- **Variables de Figma = tokens del tema.** La colección `Color` (modos Claro y Oscuro) usa los mismos nombres que las variables CSS de shadcn (`--background`, `--primary`, `--muted-foreground`…) más las propias (`--oferta`, `--exito`, `--aviso`, `--info` y sus `-suave`, `--chart-negativo`). Cada variable trae su *code syntax* (`var(--primary)`), así que el código las toma tal cual. `Forma` define espaciado y radios (`--radius-sm/md/lg/full`).
+- **Paleta de Don Arturo:** primario azul del escudo `#06488A` (claro) y celeste del documento `#38B8F8` (oscuro); rojo del escudo `#DE2418` para destructivo y precio de oferta; navy `#0A121F` como fondo oscuro. Todos los pares texto/fondo cumplen WCAG AA.
+- **Colección `Prenda`:** los 13 colores de la semilla (Negro, Azul marino, Vino…) como `--prenda-<color>`. Es presentación de la variante, no una regla de negocio: el mapa vive en el frontend.
+- **Ilustración por tipo de prenda:** un SVG por tipo (Camisa, Pantalón, Vestido, Chaqueta, Tenis, Gorra) con `fill="currentColor"`; al elegir un color, la prenda se tiñe. Requiere una semilla nueva (`S007`) que asigne a cada producto su tipo; las semillas aplicadas no se editan.
+- **Componentes base en Figma:** Botón (5 estilos × 2 tamaños), Estado de pedido (los 7 estados de S001, siempre con texto), Existencia, Campo (normal y error), Talla, Muestra de color, Prenda y Tarjeta de producto. Cada uno tiene su descripción con la regla que lo gobierna.
+- **Al implementar una pantalla:** la historia cita su frame; Claude Code compara una captura de Playwright en 375 y 1280 px con la del frame antes de cerrarla.
