@@ -195,6 +195,20 @@ describe('pedidos.reembolsos (E6-H03, N-09)', () => {
   });
 });
 
+describe('reintento de un reembolso ya cerrado (E9-H04)', () => {
+  it.each(['Completado', 'ResueltoManual', 'NoAplica'] as const)(
+    'un reembolso %s vuelve tal cual, sin tomarlo ni llamar a la pasarela',
+    async (estado) => {
+      const { servicio, repositorio, pasarela } = preparar(null, CAPTURADA);
+      repositorio.reintentarReembolso.mockResolvedValue(estado);
+
+      expect(await servicio.reintentar(7)).toBe(estado);
+      expect(repositorio.tomarReembolso).not.toHaveBeenCalled();
+      expect(pasarela.reembolsar).not.toHaveBeenCalled();
+    },
+  );
+});
+
 describe('reembolsos: caché de reportes (E7-H04, A-11)', () => {
   it('cancelar y devolver invalidan los reportes después del commit, aunque el reembolso quede pendiente', async () => {
     const { servicio, repositorio, pasarela, invalidaciones } = preparar(CANCELACION, CAPTURADA);

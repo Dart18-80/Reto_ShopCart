@@ -365,11 +365,16 @@ describe('reembolsos Fallido resueltos a mano (E9-H04)', () => {
     }),
   );
 
+  const HACE_MAS_QUE_EL_PLAZO = 2 * SEGUNDOS_ANTES_DE_RESOLVER_A_MANO;
+
   /**
    * Agotados sus intentos, como lo deja el job, hace `haceSegundos` (por omisión, más que el plazo para resolverlo a
    * mano); con la pasarela que se indique al cancelar.
    */
-  async function reembolsoFallido(conPasarela = sinReembolsos, haceSegundos = 3600) {
+  async function reembolsoFallido(
+    conPasarela = sinReembolsos,
+    haceSegundos = HACE_MAS_QUE_EL_PLAZO,
+  ) {
     const { cliente, pedido, llave } = await pedidoPagado(app, estandar);
     const cancelacion = await request(conPasarela)
       .post(`/api/v1/admin/pedidos/${String(pedido.idPedido)}/cancelar`)
@@ -388,7 +393,10 @@ describe('reembolsos Fallido resueltos a mano (E9-H04)', () => {
 
   const leerParaResolver = async (idReembolso: number) => {
     const leido = await comoActor(idAdmin, 'Administrador', () =>
-      pedidosRepository.obtenerReembolsoParaResolver(idReembolso),
+      pedidosRepository.obtenerReembolsoParaResolver(
+        idReembolso,
+        SEGUNDOS_ANTES_DE_RESOLVER_A_MANO,
+      ),
     );
     if (leido === null) throw new Error('El reembolso no existe');
     return leido;
@@ -458,6 +466,32 @@ describe('reembolsos Fallido resueltos a mano (E9-H04)', () => {
       Estado: 'NoAplica',
       MotivoResolucion: expect.stringContaining('anuló') as unknown,
     });
+  });
+
+  it('un cobro sin pedido cuyo cobro se anuló también pasa a NoAplica, sin tocar ningún pedido', async () => {
+    const { llave, idIntento } = await cobroSinPedidoEnRevision();
+    const resolucion = leerDatos(
+      await request(sinReembolsos)
+        .post(`/api/v1/admin/pagos/${idIntento}/resolver`)
+        .set(comoCliente(tokenAdmin))
+        .send({ resolucion: 'Reembolsar', motivo: 'Cobro sin pedido' }),
+      resolucionSchema,
+    );
+    const idReembolso = resolucion.reembolso?.idReembolso ?? 0;
+    await ejecutarSP('SP_Pruebas_FallarReembolso', {
+      IDReembolso: { tipo: sql.Int, valor: idReembolso },
+      HaceSegundos: { tipo: sql.Int, valor: HACE_MAS_QUE_EL_PLAZO },
+    });
+    await cambiarEnPasarela(llave, 'Anulada');
+
+    const respuesta = await resolverReembolso(tokenAdmin, idReembolso);
+
+    expect(leerError(respuesta).codigo).toBe('REEMBOLSO_SIN_COBRO');
+    const [bitacora] = await leerBitacora('Reembolso', idReembolso);
+    const valorNuevo = JSON.parse(bitacora?.ValorNuevo ?? '{}') as Record<string, unknown>;
+    expect(valorNuevo).toMatchObject({ Estado: 'NoAplica', Origen: 'SinPedido' });
+    // FOR JSON omite las columnas NULL: sin IDPedido, no hubo pedido que tocar.
+    expect(valorNuevo).not.toHaveProperty('IDPedido');
   });
 
   it('si la autorización sigue vigente (nunca se capturó), la anula y el reembolso pasa a NoAplica', async () => {

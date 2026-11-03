@@ -496,15 +496,19 @@ export const pedidosRepository = {
   },
 
   /** null si el reembolso no existe. */
-  async obtenerReembolsoParaResolver(idReembolso: number): Promise<ReembolsoParaResolver | null> {
+  async obtenerReembolsoParaResolver(
+    idReembolso: number,
+    segundosEsperaMinima: number,
+  ): Promise<ReembolsoParaResolver | null> {
     const [fila] = await ejecutarSP<{
       Estado: EstadoReembolso;
       LlaveIdempotencia: string;
       LlaveIntento: string;
       FechaActualizacion: Date;
-      SegundosDesdeActualizacion: number | string;
+      PlazoCumplido: boolean;
     }>('SP_Pedidos_ObtenerReembolsoParaResolver', {
       IDReembolso: { tipo: sql.Int, valor: idReembolso },
+      SegundosEsperaMinima: { tipo: sql.Int, valor: segundosEsperaMinima },
     });
     if (fila === undefined) return null;
     return {
@@ -512,8 +516,7 @@ export const pedidosRepository = {
       llave: fila.LlaveIdempotencia,
       llaveIntento: fila.LlaveIntento,
       fechaActualizacion: fila.FechaActualizacion,
-      // DATEDIFF_BIG llega como texto (BIGINT).
-      segundosDesdeActualizacion: Number(fila.SegundosDesdeActualizacion),
+      plazoCumplido: fila.PlazoCumplido,
     };
   },
 

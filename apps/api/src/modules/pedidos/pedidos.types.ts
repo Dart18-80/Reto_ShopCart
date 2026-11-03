@@ -166,8 +166,8 @@ export interface ReembolsoParaResolver {
   /** Para consultar en la pasarela si el cobro se capturó. */
   llaveIntento: string;
   fechaActualizacion: Date;
-  /** Con el reloj de la base: el servicio prevalida el plazo y el SP lo vuelve a exigir. */
-  segundosDesdeActualizacion: number;
+  /** Con la misma regla y el mismo reloj que los SPs que resuelven: el servicio prevalida, el SP lo exige. */
+  plazoCumplido: boolean;
 }
 
 /** Lo que el servicio necesita antes de resolver: la llave para consultar la pasarela. */

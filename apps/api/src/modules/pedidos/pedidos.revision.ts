@@ -99,21 +99,25 @@ export function crearRevisionService({
     if (!EXIGE_CAPTURA[resolucion] && capturada) throw new AppError('COBRO_CAPTURADO');
   }
 
-  async function reembolsoParaResolver(idReembolso: number): Promise<ReembolsoParaResolver> {
-    const reembolso = await repositorio.obtenerReembolsoParaResolver(idReembolso);
+  async function obtenerReembolsoFallido(idReembolso: number): Promise<ReembolsoParaResolver> {
+    const reembolso = await repositorio.obtenerReembolsoParaResolver(
+      idReembolso,
+      SEGUNDOS_ANTES_DE_RESOLVER_A_MANO,
+    );
     if (reembolso === null) {
       throw new AppError('NO_ENCONTRADO', { mensaje: 'El reembolso no existe.' });
     }
     if (reembolso.estado !== 'Fallido') throw new AppError('REEMBOLSO_NO_FALLIDO');
     // Prevalidación: el SP vuelve a exigir el plazo bajo bloqueo.
-    if (reembolso.segundosDesdeActualizacion < SEGUNDOS_ANTES_DE_RESOLVER_A_MANO) {
-      throw new AppError('REEMBOLSO_RECIENTE');
-    }
+    if (!reembolso.plazoCumplido) throw new AppError('REEMBOLSO_RECIENTE');
     return reembolso;
   }
 
   /** Si la pasarela ya lo devolvió (se perdió la respuesta), queda Completado: resolverlo a mano pagaría dos veces. */
-  async function cerrarSiYaSeProceso(idReembolso: number, { llave }: ReembolsoParaResolver) {
+  async function cerrarSiYaSeProceso(
+    idReembolso: number,
+    { llave }: ReembolsoParaResolver,
+  ): Promise<void> {
     const enPasarela = await enLaPasarela(() => pasarela.consultarReembolso(llave));
     if (enPasarela.estado !== 'Procesado') return;
     await repositorio.completarReembolsoProcesado(idReembolso, enPasarela.idReembolso);
@@ -124,7 +128,10 @@ export function crearRevisionService({
    * Si el cobro nunca se capturó o se anuló, no hay dinero que devolver: queda NoAplica. Una autorización vigente se
    * anula antes, como en SinCobro, para que no quede dinero retenido.
    */
-  async function cerrarSiNoHuboCobro(idReembolso: number, reembolso: ReembolsoParaResolver) {
+  async function cerrarSiNoHuboCobro(
+    idReembolso: number,
+    reembolso: ReembolsoParaResolver,
+  ): Promise<void> {
     const cobro = await enLaPasarela(() => pasarela.consultar(reembolso.llaveIntento));
     if (cobro.estado === 'Capturada') return;
     if (cobro.estado === 'Autorizada') {
@@ -190,7 +197,7 @@ export function crearRevisionService({
      * fecha de actualización (409).
      */
     async resolverReembolso(idReembolso: number, datos: ResolverReembolso): Promise<Reembolso> {
-      const reembolso = await reembolsoParaResolver(idReembolso);
+      const reembolso = await obtenerReembolsoFallido(idReembolso);
       await cerrarSiYaSeProceso(idReembolso, reembolso);
       await cerrarSiNoHuboCobro(idReembolso, reembolso);
       return repositorio.resolverReembolso(
