@@ -53,11 +53,19 @@ function FormularioDireccion({ alTerminar }: { alTerminar?: () => void }) {
   );
 }
 
-async function llenarYEnviar(usuario: ReturnType<typeof renderizar>['usuario']) {
-  await usuario.type(screen.getByLabelText('Quién recibe'), 'Ana Pérez');
-  await usuario.type(screen.getByLabelText('Teléfono'), '55551234');
-  await usuario.type(screen.getByLabelText('Municipio'), '101');
-  await usuario.type(screen.getByLabelText('Dirección'), '5a avenida 10-20, zona 1');
+type Usuario = ReturnType<typeof renderizar>['usuario'];
+
+// Pegar en lugar de teclear: la misma interacción para el formulario y no depende de la carga de la máquina.
+async function escribirEn(usuario: Usuario, etiqueta: string, texto: string) {
+  await usuario.click(screen.getByLabelText(etiqueta));
+  await usuario.paste(texto);
+}
+
+async function llenarYEnviar(usuario: Usuario) {
+  await escribirEn(usuario, 'Quién recibe', 'Ana Pérez');
+  await escribirEn(usuario, 'Teléfono', '55551234');
+  await escribirEn(usuario, 'Municipio', '101');
+  await escribirEn(usuario, 'Dirección', '5a avenida 10-20, zona 1');
   await usuario.click(screen.getByRole('button', { name: 'Guardar' }));
 }
 
