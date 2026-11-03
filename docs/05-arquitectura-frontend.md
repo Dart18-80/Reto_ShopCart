@@ -73,7 +73,7 @@ packages/
 
 ## 4. Rutas, áreas y control por rol (FE-04)
 
-**React Router 7 en modo *data*** (`createBrowserRouter`).
+**React Router 8 en modo *data*** (`createBrowserRouter`; `RouterProvider` desde `react-router/dom`).
 
 - **Una sola definición de rutas con sus roles**, de la que salen el guardián y los menús. Es imposible que el menú muestre un enlace que el guardián bloquea, o al revés.
 - **Tres áreas con carga diferida y su propio `errorElement`:**
@@ -253,7 +253,7 @@ Estado: 🟡 Propuesta · 🔍 En análisis · ✅ Confirmada · ✏️ Modifica
 | FE-01 | Tailwind CSS + shadcn/ui; componentes reutilizables propios en `shared/componentes` (§12) | MUI: aspecto genérico salvo mucho trabajo de tema, CSS-in-JS pesado, se defiende la configuración y no el código. Mantine: su manejo de formularios choca con FE-03. Ant Design: estética de backoffice poco natural para la tienda | ✅ |
 | FE-02 | TanStack Query como dueño del estado del servidor; fábrica de llaves por módulo, sin optimismo en nada con reglas de negocio, sin reintentos en 4xx ni en mutaciones (§6) | RTK Query: obliga a Redux. SWR: mutaciones débiles. `fetch` + `useEffect`: carreras y estados repetidos en cada vista | ✅ |
 | FE-03 | React Hook Form + `zodResolver`; esquemas de entrada movidos a `packages/shared` módulo por módulo, con el OpenAPI idéntico como criterio; `useFormularioApi` para los errores del backend (§7) | TanStack Form: joven. Acciones de React 19: pensadas para Server Actions. Esquemas propios del frontend: reglas duplicadas que se desalinean. Generarlos del OpenAPI: se pierden los `refine` y los mensajes | ✅ |
-| FE-04 | React Router 7 en modo *data*; una definición de rutas con roles para el guardián y los menús; página "Sin permiso"; tres áreas con carga diferida y `errorElement`; `loader` sin datos; `useParametrosUrl` (§4) | TanStack Router: su ventaja (búsqueda tipada) se cubre con un hook propio; más magia que explicar | ✅ |
+| FE-04 | React Router 8 en modo *data*; se fijó 7 al analizar y para un proyecto nuevo se usa la versión mayor vigente. Una definición de rutas con roles para el guardián y los menús; página "Sin permiso"; tres áreas con carga diferida y `errorElement`; `loader` sin datos; `useParametrosUrl` (§4) | TanStack Router: su ventaja (búsqueda tipada) se cubre con un hook propio; más magia que explicar | ✏️ |
 | FE-05 | Token en memoria; single-flight por pestaña; Web Locks + BroadcastChannel entre pestañas; rehidratación antes de montar React; renovación reactiva; `queryClient.clear()` al cambiar de sesión; proxy de Vite (§5) | Ventana de gracia en el backend: debilita una regla de seguridad ya probada. Aceptar el riesgo: sesiones que se cierran solas, visible en la demo | ✅ |
 | FE-06 | `TablaServidor<T>` propio sin TanStack Table; estado en la URL con el esquema de *query* del backend; estados completos; tarjetas en móvil (§8) | TanStack Table: en modo manual solo duplica un estado que vive en la URL | ✅ |
 | FE-07 | Recharts mediante el `Chart` de shadcn; forma por reporte, sin doble eje; negativos visibles; "ver como tabla"; estados por gráfica (§11) | Chart.js: imperativo y sin integración con el tema. ECharts: pesado y configuración opaca | ✅ |
@@ -274,17 +274,17 @@ Versión estable al instalar; la exacta queda en `pnpm-lock.yaml` y cada una se 
 
 | Para | Librerías |
 |---|---|
-| Base | `react`, `react-dom` (19), `vite`, `@vitejs/plugin-react`, TypeScript `strict` |
-| Rutas | `react-router` (7) |
+| Base | `react`, `react-dom` (19), `vite`, `@vitejs/plugin-react`, TypeScript `strict`; `@types/react` y `@types/react-dom` (solo desarrollo: React 19 no trae sus tipos y sin ellos TypeScript `strict` no compila) |
+| Rutas | `react-router` (8; requiere React 19.2.7 o superior, sin `react-router-dom`) |
 | Estado del servidor | `@tanstack/react-query` (y sus devtools solo en desarrollo) |
 | Formularios | `react-hook-form`, `@hookform/resolvers`, `zod` (la misma versión que `shared`) |
 | Fuentes | `@fontsource/space-grotesk`, `@fontsource/public-sans` (FE-15) |
-| Interfaz | `tailwindcss`, las dependencias que instala shadcn/ui (`radix-ui`, `class-variance-authority`, `clsx`, `tailwind-merge`, `lucide-react`, `tw-animate-css`), `sonner` |
+| Interfaz | `tailwindcss` con `@tailwindcss/vite` (el plugin oficial de Tailwind 4 para Vite, el que usa la guía de shadcn), las dependencias que instala shadcn/ui (`radix-ui`, `class-variance-authority`, `clsx`, `tailwind-merge`, `lucide-react`, `tw-animate-css`), `sonner` |
 | Gráficas | `recharts` |
 | Contrato | `openapi-fetch`; `openapi-typescript` (solo desarrollo) |
 | Tiempo real | `eventsource-parser` |
 | Calidad (solo desarrollo) | `eslint-plugin-react-hooks`, `eslint-plugin-jsx-a11y` (el lint de fronteras reutiliza `eslint-plugin-boundaries` del monorepo) |
-| Pruebas (solo desarrollo) | `vitest`, `jsdom`, `@testing-library/react`, `@testing-library/user-event`, `@testing-library/jest-dom`, `msw`, `@playwright/test` |
+| Pruebas (solo desarrollo) | `vitest`, `jsdom`, `@testing-library/react` con `@testing-library/dom` (su dependencia par desde la versión 16, que no se instala sola), `@testing-library/user-event`, `@testing-library/jest-dom`, `msw`, `@playwright/test` |
 
 ---
 

@@ -765,7 +765,7 @@ El orden de construcción, por módulos (F1, módulos 1 a 11 y F6), está en [`0
 | E9-H02 | Dashboard en tiempo real con SSE | Must | 1.5 | Hecha |
 | E9-H03 | Guía de defensa | Must | 1.5 | Hecha |
 | E9-H04 | Revisión manual de pagos y reembolsos | Must | 2.0 | Hecha |
-| F1-H01 | Proyecto web, tema y herramientas | Must | 1.0 | Lista |
+| F1-H01 | Proyecto web, tema y herramientas | Must | 1.0 | Hecha |
 | F1-H02 | Contrato: foto del OpenAPI, tipos y cobertura | Must | 0.75 | Lista |
 | F1-H03 | Cliente `api`, `ErrorApi` y `QueryClient` | Must | 0.75 | Lista |
 | F1-H04 | Sesión con renovación transparente | Must | 1.5 | Lista |

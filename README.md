@@ -332,6 +332,26 @@ No se usa `@opentelemetry/sdk-node`: trae los exportadores gRPC, Zipkin, Jaeger 
 
 `pnpm audit` (2026-11-02, también después de agregar OpenTelemetry): ninguna alta ni crítica; 3 moderadas en producción, todas transitivas de `exceljs`: `uuid` (solo con el parámetro `buf`, que exceljs no usa) y `minimatch` vía `archiver` (los patrones no vienen del usuario). Ninguna recibe entrada del usuario.
 
+### Librerías del frontend
+
+Cada una con su porqué ([FE-14](docs/05-arquitectura-frontend.md)); ninguna fuera de esta lista sin aprobación del PO. Se agregan a medida que una historia las usa.
+
+| Librería                                                                                                                        | Para qué                                                                                                       |
+| ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `react`, `react-dom` 19                                                                                                         | La interfaz (el enunciado pide React 18 o superior)                                                            |
+| `vite`, `@vitejs/plugin-react`                                                                                                  | Servidor de desarrollo con proxy a la API (mismo origen) y build de la SPA                                     |
+| `@types/react`, `@types/react-dom`                                                                                              | Tipos de React 19, que no los trae; sin ellos TypeScript `strict` no compila (solo desarrollo)                 |
+| `react-router` 8                                                                                                                | Rutas en modo _data_ con roles, carga diferida y `errorElement` por área (FE-04)                               |
+| `@tanstack/react-query`                                                                                                         | Dueño del estado del servidor: caché, invalidación y reintentos solo en red y 5xx (FE-02)                      |
+| `tailwindcss`, `@tailwindcss/vite`                                                                                              | Estilos con las variables del tema de Figma; el plugin es el de Tailwind 4 para Vite (FE-01)                   |
+| `class-variance-authority`, `clsx`, `tailwind-merge`, `lucide-react`, `tw-animate-css`                                          | Las piezas de shadcn/ui: variantes, combinación de clases, íconos y animaciones                                |
+| `@fontsource/space-grotesk`, `@fontsource/public-sans`                                                                          | Fuentes autoalojadas: la demo no depende de internet (FE-15)                                                   |
+| `eslint-plugin-react-hooks`, `eslint-plugin-jsx-a11y`                                                                           | Reglas de los hooks y de accesibilidad en el lint (solo desarrollo)                                            |
+| `vitest`, `jsdom`, `@testing-library/react`, `@testing-library/dom`, `@testing-library/user-event`, `@testing-library/jest-dom` | Pruebas de componentes como las haría una persona; `dom` es la dependencia par de `react` 16 (solo desarrollo) |
+| `msw`                                                                                                                           | API simulada en las pruebas de componentes (solo desarrollo)                                                   |
+
+`eslint-plugin-jsx-a11y` 6.10.2 (la última) declara compatibilidad hasta ESLint 9; con ESLint 10 funciona igual, porque sus reglas solo usan `context.options`, `context.report` y `context.settings`, que ESLint 10 conserva.
+
 ---
 
 ## 5. Diagrama de estados del pedido
