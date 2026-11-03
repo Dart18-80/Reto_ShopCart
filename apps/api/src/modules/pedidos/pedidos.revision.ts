@@ -140,13 +140,14 @@ export function crearRevisionService({
       }
       if (reembolso.estado !== 'Fallido') throw new AppError('REEMBOLSO_NO_FALLIDO');
       // Decisión del PO: si la pasarela lo procesó y se perdió la respuesta, el dinero ya volvió; devolverlo a mano
-      // sería reembolsar dos veces. Mientras está Fallido nadie más lo procesa (solo se toma un Pendiente).
+      // sería reembolsar dos veces. Si entre esta consulta y la resolución alguien lo reintenta, el SP lo detecta
+      // por su fecha de actualización (409).
       const enPasarela = await enLaPasarela(() => pasarela.consultarReembolso(reembolso.llave));
       if (enPasarela.estado === 'Procesado') {
         await repositorio.completarReembolsoProcesado(idReembolso, enPasarela.idReembolso);
         throw new AppError('REEMBOLSO_YA_PROCESADO');
       }
-      return repositorio.resolverReembolso(idReembolso, datos);
+      return repositorio.resolverReembolso(idReembolso, datos, reembolso.fechaActualizacion);
     },
   };
 }

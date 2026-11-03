@@ -27,7 +27,12 @@ const CON_PEDIDO: PagoParaResolver = {
 };
 const SIN_PEDIDO: PagoParaResolver = { ...CON_PEDIDO, idPedido: null };
 const PEDIDO = pedidoDePrueba();
-const REEMBOLSO_FALLIDO: ReembolsoParaResolver = { estado: 'Fallido', llave: LLAVE };
+const LEIDO_EN = new Date('2026-11-02T18:00:00.000Z');
+const REEMBOLSO_FALLIDO: ReembolsoParaResolver = {
+  estado: 'Fallido',
+  llave: LLAVE,
+  fechaActualizacion: LEIDO_EN,
+};
 const NO_PROCESADO: ReembolsoEnPasarela = { estado: 'NoExiste' };
 const PROCESADO: ReembolsoEnPasarela = { estado: 'Procesado', idReembolso: 'SIMR-1' };
 const RESOLUCION = { motivo: 'Devuelto por transferencia', referencia: 'TRF-1' };
@@ -227,13 +232,13 @@ describe('revisión manual de pagos (E9-H04)', () => {
 });
 
 describe('resolución manual de un reembolso Fallido (E9-H04, decisión del PO)', () => {
-  it('si la pasarela no lo procesó, lo resuelve a mano con la referencia del Admin', async () => {
+  it('si la pasarela no lo procesó, lo resuelve a mano con la referencia del Admin y la versión leída', async () => {
     const { servicio, repositorio, pasarela } = preparar();
 
     await servicio.resolverReembolso(5, RESOLUCION);
 
     expect(pasarela.consultarReembolso).toHaveBeenCalledWith(LLAVE);
-    expect(repositorio.resolverReembolso).toHaveBeenCalledWith(5, RESOLUCION);
+    expect(repositorio.resolverReembolso).toHaveBeenCalledWith(5, RESOLUCION, LEIDO_EN);
     expect(repositorio.completarReembolsoProcesado).not.toHaveBeenCalled();
   });
 

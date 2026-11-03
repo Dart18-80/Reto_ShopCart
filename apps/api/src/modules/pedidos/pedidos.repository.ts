@@ -27,9 +27,9 @@ import type {
   Pedido,
   Reembolso,
   ReembolsoParaProcesar,
+  ReembolsoParaResolver,
   ResolucionPago,
   ResultadoActualizacionReembolso,
-  ReembolsoParaResolver,
   ResultadoReembolso,
   ResumenPedido,
   ResumenPedidoGestion,
@@ -497,11 +497,19 @@ export const pedidosRepository = {
 
   /** null si el reembolso no existe. */
   async obtenerReembolsoParaResolver(idReembolso: number): Promise<ReembolsoParaResolver | null> {
-    const [fila] = await ejecutarSP<{ Estado: EstadoReembolso; LlaveIdempotencia: string }>(
-      'SP_Pedidos_ObtenerReembolsoParaResolver',
-      { IDReembolso: { tipo: sql.Int, valor: idReembolso } },
-    );
-    return fila === undefined ? null : { estado: fila.Estado, llave: fila.LlaveIdempotencia };
+    const [fila] = await ejecutarSP<{
+      Estado: EstadoReembolso;
+      LlaveIdempotencia: string;
+      FechaActualizacion: Date;
+    }>('SP_Pedidos_ObtenerReembolsoParaResolver', {
+      IDReembolso: { tipo: sql.Int, valor: idReembolso },
+    });
+    if (fila === undefined) return null;
+    return {
+      estado: fila.Estado,
+      llave: fila.LlaveIdempotencia,
+      fechaActualizacion: fila.FechaActualizacion,
+    };
   },
 
   /** E9-H04: la pasarela ya lo procesó; queda Completado con su transacción. */
@@ -515,12 +523,17 @@ export const pedidosRepository = {
     });
   },
 
-  /** E9-H04: un reembolso Fallido pasa a ResueltoManual. */
-  async resolverReembolso(idReembolso: number, datos: ResolverReembolso): Promise<Reembolso> {
+  /** E9-H04: un reembolso Fallido pasa a ResueltoManual, si no cambió desde que se leyó. */
+  async resolverReembolso(
+    idReembolso: number,
+    datos: ResolverReembolso,
+    fechaActualizacionLeida: Date,
+  ): Promise<Reembolso> {
     const [fila] = await ejecutarSP<FilaReembolso>('SP_Pedidos_ResolverReembolso', {
       IDReembolso: { tipo: sql.Int, valor: idReembolso },
       Motivo: { tipo: sql.NVarChar(250), valor: datos.motivo },
       Referencia: { tipo: sql.NVarChar(100), valor: datos.referencia },
+      FechaActualizacionLeida: { tipo: sql.DateTime2(3), valor: fechaActualizacionLeida },
     });
     if (fila === undefined)
       throw new Error('SP_Pedidos_ResolverReembolso no devolvió el reembolso');

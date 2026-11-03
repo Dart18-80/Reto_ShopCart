@@ -429,6 +429,32 @@ describe('reembolsos Fallido resueltos a mano (E9-H04)', () => {
     });
   });
 
+  it('si entre la consulta y la resolución el reembolso volvió a Fallido (otro reintento), el SP responde 409 y no lo resuelve', async () => {
+    const { idPedido, idReembolso } = await reembolsoFallido();
+    const leido = await comoActor(idAdmin, 'Administrador', () =>
+      pedidosRepository.obtenerReembolsoParaResolver(idReembolso),
+    );
+    if (leido === null) throw new Error('El reembolso no existe');
+    // Otro Admin lo reintenta y vuelve a agotar sus intentos: sigue Fallido, pero ya no es el que se consultó.
+    await request(sinReembolsos)
+      .post(`/api/v1/admin/reembolsos/${String(idReembolso)}/reintentar`)
+      .set(comoCliente(tokenAdmin));
+    await ejecutarSP('SP_Pruebas_FallarReembolso', {
+      IDReembolso: { tipo: sql.Int, valor: idReembolso },
+    });
+
+    const resolucion = comoActor(idAdmin, 'Administrador', () =>
+      pedidosRepository.resolverReembolso(
+        idReembolso,
+        { motivo: 'Devuelto por transferencia', referencia: 'TRF-2026-002' },
+        leido.fechaActualizacion,
+      ),
+    );
+
+    await expect(resolucion).rejects.toMatchObject({ codigo: 'CONFLICTO_CONCURRENCIA' });
+    expect(await reembolsoDe(idPedido)).toMatchObject({ Estado: 'Fallido' });
+  });
+
   it('si la pasarela no lo tiene, procede con la referencia del Admin y no reembolsa en la pasarela', async () => {
     const { idPedido, llave, idReembolso } = await reembolsoFallido();
 

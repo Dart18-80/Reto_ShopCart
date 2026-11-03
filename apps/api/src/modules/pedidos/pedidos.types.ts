@@ -150,13 +150,17 @@ export interface PagoEnRevision {
   fecha: Date;
 }
 
-/** Lo que el servicio necesita antes de resolver: la llave para consultar la pasarela. */
-/** E9-H04: lo que el servicio necesita antes de resolver a mano un reembolso. */
+/**
+ * E9-H04: lo que el servicio necesita antes de resolver a mano un reembolso. Su fecha de actualización es la
+ * versión que el SP exige al resolver (concurrencia optimista).
+ */
 export interface ReembolsoParaResolver {
   estado: EstadoReembolso;
   llave: string;
+  fechaActualizacion: Date;
 }
 
+/** Lo que el servicio necesita antes de resolver: la llave para consultar la pasarela. */
 export interface PagoParaResolver {
   idIntentoPago: number;
   llave: string;

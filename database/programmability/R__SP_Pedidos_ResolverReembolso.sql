@@ -1,14 +1,18 @@
 -- E9-H04 (decisión del PO): el Admin resuelve a mano un reembolso Fallido (por ejemplo, devolvió el dinero por
 -- transferencia): pasa a ResueltoManual con el motivo, la referencia, quién y cuándo, distinto de Completado.
 -- Para los montos ya cuenta como reembolsado: Pedido.MontoReembolsado se sumó al crearlo. Bajo bloqueo: solo
--- desde Fallido (50709; resolver dos veces responde 409). El job y el reintento nunca lo vuelven a tomar (solo
--- toman Pendiente y Fallido). Queda en la bitácora (TR_Pedidos_ReembolsoBitacora). Solo el Administrador.
+-- desde Fallido (50709; resolver dos veces responde 409). Después nadie lo vuelve a tomar: el job solo toma un
+-- Pendiente y el reintento solo pasa un Fallido a Pendiente. Queda en la bitácora (TR_Pedidos_ReembolsoBitacora).
+-- Solo el Administrador.
 -- Antes, el servicio consulta el reembolso en la pasarela por su llave: si ya lo procesó, no llega aquí
--- (SP_Pedidos_CompletarReembolsoProcesado lo deja Completado).
+-- (SP_Pedidos_CompletarReembolsoProcesado lo deja Completado). Si después de esa consulta alguien lo reintentó
+-- (Fallido, Pendiente y otra vez Fallido, quizá con el dinero ya devuelto), su FechaActualizacion ya no es la
+-- leída: 50002.
 CREATE OR ALTER PROCEDURE dbo.SP_Pedidos_ResolverReembolso
     @IDReembolso    INT,
     @Motivo         NVARCHAR(250),
     @Referencia     NVARCHAR(100),
+    @FechaActualizacionLeida DATETIME2(3),
     @IDUsuarioActor INT              = NULL,
     @RolActor       VARCHAR(20)      = NULL,
     @RequestId      UNIQUEIDENTIFIER = NULL
@@ -23,13 +27,15 @@ BEGIN
         THROW 50005, N'Solo el Administrador resuelve un reembolso a mano.', 1;
     IF NULLIF(LTRIM(RTRIM(@Motivo)), N'') IS NULL OR NULLIF(LTRIM(RTRIM(@Referencia)), N'') IS NULL
         THROW 50003, N'La resolución requiere un motivo y una referencia.', 1;
+    IF @FechaActualizacionLeida IS NULL
+        THROW 50003, N'Falta la versión del reembolso que se consultó.', 1;
 
-    DECLARE @Estado VARCHAR(14);
+    DECLARE @Estado VARCHAR(14), @FechaActualizacion DATETIME2(3);
 
     BEGIN TRY
         BEGIN TRAN;
 
-        SELECT @Estado = r.Estado
+        SELECT @Estado = r.Estado, @FechaActualizacion = r.FechaActualizacion
         FROM   dbo.Reembolso AS r WITH (UPDLOCK, ROWLOCK)
         WHERE  r.IDReembolso = @IDReembolso;
 
@@ -37,6 +43,9 @@ BEGIN
             THROW 50001, N'El reembolso no existe.', 1;
         IF @Estado <> 'Fallido'
             THROW 50709, N'Solo se resuelve a mano un reembolso Fallido; este ya no lo está.', 1;
+        -- sqlserver-sp §9.4: concurrencia optimista contra lo que el servicio consultó en la pasarela.
+        IF @FechaActualizacion <> @FechaActualizacionLeida
+            THROW 50002, N'El reembolso cambió mientras lo resolvías. Recarga y vuelve a intentarlo.', 1;
 
         UPDATE dbo.Reembolso
         SET    Estado = 'ResueltoManual', MotivoResolucion = LTRIM(RTRIM(@Motivo)),
