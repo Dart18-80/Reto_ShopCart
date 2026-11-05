@@ -1,6 +1,9 @@
 import { screen } from '@testing-library/react';
+import { http, HttpResponse } from 'msw';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { sesion } from '../shared/api';
 import { renderizar, renderizarRutas } from '../test/renderizar';
+import { servidor } from '../test/servidor';
 import { crearRutas } from './router';
 import { SelectorTema } from './tema/SelectorTema';
 
@@ -55,5 +58,32 @@ describe('tema: casos borde', () => {
 
     expect(document.documentElement).not.toHaveClass('dark');
     localStorage.clear();
+  });
+});
+
+describe('cerrar sesión: casos borde', () => {
+  it('si el logout falla por red, la sesión local se cierra igual y un aviso lo dice', async () => {
+    servidor.use(http.post('/api/v1/auth/logout', () => HttpResponse.error()));
+    const { usuario } = renderizarRutas(crearRutas(), { ruta: '/cuenta/perfil', rol: 'Cliente' });
+    await screen.findByRole('heading', { name: 'Mi perfil' });
+
+    await usuario.click(screen.getByRole('button', { name: 'Cerrar sesión' }));
+
+    expect(await screen.findByText(/No pudimos conectar con la tienda/)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Ingresar' })).toBeInTheDocument();
+    expect(sesion.estado()).toEqual({ tipo: 'invitado' });
+  });
+});
+
+describe('rehidratación: casos borde', () => {
+  it('un refresh que responde 200 sin cuerpo deja la sesión no verificada, no trabada', async () => {
+    servidor.use(http.post('/api/v1/auth/refresh', () => new HttpResponse(null, { status: 200 })));
+
+    await sesion.rehidratar();
+
+    expect(sesion.estado()).toMatchObject({
+      tipo: 'noVerificada',
+      error: { codigo: 'RESPUESTA_INESPERADA' },
+    });
   });
 });

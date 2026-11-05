@@ -52,4 +52,34 @@ describe('useParametrosUrl: casos borde', () => {
   it('un texto más largo que el máximo cae a su valor por defecto', () => {
     expect(valoresEn(`/?texto=${'a'.repeat(21)}`)).toEqual({ pagina: 1 });
   });
+
+  it('un esquema con un valor que no se puede escribir en la URL falla con un mensaje claro', async () => {
+    const conObjeto = z.object({
+      pagina: z.coerce.number().int().min(1).default(1),
+      rango: z.object({ desde: z.string() }).optional(),
+    });
+    let error: unknown = null;
+    function Escritor() {
+      const { cambiar } = useParametrosUrl(conObjeto);
+      return (
+        <button
+          type="button"
+          onClick={() => {
+            try {
+              cambiar({ rango: { desde: '2026-11-01' } });
+            } catch (capturado) {
+              error = capturado;
+            }
+          }}
+        >
+          Cambiar
+        </button>
+      );
+    }
+    const { usuario } = renderizar(<Escritor />);
+
+    await usuario.click(screen.getByRole('button', { name: 'Cambiar' }));
+
+    expect(String(error)).toMatch(/no sabe escribir «rango» en la URL/);
+  });
 });

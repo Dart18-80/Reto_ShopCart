@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { Paginacion } from './Paginacion';
 
@@ -26,5 +27,19 @@ describe('Paginacion: casos borde', () => {
 
     expect(screen.getByRole('button', { name: 'Siguiente' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Anterior' })).toBeEnabled();
+  });
+
+  it('Anterior pide la página previa', async () => {
+    const onPagina = vi.fn();
+    render(
+      <Paginacion
+        paginacion={{ pagina: 3, tamano: 20, total: 45, totalPaginas: 3 }}
+        onPagina={onPagina}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Anterior' }));
+
+    expect(onPagina).toHaveBeenCalledWith(2);
   });
 });
