@@ -785,6 +785,15 @@ El orden de construcción, por módulos (F1, módulos 1 a 11 y F6), está en [`0
 | M4-H01 | Direcciones | Must | 0.75 | Hecha |
 | M4-H02 | Dirección y envío | Must | 0.75 | Hecha |
 | M4-H03 | Pago idempotente | Must | 1.0 | Hecha |
+| M5-H01 | Lista y detalle de mis pedidos | Must | 0.75 | Lista |
+| M5-H02 | Cancelar mi pedido | Must | 0.25 | Lista |
+| M6-H01 | Orden del servidor en los listados del backoffice (backend) | Must | 1.5 | Lista |
+| M6-H02 | Categorías y atributos | Must | 1.0 | Lista |
+| M6-H03 | Lista y alta de productos | Must | 0.75 | Lista |
+| M6-H04 | Editar producto, imágenes y variantes | Must | 1.0 | Lista |
+| M6-H05 | Precios versionados | Must | 0.5 | Lista |
+| M7-H01 | Existencias con búsqueda y conciliación | Must | 0.75 | Lista |
+| M7-H02 | Entradas, ajustes y kardex | Must | 0.75 | Lista |
 
 ---
 
@@ -813,9 +822,9 @@ El orden de construcción, por módulos (F1, módulos 1 a 11 y F6), está en [`0
 | **M2 Catálogo de la tienda** | Datos de presentación (ilustración y colores), catálogo con filtros y detalle de producto | 3.5 | Hecha |
 | **M3 Carrito** | Líneas, garantía de precio, cupón, envíos, carrito de invitado y fusión | 2.25 | Hecha |
 | **M4 Checkout y pago** | Direcciones, sesión de pago con reservas y pago idempotente | 2.5 | Hecha |
-| M5 Mis pedidos | Listado, detalle con historial y cancelación | 1.0 | Por detallar |
-| M6 Backoffice de catálogo | Categorías, atributos, productos, variantes, imágenes y precios | 2.5 | Por detallar |
-| M7 Inventario | Entradas, ajustes, kardex, existencias y conciliación | 1.25 | Por detallar |
+| **M5 Mis pedidos** | Listado, detalle con historial y cancelación | 1.0 | Lista |
+| **M6 Backoffice de catálogo** | Orden del servidor en los listados, categorías, atributos, productos, variantes, imágenes y precios | 4.75 | Lista |
+| **M7 Inventario** | Entradas, ajustes, kardex, existencias y conciliación | 1.5 | Lista |
 | M8 Gestión de pedidos | Estados, devoluciones, reembolsos y pagos en revisión | 2.0 | Por detallar |
 | M9 Cupones, envíos y configuración | Administración | 1.25 | Por detallar |
 | M10 Usuarios y bitácora | Administración | 1.25 | Por detallar |
@@ -1215,3 +1224,153 @@ Escribe primero un plan corto (la política de la llave, los estados de la panta
 **Referencias:** RF-06, N-01, N-03, N-07, E5-H02, E5-H03, 01 §6.2.
 
 Hasta M5, `/pedidos/{id}` muestra un marcador "Pedido #{id} creado". M5 la convierte en el detalle real.
+
+---
+
+## M5 · Mis pedidos
+
+> Frames: Mis pedidos escritorio `47:1063` y móvil `47:1153`; Detalle de pedido recién pagado `47:1222`.
+
+### M5-H01 · Lista y detalle de mis pedidos — `Must` · 0.75 h
+**Alcance**
+- **Backend (pequeño):** `GET /pedidos/{id}` agrega `puedeCancelar` (booleano), que el SP calcula con `TransicionEstadoPedido` para el rol del actor (N-08, N-09). Así la web no repite el mapa de transiciones. Con su prueba de integración; la foto solo agrega ese campo.
+- `modules/pedidos`: `GET /pedidos` (paginado) y `GET /pedidos/{id}`; mueve a `shared` el esquema de la consulta.
+- `/pedidos`: una tarjeta por pedido con número, estado, fecha (de Guatemala), artículos, total y "Ver detalle", y `Paginacion`.
+- `/pedidos/{id}` (reemplaza el marcador de M4): artículos con SKU y variante, subtotal, descuento, envío, total y la nota de IVA con `baseImponible` e `iva` tal como llegan; entrega, fecha estimada y tarjeta (`marca` y `ultimosDigitos`); **seguimiento con solo los cambios de `historial`** (los pasos futuros del frame no se dibujan: dependerían del mapa de transiciones).
+- Con `?nuevo=1`, el aviso "¡Gracias por tu compra!" arriba.
+- Un mapa de presentación de los nombres de estado (`EnPreparacion` → "En preparación", `DevueltoParcial` → "Devuelto parcial"…), compartido con el componente `EstadoPedido` (el badge de Figma).
+- Estados: esqueleto, vacío "Todavía no tienes pedidos" con "Ver el catálogo", error y "No encontrado".
+
+**CA**
+- [ ] **Aislamiento (RF-01):** E2E con dos clientes: el cliente B abre `/pedidos/{id del cliente A}` y ve "No encontrado", igual que con un ID inexistente.
+- [ ] Los montos y el IVA son los del backend (prueba con MSW con montos que no se pueden recalcular con `number`).
+- [ ] Coincide con los frames en 375 y 1280 px.
+
+**Referencias:** RF-01, RF-07, N-08, N-09, N-18, E6-H01, FE-10.
+
+### M5-H02 · Cancelar mi pedido — `Must` · 0.25 h
+**Alcance**
+- "Cancelar pedido" solo con `puedeCancelar`. Abre un diálogo con el motivo (obligatorio, `cancelarPedidoSchema` a `shared`) y "Cancelar pedido" / "Volver".
+- `POST /pedidos/{id}/cancelar`: al responder, el pedido se actualiza con el de la respuesta y un aviso dice que el reembolso de `{monto}` se procesa a la tarjeta (con el estado del reembolso que llega).
+- `409 NO_CANCELABLE` (por ejemplo, porque el Operador lo despachó mientras tanto): aviso con el mensaje del backend y el pedido se vuelve a consultar.
+
+**CA**
+- [ ] E2E: un pedido pagado se cancela con motivo y queda en Cancelado con su historial.
+- [ ] Un motivo vacío no se envía (mismo esquema que la API).
+
+**Referencias:** RF-07, N-09, E6-H03.
+
+---
+
+## M6 · Backoffice de catálogo
+
+> Frames: Productos y precios `48:1169`, Editar producto `48:1309` y el diálogo Cambiar precio `48:1461`.
+
+### M6-H01 · Orden del servidor en los listados del backoffice (backend) — `Must` · 1.5 h
+**Por qué:** el enunciado pide "tablas con paginación, ordenamiento y filtros del lado del servidor". Hoy solo la búsqueda de la tienda acepta `orden`; los listados del backoffice no, así que `TablaServidor` no puede ofrecer ordenar ninguna columna.
+
+**Alcance**
+- En `packages/shared`, un `ordenConsultaSchema(columnas, porDefecto, direccionPorDefecto)` que agrega `orden` (enum) y `direccion` (`asc`/`desc`) a un esquema de consulta. La lista blanca de cada endpoint es su enum.
+- Cada SP recibe `@Orden` y `@Direccion` y ordena con `CASE` sobre la lista blanca, sin SQL dinámico (A-10), siempre con un desempate estable por la PK.
+
+| Endpoint | Columnas | Por defecto |
+|---|---|---|
+| `GET /admin/pedidos` | `fecha`, `total`, `numero`, `estado` | `fecha desc` |
+| `GET /admin/productos` | `nombre`, `categoria`, `recientes` | `nombre asc` |
+| `GET /inventario/existencias` | `sku`, `producto`, `disponible` | `disponible asc` |
+| `GET /usuarios` | `nombre`, `correo`, `rol`, `recientes` | `recientes desc` |
+| `GET /admin/cupones` | `codigo`, `vigencia`, `usos` | `vigencia desc` |
+| `GET /bitacora` | `fecha` | `fecha desc` |
+| `GET /dashboard/carritos-abandonados` | `inactividad` (`fechaUltimaActividad`), `total` (`montoPotencial`) | `inactividad desc` |
+
+- Si en algún endpoint el SP ya ordena de una forma que el resto del sistema supone, consérvala como el valor por defecto.
+
+**CA**
+- [ ] Un `orden` fuera de la lista responde `400` con la forma estándar.
+- [ ] Una prueba de integración por endpoint verifica el orden en las dos direcciones y que la paginación es estable (dos páginas no repiten filas).
+- [ ] Los listados siguen respondiendo en menos de 1 s con la semilla (RNF-1); se muestran las mediciones.
+- [ ] La foto del contrato solo agrega `orden` y `direccion` a esas consultas.
+
+**Referencias:** enunciado §05 (Frontend: tablas), A-10, RNF-1, 01 §5.1, FE-06.
+
+### M6-H02 · Categorías y atributos — `Must` · 1.0 h
+**Alcance**
+- **Backend (pequeño):** `GET /admin/categorias` lista **todas** las categorías (activas o no) con `activo`, `ilustracion` y la cantidad de productos, para poder reactivarlas. Hoy la única lista es la pública, que solo trae las activas.
+- `/backoffice/catalogo/categorias`: tabla con nombre, ilustración (la `Prenda` de muestra), productos y estado; crear y editar en un diálogo (nombre, descripción e ilustración con un selector que muestra la prenda); activar, desactivar y eliminar.
+- Atributos: lista de atributos con sus valores en orden; crear un atributo y agregar valores.
+- Errores: `409 CATEGORIA_CON_PRODUCTOS` y el de valor repetido, en el aviso con el mensaje del backend.
+
+**CA**
+- [ ] Una categoría desactivada sigue en la lista y se puede reactivar.
+- [ ] Desactivar una categoría con productos activos muestra el mensaje del backend.
+- [ ] E2E: crear una categoría con su ilustración y verla en los chips de la tienda.
+
+**Referencias:** RF-02, N-14, E3-H01, E3-H02, FE-15.
+
+### M6-H03 · Lista y alta de productos — `Must` · 0.75 h
+**Alcance** (frame `48:1169`):
+- `/backoffice/catalogo`: `TablaServidor` con `GET /admin/productos` (texto, categoría, estado y el orden de M6-H01): producto, categoría, variantes activas de total, estado y "Editar".
+- "Nuevo producto": diálogo con nombre, categoría y descripción (`crearProductoSchema` a `shared`); al crear, va al editor.
+
+**CA**
+- [ ] Ordenar por nombre y por categoría cambia la URL y lo resuelve el servidor.
+- [ ] Filtrar por "Inactivos" muestra los desactivados.
+
+**Referencias:** RF-02, E3-H03, FE-06.
+
+### M6-H04 · Editar producto, imágenes y variantes — `Must` · 1.0 h
+**Alcance** (frame `48:1309`):
+- `/backoffice/catalogo/productos/{id}` con `GET /admin/productos/{id}`: datos (`PATCH`), activar o desactivar, eliminar (solo si no tiene historial).
+- Imágenes con `PUT /admin/productos/{id}/imagenes`: URL, texto alternativo, orden y principal. Nota del frame: en la tienda la ilustración va primero (FE-15).
+- Variantes: tabla con SKU, atributos, precio, disponible de física con reservadas, estado y acciones; agregar variante (SKU, un valor por atributo y precio inicial) y editar; activar, desactivar y eliminar.
+- Errores en el campo o en el aviso: `409 SKU_DUPLICADO` en el campo SKU; `409 COMBINACION_DUPLICADA` y `409 PRODUCTO_CON_HISTORIAL` en el aviso.
+
+**CA**
+- [ ] Eliminar un producto con ventas muestra el mensaje de `PRODUCTO_CON_HISTORIAL` y ofrece desactivarlo.
+- [ ] Una variante nueva aparece en el detalle de la tienda con su color y talla.
+
+**Referencias:** RF-02, N-14, N-19, E3-H03.
+
+### M6-H05 · Precios versionados — `Must` · 0.5 h
+**Alcance** (diálogo `48:1461`):
+- "Cambiar precio": precio vigente, campo del precio nuevo (texto con `montoSchema`, FE-10), el aviso del frame y el historial con `GET /admin/variantes/{id}/precios`.
+- `PUT /admin/variantes/{id}/precio`; al responder se actualizan la tabla y el historial.
+
+**CA**
+- [ ] El historial muestra la versión nueva como vigente y la anterior con su rango de fechas de Guatemala.
+- [ ] E2E: cambiar el precio de una variante y ver el nuevo precio en la tienda; un pedido anterior conserva el suyo (RF-02).
+
+**Referencias:** RF-02, N-02, E3-H04, FE-10.
+
+---
+
+## M7 · Inventario
+
+> Frames: Inventario `48:1488` y el diálogo Ajustar existencia y kardex `48:1617`.
+
+### M7-H01 · Existencias con búsqueda y conciliación — `Must` · 0.75 h
+**Alcance**
+- **Backend (pequeño):** `GET /inventario/existencias` acepta `texto` (SKU o producto, sin tildes ni mayúsculas, como la búsqueda de la tienda) además del orden de M6-H01.
+- `/backoffice/inventario`: `TablaServidor` con SKU, producto y variante, física, reservado y disponible (el disponible en 0 en el color de oferta) y las acciones "Ajustar" y "Ver kardex".
+- Arriba, el resultado de `GET /inventario/conciliacion`: "La existencia coincide con el kardex en todas las variantes." o la lista de descuadres.
+- Operador y Administrador.
+
+**CA**
+- [ ] Buscar "camision" encuentra "Camisón" y un SKU por su prefijo.
+- [ ] Ordenar por disponible ascendente pone primero lo agotado.
+- [ ] Un Operador puede entrar; un Cliente ve "Sin permiso".
+
+**Referencias:** RF-03, N-07, E3-H06, FE-06.
+
+### M7-H02 · Entradas, ajustes y kardex — `Must` · 0.75 h
+**Alcance** (diálogo `48:1617`):
+- "Registrar entrada" (variante, cantidad, motivo o referencia) y "Ajustar" (cantidad con signo y motivo obligatorio), con sus esquemas en `shared`.
+- Errores en el campo: `400 MOTIVO_REQUERIDO` en el motivo; `422 AJUSTE_DEJA_NEGATIVO` en la cantidad con el mensaje del backend, y `422 AJUSTE_BAJO_RESERVADO` en la cantidad con el máximo ajustable que llega en `detalles.maximoAjustable` (decisión del PO: 50302 no trae detalles).
+- Kardex de la variante con `GET /inventario/kardex?variante=` (paginado): fecha, movimiento con su referencia (pedido o devolución), cantidad con signo, existencia resultante y usuario.
+- Al registrar, se invalidan las existencias, el kardex y la conciliación.
+
+**CA**
+- [ ] Un ajuste que deja la física por debajo de lo reservado muestra el máximo ajustable en el campo.
+- [ ] Después de una entrada, el kardex muestra el movimiento con la existencia anterior y la resultante, y la conciliación sigue en verde (E2E).
+
+**Referencias:** RF-03, N-07, N-16, E3-H06.
