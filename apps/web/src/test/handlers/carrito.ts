@@ -65,7 +65,7 @@ export function simularCarritoFallido(requestId: string) {
   );
 }
 
-type Metodo = 'post' | 'patch' | 'delete';
+type Metodo = 'post' | 'put' | 'patch' | 'delete';
 
 /**
  * Una operación del carrito que responde el carrito nuevo, como el backend; guarda lo que recibió. Con `demora`,

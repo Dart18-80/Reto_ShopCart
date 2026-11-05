@@ -1,6 +1,7 @@
 import {
   actualizarCantidadSchema as actualizarCantidadCompartido,
   agregarLineaSchema as agregarLineaCompartido,
+  aplicarCuponSchema as aplicarCuponCompartido,
   ILUSTRACIONES_PRENDA,
   montoSchema,
 } from '@shopcart/shared';
@@ -31,10 +32,7 @@ export const actualizarCantidadSchema = registroOpenApi.register(
   actualizarCantidadCompartido,
 );
 
-export const aplicarCuponSchema = z
-  .object({ codigo: z.string().trim().min(1).max(30) })
-  .strict()
-  .openapi('AplicarCupon');
+export const aplicarCuponSchema = registroOpenApi.register('AplicarCupon', aplicarCuponCompartido);
 
 export const paramsIdLineaSchema = z.object({ idLinea: idEnRutaSchema });
 

@@ -29,3 +29,29 @@ prueba.describe('carrito del invitado (M3-H02)', () => {
     },
   );
 });
+
+prueba.describe('cupón del carrito (M3-H03)', () => {
+  prueba(
+    'con los cupones de la semilla, la pantalla muestra el mensaje del backend: vencido y mínimo no alcanzado',
+    async ({ page, crearEnTienda }) => {
+      const nombre = `Gorra ${nombreUnico('cupon')}`;
+      const idProducto = await crearEnTienda(nombre, [
+        { valores: [], precio: '99.00', existencia: 5 },
+      ]);
+      await page.goto(`/productos/${String(idProducto)}`);
+      await page.getByRole('button', { name: 'Agregar al carrito' }).click();
+      await expect(page.getByText('Agregado al carrito')).toBeVisible();
+      await page.goto('/carrito');
+
+      const cupon = page.getByLabel('¿Tienes un cupón?');
+      await cupon.fill('DEMOVENCIDO');
+      await page.getByRole('button', { name: 'Aplicar' }).click();
+      await expect(page.getByRole('alert')).toContainText('El cupón ya venció.');
+
+      await cupon.fill('DEMOMINIMO');
+      await page.getByRole('button', { name: 'Aplicar' }).click();
+      await expect(page.getByRole('alert')).toContainText('no alcanza la compra mínima');
+      await expect(page.getByText(/^Te faltan Q[\d,]+\.\d{2}\.$/)).toBeVisible();
+    },
+  );
+});

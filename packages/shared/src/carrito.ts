@@ -15,3 +15,8 @@ export const actualizarCantidadSchema = z.object({ cantidad: cantidadSchema }).s
 
 export type AgregarLinea = z.infer<typeof agregarLineaSchema>;
 export type ActualizarCantidad = z.infer<typeof actualizarCantidadSchema>;
+
+// Cupon.Codigo es VARCHAR(30). El navegador solo valida la forma: toda regla del cupón la decide el backend (N-12).
+export const aplicarCuponSchema = z.object({ codigo: z.string().trim().min(1).max(30) }).strict();
+
+export type AplicarCupon = z.infer<typeof aplicarCuponSchema>;

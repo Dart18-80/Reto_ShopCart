@@ -12,6 +12,9 @@ import {
   useQuitarLinea,
 } from '../hooks/useOperacionesDelCarrito';
 
+// Los montos llegan con dos decimales (A-21): sin descuento, la línea trae exactamente "0.00".
+const SIN_DESCUENTO = '0.00';
+
 function ErrorDeLaLinea({ error }: { error: ErrorApi | null }) {
   if (!error) return null;
   return <Aviso tipo="error">{error.mensaje}</Aviso>;
@@ -74,6 +77,11 @@ export function FilaCarrito({ linea }: { linea: LineaCarrito }) {
             <p className="texto-pequeno text-muted-foreground">
               <Monto valor={linea.precioUnitario} /> c/u
             </p>
+            {linea.descuentoLinea !== SIN_DESCUENTO && (
+              <p className="texto-pequeno text-exito">
+                Descuento del cupón: −<Monto valor={linea.descuentoLinea} />
+              </p>
+            )}
           </div>
           <Monto valor={linea.totalLinea} className="texto-base-fuerte" />
         </div>

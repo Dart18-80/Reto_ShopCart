@@ -780,7 +780,7 @@ El orden de construcción, por módulos (F1, módulos 1 a 11 y F6), está en [`0
 | M2-H03 | Detalle de producto | Must | 1.25 | Hecha |
 | M3-H01 | Ilustración y color de la línea (backend) | Should | 0.5 | Hecha |
 | M3-H02 | Ver, agregar, cambiar y quitar | Must | 1.0 | Hecha |
-| M3-H03 | Cupón y envío gratis | Must | 0.5 | Lista |
+| M3-H03 | Cupón y envío gratis | Must | 0.5 | Hecha |
 | M3-H04 | Continuar al pago y fusión | Must | 0.25 | Lista |
 | M4-H01 | Direcciones | Must | 0.75 | Lista |
 | M4-H02 | Dirección y envío | Must | 0.75 | Lista |

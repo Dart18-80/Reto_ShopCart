@@ -4,6 +4,7 @@ import { formatearConteo } from '../../../shared/formato/conteo';
 import { useTituloPagina } from '../../../shared/hooks/useTituloPagina';
 import { Button } from '../../../shared/ui/button';
 import type { Carrito } from '../carrito.api';
+import { CuponCarrito } from '../componentes/CuponCarrito';
 import { FilaCarrito } from '../componentes/FilaCarrito';
 import { ResumenCarrito } from '../componentes/ResumenCarrito';
 import { useCarrito } from '../hooks/useCarrito';
@@ -45,7 +46,7 @@ export function CarritoPagina() {
               ))}
             </ul>
             <div className="md:w-100 md:shrink-0">
-              <ResumenCarrito resumen={delCarrito} />
+              <ResumenCarrito resumen={delCarrito} antes={<CuponCarrito resumen={delCarrito} />} />
             </div>
           </div>
         )}

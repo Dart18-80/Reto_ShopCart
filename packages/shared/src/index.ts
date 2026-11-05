@@ -10,8 +10,10 @@ export {
 export {
   actualizarCantidadSchema,
   agregarLineaSchema,
+  aplicarCuponSchema,
   type ActualizarCantidad,
   type AgregarLinea,
+  type AplicarCupon,
 } from './carrito.js';
 export {
   consultaBusquedaSchema,
