@@ -126,7 +126,7 @@ Cada refresh se rota y pertenece a una familia. Si un refresh ya rotado se vuelv
 
 Cada handler valida su entrada con Zod antes de ejecutarse, y los cuerpos usan `.strict()`: un campo inesperado responde 400 en lugar de ignorarse.
 
-**Muéstralo en:** [direcciones.schemas.ts:5](../../apps/api/src/modules/direcciones/direcciones.schemas.ts#L5 "RF-01: .strict() rechaza un idUsuario colado en el cuerpo"). Detalle: [arquitectura](transversal/arquitectura.md).
+**Muéstralo en:** [shared/direcciones.ts:9](../../packages/shared/src/direcciones.ts#L9 "RF-01: .strict() rechaza un idUsuario colado en el cuerpo"). Detalle: [arquitectura](transversal/arquitectura.md).
 
 ### 21. ¿Las trazas de Grafana pueden filtrar una contraseña, un token o una tarjeta?
 

@@ -33,6 +33,12 @@ export {
   idSchema,
   TAMANO_MAXIMO_PAGINA,
 } from './consultas.js';
+export {
+  actualizarDireccionSchema,
+  crearDireccionSchema,
+  type ActualizarDireccion,
+  type CrearDireccion,
+} from './direcciones.js';
 export { montoMenorOIgual, montoSchema } from './monto.js';
 export { ROLES_DE_USUARIO, type RolDeUsuario } from './roles.js';
 export { telefonoSchema } from './telefono.js';

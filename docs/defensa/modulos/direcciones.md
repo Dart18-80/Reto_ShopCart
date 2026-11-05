@@ -38,7 +38,7 @@ sequenceDiagram
 | Regla | Dónde vive | Archivo:línea | Decisión |
 | --- | --- | --- | --- |
 | El dueño sale del token, nunca de la entrada | `ejecutarSP` agrega `@IDUsuarioActor` desde el contexto y rechaza que se pase a mano | [ejecutar-sp.ts:108](../../../apps/api/src/shared/db/ejecutar-sp.ts#L108 "IDUsuarioActor: { tipo: sql.Int, valor: contexto?.idUsuario ?? null }"), [ejecutar-sp.ts:104](../../../apps/api/src/shared/db/ejecutar-sp.ts#L104 "lo agrega ejecutarSP desde el contexto; no se pasa a mano") | RF-01, A-18 |
-| El cuerpo no acepta `idUsuario` | Zod `.strict()` | [direcciones.schemas.ts:5](../../../apps/api/src/modules/direcciones/direcciones.schemas.ts#L5 "RF-01: .strict() rechaza un idUsuario colado en el cuerpo") | RF-01 |
+| El cuerpo no acepta `idUsuario` | Zod `.strict()` | [shared/direcciones.ts:9](../../../packages/shared/src/direcciones.ts#L9 "RF-01: .strict() rechaza un idUsuario colado en el cuerpo") | RF-01 |
 | Listar y leer solo las propias | `SP_Direcciones_Listar` filtra por `@IDUsuarioActor` | [R__SP_Direcciones_Listar.sql:17](../../../database/programmability/R__SP_Direcciones_Listar.sql#L17 "d.IDUsuario = @IDUsuarioActor") | RF-01 |
 | Una ajena responde 404, igual que una inexistente (lectura) | Servicio | [direcciones.service.ts:15](../../../apps/api/src/modules/direcciones/direcciones.service.ts#L15 "AppError('NO_ENCONTRADO'") | RF-01 |
 | Una ajena responde 404 (edición y borrado) | SP, aunque el servicio no filtre | [R__SP_Direcciones_Actualizar.sql:45](../../../database/programmability/R__SP_Direcciones_Actualizar.sql#L45 "THROW 50001"), [R__SP_Direcciones_Eliminar.sql:28](../../../database/programmability/R__SP_Direcciones_Eliminar.sql#L28 "THROW 50001") | RF-01, A-02 |

@@ -1,3 +1,4 @@
+import { actualizarDireccionSchema, crearDireccionSchema } from '@shopcart/shared';
 import { http, HttpResponse } from 'msw';
 import { api, type Cuerpo, type Respuesta } from '../../shared/api';
 import { servidor } from '../servidor';
@@ -68,4 +69,91 @@ export function simularCreacionPendiente() {
     },
     envios: () => envios,
   };
+}
+
+type DireccionGuardada = RespuestaCrearDireccion['datos'];
+
+const DEPARTAMENTOS = [
+  { idDepartamento: 1, nombre: 'Guatemala' },
+  { idDepartamento: 2, nombre: 'Sacatepéquez' },
+];
+const MUNICIPIOS: Record<number, { idMunicipio: number; nombre: string }[]> = {
+  1: [
+    { idMunicipio: 101, nombre: 'Guatemala' },
+    { idMunicipio: 102, nombre: 'Mixco' },
+  ],
+  2: [{ idMunicipio: 201, nombre: 'Antigua Guatemala' }],
+};
+const departamentoDe = (idMunicipio: number) =>
+  DEPARTAMENTOS.find((d) =>
+    MUNICIPIOS[d.idDepartamento]?.some((m) => m.idMunicipio === idMunicipio),
+  ) ?? { idDepartamento: 0, nombre: '' };
+const municipioCompleto = (idMunicipio: number) => {
+  const departamento = departamentoDe(idMunicipio);
+  const municipio = MUNICIPIOS[departamento.idDepartamento]?.find(
+    (m) => m.idMunicipio === idMunicipio,
+  );
+  return { idMunicipio, nombre: municipio?.nombre ?? '', departamento };
+};
+
+export const direccionDePrueba = (cambios: Partial<DireccionGuardada> = {}): DireccionGuardada => ({
+  ...DIRECCION_CREADA.datos,
+  ...cambios,
+});
+
+/**
+ * La libreta de direcciones del Cliente, como la haría el backend: la lista, crear, editar (la predeterminada es
+ * una sola, N-17) y eliminar, más los departamentos y municipios. Guarda cada cuerpo recibido.
+ */
+export function simularLibretaDeDirecciones(iniciales: DireccionGuardada[] = []) {
+  let lista = [...iniciales];
+  let siguiente = 100;
+  const recibidos: { metodo: string; cuerpo: unknown }[] = [];
+  const conUnaPredeterminada = (elegida: number) =>
+    lista.map((d) => ({ ...d, esPredeterminada: d.idDireccion === elegida }));
+  servidor.use(
+    http.get(RUTA, () => HttpResponse.json({ datos: lista })),
+    http.post(RUTA, async ({ request }) => {
+      const cuerpo = crearDireccionSchema.parse(await request.json());
+      recibidos.push({ metodo: 'POST', cuerpo });
+      siguiente += 1;
+      const nueva: DireccionGuardada = {
+        idDireccion: siguiente,
+        alias: cuerpo.alias ?? null,
+        nombreRecibe: cuerpo.nombreRecibe,
+        telefonoRecibe: cuerpo.telefonoRecibe,
+        municipio: municipioCompleto(cuerpo.idMunicipio),
+        direccionLinea: cuerpo.direccionLinea,
+        referencia: cuerpo.referencia ?? null,
+        esPredeterminada: cuerpo.esPredeterminada || lista.length === 0,
+      };
+      lista = [...(nueva.esPredeterminada ? conUnaPredeterminada(-1) : lista), nueva];
+      return HttpResponse.json({ datos: nueva }, { status: 201 });
+    }),
+    http.patch(`${RUTA}/:id`, async ({ params, request }) => {
+      const cuerpo = actualizarDireccionSchema.parse(await request.json());
+      recibidos.push({ metodo: 'PATCH', cuerpo });
+      const id = Number(params.id);
+      if (cuerpo.esPredeterminada === true) lista = conUnaPredeterminada(id);
+      lista = lista.map((d) =>
+        d.idDireccion === id
+          ? {
+              ...d,
+              ...(cuerpo.nombreRecibe === undefined ? {} : { nombreRecibe: cuerpo.nombreRecibe }),
+            }
+          : d,
+      );
+      return HttpResponse.json({ datos: lista.find((d) => d.idDireccion === id) });
+    }),
+    http.delete(`${RUTA}/:id`, ({ params }) => {
+      recibidos.push({ metodo: 'DELETE', cuerpo: Number(params.id) });
+      lista = lista.filter((d) => d.idDireccion !== Number(params.id));
+      return new HttpResponse(null, { status: 204 });
+    }),
+    http.get('/api/v1/departamentos', () => HttpResponse.json({ datos: DEPARTAMENTOS })),
+    http.get('/api/v1/departamentos/:id/municipios', ({ params }) =>
+      HttpResponse.json({ datos: MUNICIPIOS[Number(params.id)] ?? [] }),
+    ),
+  );
+  return recibidos;
 }
