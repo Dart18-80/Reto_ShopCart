@@ -27,6 +27,8 @@ const POR_CODIGO: Partial<Record<string, Desenlace>> = {
   PAGO_NO_COMPLETADO: CORREGIR,
   SESION_VENCIDA: { tipo: 'volverAlCheckout' },
   MAX_INTENTOS: { tipo: 'volverAlCarrito' },
+  // La sesión ya no existe (se canceló en otra pestaña o venció y se cerró): no hay nada que pagar.
+  NO_ENCONTRADO: { tipo: 'volverAlCheckout' },
 };
 
 const STATUS_VALIDACION = 400;

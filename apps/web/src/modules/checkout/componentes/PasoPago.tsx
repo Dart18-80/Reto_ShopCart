@@ -1,4 +1,4 @@
-import { montoMenorOIgual, pagarSchema, type Pagar } from '@shopcart/shared';
+import { montoMenorOIgual, pagarSchema } from '@shopcart/shared';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { AvisoFormulario } from '../../../shared/componentes/AvisoFormulario';
@@ -63,10 +63,6 @@ export function PasoPago({ sesion }: { sesion: SesionPago }) {
 
   const desenlace = pagar.error ? desenlaceDelPago(pagar.error) : null;
   const porReintentar = desenlace?.tipo === 'reintentar';
-  const reintentar = () => {
-    const pendiente: Pagar | null = intento.pendiente();
-    if (pendiente) pagar.mutate(pendiente);
-  };
 
   return (
     <div className="flex flex-col gap-8 pb-36 md:flex-row md:items-start md:gap-12 md:pb-0">
@@ -78,14 +74,14 @@ export function PasoPago({ sesion }: { sesion: SesionPago }) {
           <AvisoPago
             error={pagar.error}
             desenlace={desenlace}
-            alReintentar={reintentar}
+            alReintentar={pagar.reintentar}
             reintentando={pagar.isPending}
           />
         )}
         <AvisoReserva
           restanteMs={restante}
           alVolverAEmpezar={volverAlCheckout}
-          volviendo={cancelar.isPending}
+          volviendo={cancelar.isPending || porReintentar}
         />
         <FormularioPago
           form={formulario.form}
@@ -114,7 +110,7 @@ export function PasoPago({ sesion }: { sesion: SesionPago }) {
           <AvisoFormulario error={cancelar.error} />
           <Button
             variant="ghost"
-            disabled={cancelar.isPending || pagar.isPending}
+            disabled={cancelar.isPending || pagar.isPending || porReintentar}
             onClick={volverAlCheckout}
             className="control-boton h-auto self-start px-6 py-3"
           >

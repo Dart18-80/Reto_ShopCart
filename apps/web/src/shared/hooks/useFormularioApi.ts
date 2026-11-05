@@ -17,7 +17,8 @@ const detallesDeValidacionSchema = z
 interface OpcionesFormularioApi<Entrada extends FieldValues, Salida, Respuesta> {
   /** El esquema de `@shopcart/shared`, el mismo que valida la API (FE-03). */
   esquema: z.ZodType<Salida, Entrada>;
-  mutacion: UseMutationResult<Respuesta, ErrorApi, Salida>;
+  /** Solo lo que el formulario usa: una mutación de TanStack o un adaptador (el pago, M4-H03). */
+  mutacion: Pick<UseMutationResult<Respuesta, ErrorApi, Salida>, 'mutateAsync' | 'isPending'>;
   valoresIniciales: DefaultValues<Entrada>;
   alTerminar?: (respuesta: Respuesta) => void;
   /**

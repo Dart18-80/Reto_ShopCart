@@ -229,6 +229,8 @@ describe('PagoPagina (M4-H03)', () => {
       expect(datos.getByLabelText('Número de tarjeta')).toHaveValue('');
       expect(botonPagar()).toBeDisabled();
 
+      // Con un cobro posiblemente hecho, la única salida es reintentar con la misma llave.
+      expect(screen.getByRole('button', { name: 'Cambiar dirección o envío' })).toBeDisabled();
       await usuario.click(screen.getByRole('button', { name: 'Reintentar' }));
 
       await screen.findByRole('heading', { name: /Pedido #41/ });
@@ -259,6 +261,17 @@ describe('PagoPagina (M4-H03)', () => {
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/carrito');
     });
+  });
+
+  it('la tarjeta nunca queda en el estado de la mutación (solo en el intento)', async () => {
+    const { queryClient } = await pagarCon([error(402, 'PAGO_RECHAZADO', 'Fondos insuficientes.')]);
+
+    await screen.findByRole('alert');
+    const variables = queryClient
+      .getMutationCache()
+      .getAll()
+      .map((mutacion) => mutacion.state.variables);
+    expect(variables.every((valor) => valor === undefined)).toBe(true);
   });
 
   it('422 LLAVE_REUTILIZADA no debe pasar: se muestra con su requestId', async () => {

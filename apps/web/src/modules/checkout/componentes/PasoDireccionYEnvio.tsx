@@ -60,7 +60,9 @@ function CuerpoDelPaso({ carrito, envios }: PropsCuerpo) {
   const [idDireccionElegida, setIdDireccionElegida] = useState<number>();
   const [idMetodoElegido, setIdMetodoElegido] = useState<number>();
 
-  const idDireccion = idDireccionElegida ?? direccionInicial(direcciones.data);
+  // Una elegida que ya no está en la lista (se eliminó en otra pestaña) cae a la inicial.
+  const elegida = direcciones.data?.find((d) => d.idDireccion === idDireccionElegida);
+  const idDireccion = elegida?.idDireccion ?? direccionInicial(direcciones.data);
   // sinMetodos ya descartó la lista vacía.
   const metodo =
     envios.metodos.find((m) => m.idMetodoEnvio === idMetodoElegido) ?? envios.metodos[0];

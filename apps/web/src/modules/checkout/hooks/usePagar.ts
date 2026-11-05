@@ -1,5 +1,6 @@
 import type { Pagar } from '@shopcart/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { ErrorApi } from '../../../shared/api';
 import { carritoKeys } from '../../carrito';
 import { pagar, type Pedido } from '../checkout.api';
 import { checkoutKeys } from '../checkout.keys';
@@ -26,8 +27,14 @@ const esSesionPerdida = (desenlace: Desenlace): desenlace is SesionPerdida =>
  */
 export function usePagar({ intento, alResponder, alPagar, alPerderSesion }: OpcionesPagar) {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (tarjeta: Pagar) => pagar(tarjeta, intento.llavePara(tarjeta)),
+  const mutacion = useMutation({
+    // La tarjeta se lee del intento y no viaja como `variables`: así nunca queda en el estado de la mutación.
+    mutationFn: () => {
+      const actual = intento.actual();
+      if (!actual) throw ErrorApi.inesperado();
+      return pagar(actual.tarjeta, actual.llave);
+    },
+    gcTime: 0,
     onSuccess: (pedido) => {
       intento.terminar();
       // El carrito se convirtió en el pedido y la sesión ya no está Activa: se vuelven a pedir cuando hagan
@@ -45,4 +52,18 @@ export function usePagar({ intento, alResponder, alPagar, alPerderSesion }: Opci
     },
     onSettled: alResponder,
   });
+
+  return {
+    error: mutacion.error,
+    isPending: mutacion.isPending,
+    /** Para el formulario (useFormularioApi): empieza el intento con la tarjeta, si no hay uno, y la envía. */
+    mutateAsync: (tarjeta: Pagar) => {
+      intento.preparar(tarjeta);
+      return mutacion.mutateAsync();
+    },
+    /** «Reintentar»: reenvía el intento en curso tal cual, con su misma llave. */
+    reintentar: () => {
+      if (!mutacion.isPending) mutacion.mutate();
+    },
+  };
 }

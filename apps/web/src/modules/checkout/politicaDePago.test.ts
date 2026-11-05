@@ -28,6 +28,8 @@ describe('desenlaceDelPago: la tabla de la llave (M4-H03, RF-06)', () => {
     ],
     ['409 SESION_VENCIDA', error(409, 'SESION_VENCIDA'), { tipo: 'volverAlCheckout' }],
     ['409 MAX_INTENTOS', error(409, 'MAX_INTENTOS'), { tipo: 'volverAlCarrito' }],
+    // La sesión ya no existe (se canceló en otra pestaña): no hay nada que pagar.
+    ['404 NO_ENCONTRADO', error(404, 'NO_ENCONTRADO'), { tipo: 'volverAlCheckout' }],
     [
       '422 LLAVE_REUTILIZADA',
       error(422, 'LLAVE_REUTILIZADA'),
