@@ -2,7 +2,8 @@
 -- (VW_Catalogo_ProductosTienda: activo, con al menos una variante activa con precio vigente); si no,
 -- ningún conjunto de resultados y la API responde 404. Cuatro conjuntos: producto, imágenes, variantes
 -- activas con precio vigente y valores de atributo. El producto trae además la ilustración de su categoría
--- (FE-15) y el plazo de la garantía de precio del carrito (N-02, M2-H01), que el Admin configura.
+-- (FE-15) y el plazo de la garantía de precio del carrito (N-02, M2-H01), que el Admin configura. Cada valor
+-- trae su ValorAtributo.Orden para que la tienda muestre las opciones en ese orden (S, M, L, XL).
 -- N-06: nunca devuelve la existencia física ni la reservada. Cada variante trae su estado (Disponible,
 -- UltimasUnidades o Agotado) y las unidades restantes solo en el umbral o por debajo.
 CREATE OR ALTER PROCEDURE dbo.SP_Catalogo_ObtenerProducto
@@ -44,7 +45,8 @@ BEGIN
     WHERE  v.IDProducto = @IDProducto AND v.Activo = 1
     ORDER BY v.IDVariante;
 
-    SELECT vva.IDVariante, a.IDAtributo, a.Nombre AS Atributo, va.IDValorAtributo, va.Valor
+    SELECT vva.IDVariante, a.IDAtributo, a.Nombre AS Atributo, va.IDValorAtributo, va.Valor,
+           va.Orden AS OrdenValor
     FROM   dbo.VarianteValorAtributo AS vva
     JOIN   dbo.Variante      AS v  ON v.IDVariante = vva.IDVariante
     JOIN   dbo.ValorAtributo AS va ON va.IDValorAtributo = vva.IDValorAtributo

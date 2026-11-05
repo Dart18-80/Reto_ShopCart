@@ -443,6 +443,37 @@ describe('GET /productos/:id público (E3-H03, N-06)', () => {
     expect(respuesta.body).toMatchObject({ datos: { ilustracion: 'Vestido', diasGarantiaPrecio } });
   });
 
+  it('cada valor trae su ValorAtributo.Orden, aunque las variantes se hayan creado en otro orden', async () => {
+    const atributo = await crearAtributo(app, token, []);
+    const valorConOrden = async (valor: string, orden: number) =>
+      leerDatos(
+        await request(app)
+          .post(`/api/v1/admin/atributos/${String(atributo.idAtributo)}/valores`)
+          .set(conAdmin())
+          .send({ valor, orden }),
+        z.object({ idValorAtributo: z.number() }),
+      ).idValorAtributo;
+    const xl = await valorConOrden('XL', 40);
+    const s = await valorConOrden('S', 10);
+    const producto = await crearProducto(app, token, await crearCategoria(app, token));
+    await crearVariante(app, token, producto.idProducto, [xl]);
+    await crearVariante(app, token, producto.idProducto, [s]);
+
+    const { variantes } = leerDatos(
+      await tienda(producto.idProducto),
+      z.object({
+        variantes: z.array(
+          z.object({ valores: z.array(z.object({ valor: z.string(), orden: z.number() })) }),
+        ),
+      }),
+    );
+
+    expect(variantes.flatMap((v) => v.valores)).toEqual([
+      { valor: 'XL', orden: 40 },
+      { valor: 'S', orden: 10 },
+    ]);
+  });
+
   it('un producto desactivado, o sin variantes activas, responde 404 en la tienda', async () => {
     const desactivado = await productoConVariante(3);
     const sinVariantesActivas = await productoConVariante(3);

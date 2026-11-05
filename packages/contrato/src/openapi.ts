@@ -7528,6 +7528,8 @@ export interface components {
                     atributo: string;
                     idAtributo: number;
                     idValorAtributo: number;
+                    /** @description ValorAtributo.Orden: la tienda muestra las opciones de cada atributo en este orden */
+                    orden: number;
                     valor: string;
                 }[];
             }[];

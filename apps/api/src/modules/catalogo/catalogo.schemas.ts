@@ -273,6 +273,13 @@ export const productoAdminSchema = z
   .openapi('ProductoAdmin');
 
 // N-06: sin existencia física ni reservada; unidadesRestantes solo con UltimasUnidades.
+const valorDeVarianteTiendaSchema = valorDeVarianteSchema.extend({
+  orden: z.number().int().openapi({
+    description:
+      'ValorAtributo.Orden: la tienda muestra las opciones de cada atributo en este orden',
+  }),
+});
+
 export const productoTiendaSchema = z
   .object({
     idProducto: z.number().int(),
@@ -294,7 +301,7 @@ export const productoTiendaSchema = z
         precio: montoSchema,
         estadoExistencia: z.enum(ESTADOS_EXISTENCIA),
         unidadesRestantes: z.number().int().optional(),
-        valores: z.array(valorDeVarianteSchema),
+        valores: z.array(valorDeVarianteTiendaSchema),
       }),
     ),
   })

@@ -123,8 +123,20 @@ export const varianteDePrueba = (
   precio: '249.00',
   estadoExistencia: 'Disponible',
   valores: [
-    { idAtributo: 1, atributo: 'Talla', idValorAtributo: TALLAS[talla], valor: talla },
-    { idAtributo: 2, atributo: 'Color', idValorAtributo: COLORES[color], valor: color },
+    {
+      idAtributo: 1,
+      atributo: 'Talla',
+      idValorAtributo: TALLAS[talla],
+      valor: talla,
+      orden: TALLAS[talla],
+    },
+    {
+      idAtributo: 2,
+      atributo: 'Color',
+      idValorAtributo: COLORES[color],
+      valor: color,
+      orden: COLORES[color],
+    },
   ],
   ...cambios,
 });

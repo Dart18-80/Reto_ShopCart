@@ -22,19 +22,34 @@ export interface AtributoDelProducto {
 
 export type EstadoOpcion = 'disponible' | 'agotada' | 'inexistente';
 
-/** Los atributos y sus valores, sin repetir y en el orden en que llegan (el SP los ordena por Atributo.Orden). */
+/**
+ * Los atributos y sus valores, sin repetir: los atributos en el orden en que llegan (el SP los ordena por
+ * Atributo.Orden) y los valores de cada uno por su ValorAtributo.Orden (S, M, L, XL).
+ */
 export function atributosDe(variantes: readonly Variante[]): AtributoDelProducto[] {
-  const porId = new Map<number, AtributoDelProducto>();
+  const porId = new Map<number, AtributoDelProducto & { ordenes: Map<number, number> }>();
   for (const { valores } of variantes) {
-    for (const { idAtributo, atributo, idValorAtributo, valor } of valores) {
-      const encontrado = porId.get(idAtributo) ?? { idAtributo, nombre: atributo, valores: [] };
+    for (const { idAtributo, atributo, idValorAtributo, valor, orden } of valores) {
+      const encontrado = porId.get(idAtributo) ?? {
+        idAtributo,
+        nombre: atributo,
+        valores: [],
+        ordenes: new Map<number, number>(),
+      };
       porId.set(idAtributo, encontrado);
-      if (!encontrado.valores.some((v) => v.idValorAtributo === idValorAtributo)) {
+      if (!encontrado.ordenes.has(idValorAtributo)) {
+        encontrado.ordenes.set(idValorAtributo, orden);
         encontrado.valores.push({ idValorAtributo, valor });
       }
     }
   }
-  return [...porId.values()];
+  return [...porId.values()].map(({ idAtributo, nombre, valores, ordenes }) => ({
+    idAtributo,
+    nombre,
+    valores: valores.toSorted(
+      (a, b) => (ordenes.get(a.idValorAtributo) ?? 0) - (ordenes.get(b.idValorAtributo) ?? 0),
+    ),
+  }));
 }
 
 const tieneValor = (variante: Variante, idAtributo: number, idValorAtributo: number) =>

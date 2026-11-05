@@ -35,6 +35,7 @@ import type {
   ProductoTienda,
   ValorAtributoCreado,
   ValorDeVariante,
+  ValorDeVarianteTienda,
   VarianteAdmin,
   VarianteTienda,
   VersionPrecio,
@@ -174,6 +175,22 @@ interface FilaValorDeVariante {
   Valor: string;
 }
 
+interface FilaValorDeVarianteTienda extends FilaValorDeVariante {
+  OrdenValor: number;
+}
+
+const aValorDeVariante = (fila: FilaValorDeVariante): ValorDeVariante => ({
+  idAtributo: fila.IDAtributo,
+  atributo: fila.Atributo,
+  idValorAtributo: fila.IDValorAtributo,
+  valor: fila.Valor,
+});
+
+const aValorDeVarianteTienda = (fila: FilaValorDeVarianteTienda): ValorDeVarianteTienda => ({
+  ...aValorDeVariante(fila),
+  orden: fila.OrdenValor,
+});
+
 interface FilaProductoResumen {
   IDProducto: number;
   Nombre: string;
@@ -192,34 +209,32 @@ const aImagen = (fila: FilaImagen): ImagenProducto => ({
   esPrincipal: fila.EsPrincipal,
 });
 
-function valoresPorVariante(filas: FilaValorDeVariante[]): Map<number, ValorDeVariante[]> {
-  const porVariante = new Map<number, ValorDeVariante[]>();
+function valoresPorVariante<F extends FilaValorDeVariante, V>(
+  filas: F[],
+  aValor: (fila: F) => V,
+): Map<number, V[]> {
+  const porVariante = new Map<number, V[]>();
   for (const fila of filas) {
     const valores = porVariante.get(fila.IDVariante) ?? [];
-    valores.push({
-      idAtributo: fila.IDAtributo,
-      atributo: fila.Atributo,
-      idValorAtributo: fila.IDValorAtributo,
-      valor: fila.Valor,
-    });
+    valores.push(aValor(fila));
     porVariante.set(fila.IDVariante, valores);
   }
   return porVariante;
 }
 
-interface ConjuntosProducto<P, V> {
+interface ConjuntosProducto<P, V, W extends FilaValorDeVariante> {
   producto: P | undefined;
   imagenes: FilaImagen[];
   variantes: V[];
-  valores: FilaValorDeVariante[];
+  valores: W[];
 }
 
-async function conjuntosProducto<P, V>(
+async function conjuntosProducto<P, V, W extends FilaValorDeVariante = FilaValorDeVariante>(
   nombre: NombreSP,
   parametros: ParametrosSP,
-): Promise<ConjuntosProducto<P, V>> {
+): Promise<ConjuntosProducto<P, V, W>> {
   const [productos = [], imagenes, variantes, valores] = await ejecutarSPConjuntos<
-    [P[], FilaImagen[], V[], FilaValorDeVariante[]]
+    [P[], FilaImagen[], V[], W[]]
   >(nombre, parametros);
   const producto = productos[0];
   // Sin producto el SP no devuelve conjuntos (404). Con producto, faltar uno es un error del SP, no una
@@ -241,7 +256,7 @@ async function productoAdmin(
   );
   const { producto } = conjuntos;
   if (producto === undefined) return null;
-  const valores = valoresPorVariante(conjuntos.valores);
+  const valores = valoresPorVariante(conjuntos.valores, aValorDeVariante);
   return {
     idProducto: producto.IDProducto,
     idCategoria: producto.IDCategoria,
@@ -444,13 +459,14 @@ export const catalogoRepository = {
     productoAdmin('SP_Catalogo_ObtenerProductoAdmin', idProducto(id)),
 
   async obtenerProductoTienda(id: number): Promise<ProductoTienda | null> {
-    const conjuntos = await conjuntosProducto<FilaProductoTienda, FilaVarianteTienda>(
-      'SP_Catalogo_ObtenerProducto',
-      idProducto(id),
-    );
+    const conjuntos = await conjuntosProducto<
+      FilaProductoTienda,
+      FilaVarianteTienda,
+      FilaValorDeVarianteTienda
+    >('SP_Catalogo_ObtenerProducto', idProducto(id));
     const { producto } = conjuntos;
     if (producto === undefined) return null;
-    const valores = valoresPorVariante(conjuntos.valores);
+    const valores = valoresPorVariante(conjuntos.valores, aValorDeVarianteTienda);
     return {
       idProducto: producto.IDProducto,
       idCategoria: producto.IDCategoria,

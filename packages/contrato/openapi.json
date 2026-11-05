@@ -2735,6 +2735,10 @@
                       "idValorAtributo": {
                         "type": "integer"
                       },
+                      "orden": {
+                        "description": "ValorAtributo.Orden: la tienda muestra las opciones de cada atributo en este orden",
+                        "type": "integer"
+                      },
                       "valor": {
                         "type": "string"
                       }
@@ -2743,7 +2747,8 @@
                       "idAtributo",
                       "atributo",
                       "idValorAtributo",
-                      "valor"
+                      "valor",
+                      "orden"
                     ],
                     "type": "object"
                   },

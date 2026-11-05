@@ -15,6 +15,8 @@ type Estado = Variante['estadoExistencia'];
 const COLOR = 2;
 const TALLA = 1;
 const ID = { S: 10, M: 11, XL: 13, Azul: 20, Blanco: 21, Rojo: 22 } as const;
+// ValorAtributo.Orden de cada valor: las tallas S, M, XL y los colores Azul, Blanco, Rojo.
+const ORDEN = { S: 1, M: 2, XL: 4, Azul: 1, Blanco: 2, Rojo: 3 } as const;
 
 const variante = (
   idVariante: number,
@@ -28,8 +30,20 @@ const variante = (
   precio: '249.00',
   estadoExistencia,
   valores: [
-    { idAtributo: TALLA, atributo: 'Talla', idValorAtributo: ID[talla], valor: talla },
-    { idAtributo: COLOR, atributo: 'Color', idValorAtributo: ID[color], valor: color },
+    {
+      idAtributo: TALLA,
+      atributo: 'Talla',
+      idValorAtributo: ID[talla],
+      valor: talla,
+      orden: ORDEN[talla],
+    },
+    {
+      idAtributo: COLOR,
+      atributo: 'Color',
+      idValorAtributo: ID[color],
+      valor: color,
+      orden: ORDEN[color],
+    },
   ],
 });
 
@@ -45,7 +59,7 @@ const MATRIZ: Variante[] = [
 ];
 
 describe('selección de variante: solo con los datos que llegan (M2-H03)', () => {
-  it('los atributos y sus valores salen de variantes[].valores, sin repetir y en el orden en que llegan', () => {
+  it('los atributos y sus valores salen de variantes[].valores, sin repetir', () => {
     expect(atributosDe(MATRIZ)).toEqual([
       {
         idAtributo: TALLA,
@@ -65,6 +79,19 @@ describe('selección de variante: solo con los datos que llegan (M2-H03)', () =>
           { idValorAtributo: ID.Rojo, valor: 'Rojo' },
         ],
       },
+    ]);
+  });
+
+  it('los valores de cada atributo se ordenan por ValorAtributo.Orden, no por el orden de las variantes', () => {
+    const alReves = [
+      variante(1, 'XL', 'Rojo'),
+      variante(2, 'M', 'Blanco'),
+      variante(3, 'S', 'Azul'),
+    ];
+
+    expect(atributosDe(alReves).map((a) => a.valores.map((v) => v.valor))).toEqual([
+      ['S', 'M', 'XL'],
+      ['Azul', 'Blanco', 'Rojo'],
     ]);
   });
 

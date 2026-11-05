@@ -72,6 +72,11 @@ export const ESTADOS_EXISTENCIA = ['Disponible', 'UltimasUnidades', 'Agotado'] a
 export type EstadoExistencia = (typeof ESTADOS_EXISTENCIA)[number];
 
 /** N-06: en la tienda, las unidades restantes solo existen en el estado UltimasUnidades. */
+/** En la tienda cada valor trae su orden de despliegue (ValorAtributo.Orden). */
+export interface ValorDeVarianteTienda extends ValorDeVariante {
+  orden: number;
+}
+
 export interface VarianteTienda {
   idVariante: number;
   sku: string;
@@ -79,7 +84,7 @@ export interface VarianteTienda {
   precio: Decimal;
   estadoExistencia: EstadoExistencia;
   unidadesRestantes: number | null;
-  valores: ValorDeVariante[];
+  valores: ValorDeVarianteTienda[];
 }
 
 export interface ProductoTienda {
