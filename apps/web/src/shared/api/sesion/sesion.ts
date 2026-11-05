@@ -124,6 +124,10 @@ export function crearSesion({ refrescar, cerrarEnServidor, bloqueo, canal }: Dep
   function renovarUnaVez(tokenAlPedir: string | null): Promise<string | null> {
     renovacionEnCurso ??= bloqueo
       .exclusivo(() => renovarConBloqueo(tokenAlPedir))
+      .catch((error: unknown) => {
+        // Un lock que falla o un error del programa también llegan como ErrorApi a quien espera (FE-13).
+        throw error instanceof ErrorApi ? error : ErrorApi.inesperado(error);
+      })
       .finally(() => {
         renovacionEnCurso = null;
       });

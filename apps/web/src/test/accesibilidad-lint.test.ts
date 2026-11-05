@@ -1,27 +1,25 @@
 import { randomUUID } from 'node:crypto';
-import { mkdir, rm, writeFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
-import { ESLint } from 'eslint';
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { crearProyectoDeLint, type ProyectoDeLint } from './lintTemporal';
 
 // Decisión del PO (F1-H01): eslint-plugin-jsx-a11y 6.10.2 declara compatibilidad hasta ESLint 9; esta prueba
-// demuestra que con ESLint 10 sus reglas sí corren en el lint real del proyecto.
+// demuestra que con ESLint 10 sus reglas sí corren con la configuración real (en un proyecto temporal fuera de src/).
 
-const RAIZ = resolve(import.meta.dirname, '../../../..');
-const COMPONENTES = resolve(RAIZ, 'apps/web/src/shared/componentes');
-const eslint = new ESLint({ cwd: RAIZ });
+let proyecto: ProyectoDeLint;
 
 async function reglasIncumplidas(codigo: string): Promise<string[]> {
-  const ruta = join(COMPONENTES, `PruebaA11y${randomUUID().slice(0, 8)}.tsx`);
-  await mkdir(COMPONENTES, { recursive: true });
-  await writeFile(ruta, codigo, 'utf8');
-  try {
-    const [resultado] = await eslint.lintFiles([ruta]);
-    return (resultado?.messages ?? []).map((mensaje) => mensaje.ruleId ?? '');
-  } finally {
-    await rm(ruta, { force: true });
-  }
+  const ruta = `shared/componentes/PruebaA11y${randomUUID().slice(0, 8)}.tsx`;
+  await proyecto.escribir(ruta, codigo);
+  return (await proyecto.mensajes(ruta)).map((mensaje) => mensaje.ruleId ?? '');
 }
+
+beforeAll(async () => {
+  proyecto = await crearProyectoDeLint((ruleId) => ruleId.startsWith('jsx-a11y/'));
+});
+
+afterAll(async () => {
+  await proyecto.borrar();
+});
 
 const ESPERA_LINT_MS = 60_000;
 

@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { errors, jwtVerify, SignJWT } from 'jose';
 import type { Logger } from 'pino';
+import { ROLES_DE_USUARIO } from '@shopcart/shared';
 import { z } from 'zod';
-import type { Rol } from './contexto.js';
 
 // A-07: access token de 15 minutos firmado con HS256.
 export const VIGENCIA_ACCESO_SEG = 15 * 60;
@@ -10,8 +10,8 @@ const ALGORITMO = 'HS256';
 // Lo único esperado en el día a día: un frontend que todavía no renovó su access token.
 const EXPIRACION_NORMAL = 'ERR_JWT_EXPIRED';
 
-// Solo roles de usuario: 'Sistema' es el rol de los jobs y del migrador (A-18) y ningún token lo trae.
-export const ROLES_DE_USUARIO = ['Cliente', 'Operador', 'Administrador'] as const satisfies Rol[];
+// Solo roles de usuario (sin 'Sistema', A-18); la lista vive en @shopcart/shared porque la web también la usa.
+export { ROLES_DE_USUARIO };
 
 const cargaSchema = z.object({
   sub: z.string().regex(/^[1-9]\d*$/),

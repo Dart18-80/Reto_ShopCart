@@ -322,3 +322,32 @@ describe('cliente api con sesión: el token nunca se guarda en el navegador', ()
     }
   });
 });
+
+describe('cliente api con sesión: lo que no es una respuesta del backend también es ErrorApi', () => {
+  it('un refresh 200 sin cuerpo durante una renovación llega al llamador como ErrorApi inesperado', async () => {
+    servidor.use(http.post(REFRESH, () => new HttpResponse(null, { status: 200 })));
+    simularCarrito();
+    const { api, sesion } = crearNavegador()();
+    sesion.establecer(sesionDePrueba('token-vencido'));
+
+    const error = await errorDe(api.GET(CARRITO));
+
+    expect(error.codigo).toBe('RESPUESTA_INESPERADA');
+  });
+
+  it('una falla del lock al renovar llega como ErrorApi inesperado', async () => {
+    simularCarrito();
+    const bloqueoQueFalla = {
+      exclusivo: () => Promise.reject(new DOMException('Lock abortado', 'AbortError')),
+    };
+    const { api, sesion } = crearConexion({
+      bloqueo: bloqueoQueFalla,
+      canal: crearCanalesEnMemoria()(),
+    });
+    sesion.establecer(sesionDePrueba('token-vencido'));
+
+    const error = await errorDe(api.GET(CARRITO));
+
+    expect(error.codigo).toBe('RESPUESTA_INESPERADA');
+  });
+});

@@ -1,10 +1,12 @@
+import { ROLES_DE_USUARIO } from '@shopcart/shared';
 import { z } from 'zod';
 import type { Bloqueo, Canal, MensajeSesion, Rol } from './sesion';
 
 const NOMBRE_DEL_BLOQUEO = 'shopcart-refresh';
 const NOMBRE_DEL_CANAL = 'shopcart-sesion';
 
-const rolSchema = z.enum(['Cliente', 'Operador', 'Administrador']) satisfies z.ZodType<Rol>;
+// Los roles salen de @shopcart/shared, la misma lista que usa la API; una prueba de tipos la ata al contrato.
+const rolSchema = z.enum(ROLES_DE_USUARIO) satisfies z.ZodType<Rol>;
 
 // Lo que otra pestaña puede publicar. Un mensaje que no cumple (otra versión de la app tras un despliegue,
 // cualquier otro script del mismo origen) se ignora: nunca cambia la sesión.

@@ -12,9 +12,11 @@ export function debeReintentar(reintentosHechos: number, error: unknown): boolea
 export function crearQueryClient(): QueryClient {
   return new QueryClient({
     defaultOptions: {
-      queries: { retry: debeReintentar },
+      // FE-02 ✏️: sin red la petición sale igual y falla con ErrorApi de red, que la vista muestra con Reintentar.
+      // Con el modo por defecto ('online') se pausaría en silencio: un esqueleto o un botón deshabilitados sin fin.
+      queries: { retry: debeReintentar, networkMode: 'always' },
       // FE-02: una mutación nunca se reintenta sola; el pago tiene su propia idempotencia (RF-06).
-      mutations: { retry: false },
+      mutations: { retry: false, networkMode: 'always' },
     },
   });
 }

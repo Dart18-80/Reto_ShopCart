@@ -1,3 +1,4 @@
+import { LARGO_MAXIMO_TEXTO_BUSQUEDA } from '@shopcart/shared';
 import { Search } from 'lucide-react';
 import type { SubmitEvent } from 'react';
 import { useNavigate } from 'react-router';
@@ -36,6 +37,7 @@ export function Buscador({ className }: { className?: string }) {
         type="search"
         name={PARAMETRO_TEXTO}
         aria-label="Buscar productos"
+        maxLength={LARGO_MAXIMO_TEXTO_BUSQUEDA}
         placeholder="Busca camisas, tenis o mochilas"
         className="texto-base placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent outline-none"
       />

@@ -19,8 +19,9 @@ const TOKEN_DE_PRUEBA = 'token-de-prueba';
 // El QueryClient de la aplicación con los reintentos apagados: un error se ve en el primer intento.
 function crearQueryClientDePrueba() {
   const queryClient = crearQueryClient();
-  const { queries } = queryClient.getDefaultOptions();
-  queryClient.setDefaultOptions({ queries: { ...queries, retry: false } });
+  const opciones = queryClient.getDefaultOptions();
+  // setDefaultOptions reemplaza todo: se conservan las de las mutaciones (networkMode, retry).
+  queryClient.setDefaultOptions({ ...opciones, queries: { ...opciones.queries, retry: false } });
   return queryClient;
 }
 

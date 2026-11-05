@@ -11,13 +11,21 @@ interface PropsFiltroTexto<C> {
   campo: CampoDeTexto<C>;
   etiqueta: string;
   placeholder?: string;
+  /** El largo máximo del esquema: así nunca se escribe un texto que la consulta rechazaría. */
+  maxLength?: number;
 }
 
 /**
  * Texto libre de un listado (FE-06): llega a la URL 300 ms después de dejar de escribir, y toda una búsqueda
  * ocupa una sola entrada del historial (`historial: 'texto'`).
  */
-export function FiltroTexto<C>({ parametros, campo, etiqueta, placeholder }: PropsFiltroTexto<C>) {
+export function FiltroTexto<C>({
+  parametros,
+  campo,
+  etiqueta,
+  placeholder,
+  maxLength,
+}: PropsFiltroTexto<C>) {
   const id = useId();
   const enUrl = String(parametros.valores[campo] ?? '');
   const [texto, setTexto] = useState(enUrl);
@@ -59,6 +67,7 @@ export function FiltroTexto<C>({ parametros, campo, etiqueta, placeholder }: Pro
           type="search"
           value={texto}
           placeholder={placeholder}
+          maxLength={maxLength}
           onChange={(evento) => {
             setTexto(evento.target.value);
           }}

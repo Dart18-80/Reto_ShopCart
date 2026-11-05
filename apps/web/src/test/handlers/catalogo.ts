@@ -32,14 +32,17 @@ export const productoDePrueba = (numero: number): ProductoBusqueda => ({
 });
 
 interface OpcionesBusqueda {
-  /** Cuántos productos hay en total con cualquier consulta. */
-  total: number;
+  /** Cuántos productos hay en total: fijo, o según la consulta (por ejemplo, menos con un filtro). */
+  total: number | ((consulta: URLSearchParams) => number);
   /** Espera antes de responder a partir de la segunda petición (para ver «Actualizando…»). */
   demoraDespuesDeLaPrimera?: number;
 }
 
 /** `GET /api/v1/productos` simulado: pagina con `pagina` y `tamano`; guarda la consulta de cada petición. */
-export function simularBusquedaProductos({ total, demoraDespuesDeLaPrimera }: OpcionesBusqueda) {
+export function simularBusquedaProductos({
+  total: totalPedido,
+  demoraDespuesDeLaPrimera,
+}: OpcionesBusqueda) {
   const consultas: URLSearchParams[] = [];
   servidor.use(
     http.get(RUTA, async ({ request }) => {
@@ -48,6 +51,7 @@ export function simularBusquedaProductos({ total, demoraDespuesDeLaPrimera }: Op
       if (demoraDespuesDeLaPrimera !== undefined && consultas.length > 1) {
         await delay(demoraDespuesDeLaPrimera);
       }
+      const total = typeof totalPedido === 'number' ? totalPedido : totalPedido(consulta);
       const pagina = Number(consulta.get('pagina') ?? '1');
       const tamano = Number(consulta.get('tamano') ?? '20');
       const desde = (pagina - 1) * tamano;
@@ -61,20 +65,12 @@ export function simularBusquedaProductos({ total, demoraDespuesDeLaPrimera }: Op
   return { consultas };
 }
 
-/** `GET /api/v1/productos` que falla con el formato de A-06. */
-export function simularBusquedaFallida(requestId: string) {
+/** `GET /api/v1/productos` que falla con el formato de A-06 (por defecto, un 500 del backend). */
+export function simularBusquedaFallida(
+  requestId: string,
+  { status = 500, codigo = 'ERROR_INTERNO', mensaje = 'El servicio de búsqueda falló.' } = {},
+) {
   servidor.use(
-    http.get(RUTA, () =>
-      HttpResponse.json(
-        {
-          error: {
-            codigo: 'ERROR_INTERNO',
-            mensaje: 'Algo salió mal de nuestro lado. Intenta de nuevo en un momento.',
-            requestId,
-          },
-        },
-        { status: 500 },
-      ),
-    ),
+    http.get(RUTA, () => HttpResponse.json({ error: { codigo, mensaje, requestId } }, { status })),
   );
 }

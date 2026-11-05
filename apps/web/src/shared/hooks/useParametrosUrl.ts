@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useLocation, useSearchParams } from 'react-router';
 import type { z } from 'zod';
 
@@ -72,32 +72,45 @@ export function useParametrosUrl<S extends z.ZodObject>(esquema: S): ParametrosU
   const porDefecto = useMemo<Record<string, unknown>>(() => esquema.parse({}), [esquema]);
   const valores = useMemo(() => leer(esquema, busqueda), [esquema, busqueda]);
 
-  function cambiarCrudo(cambios: Record<string, unknown>, historial: ModoHistorial = 'agregar') {
-    const siguiente: Record<string, unknown> = { ...valores, ...cambios };
-    if (!(CAMPO_PAGINA in cambios)) siguiente[CAMPO_PAGINA] = porDefecto[CAMPO_PAGINA];
-    const nueva = escribir(siguiente, porDefecto);
-    // Un cambio que deja la URL igual no navega: sin esto, un valor que el esquema descarta (solo espacios, un
-    // texto demasiado largo) volvería a escribirse en cada render.
-    if (nueva.toString() === busqueda.toString()) return;
-    setBusqueda(nueva, {
-      replace:
-        historial === 'reemplazar' ||
-        (historial === 'texto' && esEdicionDeTexto(estadoDelHistorial)),
-      state: historial === 'texto' ? { [MARCA_TEXTO]: true } : null,
-    });
-  }
+  // Estables mientras la URL no cambia: quien las use en un efecto (FiltroTexto) no corre en cada render.
+  const cambiarCrudo = useCallback(
+    (cambios: Record<string, unknown>, historial: ModoHistorial = 'agregar') => {
+      const siguiente: Record<string, unknown> = { ...valores, ...cambios };
+      if (!(CAMPO_PAGINA in cambios)) siguiente[CAMPO_PAGINA] = porDefecto[CAMPO_PAGINA];
+      const nueva = escribir(siguiente, porDefecto);
+      // Un cambio que deja la URL igual no navega: sin esto, un valor que el esquema descarta (solo espacios, un
+      // texto demasiado largo) volvería a escribirse en cada render.
+      if (nueva.toString() === busqueda.toString()) return;
+      setBusqueda(nueva, {
+        replace:
+          historial === 'reemplazar' ||
+          (historial === 'texto' && esEdicionDeTexto(estadoDelHistorial)),
+        state: historial === 'texto' ? { [MARCA_TEXTO]: true } : null,
+      });
+    },
+    [valores, porDefecto, busqueda, setBusqueda, estadoDelHistorial],
+  );
 
-  const camposDeFiltro = Object.keys(esquema.shape).filter((campo) => !CAMPOS_DE_VISTA.has(campo));
+  const camposDeFiltro = useMemo(
+    () => Object.keys(esquema.shape).filter((campo) => !CAMPOS_DE_VISTA.has(campo)),
+    [esquema],
+  );
   const actuales: Record<string, unknown> = valores;
+
+  const cambiar = useCallback<ParametrosUrl<z.output<S>>['cambiar']>(
+    (cambios, opciones) => {
+      cambiarCrudo(cambios, opciones?.historial);
+    },
+    [cambiarCrudo],
+  );
+  const limpiarFiltros = useCallback(() => {
+    cambiarCrudo(Object.fromEntries(camposDeFiltro.map((campo) => [campo, porDefecto[campo]])));
+  }, [cambiarCrudo, camposDeFiltro, porDefecto]);
 
   return {
     valores,
-    cambiar: (cambios, opciones) => {
-      cambiarCrudo(cambios, opciones?.historial);
-    },
+    cambiar,
     hayFiltros: camposDeFiltro.some((campo) => actuales[campo] !== porDefecto[campo]),
-    limpiarFiltros: () => {
-      cambiarCrudo(Object.fromEntries(camposDeFiltro.map((campo) => [campo, porDefecto[campo]])));
-    },
+    limpiarFiltros,
   };
 }

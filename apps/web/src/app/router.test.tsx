@@ -1,7 +1,8 @@
-import { act, screen, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
 import { sesion, type Respuesta } from '../shared/api';
+import { ANCHO_TELEFONO, simularPantalla } from '../test/pantalla';
 import { renderizarRutas } from '../test/renderizar';
 import { sesionDePrueba } from '../test/sesion';
 import { servidor } from '../test/servidor';
@@ -195,6 +196,29 @@ describe('router: mientras se verifica la sesión', () => {
     await usuario.click(screen.getByRole('button', { name: 'Reintentar' }));
 
     expect(await screen.findByRole('heading', { name: 'Mi perfil' })).toBeInTheDocument();
+  });
+});
+
+describe('router: menú móvil del backoffice', () => {
+  it('en el teléfono el menú se abre en un panel con solo lo del rol, y se cierra al elegir', async () => {
+    simularPantalla(ANCHO_TELEFONO);
+    const { usuario, router } = renderizarRutas(crearRutas(), {
+      ruta: '/backoffice/pedidos',
+      rol: 'Operador',
+    });
+    await screen.findByRole('heading', { name: 'Gestión de pedidos' });
+
+    await usuario.click(screen.getByRole('button', { name: 'Abrir el menú' }));
+    const panel = await screen.findByRole('dialog');
+    expect(within(panel).getByRole('link', { name: 'Inventario' })).toBeInTheDocument();
+    expect(within(panel).queryByRole('link', { name: 'Usuarios' })).not.toBeInTheDocument();
+    await usuario.click(within(panel).getByRole('link', { name: 'Inventario' }));
+
+    expect(await screen.findByRole('heading', { name: 'Inventario' })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/backoffice/inventario');
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
   });
 });
 

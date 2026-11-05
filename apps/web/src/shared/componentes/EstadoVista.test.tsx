@@ -1,12 +1,14 @@
-import { useQuery } from '@tanstack/react-query';
+import { onlineManager, useQuery } from '@tanstack/react-query';
 import { screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { http, HttpResponse } from 'msw';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   buscarProductosDePrueba,
   simularBusquedaFallida,
   simularBusquedaProductos,
 } from '../../test/handlers/catalogo';
 import { renderizar } from '../../test/renderizar';
+import { servidor } from '../../test/servidor';
 import { EstadoVista } from './EstadoVista';
 
 function ListaProductos() {
@@ -55,12 +57,24 @@ describe('EstadoVista', () => {
     const { usuario } = renderizar(<ListaProductos />);
 
     const aviso = await screen.findByRole('alert');
-    expect(aviso).toHaveTextContent('Algo salió mal de nuestro lado');
+    expect(aviso).toHaveTextContent('El servicio de búsqueda falló.');
     expect(aviso).toHaveTextContent('Código de la solicitud: req-estado-1');
 
     simularBusquedaProductos({ total: 1 });
     await usuario.click(screen.getByRole('button', { name: 'Reintentar' }));
     expect(await screen.findByText('Producto 1')).toBeInTheDocument();
+  });
+
+  it('muestra el mensaje propio del backend, no uno genérico', async () => {
+    simularBusquedaFallida('req-estado-404', {
+      status: 404,
+      codigo: 'CATEGORIA_INEXISTENTE',
+      mensaje: 'Esa categoría ya no existe.',
+    });
+
+    renderizar(<ListaProductos />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Esa categoría ya no existe.');
   });
 
   it('si una consulta que ya tenía datos falla al recargar, los datos se quedan con el aviso arriba', async () => {
@@ -73,5 +87,25 @@ describe('EstadoVista', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('req-estado-2');
     expect(screen.getByText('Producto 1')).toBeInTheDocument();
+  });
+});
+
+describe('EstadoVista sin conexión (FE-02: networkMode always)', () => {
+  afterEach(() => {
+    onlineManager.setOnline(true);
+    vi.restoreAllMocks();
+  });
+
+  it('sin red la consulta no se queda pausada en el esqueleto: muestra «Sin conexión» y Reintentar', async () => {
+    onlineManager.setOnline(false);
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    servidor.use(http.get('/api/v1/productos', () => HttpResponse.error()));
+
+    renderizar(<ListaProductos />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Sin conexión. Revisa tu internet e intenta de nuevo.',
+    );
+    expect(screen.getByRole('button', { name: 'Reintentar' })).toBeInTheDocument();
   });
 });

@@ -1,3 +1,4 @@
+import { LARGO_MAXIMO_TEXTO_BUSQUEDA } from '@shopcart/shared';
 import { screen } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -21,6 +22,15 @@ describe('buscador del encabezado: casos borde', () => {
 
     expect(router.state.location.pathname).toBe('/');
     expect(router.state.location.search).toBe('');
+  });
+
+  it('no deja escribir más que el texto que acepta la búsqueda del backend', async () => {
+    renderizarRutas(crearRutas(), { ruta: '/' });
+
+    expect(await screen.findByRole('searchbox', { name: 'Buscar productos' })).toHaveAttribute(
+      'maxlength',
+      String(LARGO_MAXIMO_TEXTO_BUSQUEDA),
+    );
   });
 
   it('tildes, ñ y caracteres reservados de la URL llegan íntegros', async () => {

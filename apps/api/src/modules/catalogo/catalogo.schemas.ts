@@ -1,4 +1,4 @@
-import { montoSchema, textoNvarchar } from '@shopcart/shared';
+import { LARGO_MAXIMO_TEXTO_BUSQUEDA, montoSchema, textoNvarchar } from '@shopcart/shared';
 import { Decimal } from 'decimal.js';
 import {
   booleanoConsultaSchema,
@@ -104,7 +104,7 @@ export const paramsIdProductoSchema = z.object({ id: idEnRutaSchema });
 export const listarProductosSchema = consultaPaginacionSchema.extend({
   categoria: idEnRutaSchema.optional(),
   activo: booleanoConsultaSchema.optional(),
-  texto: textoNvarchar(150).optional(),
+  texto: textoNvarchar(LARGO_MAXIMO_TEXTO_BUSQUEDA).optional(),
 });
 
 const MAXIMO_IMAGENES = 20;
@@ -173,7 +173,7 @@ export const paramsIdVarianteSchema = z.object({ id: idEnRutaSchema });
 const montoFiltroSchema = montoSchema.transform((monto) => new Decimal(monto));
 export const buscarProductosSchema = consultaPaginacionSchema
   .extend({
-    texto: textoNvarchar(150).optional(),
+    texto: textoNvarchar(LARGO_MAXIMO_TEXTO_BUSQUEDA).optional(),
     categoria: idEnRutaSchema.optional(),
     precioMin: montoFiltroSchema.optional(),
     precioMax: montoFiltroSchema.optional(),

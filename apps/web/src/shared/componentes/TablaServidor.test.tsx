@@ -172,6 +172,21 @@ describe('TablaServidor: estado en la URL', () => {
     expect(router.state.historyAction).toBe('REPLACE');
   });
 
+  it('mientras llegan los datos de otra vista, la paginación vieja no hace saltar de página', async () => {
+    // Con el filtro hay 3 páginas; sin él, 10. Mientras llega la vista sin filtro se ven los datos viejos.
+    simularBusquedaProductos({
+      total: (consulta) => (consulta.get('disponible') === 'true' ? 45 : 200),
+      demoraDespuesDeLaPrimera: 200,
+    });
+    const { router } = renderizar(<TablaProductos />, { ruta: '/productos?disponible=true' });
+    await screen.findByText('Página 1 de 3, 45 resultados');
+
+    await router.navigate('/productos?pagina=8');
+
+    expect(await screen.findByText('Página 8 de 10, 200 resultados')).toBeInTheDocument();
+    expect(busqueda(router).get('pagina')).toBe('8');
+  });
+
   it('con total 0, la página se queda en 1 y nunca salta a 0', async () => {
     const busquedaSimulada = simularBusquedaProductos({ total: 0 });
     const { router } = renderizar(<TablaProductos />, { ruta: '/productos?pagina=4' });
@@ -263,7 +278,7 @@ describe('TablaServidor: estados', () => {
     simularBusquedaFallida('req-tabla-1');
     const { usuario } = renderizar(<TablaProductos />, { ruta: '/productos' });
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Algo salió mal de nuestro lado');
+    expect(await screen.findByRole('alert')).toHaveTextContent('El servicio de búsqueda falló.');
     expect(screen.getByRole('alert')).toHaveTextContent('req-tabla-1');
     simularBusquedaProductos({ total: 2 });
     await usuario.click(screen.getByRole('button', { name: 'Reintentar' }));

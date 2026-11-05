@@ -1,8 +1,8 @@
 import { telefonoSchema, textoNvarchar } from '@shopcart/shared';
-import { useMutation } from '@tanstack/react-query';
+import { onlineManager, useMutation } from '@tanstack/react-query';
 import { screen, waitFor } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import {
   crearDireccionDePrueba,
@@ -240,5 +240,26 @@ describe('useFormularioApi: doble envío', () => {
       expect(screen.getByRole('button', { name: 'Guardar' })).toBeEnabled();
     });
     expect(creacion.envios()).toBe(1);
+  });
+});
+
+describe('useFormularioApi sin conexión (FE-02: networkMode always)', () => {
+  afterEach(() => {
+    onlineManager.setOnline(true);
+    vi.restoreAllMocks();
+  });
+
+  it('sin red el envío no queda pausado: muestra «Sin conexión» y Guardar vuelve a estar disponible', async () => {
+    onlineManager.setOnline(false);
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    servidor.use(http.post('/api/v1/direcciones', () => HttpResponse.error()));
+    const { usuario } = renderizar(<FormularioDireccion />);
+
+    await llenarYEnviar(usuario);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Sin conexión. Revisa tu internet e intenta de nuevo.',
+    );
+    expect(screen.getByRole('button', { name: 'Guardar' })).toBeEnabled();
   });
 });

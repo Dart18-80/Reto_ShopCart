@@ -13,9 +13,11 @@ const consultaSchema = z.object({
   texto: textoNvarchar(10).optional(),
 });
 
-function Buscador() {
+function Buscador({ maxLength }: { maxLength?: number }) {
   const parametros = useParametrosUrl(consultaSchema);
-  return <FiltroTexto parametros={parametros} campo="texto" etiqueta="Buscar" />;
+  return (
+    <FiltroTexto parametros={parametros} campo="texto" etiqueta="Buscar" maxLength={maxLength} />
+  );
 }
 
 const esperarElDebounce = () =>
@@ -62,6 +64,20 @@ describe('FiltroTexto', () => {
     });
     await esperarElDebounce();
     await usuario.type(buscador, 'azul');
+
+    expect(buscador).toHaveValue('gorra azul');
+    await waitFor(() => {
+      expect(new URLSearchParams(router.state.location.search).get('texto')).toBe('gorra azul');
+    });
+  });
+
+  it('con el maxLength del esquema no se puede escribir un texto que la consulta rechazaría', async () => {
+    const { usuario, router } = renderizar(<Buscador maxLength={10} />, {
+      ruta: '/productos?texto=gorra',
+    });
+    const buscador = screen.getByRole('searchbox', { name: 'Buscar' });
+
+    await usuario.type(buscador, ' azul marino');
 
     expect(buscador).toHaveValue('gorra azul');
     await waitFor(() => {

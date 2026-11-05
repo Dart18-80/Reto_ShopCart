@@ -10,7 +10,7 @@ La identidad viaja en un **access JWT corto** (15 min, en el encabezado `Authori
 | --- | --- | --- |
 | Access token | HS256, vence en 15 min, lleva `sub`, `rol`, `jti` y `versionSesion` | [token-acceso.ts:8](../../../apps/api/src/shared/http/token-acceso.ts#L8 "export const VIGENCIA_ACCESO_SEG = 15 * 60;") |
 | Verificación | Solo HS256 (rechaza `alg: none` y otros algoritmos) y exige `exp`, `iat`, `jti`, `sub` | [token-acceso.ts:77](../../../apps/api/src/shared/http/token-acceso.ts#L77 "algorithms: [ALGORITMO]") |
-| Rol `Sistema` | Ningún token puede traerlo: solo `Cliente`, `Operador`, `Administrador` | [token-acceso.ts:14](../../../apps/api/src/shared/http/token-acceso.ts#L14 "export const ROLES_DE_USUARIO = ['Cliente', 'Operador', 'Administrador']") |
+| Rol `Sistema` | Ningún token puede traerlo: solo `Cliente`, `Operador`, `Administrador` | [roles.ts:5](../../../packages/shared/src/roles.ts#L5 "export const ROLES_DE_USUARIO = ['Cliente', 'Operador', 'Administrador']") |
 | Middleware `autenticar` | Verifica el token y la versión de sesión, y deja al usuario en el contexto | [autenticar.ts:43](../../../apps/api/src/shared/http/autenticar.ts#L43 "export function crearAutenticar") |
 | Revocación inmediata | Si el usuario se desactivó, cambió de rol o de contraseña, su versión de sesión sube y el token viejo responde 401 | [autenticar.ts:47](../../../apps/api/src/shared/http/autenticar.ts#L47 "await sesionRevocada(actor, versiones)") |
 | Autorización por rol | `autorizar(...roles)` después de `autenticar`: 401 sin sesión, 403 con otro rol | [autenticar.ts:79](../../../apps/api/src/shared/http/autenticar.ts#L79 "export function autorizar(...roles: Rol[])") |

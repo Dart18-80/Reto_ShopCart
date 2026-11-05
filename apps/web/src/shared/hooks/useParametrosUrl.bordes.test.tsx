@@ -1,4 +1,5 @@
 import { screen } from '@testing-library/react';
+import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { renderizar } from '../../test/renderizar';
@@ -81,5 +82,31 @@ describe('useParametrosUrl: casos borde', () => {
     await usuario.click(screen.getByRole('button', { name: 'Cambiar' }));
 
     expect(String(error)).toMatch(/no sabe escribir «rango» en la URL/);
+  });
+
+  it('cambiar conserva su identidad entre renders mientras la URL no cambia', async () => {
+    const identidades = new Set<unknown>();
+    function Observador() {
+      const { cambiar } = useParametrosUrl(consultaSchema);
+      const [, forzar] = useState(0);
+      identidades.add(cambiar);
+      return (
+        <button
+          type="button"
+          onClick={() => {
+            forzar((n) => n + 1);
+          }}
+        >
+          Render
+        </button>
+      );
+    }
+    const { usuario } = renderizar(<Observador />);
+    const antes = identidades.size;
+
+    await usuario.click(screen.getByRole('button', { name: 'Render' }));
+    await usuario.click(screen.getByRole('button', { name: 'Render' }));
+
+    expect(identidades.size).toBe(antes);
   });
 });

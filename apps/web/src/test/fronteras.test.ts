@@ -1,19 +1,10 @@
-import { randomUUID } from 'node:crypto';
-import { mkdir, readdir, rm, writeFile } from 'node:fs/promises';
-import { dirname, join, resolve } from 'node:path';
-import { ESLint } from 'eslint';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it, beforeAll, afterAll } from 'vitest';
+import { crearProyectoDeLint, type ProyectoDeLint } from './lintTemporal';
 
-// FE-09: el lint real del proyecto sobre módulos temporales dentro de src/modules, porque la regla clasifica los
-// archivos por su ruta. Mismo mecanismo que apps/api/test/unit/fronteras.test.ts (A-01).
+// FE-09: el lint real del proyecto sobre módulos de prueba, porque la regla clasifica los archivos por su ruta.
+// Viven en un proyecto temporal fuera de src/ (os.tmpdir()). Mismo mecanismo que apps/api/test/unit/fronteras.test.ts.
 
-const RAIZ = resolve(import.meta.dirname, '../../../..');
-const SRC = resolve(RAIZ, 'apps/web/src');
-const MODULOS = join(SRC, 'modules');
 const REGLA = 'boundaries/dependencies';
-const PREFIJO_TEMPORAL = 'prueba-';
-
-const eslint = new ESLint({ cwd: RAIZ });
 
 /** Un módulo completo: cada capa exporta algo que las demás pueden importar. */
 const CAPAS = {
@@ -25,41 +16,16 @@ const CAPAS = {
   'paginas/XPagina.tsx': 'export const pagina = 1;\n',
 };
 
-const modulosCreados: string[] = [];
-
-async function borrarSobrantes() {
-  const existentes = await readdir(MODULOS).catch(() => []);
-  await Promise.all(
-    existentes
-      .filter((nombre) => nombre.startsWith(PREFIJO_TEMPORAL))
-      .map((nombre) => rm(join(MODULOS, nombre), { recursive: true, force: true })),
-  );
-}
-
-async function crearModulo(): Promise<string> {
-  const nombre = `${PREFIJO_TEMPORAL}${randomUUID().slice(0, 8)}`;
-  for (const [archivo, contenido] of Object.entries(CAPAS)) {
-    const ruta = join(MODULOS, nombre, archivo);
-    await mkdir(dirname(ruta), { recursive: true });
-    await writeFile(ruta, contenido, 'utf8');
-  }
-  modulosCreados.push(nombre);
-  return nombre;
-}
+const a = 'prueba-a';
+const b = 'prueba-b';
+let proyecto: ProyectoDeLint;
 
 /** Escribe `codigo` en `archivo` (relativo a src) y devuelve los mensajes de la regla de fronteras. */
 async function erroresDeFrontera(archivo: string, codigo: string): Promise<string[]> {
-  const ruta = join(SRC, archivo);
-  await mkdir(dirname(ruta), { recursive: true });
-  await writeFile(ruta, codigo, 'utf8');
-  try {
-    const [resultado] = await eslint.lintFiles([ruta]);
-    return (resultado?.messages ?? [])
-      .filter((mensaje) => mensaje.ruleId === REGLA)
-      .map((mensaje) => mensaje.message);
-  } finally {
-    await rm(ruta, { force: true });
-  }
+  await proyecto.escribir(archivo, codigo);
+  return (await proyecto.mensajes(archivo))
+    .filter((mensaje) => mensaje.ruleId === REGLA)
+    .map((mensaje) => mensaje.message);
 }
 
 const importar = (nombre: string, ruta: string) =>
@@ -67,25 +33,20 @@ const importar = (nombre: string, ruta: string) =>
 const importarTipo = (ruta: string) =>
   `import type * as tipos from '${ruta}';\n\nexport type Usado = typeof tipos;\n`;
 
-// El lint con información de tipos carga el programa de TypeScript: tarda varios segundos, más con carga.
 const ESPERA_LINT_MS = 60_000;
 
-let a = '';
-let b = '';
-
 beforeAll(async () => {
-  await borrarSobrantes();
-  a = await crearModulo();
-  b = await crearModulo();
-  await mkdir(join(SRC, 'shared/api'), { recursive: true });
-  await writeFile(join(SRC, 'shared/api/prueba-cliente.ts'), 'export const api = 1;\n', 'utf8');
-});
+  proyecto = await crearProyectoDeLint((ruleId) => ruleId === REGLA);
+  for (const modulo of [a, b]) {
+    for (const [archivo, contenido] of Object.entries(CAPAS)) {
+      await proyecto.escribir(`modules/${modulo}/${archivo}`, contenido);
+    }
+  }
+  await proyecto.escribir('shared/api/prueba-cliente.ts', 'export const api = 1;\n');
+}, ESPERA_LINT_MS);
 
 afterAll(async () => {
-  await Promise.all(
-    modulosCreados.map((nombre) => rm(join(MODULOS, nombre), { recursive: true, force: true })),
-  );
-  await rm(join(SRC, 'shared/api/prueba-cliente.ts'), { force: true });
+  await proyecto.borrar();
 });
 
 describe('fronteras entre módulos (FE-09)', { timeout: ESPERA_LINT_MS }, () => {

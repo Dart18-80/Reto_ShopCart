@@ -17,6 +17,7 @@ export const CODIGO_RESPUESTA_INESPERADA = 'RESPUESTA_INESPERADA';
 const STATUS_SIN_RESPUESTA = 0;
 
 const MENSAJE_RED = 'No pudimos conectar con la tienda. Revisa tu conexión e intenta de nuevo.';
+const MENSAJE_SIN_CONEXION = 'Sin conexión. Revisa tu internet e intenta de nuevo.';
 const MENSAJE_INESPERADO = 'Algo salió mal de nuestro lado. Intenta de nuevo en un momento.';
 
 interface DatosErrorApi {
@@ -51,11 +52,12 @@ export class ErrorApi extends Error {
     return this.codigo === CODIGO_RED;
   }
 
+  /** Una falla de red. Si el navegador sabe que no tiene conexión, el mensaje lo dice (FE-02). */
   static deRed(): ErrorApi {
     return new ErrorApi({
       status: STATUS_SIN_RESPUESTA,
       codigo: CODIGO_RED,
-      mensaje: MENSAJE_RED,
+      mensaje: navigator.onLine ? MENSAJE_RED : MENSAJE_SIN_CONEXION,
       detalles: undefined,
       requestId: null,
     });
