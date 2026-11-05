@@ -36,3 +36,8 @@ __pycache__/
 # resultados de Playwright (FE-12)
 test-results/
 playwright-report/
+
+# temporales de las pruebas de lint de la web (fronteras.test.ts y accesibilidad-lint.test.ts los crean y borran)
+apps/web/src/modules/prueba-*/
+apps/web/src/shared/api/prueba-*
+apps/web/src/shared/componentes/PruebaA11y*
