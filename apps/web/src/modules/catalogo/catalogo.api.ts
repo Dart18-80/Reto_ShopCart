@@ -30,3 +30,10 @@ export async function listarCategorias(): Promise<Categoria[]> {
   const { data } = await api.GET('/api/v1/categorias');
   return cuerpoDe(data).datos;
 }
+
+export async function obtenerProducto(idProducto: number): Promise<ProductoTienda> {
+  const { data } = await api.GET('/api/v1/productos/{id}', {
+    params: { path: { id: idProducto } },
+  });
+  return cuerpoDe(data).datos;
+}

@@ -777,7 +777,7 @@ El orden de construcción, por módulos (F1, módulos 1 a 11 y F6), está en [`0
 | M1-H02 | Perfil y contraseña | Should | 0.75 | Hecha |
 | M2-H01 | Datos de presentación del catálogo (backend) | Must | 1.25 | Hecha |
 | M2-H02 | Catálogo con búsqueda y filtros | Must | 1.0 | Hecha |
-| M2-H03 | Detalle de producto | Must | 1.25 | Lista |
+| M2-H03 | Detalle de producto | Must | 1.25 | Hecha |
 
 ---
 

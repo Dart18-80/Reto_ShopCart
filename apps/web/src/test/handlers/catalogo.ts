@@ -103,3 +103,88 @@ export function simularProductos(productos: ProductoBusqueda[]) {
   );
   return { consultas };
 }
+
+type ProductoTienda = Respuesta<'/api/v1/productos/{id}', 'get'>['datos'];
+type VarianteTienda = ProductoTienda['variantes'][number];
+
+const TALLAS = { S: 10, M: 11, L: 12, XL: 13 } as const;
+const COLORES = { Celeste: 20, Blanco: 21, Azul: 22 } as const;
+
+/** Una variante con talla y color de la semilla; el precio y la existencia se pueden cambiar. */
+export const varianteDePrueba = (
+  idVariante: number,
+  talla: keyof typeof TALLAS,
+  color: keyof typeof COLORES,
+  cambios: Partial<VarianteTienda> = {},
+): VarianteTienda => ({
+  idVariante,
+  sku: `OXF-${talla}-${color}`,
+  descripcionAtributos: `${talla} / ${color}`,
+  precio: '249.00',
+  estadoExistencia: 'Disponible',
+  valores: [
+    { idAtributo: 1, atributo: 'Talla', idValorAtributo: TALLAS[talla], valor: talla },
+    { idAtributo: 2, atributo: 'Color', idValorAtributo: COLORES[color], valor: color },
+  ],
+  ...cambios,
+});
+
+/** La Camisa Oxford del frame 24:314: XL agotada en Azul, Celeste solo en S y M. */
+export const productoDetalleDePrueba = (cambios: Partial<ProductoTienda> = {}): ProductoTienda => ({
+  idProducto: 50,
+  idCategoria: 1,
+  categoria: 'Camisas y blusas',
+  ilustracion: 'Camisa',
+  nombre: 'Camisa Oxford',
+  descripcion: 'Camisa de algodón Oxford con cuello de botones.',
+  diasGarantiaPrecio: 3,
+  imagenes: [],
+  variantes: [
+    varianteDePrueba(1, 'S', 'Celeste'),
+    varianteDePrueba(2, 'M', 'Celeste'),
+    varianteDePrueba(3, 'S', 'Blanco'),
+    varianteDePrueba(4, 'M', 'Blanco', { precio: '259.00' }),
+    varianteDePrueba(5, 'L', 'Blanco', {
+      estadoExistencia: 'UltimasUnidades',
+      unidadesRestantes: 2,
+    }),
+    varianteDePrueba(6, 'S', 'Azul'),
+    varianteDePrueba(7, 'M', 'Azul'),
+    varianteDePrueba(8, 'L', 'Azul'),
+    varianteDePrueba(9, 'XL', 'Azul', { estadoExistencia: 'Agotado' }),
+  ],
+  ...cambios,
+});
+
+/** `GET /api/v1/productos/{id}` que responde el producto indicado, o un error con el formato de A-06. */
+export function simularProducto(producto: ProductoTienda = productoDetalleDePrueba()) {
+  servidor.use(
+    http.get('/api/v1/productos/:id', ({ params }) =>
+      String(params.id) === String(producto.idProducto)
+        ? HttpResponse.json({ datos: producto })
+        : HttpResponse.json(
+            {
+              error: {
+                codigo: 'NO_ENCONTRADO',
+                mensaje: 'El producto no existe.',
+                requestId: 'req-404',
+              },
+            },
+            { status: 404 },
+          ),
+    ),
+  );
+}
+
+export function simularProductoFallido(requestId: string) {
+  servidor.use(
+    http.get('/api/v1/productos/:id', () =>
+      HttpResponse.json(
+        {
+          error: { codigo: 'ERROR_INTERNO', mensaje: 'No pudimos cargar el producto.', requestId },
+        },
+        { status: 500 },
+      ),
+    ),
+  );
+}

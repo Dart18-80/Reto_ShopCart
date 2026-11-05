@@ -1,7 +1,7 @@
 import { ShieldX } from 'lucide-react';
 import { Link } from 'react-router';
 import { Button } from '../../shared/ui/button';
-import { AvisoDePagina } from './AvisoDePagina';
+import { AvisoDePagina } from '../../shared/componentes/AvisoDePagina';
 
 /** FE-04: con sesión pero sin el rol, el equivalente de un 403; no una redirección silenciosa. */
 export function SinPermiso() {

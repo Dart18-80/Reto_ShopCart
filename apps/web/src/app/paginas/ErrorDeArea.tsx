@@ -2,7 +2,7 @@ import { TriangleAlert } from 'lucide-react';
 import { Link } from 'react-router';
 import { Button } from '../../shared/ui/button';
 import type { Area } from '../rutas';
-import { AvisoDePagina } from './AvisoDePagina';
+import { AvisoDePagina } from '../../shared/componentes/AvisoDePagina';
 
 const NOMBRE_DEL_AREA: Record<Area, string> = {
   tienda: 'la tienda',

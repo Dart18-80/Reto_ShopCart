@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { useTituloPagina } from '../../shared/hooks/useTituloPagina';
+import { useTituloPagina } from '../hooks/useTituloPagina';
 
 interface PropsAvisoDePagina {
   icono: LucideIcon;

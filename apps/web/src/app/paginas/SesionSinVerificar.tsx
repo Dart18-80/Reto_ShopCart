@@ -1,7 +1,7 @@
 import { WifiOff } from 'lucide-react';
 import type { ErrorApi } from '../../shared/api';
 import { Button } from '../../shared/ui/button';
-import { AvisoDePagina } from './AvisoDePagina';
+import { AvisoDePagina } from '../../shared/componentes/AvisoDePagina';
 
 interface PropsSesionSinVerificar {
   error: ErrorApi | null;

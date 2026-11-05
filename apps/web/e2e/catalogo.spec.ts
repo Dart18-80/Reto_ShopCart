@@ -1,27 +1,36 @@
 import type { APIRequestContext } from '@playwright/test';
 import { expect, nombreUnico, test } from './fixtures';
 
+const RUTA_ENTRADAS = '/api/v1/inventario/entradas';
+
 interface Atributo {
   nombre: string;
   valores: { idValorAtributo: number; valor: string }[];
 }
 
-/** El valor «Azul» del atributo Color de la semilla (FE-16: el atributo llamado Color es el color de la prenda). */
-async function idDelAzul(apiAdmin: APIRequestContext): Promise<number> {
-  const respuesta = await apiAdmin.get('/api/v1/admin/atributos');
-  const { datos } = (await respuesta.json()) as { datos: Atributo[] };
-  const azul = datos
-    .find((atributo) => atributo.nombre === 'Color')
-    ?.valores.find((valor) => valor.valor === 'Azul');
-  if (azul === undefined) throw new Error('Falta el color Azul de la semilla');
-  return azul.idValorAtributo;
+interface VarianteNueva {
+  valores: number[];
+  precio: string;
+  /** Unidades que entran al inventario; sin ellas, la variante queda Agotada. */
+  existencia?: number;
 }
 
-/** Una categoría y un producto propios de la corrida, con una variante con precio (sin existencia: Agotado). */
+/** Un valor de un atributo de la semilla (FE-16: el atributo llamado Color es el color de la prenda). */
+async function valorDeLaSemilla(apiAdmin: APIRequestContext, atributo: string, valor: string) {
+  const respuesta = await apiAdmin.get('/api/v1/admin/atributos');
+  const { datos } = (await respuesta.json()) as { datos: Atributo[] };
+  const encontrado = datos
+    .find((a) => a.nombre === atributo)
+    ?.valores.find((v) => v.valor === valor);
+  if (encontrado === undefined) throw new Error(`Falta ${atributo} ${valor} en la semilla`);
+  return encontrado.idValorAtributo;
+}
+
+/** Una categoría y un producto propios de la corrida, con sus variantes con precio y su existencia. */
 async function productoEnTienda(
   apiAdmin: APIRequestContext,
   nombre: string,
-  { valores = [], precio = '249.90' }: { valores?: number[]; precio?: string } = {},
+  variantes: VarianteNueva[],
 ) {
   const categoria = await apiAdmin.post('/api/v1/admin/categorias', {
     data: { nombre: nombreUnico('categoria'), ilustracion: 'Camisa' },
@@ -33,18 +42,29 @@ async function productoEnTienda(
   });
   expect(producto.status()).toBe(201);
   const { datos } = (await producto.json()) as { datos: { idProducto: number } };
-  const variante = await apiAdmin.post(
-    `/api/v1/admin/productos/${String(datos.idProducto)}/variantes`,
-    { data: { sku: nombreUnico('sku').slice(-40), valores, precio } },
-  );
-  expect(variante.status()).toBe(201);
+  for (const { existencia, ...variante } of variantes) {
+    const respuesta = await apiAdmin.post(
+      `/api/v1/admin/productos/${String(datos.idProducto)}/variantes`,
+      { data: { sku: nombreUnico('sku').slice(-40), ...variante } },
+    );
+    expect(respuesta.status()).toBe(201);
+    if (existencia === undefined) continue;
+    const { datos: conVariante } = (await respuesta.json()) as {
+      datos: { variantes: { idVariante: number }[] };
+    };
+    const entrada = await apiAdmin.post(RUTA_ENTRADAS, {
+      data: {
+        idVariante: conVariante.variantes.at(-1)?.idVariante,
+        cantidad: existencia,
+        motivo: 'Existencia de la prueba E2E',
+      },
+    });
+    expect(entrada.status()).toBe(201);
+  }
   return { idProducto: datos.idProducto, idCategoria: creada.idCategoria };
 }
 
-type CrearEnTienda = (
-  nombre: string,
-  opciones?: { valores?: number[]; precio?: string },
-) => Promise<void>;
+type CrearEnTienda = (nombre: string, variantes?: VarianteNueva[]) => Promise<number>;
 
 /**
  * Las pruebas corren contra la tienda real: al terminar, lo que crearon se desactiva (primero el producto y después
@@ -53,8 +73,10 @@ type CrearEnTienda = (
 const prueba = test.extend<{ crearEnTienda: CrearEnTienda }>({
   crearEnTienda: async ({ apiAdmin }, usar) => {
     const creados: { idProducto: number; idCategoria: number }[] = [];
-    await usar(async (nombre, opciones) => {
-      creados.push(await productoEnTienda(apiAdmin, nombre, opciones));
+    await usar(async (nombre, variantes = [{ valores: [], precio: '249.90' }]) => {
+      const creado = await productoEnTienda(apiAdmin, nombre, variantes);
+      creados.push(creado);
+      return creado.idProducto;
     });
     for (const { idProducto, idCategoria } of creados) {
       await apiAdmin.post(`/api/v1/admin/productos/${String(idProducto)}/desactivar`);
@@ -83,10 +105,8 @@ test.describe('catálogo de la tienda (M2-H02)', () => {
     'un producto creado por la API con una variante Azul aparece con la prenda azul y su precio',
     async ({ page, apiAdmin, crearEnTienda }) => {
       const nombre = `Camisa ${nombreUnico('azul')}`;
-      await crearEnTienda(nombre, {
-        valores: [await idDelAzul(apiAdmin)],
-        precio: '249.90',
-      });
+      const azul = await valorDeLaSemilla(apiAdmin, 'Color', 'Azul');
+      await crearEnTienda(nombre, [{ valores: [azul], precio: '249.90' }]);
 
       await page.goto(`/?texto=${encodeURIComponent(nombre)}`);
 
@@ -117,4 +137,35 @@ test.describe('catálogo de la tienda (M2-H02)', () => {
     await expect(page).not.toHaveURL(/disponible=true/);
     await expect(page.getByRole('checkbox', { name: 'Solo con existencia' })).not.toBeChecked();
   });
+});
+
+test.describe('detalle de producto (M2-H03)', () => {
+  prueba(
+    'elegir color y talla muestra el precio de esa variante y la guarda en la URL',
+    async ({ page, apiAdmin, crearEnTienda }) => {
+      const [azul, negro, m, l] = await Promise.all([
+        valorDeLaSemilla(apiAdmin, 'Color', 'Azul'),
+        valorDeLaSemilla(apiAdmin, 'Color', 'Negro'),
+        valorDeLaSemilla(apiAdmin, 'Talla', 'M'),
+        valorDeLaSemilla(apiAdmin, 'Talla', 'L'),
+      ]);
+      const idProducto = await crearEnTienda(`Camisa ${nombreUnico('detalle')}`, [
+        { valores: [m, azul], precio: '249.90', existencia: 10 },
+        { valores: [l, azul], precio: '279.90', existencia: 10 },
+        { valores: [m, negro], precio: '259.90', existencia: 10 },
+      ]);
+
+      await page.goto(`/productos/${String(idProducto)}`);
+      await expect(page.getByRole('button', { name: 'Elige talla y color' })).toBeDisabled();
+      await page.getByRole('button', { name: 'Azul' }).click();
+      await page.getByRole('group', { name: 'Talla' }).getByRole('button', { name: 'L' }).click();
+
+      await expect(page.getByText('Q279.90')).toBeVisible();
+      await expect(page.getByRole('img', { name: 'Camisa color Azul' }).first()).toBeVisible();
+      await expect(page).toHaveURL(/variante=\d+/);
+
+      await page.reload();
+      await expect(page.getByText('Q279.90')).toBeVisible();
+    },
+  );
 });

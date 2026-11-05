@@ -22,7 +22,7 @@ export function MuestraColor({ color, seleccionada = false, className }: PropsMu
         className,
       )}
     >
-      <span className={cn('size-6 rounded-full', clasesDelColor(color).fondo)} />
+      <span className={cn('size-3/4 rounded-full', clasesDelColor(color).fondo)} />
     </span>
   );
 }

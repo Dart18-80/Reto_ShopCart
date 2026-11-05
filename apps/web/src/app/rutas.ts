@@ -63,6 +63,15 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ),
   },
   {
+    ruta: '/productos/:id',
+    area: 'tienda',
+    acceso: PUBLICO,
+    pagina: diferida(
+      () => import('../modules/catalogo/paginas/ProductoPagina'),
+      (m) => m.ProductoPagina,
+    ),
+  },
+  {
     ruta: RUTA_CARRITO,
     area: 'tienda',
     acceso: INVITADO_O_CLIENTE,

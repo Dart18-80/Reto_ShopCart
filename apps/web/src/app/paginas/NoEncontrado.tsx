@@ -1,7 +1,7 @@
 import { SearchX } from 'lucide-react';
 import { Link } from 'react-router';
 import { Button } from '../../shared/ui/button';
-import { AvisoDePagina } from './AvisoDePagina';
+import { AvisoDePagina } from '../../shared/componentes/AvisoDePagina';
 
 export function NoEncontrado() {
   return (
