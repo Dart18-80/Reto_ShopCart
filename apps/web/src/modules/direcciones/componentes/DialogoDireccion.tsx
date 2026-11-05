@@ -10,6 +10,11 @@ import {
 import type { Direccion } from '../direcciones.api';
 import { FormularioEditarDireccion, FormularioNuevaDireccion } from './FormularioDireccion';
 
+// El formulario es largo: en un teléfono el diálogo se desplaza en lugar de salirse de la pantalla.
+const CONTENIDO = 'max-h-[90dvh] overflow-y-auto';
+const TITULO = 'display-titulo-3';
+const DESCRIPCION = 'texto-pequeno';
+
 interface PropsDialogo {
   /** El botón que abre el diálogo. */
   disparador: ReactNode;
@@ -24,9 +29,9 @@ export function DialogoNuevaDireccion({
   return (
     <Dialog open={abierto} onOpenChange={setAbierto}>
       <DialogTrigger asChild>{disparador}</DialogTrigger>
-      <DialogContent>
-        <DialogTitle>Nueva dirección</DialogTitle>
-        <DialogDescription>A dónde llevamos tu pedido.</DialogDescription>
+      <DialogContent className={CONTENIDO}>
+        <DialogTitle className={TITULO}>Nueva dirección</DialogTitle>
+        <DialogDescription className={DESCRIPCION}>A dónde llevamos tu pedido.</DialogDescription>
         <FormularioNuevaDireccion
           alTerminar={(direccion) => {
             setAbierto(false);
@@ -47,9 +52,9 @@ export function DialogoEditarDireccion({
   return (
     <Dialog open={abierto} onOpenChange={setAbierto}>
       <DialogTrigger asChild>{disparador}</DialogTrigger>
-      <DialogContent>
-        <DialogTitle>Editar dirección</DialogTitle>
-        <DialogDescription>Los cambios valen para tus próximos pedidos.</DialogDescription>
+      <DialogContent className={CONTENIDO}>
+        <DialogTitle className={TITULO}>Editar dirección</DialogTitle>
+        <DialogDescription className={DESCRIPCION}>Los cambios valen para tus próximos pedidos.</DialogDescription>
         <FormularioEditarDireccion
           direccion={direccion}
           alTerminar={() => {
