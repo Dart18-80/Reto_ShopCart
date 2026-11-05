@@ -111,8 +111,9 @@ export function crearSesion({ refrescar, cerrarEnServidor, bloqueo, canal }: Dep
       canal.publicar({ tipo: 'token', sesion: datos });
       return datos.accessToken;
     } catch (error) {
-      if (!(error instanceof ErrorApi) || error.status !== STATUS_NO_AUTENTICADO) throw error;
+      // Cualquier falla que llega después de un cambio de sesión (un login, un cierre) ya no le corresponde.
       if (llegoTarde()) return token;
+      if (!(error instanceof ErrorApi) || error.status !== STATUS_NO_AUTENTICADO) throw error;
       // REFRESH_REUTILIZADO, USUARIO_INACTIVO o sin cookie: ninguna pestaña puede renovar.
       cerrarLocal();
       canal.publicar({ tipo: 'cerrada' });

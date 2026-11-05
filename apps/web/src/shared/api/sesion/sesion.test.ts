@@ -385,3 +385,50 @@ describe('sesión: aviso de cambio de usuario (para vaciar la caché)', () => {
     expect(avisar).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('sesión: un refresh que falla tarde no pisa una sesión más nueva', () => {
+  it('si otra pestaña inició sesión mientras esta rehidrataba, una falla de red tardía no la deja no verificada', async () => {
+    let fallar: (error: unknown) => void = () => undefined;
+    const pestana = crearNavegador();
+    const a = pestana({
+      refrescar: () =>
+        new Promise<DatosSesion>((_resolver, rechazar) => {
+          fallar = rechazar;
+        }),
+    });
+    const b = pestana();
+
+    const rehidratacion = a.rehidratar();
+    await entregarMensajes();
+    b.establecer(sesionDePrueba('token-de-b'));
+    await entregarMensajes();
+    fallar(ErrorApi.deRed());
+    await rehidratacion;
+
+    expect(a.estado()).toMatchObject({ tipo: 'activa' });
+    expect(a.token()).toBe('token-de-b');
+  });
+
+  it('si inició sesión mientras el Reintentar estaba en vuelo, un 503 tardío no la deja trabada', async () => {
+    const refrescar = vi.fn<() => Promise<DatosSesion>>().mockRejectedValueOnce(ErrorApi.deRed());
+    const sesion = crearNavegador()({ refrescar });
+    await sesion.rehidratar();
+    expect(sesion.estado()).toMatchObject({ tipo: 'noVerificada' });
+
+    let fallar: (error: unknown) => void = () => undefined;
+    refrescar.mockImplementationOnce(
+      () =>
+        new Promise<DatosSesion>((_resolver, rechazar) => {
+          fallar = rechazar;
+        }),
+    );
+    const reintento = sesion.rehidratar();
+    await entregarMensajes();
+    sesion.establecer(sesionDePrueba('token-del-login'));
+    fallar(errorApi(503, 'RESPUESTA_INESPERADA'));
+    await reintento;
+
+    expect(sesion.estado()).toMatchObject({ tipo: 'activa' });
+    expect(sesion.token()).toBe('token-del-login');
+  });
+});
