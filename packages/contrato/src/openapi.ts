@@ -6873,6 +6873,8 @@ export interface components {
         };
         ActualizarCategoria: {
             descripcion?: string | null;
+            /** @enum {string} */
+            ilustracion?: "Camisa" | "Pantalon" | "Vestido" | "Chaqueta" | "Tenis" | "Gorra";
             nombre?: string;
         };
         ActualizarConfiguracion: {
@@ -7036,6 +7038,8 @@ export interface components {
         CategoriaPublica: {
             descripcion: string | null;
             idCategoria: number;
+            /** @enum {string} */
+            ilustracion: "Camisa" | "Pantalon" | "Vestido" | "Chaqueta" | "Tenis" | "Gorra";
             nombre: string;
         };
         Configuracion: {
@@ -7057,6 +7061,8 @@ export interface components {
         };
         CrearCategoria: {
             descripcion?: string;
+            /** @enum {string} */
+            ilustracion?: "Camisa" | "Pantalon" | "Vestido" | "Chaqueta" | "Tenis" | "Gorra";
             nombre: string;
         };
         CrearCupon: {
@@ -7473,9 +7479,13 @@ export interface components {
         };
         ProductoBusqueda: {
             categoria: string;
+            /** @description FE-16: los valores distintos del atributo Color de las variantes activas, en su orden, hasta 5 */
+            colores: string[];
             disponible: boolean;
             idCategoria: number;
             idProducto: number;
+            /** @enum {string} */
+            ilustracion: "Camisa" | "Pantalon" | "Vestido" | "Chaqueta" | "Tenis" | "Gorra";
             imagenPrincipal: string | null;
             nombre: string;
             precioMinimo: string;
@@ -7492,8 +7502,12 @@ export interface components {
         ProductoTienda: {
             categoria: string;
             descripcion: string | null;
+            /** @description N-02: días que el carrito garantiza el precio de una línea; lo configura el Admin */
+            diasGarantiaPrecio: number;
             idCategoria: number;
             idProducto: number;
+            /** @enum {string} */
+            ilustracion: "Camisa" | "Pantalon" | "Vestido" | "Chaqueta" | "Tenis" | "Gorra";
             imagenes: {
                 esPrincipal: boolean;
                 idImagenProducto: number;

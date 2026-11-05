@@ -29,6 +29,8 @@ export const productoDePrueba = (numero: number): ProductoBusqueda => ({
   precioMinimo: `${String(100 + numero)}.00`,
   disponible: true,
   imagenPrincipal: null,
+  ilustracion: 'Camisa',
+  colores: [],
 });
 
 interface OpcionesBusqueda {

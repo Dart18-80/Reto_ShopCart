@@ -6,6 +6,7 @@ CREATE OR ALTER PROCEDURE dbo.SP_Catalogo_ActualizarCategoria
     @Nombre            NVARCHAR(80),
     @Descripcion       NVARCHAR(300),
     @QuitarDescripcion BIT              = 0,
+    @Ilustracion       VARCHAR(20)      = NULL,
     @IDUsuarioActor INT              = NULL,
     @RolActor       VARCHAR(20)      = NULL,
     @RequestId      UNIQUEIDENTIFIER = NULL
@@ -31,6 +32,7 @@ BEGIN
         SET    Nombre             = COALESCE(@Nombre, Nombre),
                Descripcion        = CASE WHEN @QuitarDescripcion = 1 THEN NULL
                                          ELSE COALESCE(@Descripcion, Descripcion) END,
+               Ilustracion        = COALESCE(@Ilustracion, Ilustracion),
                FechaActualizacion = SYSUTCDATETIME()
         WHERE  IDCategoria = @IDCategoria;
 
@@ -46,7 +48,7 @@ BEGIN
         THROW;
     END CATCH
 
-    SELECT c.IDCategoria, c.Nombre, c.Descripcion, c.Activo
+    SELECT c.IDCategoria, c.Nombre, c.Descripcion, c.Ilustracion, c.Activo
     FROM   dbo.Categoria AS c
     WHERE  c.IDCategoria = @IDCategoria;
 END

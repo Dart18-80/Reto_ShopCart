@@ -1,4 +1,6 @@
+import type { IlustracionPrenda } from '@shopcart/shared';
 import sql from 'mssql';
+import { z } from '../../shared/openapi/zod.js';
 import {
   ejecutarSP,
   ejecutarSPConjuntos,
@@ -44,6 +46,8 @@ interface FilaCategoriaPublica {
   IDCategoria: number;
   Nombre: string;
   Descripcion: string | null;
+  // CK_Categoria_Ilustracion garantiza que es una de la lista.
+  Ilustracion: IlustracionPrenda;
 }
 
 interface FilaCategoria extends FilaCategoriaPublica {
@@ -54,6 +58,7 @@ const aCategoriaPublica = (fila: FilaCategoriaPublica): CategoriaPublica => ({
   idCategoria: fila.IDCategoria,
   nombre: fila.Nombre,
   descripcion: fila.Descripcion,
+  ilustracion: fila.Ilustracion,
 });
 
 const aCategoria = (fila: FilaCategoria): Categoria => ({
@@ -122,6 +127,11 @@ interface FilaProducto {
   Categoria: string;
   Nombre: string;
   Descripcion: string | null;
+}
+
+interface FilaProductoTienda extends FilaProducto {
+  Ilustracion: IlustracionPrenda;
+  DiasGarantiaPrecio: number;
 }
 
 interface FilaProductoAdmin extends FilaProducto {
@@ -268,10 +278,15 @@ interface FilaProductoBusqueda {
   Nombre: string;
   IDCategoria: number;
   Categoria: string;
+  Ilustracion: IlustracionPrenda;
   PrecioMinimo: number;
   TieneDisponible: boolean;
   ImagenPrincipal: string | null;
+  /** Arreglo JSON de texto que arma VW_Catalogo_ProductosTienda con STRING_AGG. */
+  Colores: string;
 }
+
+const coloresSchema = z.array(z.string());
 
 interface FilaVersionPrecio {
   IDPrecioVariante: number;
@@ -308,6 +323,7 @@ export const catalogoRepository = {
     const filas = await ejecutarSP<FilaCategoria>('SP_Catalogo_CrearCategoria', {
       Nombre: { tipo: sql.NVarChar(80), valor: datos.nombre },
       Descripcion: { tipo: sql.NVarChar(300), valor: datos.descripcion ?? null },
+      Ilustracion: { tipo: sql.VarChar(20), valor: datos.ilustracion ?? null },
     });
     return unica(filas, 'SP_Catalogo_CrearCategoria');
   },
@@ -320,6 +336,7 @@ export const catalogoRepository = {
       Nombre: { tipo: sql.NVarChar(80), valor: cambios.nombre ?? null },
       Descripcion: { tipo: sql.NVarChar(300), valor: cambios.descripcion ?? null },
       QuitarDescripcion: { tipo: sql.Bit, valor: cambios.descripcion === null },
+      Ilustracion: { tipo: sql.VarChar(20), valor: cambios.ilustracion ?? null },
     });
     return unica(filas, 'SP_Catalogo_ActualizarCategoria');
   },
@@ -389,9 +406,11 @@ export const catalogoRepository = {
       nombre: fila.Nombre,
       idCategoria: fila.IDCategoria,
       categoria: fila.Categoria,
+      ilustracion: fila.Ilustracion,
       precioMinimo: aMonto(fila.PrecioMinimo),
       disponible: fila.TieneDisponible,
       imagenPrincipal: fila.ImagenPrincipal,
+      colores: coloresSchema.parse(JSON.parse(fila.Colores)),
     }));
     return { productos, total };
   },
@@ -425,7 +444,7 @@ export const catalogoRepository = {
     productoAdmin('SP_Catalogo_ObtenerProductoAdmin', idProducto(id)),
 
   async obtenerProductoTienda(id: number): Promise<ProductoTienda | null> {
-    const conjuntos = await conjuntosProducto<FilaProducto, FilaVarianteTienda>(
+    const conjuntos = await conjuntosProducto<FilaProductoTienda, FilaVarianteTienda>(
       'SP_Catalogo_ObtenerProducto',
       idProducto(id),
     );
@@ -436,8 +455,10 @@ export const catalogoRepository = {
       idProducto: producto.IDProducto,
       idCategoria: producto.IDCategoria,
       categoria: producto.Categoria,
+      ilustracion: producto.Ilustracion,
       nombre: producto.Nombre,
       descripcion: producto.Descripcion,
+      diasGarantiaPrecio: producto.DiasGarantiaPrecio,
       imagenes: conjuntos.imagenes.map(aImagen),
       variantes: conjuntos.variantes.map((fila): VarianteTienda => ({
         idVariante: fila.IDVariante,

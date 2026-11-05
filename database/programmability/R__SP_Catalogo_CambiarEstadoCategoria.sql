@@ -43,7 +43,7 @@ BEGIN
         THROW;
     END CATCH
 
-    SELECT c.IDCategoria, c.Nombre, c.Descripcion, c.Activo
+    SELECT c.IDCategoria, c.Nombre, c.Descripcion, c.Ilustracion, c.Activo
     FROM   dbo.Categoria AS c
     WHERE  c.IDCategoria = @IDCategoria;
 END

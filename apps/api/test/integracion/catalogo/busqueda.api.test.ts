@@ -30,9 +30,11 @@ const resultadoSchema = z.object({
       nombre: z.string(),
       idCategoria: z.number(),
       categoria: z.string(),
+      ilustracion: z.string(),
       precioMinimo: z.string(),
       disponible: z.boolean(),
       imagenPrincipal: z.string().nullable(),
+      colores: z.array(z.string()),
     }),
   ),
   paginacion: z.object({
@@ -290,5 +292,122 @@ describe('búsqueda del catálogo (E3-H05, A-10)', () => {
       expect(duracion).toBeLessThan(LIMITE_MS);
       expect(resultadoSchema.parse(respuesta.body).paginacion.pagina).toBe(1);
     }
+  });
+});
+
+const atributosSchema = z.object({
+  datos: z.array(
+    z.object({
+      idAtributo: z.number(),
+      nombre: z.string(),
+      valores: z.array(z.object({ idValorAtributo: z.number(), valor: z.string() })),
+    }),
+  ),
+});
+
+/** Los atributos Color y Talla de la semilla (FE-16: el atributo llamado Color es el color de la prenda). */
+async function atributosDeLaSemilla() {
+  const { datos } = atributosSchema.parse(
+    (await request(app).get('/api/v1/admin/atributos').set(conToken(token))).body,
+  );
+  const porNombre = (nombre: string) => {
+    const atributo = datos.find((a) => a.nombre === nombre);
+    if (atributo === undefined) throw new Error(`Falta el atributo ${nombre} de la semilla`);
+    return atributo;
+  };
+  const talla = porNombre('Talla');
+  const idTalla = (valor: string) => {
+    const encontrado = talla.valores.find((v) => v.valor === valor)?.idValorAtributo;
+    if (encontrado === undefined) throw new Error(`Falta la talla ${valor} de la semilla`);
+    return encontrado;
+  };
+  return { idColor: porNombre('Color').idAtributo, idTalla };
+}
+
+/** Un color nuevo de la semilla con su orden de despliegue: único por prueba. */
+async function colorNuevo(idColor: number, valor: string, orden: number): Promise<number> {
+  const respuesta = await request(app)
+    .post(`/api/v1/admin/atributos/${String(idColor)}/valores`)
+    .set(conToken(token))
+    .send({ valor, orden });
+  return z.object({ datos: z.object({ idValorAtributo: z.number() }) }).parse(respuesta.body).datos
+    .idValorAtributo;
+}
+
+const idVarianteCreada = (respuesta: { body: unknown }) =>
+  z
+    .object({ datos: z.object({ variantes: z.array(z.object({ idVariante: z.number() })) }) })
+    .parse(respuesta.body)
+    .datos.variantes.at(-1)?.idVariante ?? 0;
+
+describe('presentación de la búsqueda (M2-H01, FE-15, FE-16)', () => {
+  it('colores: sin repetidos, sin variantes inactivas y en el orden de ValorAtributo.Orden', async () => {
+    const { idColor, idTalla } = await atributosDeLaSemilla();
+    const marca = sufijo();
+    const rojo = await colorNuevo(idColor, `Rojo ${marca}`, 900);
+    const verde = await colorNuevo(idColor, `Verde ${marca}`, 800);
+    const morado = await colorNuevo(idColor, `Morado ${marca}`, 700);
+    const producto = await crearProducto(app, token, await crearCategoria(app, token), {
+      nombre: `Camisa ${marca}`,
+    });
+    await crearVariante(app, token, producto.idProducto, [rojo, idTalla('S')]);
+    await crearVariante(app, token, producto.idProducto, [rojo, idTalla('M')]);
+    await crearVariante(app, token, producto.idProducto, [verde, idTalla('S')]);
+    const inactiva = idVarianteCreada(
+      await crearVariante(app, token, producto.idProducto, [morado, idTalla('S')]),
+    );
+    await request(app)
+      .post(`/api/v1/admin/variantes/${String(inactiva)}/desactivar`)
+      .set(conToken(token));
+
+    const [encontrado] = (await buscar({ texto: `Camisa ${marca}` })).datos;
+
+    expect(encontrado?.colores).toEqual([`Verde ${marca}`, `Rojo ${marca}`]);
+  });
+
+  it('colores: como mucho 5, los primeros por orden', async () => {
+    const { idColor } = await atributosDeLaSemilla();
+    const marca = sufijo();
+    const producto = await crearProducto(app, token, await crearCategoria(app, token), {
+      nombre: `Gorra ${marca}`,
+    });
+    for (const orden of [6, 5, 4, 3, 2, 1]) {
+      const color = await colorNuevo(idColor, `Tono ${String(orden)} ${marca}`, 950 + orden);
+      await crearVariante(app, token, producto.idProducto, [color]);
+    }
+
+    const [encontrado] = (await buscar({ texto: `Gorra ${marca}` })).datos;
+
+    expect(encontrado?.colores).toEqual(
+      [1, 2, 3, 4, 5].map((orden) => `Tono ${String(orden)} ${marca}`),
+    );
+  });
+
+  it('un producto sin atributo Color responde colores: [] y trae la ilustración de su categoría', async () => {
+    const marca = sufijo();
+    const idCategoria = await crearCategoria(app, token);
+    await request(app)
+      .patch(`/api/v1/admin/categorias/${String(idCategoria)}`)
+      .set(conToken(token))
+      .send({ ilustracion: 'Tenis' });
+    await productoEnTienda(idCategoria, `Tenis ${marca}`);
+
+    const [encontrado] = (await buscar({ texto: `Tenis ${marca}` })).datos;
+
+    expect(encontrado).toMatchObject({ colores: [], ilustracion: 'Tenis' });
+  });
+
+  it('un color con comillas y comas llega íntegro', async () => {
+    const { idColor } = await atributosDeLaSemilla();
+    const marca = sufijo();
+    const valor = `Azul "noche", ${marca}`;
+    const producto = await crearProducto(app, token, await crearCategoria(app, token), {
+      nombre: `Chaqueta ${marca}`,
+    });
+    await crearVariante(app, token, producto.idProducto, [await colorNuevo(idColor, valor, 990)]);
+
+    const [encontrado] = (await buscar({ texto: `Chaqueta ${marca}` })).datos;
+
+    expect(encontrado?.colores).toEqual([valor]);
   });
 });

@@ -51,8 +51,8 @@ WHERE  1 = 1';
 
     -- sqlserver-sp §5: dos conjuntos, la página y el total del filtro (real aunque la página esté vacía).
     DECLARE @Sql NVARCHAR(MAX) = N'
-SELECT p.IDProducto, p.Nombre, p.IDCategoria, p.Categoria, p.PrecioMinimo, p.TieneDisponible,
-       p.ImagenPrincipal' + @Filtro + N'
+SELECT p.IDProducto, p.Nombre, p.IDCategoria, p.Categoria, p.Ilustracion, p.PrecioMinimo, p.TieneDisponible,
+       p.ImagenPrincipal, p.Colores' + @Filtro + N'
 ORDER BY
     CASE WHEN @Orden = ''relevancia'' AND @EmpiezaCon IS NOT NULL
          THEN CASE WHEN p.NombreBusqueda LIKE @EmpiezaCon ESCAPE N''\'' THEN 0 ELSE 1 END END,

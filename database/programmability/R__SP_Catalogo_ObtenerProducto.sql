@@ -1,7 +1,8 @@
 -- RF-02, N-06: un producto de la tienda (público). Solo si se muestra en la tienda
 -- (VW_Catalogo_ProductosTienda: activo, con al menos una variante activa con precio vigente); si no,
 -- ningún conjunto de resultados y la API responde 404. Cuatro conjuntos: producto, imágenes, variantes
--- activas con precio vigente y valores de atributo.
+-- activas con precio vigente y valores de atributo. El producto trae además la ilustración de su categoría
+-- (FE-15) y el plazo de la garantía de precio del carrito (N-02, M2-H01), que el Admin configura.
 -- N-06: nunca devuelve la existencia física ni la reservada. Cada variante trae su estado (Disponible,
 -- UltimasUnidades o Agotado) y las unidades restantes solo en el umbral o por debajo.
 CREATE OR ALTER PROCEDURE dbo.SP_Catalogo_ObtenerProducto
@@ -16,10 +17,13 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM dbo.VW_Catalogo_ProductosTienda WHERE IDProducto = @IDProducto)
         RETURN;
 
-    DECLARE @Umbral SMALLINT = (SELECT TOP (1) UmbralUltimasUnidades
-                                FROM dbo.ParametroSistema ORDER BY IDParametroSistema);
+    DECLARE @Umbral SMALLINT, @DiasGarantia TINYINT;
+    SELECT TOP (1) @Umbral = ps.UmbralUltimasUnidades, @DiasGarantia = ps.DiasGarantiaPrecio
+    FROM   dbo.ParametroSistema AS ps
+    ORDER BY ps.IDParametroSistema;
 
-    SELECT p.IDProducto, p.IDCategoria, c.Nombre AS Categoria, p.Nombre, p.Descripcion
+    SELECT p.IDProducto, p.IDCategoria, c.Nombre AS Categoria, c.Ilustracion, p.Nombre, p.Descripcion,
+           @DiasGarantia AS DiasGarantiaPrecio
     FROM   dbo.Producto  AS p
     JOIN   dbo.Categoria AS c ON c.IDCategoria = p.IDCategoria
     WHERE  p.IDProducto = @IDProducto;

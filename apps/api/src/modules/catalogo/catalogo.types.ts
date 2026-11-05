@@ -1,9 +1,11 @@
+import type { IlustracionPrenda } from '@shopcart/shared';
 import type { Decimal } from 'decimal.js';
 
 export interface CategoriaPublica {
   idCategoria: number;
   nombre: string;
   descripcion: string | null;
+  ilustracion: IlustracionPrenda;
 }
 
 export interface Categoria extends CategoriaPublica {
@@ -84,8 +86,10 @@ export interface ProductoTienda {
   idProducto: number;
   idCategoria: number;
   categoria: string;
+  ilustracion: IlustracionPrenda;
   nombre: string;
   descripcion: string | null;
+  diasGarantiaPrecio: number;
   imagenes: ImagenProducto[];
   variantes: VarianteTienda[];
 }
@@ -129,9 +133,11 @@ export interface ProductoBusqueda {
   nombre: string;
   idCategoria: number;
   categoria: string;
+  ilustracion: IlustracionPrenda;
   precioMinimo: Decimal;
   disponible: boolean;
   imagenPrincipal: string | null;
+  colores: string[];
 }
 
 export interface FiltrosProductos {

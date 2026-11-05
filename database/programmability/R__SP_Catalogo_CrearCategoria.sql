@@ -1,8 +1,10 @@
 -- RF-02: el Admin crea una categoría activa. El nombre es único sin distinguir mayúsculas (UQ_Categoria_Nombre
--- con la intercalación de la base). Devuelve la categoría.
+-- con la intercalación de la base). Sin @Ilustracion, la categoría toma la de DF_Categoria_Ilustracion (FE-15).
+-- Devuelve la categoría.
 CREATE OR ALTER PROCEDURE dbo.SP_Catalogo_CrearCategoria
     @Nombre         NVARCHAR(80),
     @Descripcion    NVARCHAR(300),
+    @Ilustracion    VARCHAR(20)      = NULL,
     @IDUsuarioActor INT              = NULL,
     @RolActor       VARCHAR(20)      = NULL,
     @RequestId      UNIQUEIDENTIFIER = NULL
@@ -21,7 +23,11 @@ BEGIN
         IF EXISTS (SELECT 1 FROM dbo.Categoria WITH (UPDLOCK, HOLDLOCK) WHERE Nombre = @Nombre)
             THROW 50205, N'Ya existe una categoría con ese nombre.', 1;
 
-        INSERT INTO dbo.Categoria (Nombre, Descripcion) VALUES (@Nombre, @Descripcion);
+        -- Dos INSERT para que el valor por defecto viva solo en DF_Categoria_Ilustracion.
+        IF @Ilustracion IS NULL
+            INSERT INTO dbo.Categoria (Nombre, Descripcion) VALUES (@Nombre, @Descripcion);
+        ELSE
+            INSERT INTO dbo.Categoria (Nombre, Descripcion, Ilustracion) VALUES (@Nombre, @Descripcion, @Ilustracion);
         SET @IDCategoria = SCOPE_IDENTITY();
 
         COMMIT;
@@ -34,7 +40,7 @@ BEGIN
         THROW;
     END CATCH
 
-    SELECT c.IDCategoria, c.Nombre, c.Descripcion, c.Activo
+    SELECT c.IDCategoria, c.Nombre, c.Descripcion, c.Ilustracion, c.Activo
     FROM   dbo.Categoria AS c
     WHERE  c.IDCategoria = @IDCategoria;
 END

@@ -421,6 +421,28 @@ describe('GET /productos/:id público (E3-H03, N-06)', () => {
     expect(respuesta.text).not.toMatch(CAMPOS_PROHIBIDOS);
   });
 
+  it('trae la ilustración de su categoría y el plazo de la garantía de precio configurado (M2-H01, N-02)', async () => {
+    const { idProducto } = await productoConVariante(3);
+    const idCategoria = leerDatos(
+      await request(app)
+        .get(`${ADMIN}/${String(idProducto)}`)
+        .set(conAdmin()),
+      z.object({ idCategoria: z.number() }),
+    ).idCategoria;
+    await request(app)
+      .patch(`/api/v1/admin/categorias/${String(idCategoria)}`)
+      .set(conAdmin())
+      .send({ ilustracion: 'Vestido' });
+    const { diasGarantiaPrecio } = leerDatos(
+      await request(app).get('/api/v1/admin/configuracion').set(conAdmin()),
+      z.object({ diasGarantiaPrecio: z.number() }),
+    );
+
+    const respuesta = await tienda(idProducto);
+
+    expect(respuesta.body).toMatchObject({ datos: { ilustracion: 'Vestido', diasGarantiaPrecio } });
+  });
+
   it('un producto desactivado, o sin variantes activas, responde 404 en la tienda', async () => {
     const desactivado = await productoConVariante(3);
     const sinVariantesActivas = await productoConVariante(3);

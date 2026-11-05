@@ -12,7 +12,13 @@ import type {
 } from '../../../../src/modules/catalogo/catalogo.types.js';
 import { invalidadorDePrueba } from '../../invalidador-de-prueba.js';
 
-const CATEGORIA: Categoria = { idCategoria: 4, nombre: 'Camisas', descripcion: null, activo: true };
+const CATEGORIA: Categoria = {
+  idCategoria: 4,
+  nombre: 'Camisas',
+  descripcion: null,
+  ilustracion: 'Camisa',
+  activo: true,
+};
 const PRODUCTO: ProductoAdmin = {
   idProducto: 8,
   idCategoria: 4,

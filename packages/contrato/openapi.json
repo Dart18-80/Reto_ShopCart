@@ -25,6 +25,17 @@
               "null"
             ]
           },
+          "ilustracion": {
+            "enum": [
+              "Camisa",
+              "Pantalon",
+              "Vestido",
+              "Chaqueta",
+              "Tenis",
+              "Gorra"
+            ],
+            "type": "string"
+          },
           "nombre": {
             "type": "string"
           }
@@ -723,6 +734,17 @@
           "idCategoria": {
             "type": "integer"
           },
+          "ilustracion": {
+            "enum": [
+              "Camisa",
+              "Pantalon",
+              "Vestido",
+              "Chaqueta",
+              "Tenis",
+              "Gorra"
+            ],
+            "type": "string"
+          },
           "nombre": {
             "type": "string"
           }
@@ -730,7 +752,8 @@
         "required": [
           "idCategoria",
           "nombre",
-          "descripcion"
+          "descripcion",
+          "ilustracion"
         ],
         "type": "object"
       },
@@ -807,6 +830,17 @@
         "additionalProperties": false,
         "properties": {
           "descripcion": {
+            "type": "string"
+          },
+          "ilustracion": {
+            "enum": [
+              "Camisa",
+              "Pantalon",
+              "Vestido",
+              "Chaqueta",
+              "Tenis",
+              "Gorra"
+            ],
             "type": "string"
           },
           "nombre": {
@@ -2508,6 +2542,13 @@
           "categoria": {
             "type": "string"
           },
+          "colores": {
+            "description": "FE-16: los valores distintos del atributo Color de las variantes activas, en su orden, hasta 5",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "disponible": {
             "type": "boolean"
           },
@@ -2516,6 +2557,17 @@
           },
           "idProducto": {
             "type": "integer"
+          },
+          "ilustracion": {
+            "enum": [
+              "Camisa",
+              "Pantalon",
+              "Vestido",
+              "Chaqueta",
+              "Tenis",
+              "Gorra"
+            ],
+            "type": "string"
           },
           "imagenPrincipal": {
             "type": [
@@ -2536,9 +2588,11 @@
           "nombre",
           "idCategoria",
           "categoria",
+          "ilustracion",
           "precioMinimo",
           "disponible",
-          "imagenPrincipal"
+          "imagenPrincipal",
+          "colores"
         ],
         "type": "object"
       },
@@ -2588,11 +2642,26 @@
               "null"
             ]
           },
+          "diasGarantiaPrecio": {
+            "description": "N-02: días que el carrito garantiza el precio de una línea; lo configura el Admin",
+            "type": "integer"
+          },
           "idCategoria": {
             "type": "integer"
           },
           "idProducto": {
             "type": "integer"
+          },
+          "ilustracion": {
+            "enum": [
+              "Camisa",
+              "Pantalon",
+              "Vestido",
+              "Chaqueta",
+              "Tenis",
+              "Gorra"
+            ],
+            "type": "string"
           },
           "imagenes": {
             "items": {
@@ -2698,8 +2767,10 @@
           "idProducto",
           "idCategoria",
           "categoria",
+          "ilustracion",
           "nombre",
           "descripcion",
+          "diasGarantiaPrecio",
           "imagenes",
           "variantes"
         ],

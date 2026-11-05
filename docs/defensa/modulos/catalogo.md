@@ -33,8 +33,8 @@ sequenceDiagram
 Puntos que demuestran que no hay inyección:
 
 - Solo se concatenan fragmentos constantes al filtro, nunca un valor ([R__SP_Catalogo_BuscarProductos.sql:46](../../../database/programmability/R__SP_Catalogo_BuscarProductos.sql#L46 "p.NombreBusqueda LIKE @Contiene ESCAPE")); todo valor viaja como parámetro de `sp_executesql` ([R__SP_Catalogo_BuscarProductos.sql:69](../../../database/programmability/R__SP_Catalogo_BuscarProductos.sql#L69 "EXEC sys.sp_executesql @Sql")).
-- El orden sale de una lista blanca resuelta con `CASE` ([R__SP_Catalogo_BuscarProductos.sql:59](../../../database/programmability/R__SP_Catalogo_BuscarProductos.sql#L59 "THEN p.PrecioMinimo END ASC")), validada en Zod ([catalogo.types.ts:111](../../../apps/api/src/modules/catalogo/catalogo.types.ts#L111 "ORDENES_BUSQUEDA = ['relevancia', 'precio', 'nombre', 'recientes']")) y otra vez en el SP ([R__SP_Catalogo_BuscarProductos.sql:30](../../../database/programmability/R__SP_Catalogo_BuscarProductos.sql#L30 "@Orden NOT IN ('relevancia', 'precio', 'nombre', 'recientes')")).
-- El SP corre con un usuario sin login ([R__SP_Catalogo_BuscarProductos.sql:24](../../../database/programmability/R__SP_Catalogo_BuscarProductos.sql#L24 "WITH EXECUTE AS 'shopcart_busqueda'")) creado en [V011__usuario_busqueda.sql:4](../../../database/migrations/V011__usuario_busqueda.sql#L4 "CREATE USER shopcart_busqueda WITHOUT LOGIN"), cuyo único permiso es leer la vista ([R__VW_Catalogo_ProductosTienda.sql:30](../../../database/programmability/R__VW_Catalogo_ProductosTienda.sql#L30 "GRANT SELECT ON dbo.VW_Catalogo_ProductosTienda TO shopcart_busqueda")).
+- El orden sale de una lista blanca resuelta con `CASE` ([R__SP_Catalogo_BuscarProductos.sql:59](../../../database/programmability/R__SP_Catalogo_BuscarProductos.sql#L59 "THEN p.PrecioMinimo END ASC")), validada en Zod ([catalogo.types.ts:115](../../../apps/api/src/modules/catalogo/catalogo.types.ts#L115 "ORDENES_BUSQUEDA = ['relevancia', 'precio', 'nombre', 'recientes']")) y otra vez en el SP ([R__SP_Catalogo_BuscarProductos.sql:30](../../../database/programmability/R__SP_Catalogo_BuscarProductos.sql#L30 "@Orden NOT IN ('relevancia', 'precio', 'nombre', 'recientes')")).
+- El SP corre con un usuario sin login ([R__SP_Catalogo_BuscarProductos.sql:24](../../../database/programmability/R__SP_Catalogo_BuscarProductos.sql#L24 "WITH EXECUTE AS 'shopcart_busqueda'")) creado en [V011__usuario_busqueda.sql:4](../../../database/migrations/V011__usuario_busqueda.sql#L4 "CREATE USER shopcart_busqueda WITHOUT LOGIN"), cuyo único permiso es leer la vista ([R__VW_Catalogo_ProductosTienda.sql:64](../../../database/programmability/R__VW_Catalogo_ProductosTienda.sql#L64 "GRANT SELECT ON dbo.VW_Catalogo_ProductosTienda TO shopcart_busqueda")).
 
 ## Reglas: dónde vive cada una
 
@@ -43,8 +43,8 @@ Puntos que demuestran que no hay inyección:
 | Búsqueda sin mayúsculas ni tildes ("camion" encuentra "Camión") | Columna calculada persistida con collation `CI_AI` | [V004__catalogo.sql:19](../../../database/migrations/V004__catalogo.sql#L19 "COLLATE Latin1_General_CI_AI") | A-10 |
 | Los comodines del usuario (`%`, `_`, `[`, `\`) se buscan literal | `FU_Catalogo_PatronBusqueda` + `ESCAPE` | [R__FU_Catalogo_PatronBusqueda.sql:10](../../../database/programmability/R__FU_Catalogo_PatronBusqueda.sql#L10 "REPLACE(REPLACE(REPLACE(REPLACE(@Texto") | A-10 |
 | Orden de lista blanca, paginación estable | SP (`CASE`, desempate por `IDProducto`) | [R__SP_Catalogo_BuscarProductos.sql:65](../../../database/programmability/R__SP_Catalogo_BuscarProductos.sql#L65 "p.IDProducto") | A-23 |
-| La tienda solo muestra productos activos con alguna variante activa con precio vigente | Vista | [R__VW_Catalogo_ProductosTienda.sql:20](../../../database/programmability/R__VW_Catalogo_ProductosTienda.sql#L20 "v.Activo = 1") | N-14 |
-| La tienda nunca expone la existencia física, solo un estado | `SP_Catalogo_ObtenerProducto` | [R__SP_Catalogo_ObtenerProducto.sql:33](../../../database/programmability/R__SP_Catalogo_ObtenerProducto.sql#L33 "THEN 'Agotado'") | N-06 |
+| La tienda solo muestra productos activos con alguna variante activa con precio vigente | Vista | [R__VW_Catalogo_ProductosTienda.sql:25](../../../database/programmability/R__VW_Catalogo_ProductosTienda.sql#L25 "v.Activo = 1") | N-14 |
+| La tienda nunca expone la existencia física, solo un estado | `SP_Catalogo_ObtenerProducto` | [R__SP_Catalogo_ObtenerProducto.sql:37](../../../database/programmability/R__SP_Catalogo_ObtenerProducto.sql#L37 "THEN 'Agotado'") | N-06 |
 | Precio en `DECIMAL(12,2)` y mayor que cero | Tipo + `CHECK` | [V004__catalogo.sql:115](../../../database/migrations/V004__catalogo.sql#L115 "CK_PrecioVariante_PrecioPositivo") | M-02 |
 | Un solo precio vigente por variante | Índice único filtrado | [V004__catalogo.sql:120](../../../database/migrations/V004__catalogo.sql#L120 "UX_PrecioVariante_Vigente") | N-02 |
 | Cambiar precio cierra la versión vigente e inserta otra, atómico | `SP_Catalogo_CambiarPrecio` bajo `UPDLOCK` | [R__SP_Catalogo_CambiarPrecio.sql:47](../../../database/programmability/R__SP_Catalogo_CambiarPrecio.sql#L47 "UPDATE dbo.PrecioVariante SET VigenteHasta = @Ahora") | N-02 |
@@ -59,7 +59,7 @@ Puntos que demuestran que no hay inyección:
 | Producto activo solo en categoría activa | SP bajo bloqueo de la categoría | [R__SP_Catalogo_CambiarEstadoProducto.sql:39](../../../database/programmability/R__SP_Catalogo_CambiarEstadoProducto.sql#L39 "THROW 50206") | N-14 |
 | Categoría no se desactiva con productos activos | SP con `UPDLOCK, HOLDLOCK` | [R__SP_Catalogo_CambiarEstadoCategoria.sql:32](../../../database/programmability/R__SP_Catalogo_CambiarEstadoCategoria.sql#L32 "THROW 50204") | N-14 |
 | Imágenes: exactamente una principal, órdenes únicos | Zod + SP + índice único filtrado | [V004__catalogo.sql:44](../../../database/migrations/V004__catalogo.sql#L44 "UX_ImagenProducto_Principal") | N-19 |
-| SKU ASCII visible de 1 a 40, máximo 4 valores, precio con 2 decimales | Zod | [catalogo.schemas.ts:148](../../../apps/api/src/modules/catalogo/catalogo.schemas.ts#L148 "El SKU tiene de 1 a 40 caracteres ASCII visibles") | A-08 |
+| SKU ASCII visible de 1 a 40, máximo 4 valores, precio con 2 decimales | Zod | [catalogo.schemas.ts:166](../../../apps/api/src/modules/catalogo/catalogo.schemas.ts#L166 "El SKU tiene de 1 a 40 caracteres ASCII visibles") | A-08 |
 
 ## Concurrencia y réplicas
 
@@ -73,10 +73,10 @@ Puntos que demuestran que no hay inyección:
 
 ## Modos de falla
 
-- **Entrada inválida** (orden fuera de la lista, precio con 3 decimales, SKU con espacios): `400 VALIDACION_FALLIDA` desde `manejar` ([manejar.ts:67](../../../apps/api/src/shared/http/manejar.ts#L67 "VALIDACION_FALLIDA")). Si alguien llama al SP sin pasar por Zod, el SP responde `400 PARAMETRO_INVALIDO` ([catalogo.ts:36](../../../apps/api/src/shared/errors/catalogo.ts#L36 "PARAMETRO_INVALIDO")); ambos casos en [busqueda.api.test.ts:246](../../../apps/api/test/integracion/catalogo/busqueda.api.test.ts#L246 "un orden malicioso responde 400").
-- **Producto inexistente, inactivo o sin variantes activas en la tienda:** `404 NO_ENCONTRADO` ([catalogo.service.ts:38](../../../apps/api/src/modules/catalogo/catalogo.service.ts#L38 "throw new AppError('NO_ENCONTRADO'")), porque el SP no devuelve nada si el producto no está en la vista ([R__SP_Catalogo_ObtenerProducto.sql:16](../../../database/programmability/R__SP_Catalogo_ObtenerProducto.sql#L16 "IF NOT EXISTS (SELECT 1 FROM dbo.VW_Catalogo_ProductosTienda")).
+- **Entrada inválida** (orden fuera de la lista, precio con 3 decimales, SKU con espacios): `400 VALIDACION_FALLIDA` desde `manejar` ([manejar.ts:67](../../../apps/api/src/shared/http/manejar.ts#L67 "VALIDACION_FALLIDA")). Si alguien llama al SP sin pasar por Zod, el SP responde `400 PARAMETRO_INVALIDO` ([catalogo.ts:36](../../../apps/api/src/shared/errors/catalogo.ts#L36 "PARAMETRO_INVALIDO")); ambos casos en [busqueda.api.test.ts:248](../../../apps/api/test/integracion/catalogo/busqueda.api.test.ts#L248 "un orden malicioso responde 400").
+- **Producto inexistente, inactivo o sin variantes activas en la tienda:** `404 NO_ENCONTRADO` ([catalogo.service.ts:38](../../../apps/api/src/modules/catalogo/catalogo.service.ts#L38 "throw new AppError('NO_ENCONTRADO'")), porque el SP no devuelve nada si el producto no está en la vista ([R__SP_Catalogo_ObtenerProducto.sql:17](../../../database/programmability/R__SP_Catalogo_ObtenerProducto.sql#L17 "IF NOT EXISTS (SELECT 1 FROM dbo.VW_Catalogo_ProductosTienda")).
 - **Conflictos de negocio:** `409 SKU_DUPLICADO` ([catalogo.ts:74](../../../apps/api/src/shared/errors/catalogo.ts#L74 "SKU_DUPLICADO")), `409 COMBINACION_DUPLICADA`, `409 PRODUCTO_CON_HISTORIAL` ([catalogo.ts:80](../../../apps/api/src/shared/errors/catalogo.ts#L80 "PRODUCTO_CON_HISTORIAL")), `409 CATEGORIA_INACTIVA`, `422 ATRIBUTOS_NO_COINCIDEN` con los atributos esperados en `detalles` ([catalogo.ts:99](../../../apps/api/src/shared/errors/catalogo.ts#L99 "ATRIBUTOS_NO_COINCIDEN")), `409 VARIANTE_CON_HISTORIAL`.
-- **Rol incorrecto:** `403 SIN_PERMISO` en `/admin/...`, `401` sin token ([productos.api.test.ts:444](../../../apps/api/test/integracion/catalogo/productos.api.test.ts#L444 "un Cliente o un Operador recibe 403")).
+- **Rol incorrecto:** `403 SIN_PERMISO` en `/admin/...`, `401` sin token ([productos.api.test.ts:466](../../../apps/api/test/integracion/catalogo/productos.api.test.ts#L466 "un Cliente o un Operador recibe 403")).
 - **Base caída:** el error de conexión no es de negocio y termina como `500 ERROR_INTERNO` ([middleware.ts:80](../../../apps/api/src/shared/errors/middleware.ts#L80 "return new AppError('ERROR_INTERNO', { cause: error });")).
 - **Redis caído:** la tienda no usa Redis. En las escrituras del Admin, la invalidación de la caché de reportes nunca lanza ([reportes.cache.ts:61](../../../apps/api/src/modules/reportes/reportes.cache.ts#L61 "async tras(escritura, dominio, ...otros)")): la escritura se confirma y el TTL de la caché ([reportes.cache.ts:36](../../../apps/api/src/modules/reportes/reportes.cache.ts#L36 "SEGUNDOS_CACHE_REPORTES = 60")) acota el reporte desactualizado.
 
@@ -100,7 +100,7 @@ Solo en `SP_Catalogo_BuscarProductos`. Se concatenan fragmentos constantes; el t
 ### ¿Qué pasa si mando `orden=nombre; DROP TABLE Producto`?
 
 Zod responde 400 porque el valor no está en el `enum`; si se llama al SP directo, su propia lista blanca responde 50003. Hay una prueba exactamente con esa cadena.
-**Muéstralo en:** [busqueda.api.test.ts:246](../../../apps/api/test/integracion/catalogo/busqueda.api.test.ts#L246 "un orden malicioso responde 400")
+**Muéstralo en:** [busqueda.api.test.ts:248](../../../apps/api/test/integracion/catalogo/busqueda.api.test.ts#L248 "un orden malicioso responde 400")
 
 ### La API tiene `DENY SELECT`: ¿cómo lee la vista el SQL dinámico?
 
@@ -110,12 +110,12 @@ Zod responde 400 porque el valor no está en el `enum`; si se llama al SP direct
 ### ¿Cómo encuentra "camion" a "Camión"?
 
 `NombreBusqueda` es una columna calculada persistida con `COLLATE Latin1_General_CI_AI`, y el `LIKE` se hace sobre ella.
-**Muéstralo en:** [busqueda.api.test.ts:75](../../../apps/api/test/integracion/catalogo/busqueda.api.test.ts#L75 "sin tildes ni mayúsculas) y es público")
+**Muéstralo en:** [busqueda.api.test.ts:77](../../../apps/api/test/integracion/catalogo/busqueda.api.test.ts#L77 "sin tildes ni mayúsculas) y es público")
 
 ### Si busco "50%", ¿me trae todo?
 
 No. `FU_Catalogo_PatronBusqueda` escapa `\`, `%`, `_` y `[` y el `LIKE` usa `ESCAPE N'\'`.
-**Muéstralo en:** [busqueda.api.test.ts:84](../../../apps/api/test/integracion/catalogo/busqueda.api.test.ts#L84 "los comodines de LIKE del usuario se buscan literal")
+**Muéstralo en:** [busqueda.api.test.ts:86](../../../apps/api/test/integracion/catalogo/busqueda.api.test.ts#L86 "los comodines de LIKE del usuario se buscan literal")
 
 ### ¿Cómo se guarda el historial de precios y cuál es el vigente?
 
@@ -155,7 +155,7 @@ N-06: el cliente ve `Disponible`, `UltimasUnidades` (con la cifra solo en el umb
 ### ¿La paginación puede repetir o perder productos cuando hay empates de precio?
 
 No: todo orden termina con `IDProducto` como desempate antes del `OFFSET`.
-**Muéstralo en:** [busqueda.api.test.ts:147](../../../apps/api/test/integracion/catalogo/busqueda.api.test.ts#L147 "OFFSET no repite ni pierde productos")
+**Muéstralo en:** [busqueda.api.test.ts:149](../../../apps/api/test/integracion/catalogo/busqueda.api.test.ts#L149 "OFFSET no repite ni pierde productos")
 
 ### ¿Cómo se reemplazan las imágenes sin dejar un estado intermedio?
 

@@ -1,4 +1,9 @@
-import { LARGO_MAXIMO_TEXTO_BUSQUEDA, montoSchema, textoNvarchar } from '@shopcart/shared';
+import {
+  ILUSTRACIONES_PRENDA,
+  LARGO_MAXIMO_TEXTO_BUSQUEDA,
+  montoSchema,
+  textoNvarchar,
+} from '@shopcart/shared';
 import { Decimal } from 'decimal.js';
 import {
   booleanoConsultaSchema,
@@ -17,8 +22,15 @@ const ordenSchema = z.number().int().min(0).max(32_767);
 
 // --- Categorías (E3-H01). Largos de la tabla y los SPs: Nombre NVARCHAR(80), Descripcion NVARCHAR(300).
 
+// FE-15: la misma lista del CHECK de la base; sin ilustración, la base pone la suya por defecto.
+const ilustracionSchema = z.enum(ILUSTRACIONES_PRENDA);
+
 export const crearCategoriaSchema = z
-  .object({ nombre: textoNvarchar(80), descripcion: textoNvarchar(300).optional() })
+  .object({
+    nombre: textoNvarchar(80),
+    descripcion: textoNvarchar(300).optional(),
+    ilustracion: ilustracionSchema.optional(),
+  })
   .strict()
   .openapi('CrearCategoria');
 
@@ -27,6 +39,7 @@ export const actualizarCategoriaSchema = z
   .object({
     nombre: textoNvarchar(80).optional(),
     descripcion: textoNvarchar(300).nullable().optional(),
+    ilustracion: ilustracionSchema.optional(),
   })
   .strict()
   .refine(alMenosUnCampo, MENSAJE_SIN_CAMPOS)
@@ -35,7 +48,12 @@ export const actualizarCategoriaSchema = z
 export const paramsIdCategoriaSchema = z.object({ id: idEnRutaSchema });
 
 export const categoriaPublicaSchema = z
-  .object({ idCategoria: z.number().int(), nombre: z.string(), descripcion: z.string().nullable() })
+  .object({
+    idCategoria: z.number().int(),
+    nombre: z.string(),
+    descripcion: z.string().nullable(),
+    ilustracion: ilustracionSchema,
+  })
   .openapi('CategoriaPublica');
 
 export const categoriaSchema = categoriaPublicaSchema
@@ -205,9 +223,14 @@ export const productoBusquedaSchema = z
     nombre: z.string(),
     idCategoria: z.number().int(),
     categoria: z.string(),
+    ilustracion: ilustracionSchema,
     precioMinimo: montoSchema,
     disponible: z.boolean(),
     imagenPrincipal: z.string().nullable(),
+    colores: z.array(z.string()).openapi({
+      description:
+        'FE-16: los valores distintos del atributo Color de las variantes activas, en su orden, hasta 5',
+    }),
   })
   .openapi('ProductoBusqueda');
 
@@ -276,8 +299,13 @@ export const productoTiendaSchema = z
     idProducto: z.number().int(),
     idCategoria: z.number().int(),
     categoria: z.string(),
+    ilustracion: ilustracionSchema,
     nombre: z.string(),
     descripcion: z.string().nullable(),
+    diasGarantiaPrecio: z.number().int().openapi({
+      description:
+        'N-02: días que el carrito garantiza el precio de una línea; lo configura el Admin',
+    }),
     imagenes: z.array(imagenRespuestaSchema),
     variantes: z.array(
       z.object({

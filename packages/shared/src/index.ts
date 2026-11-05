@@ -7,7 +7,11 @@ export {
   type DatosLogin,
   type DatosRegistro,
 } from './auth.js';
-export { LARGO_MAXIMO_TEXTO_BUSQUEDA } from './catalogo.js';
+export {
+  ILUSTRACIONES_PRENDA,
+  LARGO_MAXIMO_TEXTO_BUSQUEDA,
+  type IlustracionPrenda,
+} from './catalogo.js';
 export { montoSchema } from './monto.js';
 export { ROLES_DE_USUARIO, type RolDeUsuario } from './roles.js';
 export { telefonoSchema } from './telefono.js';

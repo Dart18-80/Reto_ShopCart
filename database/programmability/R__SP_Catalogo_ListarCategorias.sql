@@ -7,7 +7,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    SELECT c.IDCategoria, c.Nombre, c.Descripcion
+    SELECT c.IDCategoria, c.Nombre, c.Descripcion, c.Ilustracion
     FROM   dbo.Categoria AS c
     WHERE  c.Activo = 1
     ORDER BY c.Nombre, c.IDCategoria;

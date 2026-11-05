@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import sql from 'mssql';
 import request from 'supertest';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { z } from 'zod';
@@ -7,7 +8,8 @@ import { leerDatos, leerError } from '../../unit/respuestas.js';
 import { dependenciasDePrueba } from '../../app-de-prueba.js';
 import { iniciarSesion, leerSesion, registrar } from '../auth/apoyo-auth.js';
 import { usarBaseDePruebas } from '../base-de-pruebas.js';
-import { leerBitacora } from '../datos-de-prueba.js';
+import { ejecutarSP } from '../../../src/shared/db/index.js';
+import { comoActor, leerBitacora, ultimaBitacora, violaConstraint } from '../datos-de-prueba.js';
 
 usarBaseDePruebas();
 
@@ -19,17 +21,26 @@ const categoriaSchema = z.object({
   idCategoria: z.number(),
   nombre: z.string(),
   descripcion: z.string().nullable(),
+  ilustracion: z.string(),
   activo: z.boolean(),
 });
 const publicaSchema = z.array(
-  z.object({ idCategoria: z.number(), nombre: z.string(), descripcion: z.string().nullable() }),
+  z.object({
+    idCategoria: z.number(),
+    nombre: z.string(),
+    descripcion: z.string().nullable(),
+    ilustracion: z.string(),
+  }),
 );
 
 let tokenAdmin: string;
+let idAdmin: number;
 const conAdmin = () => ({ Authorization: `Bearer ${tokenAdmin}` });
 
 beforeAll(async () => {
-  tokenAdmin = leerSesion(await iniciarSesion(app, 'admin@shopcart.gt', 'Admin2026!')).accessToken;
+  const sesion = leerSesion(await iniciarSesion(app, 'admin@shopcart.gt', 'Admin2026!'));
+  tokenAdmin = sesion.accessToken;
+  idAdmin = sesion.usuario.idUsuario;
 });
 
 const nombreUnico = () => `Categoría ${randomUUID().slice(0, 8)}`;
@@ -64,6 +75,7 @@ describe('GET /categorias (E3-H01, RF-02)', () => {
       idCategoria: activa.idCategoria,
       nombre: activa.nombre,
       descripcion: 'Ropa de verano',
+      ilustracion: 'Camisa',
     });
     expect(lista.map((c) => c.idCategoria)).not.toContain(inactiva.idCategoria);
   });
@@ -227,5 +239,90 @@ describe('administración de categorías (E3-H01, N-14)', () => {
 
     expect(extra.status).toBe(400);
     expect(largo.status).toBe(400);
+  });
+});
+
+describe('ilustración de la categoría (M2-H01, FE-15)', () => {
+  it('sin ilustración, la categoría nueva queda con Camisa; con una de la lista, con esa', async () => {
+    const sinIlustracion = await crearCategoria();
+    const calzado = await crearCategoria({ ilustracion: 'Tenis' });
+
+    expect(sinIlustracion.ilustracion).toBe('Camisa');
+    expect(calzado.ilustracion).toBe('Tenis');
+    const publicas = leerDatos(await request(app).get('/api/v1/categorias'), publicaSchema);
+    expect(publicas.find((c) => c.idCategoria === calzado.idCategoria)?.ilustracion).toBe('Tenis');
+  });
+
+  it('editar la ilustración la cambia, conserva lo demás y la bitácora registra el cambio', async () => {
+    const categoria = await crearCategoria({ descripcion: 'Gorras y más' });
+
+    const respuesta = await request(app)
+      .patch(ruta(categoria.idCategoria))
+      .set(conAdmin())
+      .send({ ilustracion: 'Gorra' });
+
+    expect(leerDatos(respuesta, categoriaSchema)).toMatchObject({
+      ilustracion: 'Gorra',
+      descripcion: 'Gorras y más',
+    });
+    const fila = await ultimaBitacora('Categoria', categoria.idCategoria);
+    expect(fila.Accion).toBe('Modificar');
+    expect(JSON.parse(fila.ValorAnterior ?? '{}')).toMatchObject({ Ilustracion: 'Camisa' });
+    expect(JSON.parse(fila.ValorNuevo ?? '{}')).toMatchObject({ Ilustracion: 'Gorra' });
+  });
+
+  it.each([
+    [
+      'crear',
+      () =>
+        request(app)
+          .post(RUTA_ADMIN)
+          .set(conAdmin())
+          .send({ nombre: nombreUnico(), ilustracion: 'Barco' }),
+    ],
+    [
+      'editar',
+      async () =>
+        request(app)
+          .patch(ruta((await crearCategoria()).idCategoria))
+          .set(conAdmin())
+          .send({ ilustracion: 'camisa' }),
+    ],
+  ])('al %s, una ilustración fuera de la lista responde 400 (Zod)', async (_accion, enviar) => {
+    const respuesta = await enviar();
+
+    expect(respuesta.status).toBe(400);
+    expect(leerError(respuesta)).toMatchObject({
+      codigo: 'VALIDACION_FALLIDA',
+      detalles: { errores: [expect.objectContaining({ campo: 'body.ilustracion' })] },
+    });
+  });
+
+  it('el CHECK de la base rechaza una ilustración fuera de la lista aunque no pase por Zod', async () => {
+    const crear = comoActor(idAdmin, 'Administrador', () =>
+      ejecutarSP('SP_Catalogo_CrearCategoria', {
+        Nombre: { tipo: sql.NVarChar(80), valor: nombreUnico() },
+        Descripcion: { tipo: sql.NVarChar(300), valor: null },
+        Ilustracion: { tipo: sql.VarChar(20), valor: 'Barco' },
+      }),
+    );
+
+    await expect(crear).rejects.toMatchObject(violaConstraint('CK_Categoria_Ilustracion'));
+  });
+
+  it('S007: las 8 categorías de la semilla tienen su ilustración', async () => {
+    const publicas = leerDatos(await request(app).get('/api/v1/categorias'), publicaSchema);
+    const porNombre = Object.fromEntries(publicas.map((c) => [c.nombre, c.ilustracion]));
+
+    expect(porNombre).toMatchObject({
+      'Camisas y blusas': 'Camisa',
+      Pantalones: 'Pantalon',
+      'Vestidos y faldas': 'Vestido',
+      'Chaquetas y suéteres': 'Chaqueta',
+      Calzado: 'Tenis',
+      'Ropa deportiva': 'Camisa',
+      Accesorios: 'Gorra',
+      Infantil: 'Camisa',
+    });
   });
 });
