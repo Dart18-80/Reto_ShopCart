@@ -773,6 +773,11 @@ El orden de construcción, por módulos (F1, módulos 1 a 11 y F6), está en [`0
 | F1-H06 | Componentes de datos: `EstadoVista`, `TablaServidor` y URL | Must | 1.0 | Hecha |
 | F1-H07 | Formularios, formato y prenda | Must | 1.0 | Hecha |
 | F1-H08 | Base de E2E y pruebas transversales | Must | 0.75 | Hecha |
+| M1-H01 | Ingresar y registrarse | Must | 1.0 | Lista |
+| M1-H02 | Perfil y contraseña | Should | 0.75 | Lista |
+| M2-H01 | Datos de presentación del catálogo (backend) | Must | 1.25 | Lista |
+| M2-H02 | Catálogo con búsqueda y filtros | Must | 1.0 | Lista |
+| M2-H03 | Detalle de producto | Must | 1.25 | Lista |
 
 ---
 
@@ -794,10 +799,21 @@ El orden de construcción, por módulos (F1, módulos 1 a 11 y F6), está en [`0
 
 ### 6.2 Plan
 
-| Bloque | Contenido | Horas |
-|---|---|---|
-| **F1 Base del frontend** | Proyecto, tema, contrato, cliente `api`, sesión, rutas por rol, componentes compartidos y base de E2E | 7.75 |
-| Módulos 1 a 11 y F6 | Se detallan en historias por bloques, con su frame de Figma, a medida que avanza F1 | — |
+| Bloque | Contenido | Horas | Estado |
+|---|---|---|---|
+| **F1 Base del frontend** | Proyecto, tema, contrato, cliente `api`, sesión, rutas por rol, componentes compartidos y base de E2E | 7.75 | Hecha |
+| **M1 Cuenta** | Ingresar, registrarse, perfil y contraseña | 1.75 | Lista |
+| **M2 Catálogo de la tienda** | Datos de presentación (ilustración y colores), catálogo con filtros y detalle de producto | 3.5 | Lista |
+| M3 Carrito | Líneas, garantía de precio, cupón, envíos, carrito de invitado y fusión | 2.0 | Por detallar |
+| M4 Checkout y pago | Direcciones, sesión de pago con reservas y pago idempotente | 2.5 | Por detallar |
+| M5 Mis pedidos | Listado, detalle con historial y cancelación | 1.0 | Por detallar |
+| M6 Backoffice de catálogo | Categorías, atributos, productos, variantes, imágenes y precios | 2.5 | Por detallar |
+| M7 Inventario | Entradas, ajustes, kardex, existencias y conciliación | 1.25 | Por detallar |
+| M8 Gestión de pedidos | Estados, devoluciones, reembolsos y pagos en revisión | 2.0 | Por detallar |
+| M9 Cupones, envíos y configuración | Administración | 1.25 | Por detallar |
+| M10 Usuarios y bitácora | Administración | 1.25 | Por detallar |
+| M11 Dashboard | Gráficas, tiempo real y exportaciones | 2.0 | Por detallar |
+| F6 Cierre | README final, matriz completa (`contrato:cobertura --estricto`), ensayo de la demo y verificación desde cero | 1.5 | Por detallar |
 
 ---
 
@@ -939,3 +955,111 @@ Escribe primero un plan corto de la API de `TablaServidor` (props y un ejemplo d
 - [ ] Ninguna prueba depende de la semilla demo ni del orden de ejecución.
 
 **Referencias:** FE-12, 05 §13.
+
+---
+
+## M1 · Cuenta
+
+> Frames: Ingresar escritorio `26:414` y móvil con credenciales incorrectas `26:460` (05 §17). Registro no tiene frame propio: usa el mismo formulario de Ingresar con sus campos.
+
+### M1-H01 · Ingresar y registrarse — `Must` · 1.0 h
+**Alcance**
+- Mueve a `@shopcart/shared` `correoSchema`, `contrasenaSchema`, `loginSchema` y `registroSchema` (FE-03). **`openapi.json` queda idéntico.**
+- `modules/auth`: `auth.api.ts` (`POST /auth/login`, `POST /auth/registro`) y sus mutaciones. Al responder, `sesion.establecer(respuesta)`.
+- Páginas `/ingresar` (reemplaza el marcador) y `/registro` (ruta nueva en la definición única, solo para invitados): correo y contraseña; el registro agrega nombre y teléfono opcional.
+- **`volver` seguro:** solo se acepta una ruta interna (empieza con `/`, no con `//` ni `/\`, sin esquema); cualquier otra cosa usa el destino por defecto. Por defecto: el Cliente va a `/` y el personal a `/backoffice`. Una función pura con su prueba.
+- Con sesión activa, abrir `/ingresar` o `/registro` lleva al destino.
+- Errores: `401 CREDENCIALES_INVALIDAS` en el aviso del formulario (nunca en un campo: N-15 no dice cuál falló); `429 DEMASIADAS_PETICIONES` en el aviso; `409 CORREO_EN_USO` en el campo `correo`. Para esto, `useFormularioApi` acepta un mapa opcional `campoPorCodigo` (`{ CORREO_EN_USO: 'correo' }`) para los 409/422 que corresponden a un campo; se documenta en la skill `modulo-react` §6.
+- `avisosCarrito` de la respuesta (fusión del carrito, N-05) se muestran con `toast` al entrar.
+- Encabezado: "Ingresar" pasa a "Mi cuenta" con sesión.
+
+**CA**
+- [ ] `volver=https://otro.sitio`, `volver=//otro.sitio` y `volver=/\otro.sitio` llevan al destino por defecto; `volver=/carrito` lleva a `/carrito` (prueba unitaria).
+- [ ] Una contraseña sin números se rechaza en el navegador con el mismo mensaje que da el backend (mismo esquema).
+- [ ] Un correo ya registrado marca el campo `correo` con el mensaje del backend.
+- [ ] Credenciales incorrectas muestran "Correo o contraseña incorrectos." en el aviso, como en el frame `26:460`.
+- [ ] E2E: registrarse con un correo único inicia sesión; cerrar sesión e ingresar de nuevo funciona; el sexto intento fallido muestra el aviso de demasiados intentos.
+
+**Referencias:** RF-01, N-05, N-15, FE-03, FE-05, A-07.
+
+### M1-H02 · Perfil y contraseña — `Should` · 0.75 h
+**Alcance**
+- **Backend (pequeño):**
+  - Cuando la contraseña actual no coincide, `POST /usuarios/me/contrasena` responde el mismo `400 PARAMETRO_INVALIDO` con `detalles: [{ campo: "body.contrasenaActual", mensaje }]`, para que el formulario lo marque en su campo. Con su prueba de integración.
+  - El `200` de `POST /usuarios/me/contrasena` se declara en OpenAPI con el esquema de sesión (`respuestaSesionSchema`); hoy solo tiene descripción y la web tipada no vería la sesión que el código sí devuelve. El diff de `openapi.json` va en el mismo commit y solo cambia eso.
+- Mueve a `shared` `actualizarPerfilSchema` y `cambiarContrasenaSchema`.
+- `/cuenta/perfil` con dos secciones: datos (`GET/PATCH /usuarios/me`: nombre y teléfono) y contraseña (`POST /usuarios/me/contrasena`).
+- El cambio de contraseña devuelve una sesión nueva: `sesion.establecer(respuesta)`. Las otras pestañas la reciben por el canal; las otras sesiones del usuario quedan revocadas (A-07).
+
+**CA**
+- [ ] Guardar el perfil actualiza el nombre en el encabezado sin recargar.
+- [ ] Una contraseña actual incorrecta marca el campo `contrasenaActual`.
+- [ ] Después de cambiar la contraseña, la sesión sigue activa y un refresh posterior funciona (E2E).
+- [ ] Los tres estados de la página (carga, error y datos) se prueban.
+- [ ] `openapi:exportar`: el diff agrega solo el cuerpo del `200` de `POST /usuarios/me/contrasena`.
+
+**Referencias:** RF-01, N-15, A-07, E2-H04.
+
+---
+
+## M2 · Catálogo de la tienda
+
+> Frames: Catálogo escritorio `22:2` y móvil `23:516`; Detalle escritorio `24:314` y móvil `24:406`.
+> **Ajuste del diseño al contrato:** la búsqueda devuelve `precioMinimo` y `disponible` (booleano), no el estado de cada variante. En la tarjeta del catálogo, el precio se muestra como "Desde" + `precioMinimo` y la existencia solo como "Disponible" o "Agotado", según `disponible`. "Últimas X unidades" aparece solo en el detalle, por variante.
+
+### M2-H01 · Datos de presentación del catálogo (backend) — `Must` · 1.25 h
+**Alcance** (FE-15: la ilustración por tipo de prenda necesita saber qué dibujar y con qué colores):
+- `V025__categoria_ilustracion.sql`: columna `Categoria.Ilustracion VARCHAR(20) NOT NULL` con `DEFAULT 'Camisa'` y `CHECK` en (`Camisa`, `Pantalon`, `Vestido`, `Chaqueta`, `Tenis`, `Gorra`). Es un atributo de presentación de la categoría, no una regla de negocio.
+- `S007__ilustracion_categorias.sql`: asigna la ilustración a las 8 categorías de la semilla (Camisas y blusas → Camisa, Pantalones → Pantalon, Vestidos y faldas → Vestido, Chaquetas y suéteres → Chaqueta, Calzado → Tenis, Ropa deportiva → Camisa, Accesorios → Gorra, Infantil → Camisa).
+- Crear y editar categoría aceptan `ilustracion` (opcional; enum en el esquema); `GET /categorias`, `GET /productos` y `GET /productos/{id}` la devuelven.
+- `GET /productos/{id}` devuelve además `diasGarantiaPrecio`: el plazo de la garantía de precio del carrito (N-02), leído de `ParametroSistema` por el SP del detalle, sin otra consulta desde el backend. Lo muestra el aviso del detalle (M2-H03); el plazo es configurable por el Admin y la web nunca lo escribe fijo.
+- `GET /productos` devuelve además `colores`: los valores distintos del atributo **Color** de las variantes activas del producto, en el orden de `ValorAtributo.Orden`, hasta 5. Se calcula en `VW_Catalogo_ProductosTienda` con `STRING_AGG` y se separa en el repositorio. Sin cifras de existencia (N-06).
+- La convención "el atributo llamado Color es el color de la prenda" se documenta como **FE-16** en 05 §14, junto al mapa de nombres de color a `--prenda-*` (FE-15).
+- Bitácora: el cambio de ilustración de una categoría queda registrado por el trigger existente (verificar que la nueva columna entra en el JSON).
+
+**CA**
+- [ ] Una ilustración fuera de la lista se rechaza con 400 (Zod) y con el `CHECK` en la base (prueba de integración por separado).
+- [ ] `GET /productos` responde `colores` sin repetidos y sin variantes inactivas; un producto sin atributo Color responde `colores: []`.
+- [ ] La búsqueda sigue respondiendo en menos de 1 s con la semilla (RNF-1); se muestra la medición.
+- [ ] Cambiar el plazo de la garantía en `/admin/configuracion` cambia `diasGarantiaPrecio` en `GET /productos/{id}` (prueba de integración).
+- [ ] `openapi:exportar` actualiza la foto y el diff solo agrega `ilustracion`, `colores` y `diasGarantiaPrecio`.
+
+**Referencias:** FE-15, FE-16 (nueva), N-06, N-14, RNF-1, A-10, M-01.
+
+### M2-H02 · Catálogo con búsqueda y filtros — `Must` · 1.0 h
+**Alcance** (frames `22:2` y `23:516`):
+- Mueve a `shared` el esquema de *query* de `GET /productos` (`texto`, `categoria`, `precioMin`, `precioMax`, `disponible`, `orden`, `direccion`, `pagina`, `tamano`). Resuelve aquí el límite que anotó F1-H06: `precioMin` y `precioMax` llegan de la URL como texto y se validan con `montoSchema`; la conversión a `Decimal` queda en la API.
+- `modules/catalogo`: `catalogo.api.ts`, `catalogo.keys.ts`, `useProductos`, `useCategorias`.
+- Página `/` con `useParametrosUrl`: chips de categoría (de `GET /categorias`), filtros de precio y "Solo con existencia", orden (relevancia, menor precio, mayor precio, nombre, recientes), cuadrícula de `TarjetaProducto` y `Paginacion`. El buscador del encabezado escribe `texto` (ya lo hace F1-H05).
+- `TarjetaProducto`: ilustración `Prenda` de la categoría teñida con el **primer color** de `colores`; muestras de `colores` (solo visuales en la tarjeta); nombre, categoría, "Desde" + `precioMinimo`, y "Disponible" o "Agotado" según `disponible`. Enlaza al detalle.
+- En móvil, los filtros se abren en un `Sheet` desde el botón "Filtros (n)", donde `n` es la cantidad de filtros activos.
+- Estados: esqueleto de tarjetas, vacío sin filtros ("Todavía no hay productos") y con filtros ("Ningún producto con estos filtros" y Limpiar filtros), error con Reintentar.
+
+**CA**
+- [ ] Buscar "camion" encuentra "Camión" (lo resuelve el backend; E2E de punta a punta).
+- [ ] Filtrar, ordenar y paginar cambia la URL; recargar conserva la vista; "atrás" vuelve a la anterior.
+- [ ] Un `precioMin` mayor que `precioMax` muestra el mensaje del esquema y no consulta.
+- [ ] Coincide con los frames en 375 y 1280 px (captura con Playwright en el resumen de cierre).
+- [ ] E2E con datos propios: un producto creado por la API con una variante Azul aparece en la búsqueda con la prenda azul y su precio.
+
+**Referencias:** RF-02, FE-06, FE-10, FE-15, A-10.
+
+### M2-H03 · Detalle de producto — `Must` · 1.25 h
+**Alcance** (frames `24:314` y `24:406`):
+- `/productos/:id` (ruta nueva en la definición única) con `GET /productos/{id}`; un 404 muestra "No encontrado".
+- Selección de variante **solo con los datos que llegan**: los atributos (Color, Talla…) y sus valores salen de `variantes[].valores`. Elegir un valor de cada atributo resuelve la variante; un valor que no forma ninguna variante disponible con los demás elegidos se muestra deshabilitado (la talla tachada del frame), con el texto "XL agotada en Azul" o "No disponible en Azul". Es una búsqueda sobre la lista, no una regla de negocio: la existencia la decide el backend.
+- Al elegir un Color, la ilustración se tiñe; el texto "Color: Azul" se actualiza.
+- La URL guarda la variante elegida (`?variante=<id>`), así se puede compartir.
+- Precio de la variante elegida, "Incluye IVA del 12 %", y existencia por variante (`Disponible`, "Últimas N unidades" con `unidadesRestantes`, `Agotado`).
+- Cantidad y "Agregar al carrito": **en esta historia el botón queda deshabilitado con el texto "Elige talla y color"** mientras falte un atributo, y la acción real se conecta en M3 (Carrito). Aviso de la garantía de precio como en el frame, con el plazo que manda el backend: "Al agregarlo, su precio queda garantizado por {diasGarantiaPrecio} días: si sube, pagas el anterior; si baja, pagas el nuevo." El "Incluye IVA del 12 %" va fijo (N-18).
+- Galería: la ilustración teñida primero; si el producto tiene imágenes, se muestran como miniaturas que se pueden elegir (con su `textoAlternativo`).
+- Móvil: la barra de compra fija abajo del frame `24:406`.
+
+**CA**
+- [ ] Con dos atributos, elegir Azul deshabilita las tallas que no existen o están agotadas en Azul, y viceversa (prueba con MSW con una matriz de variantes).
+- [ ] La variante en la URL se restaura al recargar; una `variante` que no es del producto se ignora.
+- [ ] `unidadesRestantes` solo aparece cuando la variante está en `UltimasUnidades` (N-06).
+- [ ] Coincide con los frames en 375 y 1280 px (captura en el resumen de cierre).
+- [ ] E2E: abrir el detalle de un producto creado por la API, elegir color y talla, y ver el precio de esa variante.
+
+**Referencias:** RF-02, N-06, N-19, FE-10, FE-15, FE-16.
