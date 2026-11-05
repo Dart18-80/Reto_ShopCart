@@ -1,7 +1,8 @@
 -- N-04: los métodos de envío activos con su costo para el carrito de quien pide (resuelto como en
 -- SP_Carrito_Obtener; sin carrito, el monto es 0). El envío gratis se evalúa sobre el subtotal comprable
--- después del cupón (N-12); un cupón que ya no es válido no cuenta (al consultar el carrito se quita). Dos
--- conjuntos: los métodos y el envío gratis (mínimo, cuánto falta y si se alcanzó). No escribe.
+-- después del cupón (N-12); un cupón que ya no es válido no cuenta (al consultar el carrito se quita). Tres
+-- conjuntos: los métodos con el total del carrito más su costo (M4-H02: el navegador no suma montos), el
+-- envío gratis (mínimo, cuánto falta y si se alcanzó) y los minutos que dura la reserva al pagar. No escribe.
 CREATE OR ALTER PROCEDURE dbo.SP_Envios_ListarMetodos
     @HashTokenInvitado BINARY(32)       = NULL,
     @IDUsuarioActor    INT              = NULL,
@@ -27,11 +28,16 @@ BEGIN
     LEFT JOIN dbo.FU_Cupones_CalculoDescuento(@IDCupon, @IDCarrito) AS dc
            ON dc.IDLineaCarrito = l.IDLineaCarrito;
 
-    SELECT c.IDMetodoEnvio, c.Codigo, c.Nombre, c.DiasMin, c.DiasMax, c.Tarifa, c.Costo, c.EnvioGratis
+    SELECT c.IDMetodoEnvio, c.Codigo, c.Nombre, c.DiasMin, c.DiasMax, c.Tarifa, c.Costo, c.EnvioGratis,
+           CONVERT(DECIMAL(15,2), @Monto + c.Costo) AS TotalConEnvio
     FROM   dbo.FU_Envios_Costos(@Monto) AS c
     ORDER BY c.Tarifa, c.IDMetodoEnvio;
 
     SELECT g.MontoMinimo, g.Faltante, g.Alcanzado
     FROM   dbo.FU_Envios_EnvioGratis(@Monto) AS g;
+
+    SELECT TOP (1) ps.MinutosReserva
+    FROM   dbo.ParametroSistema AS ps
+    ORDER BY ps.IDParametroSistema;
 END
 GO

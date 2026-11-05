@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { request, type APIRequestContext, type FullConfig } from '@playwright/test';
 
 export const VARIABLE_CLIENTE = 'SHOPCART_E2E_CLIENTE';
+export const VARIABLE_OTRO_CLIENTE = 'SHOPCART_E2E_OTRO_CLIENTE';
 export const VARIABLE_TOKEN_ADMIN = 'SHOPCART_E2E_TOKEN_ADMIN';
 
 // El Administrador es la única cuenta que no se puede crear por la API pública; sus credenciales se configuran.
@@ -11,16 +12,18 @@ const ADMINISTRADOR = {
 };
 
 /**
- * Antes de todos los workers: registra un solo Cliente (el registro admite 3 por minuto por IP) y abre una sola
- * sesión de Administrador (el login admite 5 por minuto por IP y correo, A-07). Así la corrida no depende de
- * cuántos workers o pruebas haya. Las pruebas los leen con clienteDeLaCorrida() y el fixture apiAdmin; el access
- * token dura 15 minutos, más que una corrida.
+ * Antes de todos los workers: registra dos Clientes (el registro admite 3 por minuto por IP; el segundo compite
+ * con el primero por la misma existencia en el checkout) y abre una sola sesión de Administrador (el login admite
+ * 5 por minuto por IP y correo, A-07). Así la corrida no depende de cuántos workers o pruebas haya. Las pruebas
+ * los leen con clienteDeLaCorrida(), otroClienteDeLaCorrida() y el fixture apiAdmin; los access tokens duran 15
+ * minutos, más que una corrida.
  */
 export default async function prepararCorrida(configuracion: FullConfig) {
   const baseURL = configuracion.projects[0]?.use.baseURL;
   const api = await request.newContext({ baseURL });
   try {
     process.env[VARIABLE_CLIENTE] = JSON.stringify(await registrarCliente(api));
+    process.env[VARIABLE_OTRO_CLIENTE] = JSON.stringify(await registrarCliente(api));
     process.env[VARIABLE_TOKEN_ADMIN] = await abrirSesionDeAdministrador(api);
   } finally {
     await api.dispose();
@@ -40,7 +43,9 @@ async function registrarCliente(api: APIRequestContext) {
       `No se pudo registrar el cliente de la corrida (${String(respuesta.status())}): ${await respuesta.text()}`,
     );
   }
-  return credenciales;
+  // El registro ya abre una sesión: su access token prepara datos por la API sin gastar logins (5 por minuto).
+  const { datos } = (await respuesta.json()) as { datos: { accessToken: string } };
+  return { ...credenciales, accessToken: datos.accessToken };
 }
 
 async function abrirSesionDeAdministrador(api: APIRequestContext): Promise<string> {

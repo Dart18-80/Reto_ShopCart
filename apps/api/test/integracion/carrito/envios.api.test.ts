@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { Decimal } from 'decimal.js';
 import request from 'supertest';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { z } from 'zod';
@@ -35,8 +36,10 @@ const metodosSchema = z.object({
       tarifa: z.string(),
       costo: z.string(),
       envioGratis: z.boolean(),
+      totalConEnvio: z.string(),
     }),
   ),
+  minutosReserva: z.number(),
   envioGratis: z
     .strictObject({ montoMinimo: z.string(), faltante: z.string(), alcanzado: z.boolean() })
     .nullable(),
@@ -123,6 +126,36 @@ describe('métodos de envío para el carrito (E4-H06, N-04)', () => {
     expect(conCupon.envioGratis).toMatchObject({ faltante: '10.00', alcanzado: false });
     expect(sinCupon.envioGratis).toMatchObject({ faltante: '0.00', alcanzado: true });
     expect(sinCupon.metodos.every((m) => m.costo === '0.00')).toBe(true);
+  });
+
+  it('totalConEnvio es el total del carrito después del cupón más el costo de cada método (M4-H02)', async () => {
+    const { IDVariante } = await varianteVendible('120.00', 5);
+    const { token } = await invitadoConCarrito(app, IDVariante);
+    await request(app)
+      .put('/api/v1/carrito/cupon')
+      .set(comoInvitado(token))
+      .send({ codigo: (await cuponDeMontoFijo('20.00')).codigo });
+
+    const respuesta = await metodos(comoInvitado(token));
+
+    for (const metodo of respuesta.metodos) {
+      expect(metodo.totalConEnvio).toBe(new Decimal('100.00').plus(metodo.costo).toFixed(2));
+    }
+  });
+
+  it('con envío gratis, totalConEnvio es el total del carrito', async () => {
+    const { IDVariante } = await varianteVendible('520.00', 5);
+    const { token } = await invitadoConCarrito(app, IDVariante);
+
+    const respuesta = await metodos(comoInvitado(token));
+
+    expect(respuesta.metodos.every((m) => m.totalConEnvio === '520.00')).toBe(true);
+  });
+
+  it('sin carrito, totalConEnvio es el costo del método', async () => {
+    const respuesta = await metodos(comoInvitado());
+
+    expect(respuesta.metodos.every((m) => m.totalConEnvio === m.costo)).toBe(true);
   });
 
   it('con sesión de cliente usa su carrito', async () => {

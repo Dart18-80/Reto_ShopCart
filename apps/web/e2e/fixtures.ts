@@ -1,10 +1,19 @@
 import { randomUUID } from 'node:crypto';
 import { test as base, expect, type APIRequestContext, type Page } from '@playwright/test';
-import { VARIABLE_CLIENTE, VARIABLE_TOKEN_ADMIN } from './preparacion-global';
+import {
+  VARIABLE_CLIENTE,
+  VARIABLE_OTRO_CLIENTE,
+  VARIABLE_TOKEN_ADMIN,
+} from './preparacion-global';
 
 export interface Credenciales {
   correo: string;
   contrasena: string;
+}
+
+/** Un Cliente que registró la preparación global, con el access token de su registro. */
+export interface ClienteRegistrado extends Credenciales {
+  accessToken: string;
 }
 
 interface Sesion {
@@ -34,13 +43,19 @@ export async function iniciarSesionPorApi(page: Page, credenciales: Credenciales
   await iniciarSesion(page.request, credenciales);
 }
 
-/** El Cliente que registró la preparación global: uno por corrida, por el límite de registros (A-07). */
-export function clienteDeLaCorrida(): Credenciales {
-  const guardado = process.env[VARIABLE_CLIENTE];
+function clienteRegistrado(variable: string): ClienteRegistrado {
+  const guardado = process.env[variable];
   if (!guardado)
     throw new Error('Falta el cliente de la corrida: lo registra e2e/preparacion-global.ts.');
-  return JSON.parse(guardado) as Credenciales;
+  return JSON.parse(guardado) as ClienteRegistrado;
 }
+
+/** El Cliente que registró la preparación global, por el límite de registros (A-07). */
+export const clienteDeLaCorrida = (): ClienteRegistrado => clienteRegistrado(VARIABLE_CLIENTE);
+
+/** El segundo Cliente de la corrida: el que paga en las pruebas del checkout. */
+export const otroClienteDeLaCorrida = (): ClienteRegistrado =>
+  clienteRegistrado(VARIABLE_OTRO_CLIENTE);
 
 /**
  * Un Operador nuevo, creado por el Administrador: para las pruebas que cambian la contraseña o los datos de su

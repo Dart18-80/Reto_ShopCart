@@ -10,7 +10,7 @@ const TOKEN = 'k'.repeat(43);
 function preparar() {
   const repositorio = {
     listarParaCarrito: vi.fn((_hash: Buffer | null) =>
-      Promise.resolve({ metodos: [], envioGratis: null }),
+      Promise.resolve({ metodos: [], minutosReserva: 15, envioGratis: null }),
     ),
     actualizarMetodo: vi.fn((_id: number, datos: ActualizarMetodo) =>
       Promise.resolve({ idMetodoEnvio: 1, codigo: 'Estandar', ...datos }),

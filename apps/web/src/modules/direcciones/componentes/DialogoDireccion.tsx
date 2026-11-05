@@ -54,7 +54,9 @@ export function DialogoEditarDireccion({
       <DialogTrigger asChild>{disparador}</DialogTrigger>
       <DialogContent className={CONTENIDO}>
         <DialogTitle className={TITULO}>Editar dirección</DialogTitle>
-        <DialogDescription className={DESCRIPCION}>Los cambios valen para tus próximos pedidos.</DialogDescription>
+        <DialogDescription className={DESCRIPCION}>
+          Los cambios valen para tus próximos pedidos.
+        </DialogDescription>
         <FormularioEditarDireccion
           direccion={direccion}
           alTerminar={() => {

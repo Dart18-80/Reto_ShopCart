@@ -90,6 +90,15 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ),
   },
   {
+    ruta: '/checkout/pago',
+    area: 'tienda',
+    acceso: SOLO_CLIENTE,
+    pagina: diferida(
+      () => import('../modules/checkout/paginas/PagoPagina'),
+      (m) => m.PagoPagina,
+    ),
+  },
+  {
     ruta: '/pedidos',
     area: 'tienda',
     acceso: SOLO_CLIENTE,

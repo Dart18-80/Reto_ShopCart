@@ -11,6 +11,8 @@ export interface MetodoEnvioParaCarrito {
   /** La tarifa, o 0 si el carrito alcanzó el envío gratis. */
   costo: Decimal;
   envioGratis: boolean;
+  /** M4-H02: el total del carrito después del cupón más `costo`, calculado en el SP. */
+  totalConEnvio: Decimal;
 }
 
 /** N-04: null si la tienda no tiene envío gratis. */
@@ -22,6 +24,8 @@ export interface EnvioGratis {
 
 export interface MetodosParaCarrito {
   metodos: MetodoEnvioParaCarrito[];
+  /** M4-H02: MinutosReserva de ParametroSistema, lo que dura la reserva al iniciar el pago. */
+  minutosReserva: number;
   envioGratis: EnvioGratis | null;
 }
 

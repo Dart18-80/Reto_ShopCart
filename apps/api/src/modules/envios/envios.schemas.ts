@@ -45,8 +45,14 @@ export const metodosParaCarritoSchema = z
         tarifa: montoSchema,
         costo: montoSchema,
         envioGratis: z.boolean(),
+        totalConEnvio: montoSchema.openapi({
+          description: 'El total del carrito después del cupón más el costo de este método',
+        }),
       }),
     ),
+    minutosReserva: z.number().int().openapi({
+      description: 'Lo que dura la reserva de los productos al iniciar el pago (MinutosReserva)',
+    }),
     envioGratis: envioGratisSchema,
   })
   .openapi('MetodosEnvioParaCarrito');

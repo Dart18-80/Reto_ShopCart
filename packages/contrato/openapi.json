@@ -1918,6 +1918,11 @@
                 "tarifa": {
                   "pattern": "^\\d{1,10}(\\.\\d{1,2})?$",
                   "type": "string"
+                },
+                "totalConEnvio": {
+                  "description": "El total del carrito después del cupón más el costo de este método",
+                  "pattern": "^\\d{1,10}(\\.\\d{1,2})?$",
+                  "type": "string"
                 }
               },
               "required": [
@@ -1928,15 +1933,21 @@
                 "diasMax",
                 "tarifa",
                 "costo",
-                "envioGratis"
+                "envioGratis",
+                "totalConEnvio"
               ],
               "type": "object"
             },
             "type": "array"
+          },
+          "minutosReserva": {
+            "description": "Lo que dura la reserva de los productos al iniciar el pago (MinutosReserva)",
+            "type": "integer"
           }
         },
         "required": [
           "metodos",
+          "minutosReserva",
           "envioGratis"
         ],
         "type": "object"

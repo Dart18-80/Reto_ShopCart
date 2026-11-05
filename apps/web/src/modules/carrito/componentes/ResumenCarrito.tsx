@@ -1,17 +1,8 @@
 import type { ReactNode } from 'react';
+import { FilaResumen, FilaTotal } from '../../../shared/componentes/FilaResumen';
 import { Monto } from '../../../shared/componentes/Monto';
 import type { Carrito } from '../carrito.api';
 import { EnvioGratis } from './EnvioGratis';
-
-/** Figma: Fila de resumen. */
-function FilaResumen({ etiqueta, children }: { etiqueta: string; children: ReactNode }) {
-  return (
-    <div className="flex items-baseline justify-between gap-4">
-      <dt className="texto-base text-muted-foreground">{etiqueta}</dt>
-      <dd className="texto-base text-right">{children}</dd>
-    </div>
-  );
-}
 
 interface PropsResumen {
   resumen: Carrito['resumen'];
@@ -46,12 +37,9 @@ export function ResumenCarrito({ resumen, antes, despues }: PropsResumen) {
       </dl>
       <EnvioGratis envioGratis={resumen.envioGratis} />
       <dl className="border-t pt-4">
-        <div className="flex items-baseline justify-between gap-4">
-          <dt className="texto-base-fuerte">Total</dt>
-          <dd>
-            <Monto valor={resumen.total} className="display-precio" />
-          </dd>
-        </div>
+        <FilaTotal>
+          <Monto valor={resumen.total} className="display-precio" />
+        </FilaTotal>
       </dl>
       {despues}
       <p className="texto-nota text-muted-foreground">

@@ -13,12 +13,17 @@ interface FilaMetodoParaCarrito {
   Tarifa: number;
   Costo: number;
   EnvioGratis: boolean;
+  TotalConEnvio: number;
 }
 
 interface FilaEnvioGratis {
   MontoMinimo: number | null;
   Faltante: number | null;
   Alcanzado: boolean | null;
+}
+
+interface FilaMinutosReserva {
+  MinutosReserva: number;
 }
 
 interface FilaMetodo {
@@ -44,12 +49,15 @@ function aEnvioGratis(fila: FilaEnvioGratis): EnvioGratis | null {
 export const enviosRepository = {
   /** N-04: el carrito sale de la sesión o del hash de la cookie, igual que en SP_Carrito_Obtener. */
   async listarParaCarrito(hash: Buffer | null): Promise<MetodosParaCarrito> {
-    const [metodos, envios] = await ejecutarSPConjuntos<
-      [FilaMetodoParaCarrito[], FilaEnvioGratis[]]
+    const [metodos, envios, parametros] = await ejecutarSPConjuntos<
+      [FilaMetodoParaCarrito[], FilaEnvioGratis[], FilaMinutosReserva[]]
     >('SP_Envios_ListarMetodos', { HashTokenInvitado: { tipo: sql.Binary, valor: hash } });
     const envioGratis = envios?.[0];
-    if (metodos === undefined || envioGratis === undefined) {
-      throw new Error('SP_Envios_ListarMetodos no devolvió los métodos y el envío gratis');
+    const reserva = parametros?.[0];
+    if (metodos === undefined || envioGratis === undefined || reserva === undefined) {
+      throw new Error(
+        'SP_Envios_ListarMetodos no devolvió los métodos, el envío gratis y los minutos de la reserva',
+      );
     }
     return {
       metodos: metodos.map((fila) => ({
@@ -61,7 +69,9 @@ export const enviosRepository = {
         tarifa: aMonto(fila.Tarifa),
         costo: aMonto(fila.Costo),
         envioGratis: fila.EnvioGratis,
+        totalConEnvio: aMonto(fila.TotalConEnvio),
       })),
+      minutosReserva: reserva.MinutosReserva,
       envioGratis: aEnvioGratis(envioGratis),
     };
   },

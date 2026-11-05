@@ -7339,7 +7339,11 @@ export interface components {
                 idMetodoEnvio: number;
                 nombre: string;
                 tarifa: string;
+                /** @description El total del carrito después del cupón más el costo de este método */
+                totalConEnvio: string;
             }[];
+            /** @description Lo que dura la reserva de los productos al iniciar el pago (MinutosReserva) */
+            minutosReserva: number;
         };
         Movimiento: {
             cantidad: number;

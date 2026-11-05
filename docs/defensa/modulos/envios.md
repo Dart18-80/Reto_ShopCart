@@ -41,10 +41,11 @@ sequenceDiagram
 | Solo se ofrecen los métodos activos | `FU_Envios_Costos` | [R__FU_Envios_Costos.sql:15](../../../database/programmability/R__FU_Envios_Costos.sql#L15 "m.Activo = 1") | N-04 |
 | Envío gratis para todos los métodos al alcanzar el mínimo | `FU_Envios_Costos` | [R__FU_Envios_Costos.sql:11](../../../database/programmability/R__FU_Envios_Costos.sql#L11 "CASE WHEN g.Alcanzado = 1 THEN 0 ELSE m.Costo END") | N-04 |
 | El mínimo es un parámetro del sistema (500.00 por defecto; NULL = sin envío gratis) | `ParametroSistema` | [V006__carrito_cupones_envios.sql:111](../../../database/migrations/V006__carrito_cupones_envios.sql#L111 "DF_ParametroSistema_MontoEnvioGratis DEFAULT 500.00") | A-14 |
-| Se evalúa sobre el subtotal comprable después del cupón; el cupón no aplica al envío | `SP_Envios_ListarMetodos` | [R__SP_Envios_ListarMetodos.sql:25](../../../database/programmability/R__SP_Envios_ListarMetodos.sql#L25 "SUM(l.TotalComprable - COALESCE(dc.DescuentoLinea, 0))") | N-04, N-12 |
-| Un cupón que ya no es válido no cuenta para el envío gratis | `SP_Envios_ListarMetodos` | [R__SP_Envios_ListarMetodos.sql:23](../../../database/programmability/R__SP_Envios_ListarMetodos.sql#L23 "SET @IDCupon = NULL") | N-12 |
+| Se evalúa sobre el subtotal comprable después del cupón; el cupón no aplica al envío | `SP_Envios_ListarMetodos` | [R__SP_Envios_ListarMetodos.sql:26](../../../database/programmability/R__SP_Envios_ListarMetodos.sql#L26 "SUM(l.TotalComprable - COALESCE(dc.DescuentoLinea, 0))") | N-04, N-12 |
+| Un cupón que ya no es válido no cuenta para el envío gratis | `SP_Envios_ListarMetodos` | [R__SP_Envios_ListarMetodos.sql:24](../../../database/programmability/R__SP_Envios_ListarMetodos.sql#L24 "SET @IDCupon = NULL") | N-12 |
 | Cuánto falta para el envío gratis | `FU_Envios_EnvioGratis` | [R__FU_Envios_EnvioGratis.sql:8](../../../database/programmability/R__FU_Envios_EnvioGratis.sql#L8 "ps.MontoEnvioGratis - @Monto") | N-04 |
-| El cliente sale del token, nunca de la petición | SP con `@RolActor` | [R__SP_Envios_ListarMetodos.sql:14](../../../database/programmability/R__SP_Envios_ListarMetodos.sql#L14 "CASE WHEN @RolActor = 'Cliente' THEN @IDUsuarioActor END") | RF-01, A-18 |
+| El total con envío de cada método (`totalConEnvio`) y los minutos de la reserva salen del SP: el checkout no suma montos | `SP_Envios_ListarMetodos` | [R__SP_Envios_ListarMetodos.sql:32](../../../database/programmability/R__SP_Envios_ListarMetodos.sql#L32 "@Monto + c.Costo") y [R__SP_Envios_ListarMetodos.sql:39](../../../database/programmability/R__SP_Envios_ListarMetodos.sql#L39 "SELECT TOP (1) ps.MinutosReserva") | FE-10, M4-H02 |
+| El cliente sale del token, nunca de la petición | SP con `@RolActor` | [R__SP_Envios_ListarMetodos.sql:15](../../../database/programmability/R__SP_Envios_ListarMetodos.sql#L15 "CASE WHEN @RolActor = 'Cliente' THEN @IDUsuarioActor END") | RF-01, A-18 |
 | El token de invitado nunca viaja a la base, solo su hash | Servicio | [envios.service.ts:15](../../../apps/api/src/modules/envios/envios.service.ts#L15 "hashearTokenOpaco(tokenInvitado)") | N-05 |
 | El costo se congela en la sesión de pago | `SP_Checkout_IniciarSesion` | [R__SP_Checkout_IniciarSesion.sql:95](../../../database/programmability/R__SP_Checkout_IniciarSesion.sql#L95 "dbo.FU_Envios_Costos(@Subtotal - @Descuento)") | N-02, M-04 |
 | Total de la sesión y del pedido incluye el envío | `CHECK` | [V008__pedidos.sql:88](../../../database/migrations/V008__pedidos.sql#L88 "CK_Pedido_Total CHECK (Total = Subtotal - Descuento + CostoEnvio)") | N-04 |
@@ -64,9 +65,9 @@ sequenceDiagram
 - **Entrada inválida** (días al revés, costo con 3 decimales, campo extra): `400 VALIDACION_FALLIDA` desde Zod ([envios.schemas.ts:20](../../../apps/api/src/modules/envios/envios.schemas.ts#L20 "metodo.diasMax >= metodo.diasMin")); si llegara a la base, el `CHECK` se traduce a `400 PARAMETRO_INVALIDO` ([R__SP_Envios_ActualizarMetodo.sql:47](../../../database/programmability/R__SP_Envios_ActualizarMetodo.sql#L47 "THROW 50003")).
 - **Método inexistente:** `404 NO_ENCONTRADO` ([R__SP_Envios_ActualizarMetodo.sql:33](../../../database/programmability/R__SP_Envios_ActualizarMetodo.sql#L33 "THROW 50001")), probado en [configuracion-envios.api.test.ts:229](../../../apps/api/test/integracion/secuencial/configuracion-envios.api.test.ts#L229 "un método inexistente responde 404 y días al revés 400").
 - **Desactivar el último método activo:** `409 METODO_ENVIO_ULTIMO_ACTIVO` ([R__SP_Envios_ActualizarMetodo.sql:35](../../../database/programmability/R__SP_Envios_ActualizarMetodo.sql#L35 "THROW 50901")); sin ningún método, ningún checkout podría empezar.
-- **Token inválido en la consulta pública:** `401` (si hay `Authorization`, se verifica) ([envios.api.test.ts:138](../../../apps/api/test/integracion/carrito/envios.api.test.ts#L138 "un token inválido responde 401")).
+- **Token inválido en la consulta pública:** `401` (si hay `Authorization`, se verifica) ([envios.api.test.ts:171](../../../apps/api/test/integracion/carrito/envios.api.test.ts#L171 "un token inválido responde 401")).
 - **Operador o Cliente en el `PUT`:** `403 SIN_PERMISO` ([configuracion-envios.api.test.ts:144](../../../apps/api/test/integracion/secuencial/configuracion-envios.api.test.ts#L144 "el Operador y el Cliente reciben 403")).
-- **Sin carrito:** no es error; el monto es 0, cada método cuesta su tarifa y falta todo el mínimo ([envios.api.test.ts:72](../../../apps/api/test/integracion/carrito/envios.api.test.ts#L72 "sin carrito, cada método cuesta su tarifa")).
+- **Sin carrito:** no es error; el monto es 0, cada método cuesta su tarifa y falta todo el mínimo ([envios.api.test.ts:75](../../../apps/api/test/integracion/carrito/envios.api.test.ts#L75 "sin carrito, cada método cuesta su tarifa")).
 - **Base caída:** `500 ERROR_INTERNO` ([middleware.ts:80](../../../apps/api/src/shared/errors/middleware.ts#L80 "return new AppError('ERROR_INTERNO', { cause: error });")).
 - **Redis caído:** el módulo no usa Redis; la autenticación sigue aceptando el access token vigente ([autenticar.ts:11](../../../apps/api/src/shared/http/autenticar.ts#L11 "si Redis no responde")).
 
@@ -83,12 +84,12 @@ sequenceDiagram
 ### ¿Cómo se calcula el costo de envío que ve el cliente?
 
 El SP resuelve el carrito (sesión o cookie), revalida el cupón, suma el subtotal comprable menos el descuento y pasa ese monto a `FU_Envios_Costos`: la tarifa, o 0 si alcanza el mínimo.
-**Muéstralo en:** [R__SP_Envios_ListarMetodos.sql:31](../../../database/programmability/R__SP_Envios_ListarMetodos.sql#L31 "FU_Envios_Costos(@Monto)")
+**Muéstralo en:** [R__SP_Envios_ListarMetodos.sql:33](../../../database/programmability/R__SP_Envios_ListarMetodos.sql#L33 "FU_Envios_Costos(@Monto)")
 
 ### ¿El envío gratis se evalúa antes o después del cupón?
 
 Después: el monto es el subtotal comprable menos el descuento de cada línea. La prueba aplica un cupón que deja el carrito por debajo del mínimo.
-**Muéstralo en:** [envios.api.test.ts:88](../../../apps/api/test/integracion/carrito/envios.api.test.ts#L88 "el envío gratis se evalúa sobre el subtotal después del cupón")
+**Muéstralo en:** [envios.api.test.ts:91](../../../apps/api/test/integracion/carrito/envios.api.test.ts#L91 "el envío gratis se evalúa sobre el subtotal después del cupón")
 
 ### ¿El cupón descuenta el envío?
 
@@ -98,7 +99,7 @@ No. El descuento se resta de las líneas, y el costo del envío sale aparte de `
 ### ¿Qué pasa si un cupón aplicado dejó de ser válido?
 
 No cuenta para el envío gratis: si `FU_Cupones_Validar` devuelve un error, el SP ignora el cupón.
-**Muéstralo en:** [envios.api.test.ts:111](../../../apps/api/test/integracion/carrito/envios.api.test.ts#L111 "un cupón que dejó de ser válido no cuenta para el envío gratis")
+**Muéstralo en:** [envios.api.test.ts:114](../../../apps/api/test/integracion/carrito/envios.api.test.ts#L114 "un cupón que dejó de ser válido no cuenta para el envío gratis")
 
 ### Si el Admin sube la tarifa mientras pago, ¿me cobran la nueva?
 
@@ -108,7 +109,7 @@ No. El costo se congela en `SesionCheckout` al iniciar el pago y el pedido copia
 ### ¿Puedo ver el costo de envío del carrito de otro cliente?
 
 No. El endpoint no recibe ningún ID: el cliente sale de `@IDUsuarioActor` y `@RolActor`, que `ejecutarSP` toma del token; un invitado solo puede usar el hash de su propia cookie.
-**Muéstralo en:** [R__SP_Envios_ListarMetodos.sql:15](../../../database/programmability/R__SP_Envios_ListarMetodos.sql#L15 "CASE WHEN @IDCliente IS NULL THEN @HashTokenInvitado END")
+**Muéstralo en:** [R__SP_Envios_ListarMetodos.sql:16](../../../database/programmability/R__SP_Envios_ListarMetodos.sql#L16 "CASE WHEN @IDCliente IS NULL THEN @HashTokenInvitado END")
 
 ### ¿Por qué se manda el hash de la cookie y no la cookie?
 

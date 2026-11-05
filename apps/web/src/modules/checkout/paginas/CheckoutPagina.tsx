@@ -1,5 +1,25 @@
-import { PaginaPendiente } from '../../../shared/componentes/PaginaPendiente';
+import { Navigate } from 'react-router';
+import { EstadoVista } from '../../../shared/componentes/EstadoVista';
+import { useTituloPagina } from '../../../shared/hooks/useTituloPagina';
+import { PasoDireccionYEnvio, RUTA_PAGO } from '../componentes/PasoDireccionYEnvio';
+import { PasosDelCheckout } from '../componentes/PasosDelCheckout';
+import { useSesionPago } from '../hooks/useSesionPago';
 
+// La sesión es una sola o null (404): nunca es una lista vacía.
+const SIN_USO = { titulo: '' };
+
+/** M4-H02, `/checkout`: con una sesión de pago Activa el Cliente ya pasó este paso y va a `/checkout/pago` (05 §6). */
 export function CheckoutPagina() {
-  return <PaginaPendiente titulo="Checkout" />;
+  useTituloPagina('Pagar');
+  const sesion = useSesionPago();
+
+  return (
+    <div className="flex flex-col gap-6">
+      <h1 className="display-titulo-1">Pagar</h1>
+      <PasosDelCheckout actual={1} />
+      <EstadoVista consulta={sesion} vacio={SIN_USO}>
+        {(activa) => (activa ? <Navigate to={RUTA_PAGO} replace /> : <PasoDireccionYEnvio />)}
+      </EstadoVista>
+    </div>
+  );
 }

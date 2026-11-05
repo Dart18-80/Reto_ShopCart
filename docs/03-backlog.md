@@ -783,7 +783,7 @@ El orden de construcción, por módulos (F1, módulos 1 a 11 y F6), está en [`0
 | M3-H03 | Cupón y envío gratis | Must | 0.5 | Hecha |
 | M3-H04 | Continuar al pago y fusión | Must | 0.25 | Hecha |
 | M4-H01 | Direcciones | Must | 0.75 | Hecha |
-| M4-H02 | Dirección y envío | Must | 0.75 | Lista |
+| M4-H02 | Dirección y envío | Must | 0.75 | Hecha |
 | M4-H03 | Pago idempotente | Must | 1.0 | Lista |
 
 ---
@@ -1167,8 +1167,8 @@ Escribe primero un plan corto de la API de `TablaServidor` (props y un ejemplo d
 **Alcance** (frame `40:864`):
 - `/checkout`: si `GET /checkout/sesion` devuelve una sesión activa, va directo a `/checkout/pago`.
 - Dirección de entrega con `Opción` (la predeterminada elegida) y "Agregar dirección" con el diálogo de M4-H01.
-- Método de envío con `GET /envios/metodos`: nombre, días y `costo` (con `envioGratis`, "Gratis").
-- Resumen con los datos del carrito (líneas, subtotal, descuento, envío del método elegido, tal como llega).
+- Método de envío con `GET /envios/metodos`: nombre, días y `costo` (con `envioGratis`, "Gratis"). Decisión del PO: cada método trae además `totalConEnvio` (el total del carrito después del cupón más su costo, calculado en el SP), y la respuesta trae `minutosReserva` (de `ParametroSistema`).
+- Resumen con los datos del carrito (líneas, subtotal, descuento) y el envío y el total (`totalConEnvio`) del método elegido, tal como llegan; el aviso dice "Al continuar apartamos tus productos por {minutosReserva} minutos mientras pagas."
 - "Continuar al pago": `POST /checkout/sesion { idDireccion, idMetodoEnvio }` y va a `/checkout/pago`.
 - `409 STOCK_INSUFICIENTE`: el aviso lista las líneas de `detalles` con su disponible y ofrece "Volver al carrito". `422 CARRITO_VACIO`: va al carrito.
 

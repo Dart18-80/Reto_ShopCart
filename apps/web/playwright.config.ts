@@ -13,5 +13,15 @@ export default defineConfig({
     baseURL: URL_TIENDA,
     trace: 'retain-on-failure',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] }, testIgnore: /checkout\.spec\.ts/ },
+    // El checkout usa los carritos de los dos clientes de la corrida, que otras pruebas también usan: corre después.
+    // Para correrlo solo: `pnpm test:e2e --project checkout --no-deps`.
+    {
+      name: 'checkout',
+      use: { ...devices['Desktop Chrome'] },
+      testMatch: /checkout\.spec\.ts/,
+      dependencies: ['chromium'],
+    },
+  ],
 });

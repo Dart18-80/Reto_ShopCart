@@ -15,12 +15,14 @@ const envioGratisARespuesta = (envio: EnvioGratis | null) =>
         alcanzado: envio.alcanzado,
       };
 
-const metodosARespuesta = ({ metodos, envioGratis }: MetodosParaCarrito) => ({
+const metodosARespuesta = ({ metodos, minutosReserva, envioGratis }: MetodosParaCarrito) => ({
   metodos: metodos.map((metodo) => ({
     ...metodo,
     tarifa: montoATexto(metodo.tarifa),
     costo: montoATexto(metodo.costo),
+    totalConEnvio: montoATexto(metodo.totalConEnvio),
   })),
+  minutosReserva,
   envioGratis: envioGratisARespuesta(envioGratis),
 });
 
