@@ -221,17 +221,40 @@ describe('sesión: renovación entre pestañas (Web Locks + BroadcastChannel)', 
     expect(b.estado()).toEqual({ tipo: 'invitado' });
   });
 
-  it('si el logout falla por red, la sesión local se cierra igual y el error llega al llamador', async () => {
+  it.each([
+    ['una falla de red', ErrorApi.deRed()],
+    ['un 503', errorApi(503, 'RESPUESTA_INESPERADA')],
+  ])(
+    'si el logout falla por %s, la sesión sigue abierta (la cookie sigue válida en el servidor)',
+    async (_caso, error) => {
+      const pestana = crearNavegador();
+      const a = pestana({ cerrarEnServidor: () => Promise.reject(error) });
+      const b = pestana();
+      a.establecer(sesionDePrueba('token-de-ana'));
+      await entregarMensajes();
+
+      await expect(a.cerrar()).rejects.toBe(error);
+      await entregarMensajes();
+
+      expect(a.estado()).toMatchObject({ tipo: 'activa' });
+      expect(a.token()).toBe('token-de-ana');
+      expect(b.estado()).toMatchObject({ tipo: 'activa' });
+    },
+  );
+
+  it('si el logout responde 401, la sesión ya no existía en el servidor: se cierra en todas las pestañas', async () => {
     const pestana = crearNavegador();
-    const a = pestana({ cerrarEnServidor: () => Promise.reject(ErrorApi.deRed()) });
+    const a = pestana({
+      cerrarEnServidor: () => Promise.reject(errorApi(401, 'NO_AUTENTICADO')),
+    });
     const b = pestana();
     a.establecer(sesionDePrueba('token-de-ana'));
     await entregarMensajes();
 
-    await expect(a.cerrar()).rejects.toMatchObject({ codigo: 'RED' });
+    await a.cerrar();
     await entregarMensajes();
 
-    expect(a.token()).toBeNull();
+    expect(a.estado()).toEqual({ tipo: 'invitado' });
     expect(b.estado()).toEqual({ tipo: 'invitado' });
   });
 });

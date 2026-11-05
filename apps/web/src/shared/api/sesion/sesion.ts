@@ -195,14 +195,19 @@ export function crearSesion({ refrescar, cerrarEnServidor, bloqueo, canal }: Dep
       canal.publicar({ tipo: 'token', sesion });
     },
 
-    /** Cierra la sesión en el servidor y en todas las pestañas; la local se cierra aunque el logout falle. */
+    /**
+     * Cierra la sesión en el servidor y en todas las pestañas. Si el logout falla por red o 5xx, la sesión sigue
+     * abierta y el error llega al llamador: la cookie de refresh seguiría válida y al recargar se reabriría (05 §5).
+     */
     async cerrar() {
       try {
         await cerrarEnServidor();
-      } finally {
-        cerrarLocal();
-        canal.publicar({ tipo: 'cerrada' });
+      } catch (error) {
+        // Un 401: la sesión ya no existía en el servidor, así que se cierra aquí también.
+        if (!(error instanceof ErrorApi) || error.status !== STATUS_NO_AUTENTICADO) throw error;
       }
+      cerrarLocal();
+      canal.publicar({ tipo: 'cerrada' });
     },
 
     /** Olvida la sesión solo en esta pestaña, sin avisar al servidor ni a las demás: las pruebas empiezan así. */

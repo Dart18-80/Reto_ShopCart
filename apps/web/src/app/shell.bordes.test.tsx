@@ -62,14 +62,38 @@ describe('tema: casos borde', () => {
 });
 
 describe('cerrar sesión: casos borde', () => {
-  it('si el logout falla por red, la sesión local se cierra igual y un aviso lo dice', async () => {
+  it('si el logout falla por red, la sesión sigue abierta, un aviso lo dice y el botón sigue ahí', async () => {
     servidor.use(http.post('/api/v1/auth/logout', () => HttpResponse.error()));
+    const { usuario, router } = renderizarRutas(crearRutas(), {
+      ruta: '/cuenta/perfil',
+      rol: 'Cliente',
+    });
+    await screen.findByRole('heading', { name: 'Mi perfil' });
+
+    await usuario.click(screen.getByRole('button', { name: 'Cerrar sesión' }));
+
+    expect(
+      await screen.findByText('No pudimos cerrar tu sesión; intenta de nuevo.'),
+    ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/cuenta/perfil');
+    expect(sesion.estado()).toMatchObject({ tipo: 'activa' });
+    expect(screen.getByRole('button', { name: 'Cerrar sesión' })).toBeEnabled();
+  });
+
+  it('si el logout responde 401, la sesión se cierra y lleva a ingresar', async () => {
+    servidor.use(
+      http.post('/api/v1/auth/logout', () =>
+        HttpResponse.json(
+          { error: { codigo: 'NO_AUTENTICADO', mensaje: 'Inicia sesión.', requestId: 'r1' } },
+          { status: 401 },
+        ),
+      ),
+    );
     const { usuario } = renderizarRutas(crearRutas(), { ruta: '/cuenta/perfil', rol: 'Cliente' });
     await screen.findByRole('heading', { name: 'Mi perfil' });
 
     await usuario.click(screen.getByRole('button', { name: 'Cerrar sesión' }));
 
-    expect(await screen.findByText(/No pudimos conectar con la tienda/)).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: 'Ingresar' })).toBeInTheDocument();
     expect(sesion.estado()).toEqual({ tipo: 'invitado' });
   });
