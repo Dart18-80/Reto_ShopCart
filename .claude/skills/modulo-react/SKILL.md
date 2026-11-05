@@ -250,6 +250,7 @@ export function GestionPedidosPagina() {
 ## 11. Interfaz (FE-01)
 
 - **Primero shadcn/ui y los componentes de `shared/componentes`.** Agrega una primitiva de shadcn con su CLI (`pnpm dlx shadcn@latest add <componente>`) a `shared/ui`; extiéndela componiendo, no editándola para un caso particular.
+- **Trampa de `shadcn add` (revísalo en cada `add`):** con el alias `utils` de este proyecto (`@/shared/ui/cn`), el CLI escribe `import { cn } from "cn"` e **instala el paquete npm `cn`**, que no está en FE-14. Después de cada `add`: `pnpm --filter @shopcart/web remove cn`, cambia el import a `./cn` (y cualquier `@/shared/ui/...` a una ruta relativa), restaura el lockfile de HEAD y corre `pnpm install` para que solo agregue las dependencias de la primitiva (quitar y agregar deja cambios ajenos en el lockfile). Si pregunta si sobrescribe un archivo existente (`button.tsx`), responde que no. Pasa el lint estricto sobre la primitiva y corrige lo que marque sin cambiar su comportamiento.
 - **Solo clases de Tailwind y las variables del tema** (`bg-background`, `text-muted-foreground`, `text-destructive`). Nada de colores sueltos (`#3b82f6`, `bg-blue-500`), estilos en línea ni CSS por componente. Así el modo oscuro funciona solo.
 - Combina clases con `cn()`. Variantes de un componente con `cva`, no con condicionales de texto.
 - ***Mobile first*:** escribe primero la vista de teléfono y agrega `md:`/`lg:`. Revisa cada pantalla en 375 px y en 1280 px.
