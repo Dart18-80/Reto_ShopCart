@@ -8,6 +8,7 @@ const PRUEBAS_DE_NODE = [
   'src/test/accesibilidad-lint.test.ts',
   'src/test/fronteras.test.ts',
 ];
+const LIMITE_PRUEBAS_DE_NODE_MS = 120_000;
 
 export default mergeConfig(
   vite,
@@ -26,7 +27,20 @@ export default mergeConfig(
             setupFiles: ['src/test/configuracion.ts'],
           },
         },
-        { extends: true, test: { name: 'node', include: PRUEBAS_DE_NODE, environment: 'node' } },
+        {
+          extends: true,
+          test: {
+            name: 'node',
+            include: PRUEBAS_DE_NODE,
+            environment: 'node',
+            // Las que levantan ESLint (con el resolver de TypeScript) o construyen la web son lentas y se pelean por
+            // la CPU con las del DOM: bajo la carga de `pnpm test`, en paralelo, una se agotó con 60 s. En serie y con
+            // un límite propio, cada una tiene la máquina para sí y el límite solo cae ante un cuelgue real.
+            fileParallelism: false,
+            testTimeout: LIMITE_PRUEBAS_DE_NODE_MS,
+            hookTimeout: LIMITE_PRUEBAS_DE_NODE_MS,
+          },
+        },
       ],
     },
   }),

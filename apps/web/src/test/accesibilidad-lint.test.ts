@@ -21,9 +21,7 @@ afterAll(async () => {
   await proyecto.borrar();
 });
 
-const ESPERA_LINT_MS = 60_000;
-
-describe('accesibilidad en el lint (jsx-a11y con ESLint 10)', { timeout: ESPERA_LINT_MS }, () => {
+describe('accesibilidad en el lint (jsx-a11y con ESLint 10)', () => {
   it('una imagen sin alt hace fallar el lint', async () => {
     const reglas = await reglasIncumplidas(
       'export function Logo() {\n  return <img src="/logo.svg" />;\n}\n',
