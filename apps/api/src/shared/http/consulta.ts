@@ -1,6 +1,5 @@
-import { z } from '../openapi/zod.js';
+// A-08: z extendido antes de evaluar @shopcart/shared (ver shared/openapi/zod.ts).
+import '../openapi/zod.js';
 
-/** Un filtro booleano de la query string: solo 'true' o 'false'. */
-export const booleanoConsultaSchema = z
-  .enum(['true', 'false'])
-  .transform((valor) => valor === 'true');
+// La web valida los filtros de la URL con el mismo esquema (@shopcart/shared).
+export { booleanoConsultaSchema } from '@shopcart/shared';

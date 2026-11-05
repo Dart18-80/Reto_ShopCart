@@ -1,3 +1,4 @@
+import { consultaBusquedaSchema } from '@shopcart/shared';
 import { Router, type RequestHandler } from 'express';
 import { autorizar } from '../../shared/http/index.js';
 import {
@@ -12,7 +13,6 @@ import {
   actualizarProductoSchema,
   actualizarVarianteSchema,
   atributoSchema,
-  buscarProductosSchema,
   cambiarPrecioSchema,
   categoriaPublicaSchema,
   categoriaSchema,
@@ -102,7 +102,7 @@ registroOpenApi.registerPath({
   tags: ['Catálogo'],
   summary:
     'Búsqueda de la tienda (público): texto sin tildes ni mayúsculas, categoría, precio, disponibilidad, orden de lista blanca y paginación',
-  request: { query: buscarProductosSchema },
+  request: { query: consultaBusquedaSchema },
   responses: { 200: listado('Productos', productoBusquedaSchema), ...respuestasError(400) },
 });
 registroOpenApi.registerPath({

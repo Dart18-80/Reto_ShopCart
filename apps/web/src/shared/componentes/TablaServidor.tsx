@@ -1,11 +1,13 @@
 import type { UseQueryResult } from '@tanstack/react-query';
-import { ArrowDown, ArrowUp, LoaderCircle } from 'lucide-react';
-import { useEffect, type ReactNode } from 'react';
+import { ArrowDown, ArrowUp } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { usePaginaEnRango } from '../hooks/usePaginaEnRango';
 import type { ModoHistorial, ParametrosUrl } from '../hooks/useParametrosUrl';
 import { usePantallaAncha } from '../hooks/usePantallaAncha';
 import { Button } from '../ui/button';
 import { cn } from '../ui/cn';
 import { Skeleton } from '../ui/skeleton';
+import { Actualizando } from './Actualizando';
 import { EstadoVista, type ContenidoVacio } from './EstadoVista';
 import { Paginacion, type DatosPaginacion } from './Paginacion';
 
@@ -213,15 +215,7 @@ export function TablaServidor<T, C extends ConsultaTabla>({
   const cambiarVista: CambiarVista = (cambios, historial) => {
     parametros.cambiar(cambios as Partial<C>, { historial });
   };
-  const paginacion = consulta.isPlaceholderData ? undefined : consulta.data?.paginacion;
-  const ultimaPagina = paginacion ? Math.max(paginacion.totalPaginas, 1) : undefined;
-
-  useEffect(() => {
-    // Una página fuera de rango salta a la última que existe; con total 0, a la 1 (nunca a la 0).
-    if (ultimaPagina !== undefined && valores.pagina > ultimaPagina) {
-      parametros.cambiar({ pagina: ultimaPagina } as Partial<C>, { historial: 'reemplazar' });
-    }
-  }, [ultimaPagina, valores.pagina, parametros]);
+  usePaginaEnRango(consulta, parametros);
 
   const vacioDeLaVista: ContenidoVacio = hayFiltros
     ? {
@@ -244,14 +238,7 @@ export function TablaServidor<T, C extends ConsultaTabla>({
           const vista = { titulo, columnas, filas: respuesta.datos, claveFila, actualizando };
           return (
             <>
-              <div aria-live="polite" className="texto-nota text-muted-foreground min-h-4">
-                {actualizando && (
-                  <span className="inline-flex items-center gap-1.5">
-                    <LoaderCircle aria-hidden className="size-3.5 animate-spin" />
-                    Actualizando…
-                  </span>
-                )}
-              </div>
+              <Actualizando activo={actualizando} />
               {pantallaAncha ? (
                 <Tabla
                   {...vista}

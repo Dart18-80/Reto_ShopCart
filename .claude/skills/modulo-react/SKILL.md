@@ -219,7 +219,7 @@ export function GestionPedidosPagina() {
 - Cada columna declara su `prioridad`: bajo el punto `md` (lo decide `usePantallaAncha`, que monta solo una de las dos vistas), las filas se muestran como tarjetas con las columnas de prioridad 1. Los montos van con `alineacion: 'fin'`.
 - **La tabla ya resuelve:** página fuera de rango → la última (con total 0, la 1); «Actualizando…» en una región `aria-live="polite"` y `aria-busy` mientras llega la página nueva; el vacío con filtros («Ningún resultado con estos filtros» y *Limpiar filtros*) distinto del `vacio` de la vista; el error con *Reintentar* y el `requestId`.
 - Los filtros escriben con `parametros.cambiar(...)`; el texto libre, con `FiltroTexto` (300 ms de espera y una sola entrada del historial por búsqueda).
-- Las cuadrículas (el catálogo de la tienda) usan las mismas piezas: `useParametrosUrl`, `Paginacion`, `FiltroTexto` y `EstadoVista`.
+- Las cuadrículas (el catálogo de la tienda) usan las mismas piezas: `useParametrosUrl`, `Paginacion`, `FiltroTexto` y `EstadoVista`, más `usePaginaEnRango` (la página fuera de rango salta a la última) y `Actualizando` (el aviso mientras llega la página nueva), que también usa `TablaServidor`.
 
 ## 8. Rutas y control por rol (FE-04)
 

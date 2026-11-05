@@ -1,28 +1,20 @@
 // Trazos de los componentes Prenda de Figma (7:20), copiados tal cual del SVG de cada tipo (viewBox 0 0 200 200).
-// Lo único que cambia en el código es el relleno de la tela, que es `currentColor` (FE-15).
-
-export const TIPOS_DE_PRENDA = [
-  'Camisa',
-  'Pantalón',
-  'Vestido',
-  'Chaqueta',
-  'Tenis',
-  'Gorra',
-] as const;
-export type TipoPrenda = (typeof TIPOS_DE_PRENDA)[number];
+// Lo único que cambia en el código es el relleno de la tela, que es `currentColor` (FE-15). Las llaves son las
+// ilustraciones de Categoria.Ilustracion (M2-H01).
+import type { IlustracionPrenda } from '@shopcart/shared';
 
 interface Trazos {
   tela: string;
   costura: string;
 }
 
-export const TRAZOS: Record<TipoPrenda, Trazos> = {
+export const TRAZOS: Record<IlustracionPrenda, Trazos> = {
   Camisa: {
     tela: 'M70 28L88 22C96 31.3333 104 31.3333 112 22L130 28L172 52L160 92L138 82V178H62V82L40 92L28 52L70 28Z',
     costura:
       'M88 22L89 23.5M100 40L99 38.5M100 40L101 38.5M100 40V42.0294M112 22L111 23.5M100 178V175.971M91 26.5L93 29.5M95 32.5L97 35.5M103 35.5L105 32.5M107 29.5L109 26.5M100 46.0882V50.1471M100 54.2059V58.2647M100 62.3235V66.3824M100 70.4412V74.5M100 78.5588V82.6176M100 86.6765V90.7353M100 94.7941V98.8529M100 102.912V106.971M100 111.029V115.088M100 119.147V123.206M100 127.265V131.324M100 135.382V139.441M100 143.5V147.559M100 151.618V155.676M100 159.735V163.794M100 167.853V171.912',
   },
-  Pantalón: {
+  Pantalon: {
     tela: 'M62 22H138L150 180H112L100 78L88 180H50L62 22Z',
     costura:
       'M62 34H63.9M100 34H98.1M100 34H101.9M100 34V35.8333M138 34H136.1M100 78V76.1667M67.7 34H71.5M75.3 34H79.1M82.9 34H86.7M90.5 34H94.3M105.7 34H109.5M113.3 34H117.1M120.9 34H124.7M128.5 34H132.3M100 39.5V43.1667M100 46.8333V50.5M100 54.1667V57.8333M100 61.5V65.1667M100 68.8333V72.5',

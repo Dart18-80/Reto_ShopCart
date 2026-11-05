@@ -2,8 +2,9 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import { MuestraColor } from './MuestraColor';
 import { Prenda } from './Prenda';
-import { TIPOS_DE_PRENDA } from './trazos';
+import { ILUSTRACIONES_PRENDA } from '@shopcart/shared';
 
 // Los 13 colores de la semilla (S004) y el nombre de su variable en la colección Prenda de Figma (FE-15).
 const COLORES_DE_LA_SEMILLA: Record<string, string> = {
@@ -28,9 +29,9 @@ describe('Prenda: los seis tipos con todos los colores del mapa', () => {
   it.each(Object.entries(COLORES_DE_LA_SEMILLA))(
     '«%s» tiñe los seis tipos con text-prenda-%s',
     (color, variable) => {
-      for (const tipo of TIPOS_DE_PRENDA) {
+      for (const tipo of ILUSTRACIONES_PRENDA) {
         const { unmount } = render(<Prenda tipo={tipo} color={color} />);
-        const figura = screen.getByRole('img', { name: `${tipo} color ${color}` });
+        const figura = screen.getByRole('img', { name: new RegExp(` color ${color}$`) });
         expect(figura).toHaveClass(`text-prenda-${variable}`);
         expect(figura.querySelector('[data-capa="tela"]')).toHaveAttribute('fill', 'currentColor');
         unmount();
@@ -45,4 +46,21 @@ describe('Prenda: los seis tipos con todos los colores del mapa', () => {
       expect(TEMA).toContain(`--color-prenda-${variable}: var(--prenda-${variable});`);
     },
   );
+});
+
+describe('MuestraColor: el mismo mapa de colores (FE-16)', () => {
+  it.each(Object.entries(COLORES_DE_LA_SEMILLA))(
+    '«%s» se pinta con bg-prenda-%s',
+    (color, variable) => {
+      const { container } = render(<MuestraColor color={color} />);
+
+      expect(container.querySelector(`.bg-prenda-${variable}`)).not.toBeNull();
+    },
+  );
+
+  it('un color que el mapa no conoce se pinta en el neutro', () => {
+    const { container } = render(<MuestraColor color="Fucsia" />);
+
+    expect(container.querySelector('.bg-muted-foreground')).not.toBeNull();
+  });
 });

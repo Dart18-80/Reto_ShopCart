@@ -1,4 +1,5 @@
 import {
+  consultaBusquedaSchema,
   ILUSTRACIONES_PRENDA,
   LARGO_MAXIMO_TEXTO_BUSQUEDA,
   montoSchema,
@@ -12,7 +13,7 @@ import {
   idSchema,
 } from '../../shared/http/index.js';
 import { z } from '../../shared/openapi/zod.js';
-import { DIRECCIONES_ORDEN, ESTADOS_EXISTENCIA, ORDENES_BUSQUEDA } from './catalogo.types.js';
+import { ESTADOS_EXISTENCIA } from './catalogo.types.js';
 
 const alMenosUnCampo = (cambios: object) => Object.keys(cambios).length > 0;
 const MENSAJE_SIN_CAMPOS = 'Indica al menos un campo.';
@@ -186,36 +187,14 @@ export const actualizarVarianteSchema = z
 
 export const paramsIdVarianteSchema = z.object({ id: idEnRutaSchema });
 
-// --- Búsqueda (E3-H05). El orden sale de una lista blanca; el SP la vuelve a validar.
-
-const montoFiltroSchema = montoSchema.transform((monto) => new Decimal(monto));
-export const buscarProductosSchema = consultaPaginacionSchema
-  .extend({
-    texto: textoNvarchar(LARGO_MAXIMO_TEXTO_BUSQUEDA).optional(),
-    categoria: idEnRutaSchema.optional(),
-    precioMin: montoFiltroSchema.optional(),
-    precioMax: montoFiltroSchema.optional(),
-    disponible: booleanoConsultaSchema.optional(),
-    orden: z
-      .enum(ORDENES_BUSQUEDA)
-      .default('relevancia')
-      .openapi({
-        description:
-          'relevancia (por defecto): primero lo que empieza con el texto; sin texto equivale a nombre ' +
-          'ascendente. precio: el menor precio vigente entre las variantes activas. nombre. recientes: ' +
-          'FechaCreacion descendente. ' +
-          'Todo orden termina con idProducto, así la paginación no repite ni pierde productos.',
-      }),
-    direccion: z
-      .enum(DIRECCIONES_ORDEN)
-      .default('asc')
-      .openapi({ description: 'asc (por defecto) o desc; no aplica a relevancia ni a recientes.' }),
-  })
-  .refine(
-    ({ precioMin, precioMax }) =>
-      precioMin === undefined || precioMax === undefined || precioMin.lte(precioMax),
-    { message: 'El precio mínimo no puede ser mayor que el máximo.', path: ['precioMin'] },
-  );
+// --- Búsqueda (E3-H05, M2-H02): la query vive en @shopcart/shared, la misma que valida la URL de la tienda. Los
+// precios llegan como texto y aquí pasan a Decimal (A-21). El SP vuelve a validar el orden y el rango.
+const aDecimal = (monto: string | undefined) => (monto === undefined ? null : new Decimal(monto));
+export const buscarProductosSchema = consultaBusquedaSchema.transform((consulta) => ({
+  ...consulta,
+  precioMin: aDecimal(consulta.precioMin),
+  precioMax: aDecimal(consulta.precioMax),
+}));
 
 export const productoBusquedaSchema = z
   .object({

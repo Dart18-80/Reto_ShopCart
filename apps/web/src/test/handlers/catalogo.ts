@@ -76,3 +76,30 @@ export function simularBusquedaFallida(
     http.get(RUTA, () => HttpResponse.json({ error: { codigo, mensaje, requestId } }, { status })),
   );
 }
+
+type Categoria = Respuesta<'/api/v1/categorias', 'get'>['datos'][number];
+
+export const CATEGORIAS_DE_PRUEBA: Categoria[] = [
+  { idCategoria: 1, nombre: 'Camisas y blusas', descripcion: null, ilustracion: 'Camisa' },
+  { idCategoria: 5, nombre: 'Calzado', descripcion: null, ilustracion: 'Tenis' },
+];
+
+/** `GET /api/v1/categorias` con las categorías activas de la tienda. */
+export function simularCategorias(categorias: Categoria[] = CATEGORIAS_DE_PRUEBA) {
+  servidor.use(http.get('/api/v1/categorias', () => HttpResponse.json({ datos: categorias })));
+}
+
+/** `GET /api/v1/productos` que responde siempre estos productos en una sola página; guarda cada consulta. */
+export function simularProductos(productos: ProductoBusqueda[]) {
+  const consultas: URLSearchParams[] = [];
+  servidor.use(
+    http.get(RUTA, ({ request }) => {
+      consultas.push(new URL(request.url).searchParams);
+      return HttpResponse.json<RespuestaBusqueda>({
+        datos: productos,
+        paginacion: { pagina: 1, tamano: 20, total: productos.length, totalPaginas: 1 },
+      });
+    }),
+  );
+  return { consultas };
+}

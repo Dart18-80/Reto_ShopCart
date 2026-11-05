@@ -33,7 +33,7 @@ sequenceDiagram
 Puntos que demuestran que no hay inyección:
 
 - Solo se concatenan fragmentos constantes al filtro, nunca un valor ([R__SP_Catalogo_BuscarProductos.sql:46](../../../database/programmability/R__SP_Catalogo_BuscarProductos.sql#L46 "p.NombreBusqueda LIKE @Contiene ESCAPE")); todo valor viaja como parámetro de `sp_executesql` ([R__SP_Catalogo_BuscarProductos.sql:69](../../../database/programmability/R__SP_Catalogo_BuscarProductos.sql#L69 "EXEC sys.sp_executesql @Sql")).
-- El orden sale de una lista blanca resuelta con `CASE` ([R__SP_Catalogo_BuscarProductos.sql:59](../../../database/programmability/R__SP_Catalogo_BuscarProductos.sql#L59 "THEN p.PrecioMinimo END ASC")), validada en Zod ([catalogo.types.ts:115](../../../apps/api/src/modules/catalogo/catalogo.types.ts#L115 "ORDENES_BUSQUEDA = ['relevancia', 'precio', 'nombre', 'recientes']")) y otra vez en el SP ([R__SP_Catalogo_BuscarProductos.sql:30](../../../database/programmability/R__SP_Catalogo_BuscarProductos.sql#L30 "@Orden NOT IN ('relevancia', 'precio', 'nombre', 'recientes')")).
+- El orden sale de una lista blanca resuelta con `CASE` ([R__SP_Catalogo_BuscarProductos.sql:59](../../../database/programmability/R__SP_Catalogo_BuscarProductos.sql#L59 "THEN p.PrecioMinimo END ASC")), validada en Zod ([shared/catalogo.ts:26](../../../packages/shared/src/catalogo.ts#L26 "ORDENES_BUSQUEDA = ['relevancia', 'precio', 'nombre', 'recientes']")) y otra vez en el SP ([R__SP_Catalogo_BuscarProductos.sql:30](../../../database/programmability/R__SP_Catalogo_BuscarProductos.sql#L30 "@Orden NOT IN ('relevancia', 'precio', 'nombre', 'recientes')")).
 - El SP corre con un usuario sin login ([R__SP_Catalogo_BuscarProductos.sql:24](../../../database/programmability/R__SP_Catalogo_BuscarProductos.sql#L24 "WITH EXECUTE AS 'shopcart_busqueda'")) creado en [V011__usuario_busqueda.sql:4](../../../database/migrations/V011__usuario_busqueda.sql#L4 "CREATE USER shopcart_busqueda WITHOUT LOGIN"), cuyo único permiso es leer la vista ([R__VW_Catalogo_ProductosTienda.sql:64](../../../database/programmability/R__VW_Catalogo_ProductosTienda.sql#L64 "GRANT SELECT ON dbo.VW_Catalogo_ProductosTienda TO shopcart_busqueda")).
 
 ## Reglas: dónde vive cada una
@@ -59,7 +59,7 @@ Puntos que demuestran que no hay inyección:
 | Producto activo solo en categoría activa | SP bajo bloqueo de la categoría | [R__SP_Catalogo_CambiarEstadoProducto.sql:39](../../../database/programmability/R__SP_Catalogo_CambiarEstadoProducto.sql#L39 "THROW 50206") | N-14 |
 | Categoría no se desactiva con productos activos | SP con `UPDLOCK, HOLDLOCK` | [R__SP_Catalogo_CambiarEstadoCategoria.sql:32](../../../database/programmability/R__SP_Catalogo_CambiarEstadoCategoria.sql#L32 "THROW 50204") | N-14 |
 | Imágenes: exactamente una principal, órdenes únicos | Zod + SP + índice único filtrado | [V004__catalogo.sql:44](../../../database/migrations/V004__catalogo.sql#L44 "UX_ImagenProducto_Principal") | N-19 |
-| SKU ASCII visible de 1 a 40, máximo 4 valores, precio con 2 decimales | Zod | [catalogo.schemas.ts:166](../../../apps/api/src/modules/catalogo/catalogo.schemas.ts#L166 "El SKU tiene de 1 a 40 caracteres ASCII visibles") | A-08 |
+| SKU ASCII visible de 1 a 40, máximo 4 valores, precio con 2 decimales | Zod | [catalogo.schemas.ts:167](../../../apps/api/src/modules/catalogo/catalogo.schemas.ts#L167 "El SKU tiene de 1 a 40 caracteres ASCII visibles") | A-08 |
 
 ## Concurrencia y réplicas
 

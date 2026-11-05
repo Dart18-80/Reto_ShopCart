@@ -1,4 +1,4 @@
-import type { IlustracionPrenda } from '@shopcart/shared';
+import type { ConsultaBusqueda, IlustracionPrenda } from '@shopcart/shared';
 import type { Decimal } from 'decimal.js';
 
 export interface CategoriaPublica {
@@ -112,9 +112,6 @@ export interface VersionPrecio {
   usuario: { idUsuario: number; nombre: string };
 }
 
-export const ORDENES_BUSQUEDA = ['relevancia', 'precio', 'nombre', 'recientes'] as const;
-export const DIRECCIONES_ORDEN = ['asc', 'desc'] as const;
-
 export interface FiltrosBusqueda {
   pagina: number;
   tamano: number;
@@ -123,8 +120,8 @@ export interface FiltrosBusqueda {
   precioMin: Decimal | null;
   precioMax: Decimal | null;
   disponible: boolean | null;
-  orden: (typeof ORDENES_BUSQUEDA)[number];
-  direccion: (typeof DIRECCIONES_ORDEN)[number];
+  orden: ConsultaBusqueda['orden'];
+  direccion: ConsultaBusqueda['direccion'];
 }
 
 /** Un producto en los resultados de la tienda: sin existencia, solo si hay disponible (N-06). */

@@ -1,13 +1,10 @@
-import { z } from '../openapi/zod.js';
+// A-08: z extendido antes de evaluar @shopcart/shared (ver shared/openapi/zod.ts).
+import type { z } from '../openapi/zod.js';
+import '../openapi/zod.js';
+import type { consultaPaginacionSchema } from '@shopcart/shared';
 
-export const TAMANO_MAXIMO_PAGINA = 100;
-// Los SPs calculan OFFSET (@Pagina - 1) * @Tamano en INT: una página mayor lo desbordaría (500).
-const PAGINA_MAXIMA = Math.floor(2_147_483_647 / TAMANO_MAXIMO_PAGINA);
-
-export const consultaPaginacionSchema = z.object({
-  pagina: z.coerce.number().int().min(1).max(PAGINA_MAXIMA).default(1),
-  tamano: z.coerce.number().int().min(1).max(TAMANO_MAXIMO_PAGINA).default(20),
-});
+// FE-06: la misma paginación valida la API y la URL de la web.
+export { consultaPaginacionSchema, TAMANO_MAXIMO_PAGINA } from '@shopcart/shared';
 
 export type ConsultaPaginacion = z.infer<typeof consultaPaginacionSchema>;
 

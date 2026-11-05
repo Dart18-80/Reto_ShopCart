@@ -1,3 +1,4 @@
+import { formatearConteo } from '../formato/conteo';
 import { Button } from '../ui/button';
 
 /** La paginación que devuelve toda lista del backend (01 §5.1). */
@@ -7,12 +8,6 @@ export interface DatosPaginacion {
   total: number;
   totalPaginas: number;
 }
-
-// Separador de miles de Guatemala (1,532). Es un conteo, no un monto: los montos van con formatearMonto (FE-10).
-const formatoConteo = new Intl.NumberFormat('es-GT');
-
-const resultados = (total: number) =>
-  `${formatoConteo.format(total)} ${total === 1 ? 'resultado' : 'resultados'}`;
 
 interface PropsPaginacion {
   paginacion: DatosPaginacion;
@@ -28,7 +23,7 @@ export function Paginacion({
   return (
     <nav aria-label="Paginación" className="flex flex-wrap items-center justify-between gap-3">
       <p className="texto-pequeno text-muted-foreground">
-        {`Página ${String(pagina)} de ${String(ultima)}, ${resultados(total)}`}
+        {`Página ${String(pagina)} de ${String(ultima)}, ${formatearConteo(total, 'resultado', 'resultados')}`}
       </p>
       <div className="flex gap-2">
         <Button
