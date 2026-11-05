@@ -7447,6 +7447,8 @@ export interface components {
             }[];
             montoReembolsado: string;
             numeroPedido: string;
+            /** @description M5-H01: si quien pide puede cancelarlo ahora (TransicionEstadoPedido para su rol y el pago no está en verificación) */
+            puedeCancelar: boolean;
             subtotal: string;
             tarjeta: {
                 marca: string;

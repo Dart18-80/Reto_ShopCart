@@ -785,7 +785,7 @@ El orden de construcción, por módulos (F1, módulos 1 a 11 y F6), está en [`0
 | M4-H01 | Direcciones | Must | 0.75 | Hecha |
 | M4-H02 | Dirección y envío | Must | 0.75 | Hecha |
 | M4-H03 | Pago idempotente | Must | 1.0 | Hecha |
-| M5-H01 | Lista y detalle de mis pedidos | Must | 0.75 | Lista |
+| M5-H01 | Lista y detalle de mis pedidos | Must | 0.75 | Hecha |
 | M5-H02 | Cancelar mi pedido | Must | 0.25 | Lista |
 | M6-H01 | Orden del servidor en los listados del backoffice (backend) | Must | 1.5 | Lista |
 | M6-H02 | Categorías y atributos | Must | 1.0 | Lista |

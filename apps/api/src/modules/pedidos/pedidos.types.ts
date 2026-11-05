@@ -37,6 +37,8 @@ export interface Pedido {
   numeroPedido: string;
   estado: string;
   estadoPago: EstadoPago;
+  /** M5-H01: si el actor puede cancelarlo ahora (TransicionEstadoPedido para su rol, N-08, N-09). */
+  puedeCancelar: boolean;
   subtotal: Decimal;
   descuento: Decimal;
   costoEnvio: Decimal;

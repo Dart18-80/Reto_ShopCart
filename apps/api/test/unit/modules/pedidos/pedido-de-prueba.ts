@@ -7,6 +7,7 @@ export const pedidoDePrueba = (cambios: Partial<Pedido> = {}): Pedido => ({
   numeroPedido: 'SC-000010',
   estado: 'Pagado',
   estadoPago: 'Confirmado',
+  puedeCancelar: true,
   subtotal: new Decimal(0),
   descuento: new Decimal(0),
   costoEnvio: new Decimal(0),

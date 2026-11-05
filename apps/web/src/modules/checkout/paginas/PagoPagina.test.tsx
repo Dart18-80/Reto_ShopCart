@@ -10,11 +10,11 @@ import {
 } from '../../../test/handlers/checkout';
 import { simularLibretaDeDirecciones } from '../../../test/handlers/direcciones';
 import {
-  pedidoDePrueba,
   simularCancelacionDePago,
   simularPagos,
   type RespuestaDePago,
 } from '../../../test/handlers/pago';
+import { pedidoDePrueba, simularPedido } from '../../../test/handlers/pedidos';
 import { renderizarRutas } from '../../../test/renderizar';
 import { servidor } from '../../../test/servidor';
 
@@ -38,6 +38,7 @@ function preparar(sesion = sesionDePrueba({ expiraEn: enQuinceMinutos() })) {
   // Si la pantalla vuelve al checkout o al carrito, esas páginas encuentran sus datos.
   simularMetodosEnvio();
   simularLibretaDeDirecciones([]);
+  simularPedido(pedidoDePrueba());
 }
 
 const abrir = () => renderizarRutas(crearRutas(), { ruta: '/checkout/pago', rol: 'Cliente' });
@@ -119,7 +120,7 @@ describe('PagoPagina (M4-H03)', () => {
   it('201: paga con una llave UUID v4 y el cuerpo de la tarjeta, y va al pedido nuevo', async () => {
     const { recibidos, router } = await pagarCon([pedidoDePrueba({ idPedido: 41 })]);
 
-    expect(await screen.findByRole('heading', { name: 'Pedido #41 creado' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Pedido SC-000041' })).toBeInTheDocument();
     expect(router.state.location.search).toBe('?nuevo=1');
     expect(recibidos).toEqual([
       { llave: expect.stringMatching(UUID_V4) as unknown, cuerpo: TARJETA },
@@ -160,7 +161,7 @@ describe('PagoPagina (M4-H03)', () => {
     await usuario.dblClick(botonPagar());
 
     expect(botonPagar()).toBeDisabled();
-    expect(await screen.findByRole('heading', { name: /Pedido #41/ })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Pedido SC-000041/ })).toBeInTheDocument();
     expect(recibidos).toHaveLength(1);
   });
 
@@ -181,7 +182,7 @@ describe('PagoPagina (M4-H03)', () => {
     await usuario.type(datos.getByLabelText('CVV'), '123');
     await usuario.click(botonPagar());
 
-    await screen.findByRole('heading', { name: /Pedido #41/ });
+    await screen.findByRole('heading', { name: /Pedido SC-000041/ });
     expect(recibidos[1]?.llave).toMatch(UUID_V4);
     expect(recibidos[1]?.llave).not.toBe(recibidos[0]?.llave);
   });
@@ -199,7 +200,7 @@ describe('PagoPagina (M4-H03)', () => {
     await usuario.type(datos.getByLabelText('CVV'), '123');
     await usuario.click(botonPagar());
 
-    await screen.findByRole('heading', { name: /Pedido #41/ });
+    await screen.findByRole('heading', { name: /Pedido SC-000041/ });
     expect(recibidos[1]?.llave).not.toBe(recibidos[0]?.llave);
   });
 
@@ -233,7 +234,7 @@ describe('PagoPagina (M4-H03)', () => {
       expect(screen.getByRole('button', { name: 'Cambiar dirección o envío' })).toBeDisabled();
       await usuario.click(screen.getByRole('button', { name: 'Reintentar' }));
 
-      await screen.findByRole('heading', { name: /Pedido #41/ });
+      await screen.findByRole('heading', { name: /Pedido SC-000041/ });
       expect(recibidos).toHaveLength(2);
       expect(recibidos[1]).toEqual(recibidos[0]);
     },

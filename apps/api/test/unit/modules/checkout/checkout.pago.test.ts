@@ -27,6 +27,7 @@ const PEDIDO: Pedido = {
   numeroPedido: 'SC-000099',
   estado: 'Pagado',
   estadoPago: 'Confirmado',
+  puedeCancelar: true,
   subtotal: CERO,
   descuento: CERO,
   costoEnvio: CERO,

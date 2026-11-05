@@ -77,7 +77,7 @@ sequenceDiagram
 | Cinco fallos de la pasarela → `Fallido`, a la lista del Admin | SP | [R__SP_Pedidos_ActualizarReembolso.sql:49](../../../database/programmability/R__SP_Pedidos_ActualizarReembolso.sql#L49 "'Fallido', 'Pendiente'") | N-09 |
 | Un proceso desplazado no suma intentos | SP (`TokenReclamo`) | [R__SP_Pedidos_ActualizarReembolso.sql:53](../../../database/programmability/R__SP_Pedidos_ActualizarReembolso.sql#L53 "TokenReclamo = @TokenReclamo") | N-09 |
 | La pasarela se llama después del `COMMIT` | Servicio | [pedidos.reembolsos.ts:198](../../../apps/api/src/modules/pedidos/pedidos.reembolsos.ts#L198 "repositorio.cancelar(idPedido, motivo)") | N-09, A-02 |
-| El cliente solo ve y cancela los suyos; uno ajeno es `404` | SP con `@IDUsuarioActor` | [R__SP_Pedidos_ObtenerDetalle.sql:14](../../../database/programmability/R__SP_Pedidos_ObtenerDetalle.sql#L14 "p.IDUsuario = @IDUsuarioActor"), [R__SP_Pedidos_AplicarCancelacion.sql:41](../../../database/programmability/R__SP_Pedidos_AplicarCancelacion.sql#L41 "@Dueno <> @IDCliente") | RF-01 |
+| El cliente solo ve y cancela los suyos; uno ajeno es `404` | SP con `@IDUsuarioActor` | [R__SP_Pedidos_ObtenerDetalle.sql:17](../../../database/programmability/R__SP_Pedidos_ObtenerDetalle.sql#L17 "p.IDUsuario = @IDUsuarioActor"), [R__SP_Pedidos_AplicarCancelacion.sql:41](../../../database/programmability/R__SP_Pedidos_AplicarCancelacion.sql#L41 "@Dueno <> @IDCliente") | RF-01 |
 
 ## Concurrencia y réplicas
 
@@ -186,7 +186,7 @@ N-09: la cancelación ocurre antes del despacho y devuelve el total con envío (
 ### ¿Qué significa un pedido con el pago en verificación?
 
 Su intento quedó `EnRevision` porque la conciliación encontró la autorización anulada o desconocida. El pedido no avanza de estado ni se cancela, y el cliente lo ve con `estadoPago: "EnVerificacion"`. Como ningún pedido sale de `Pagado` sin el cobro `Capturado`, ese intento siempre está en un pedido `Pagado`, donde `SinCobro` funciona: no hay un pedido despachado con el pago en revisión que quede sin salida. Si se pudiera cancelar sin reembolso y después la pasarela mostrara el cobro capturado, el cliente quedaría cobrado sin pedido; por eso la única vía es `SinCobro`. El Admin lo resuelve con la evidencia de la pasarela (E9-H04): `CobroVerificado` si el cobro está capturado, o `SinCobro`, que lo cancela, si no; dos resoluciones a la vez: una pasa y la otra recibe 409 ([revision-manual.api.test.ts:305](../../../apps/api/test/integracion/pedidos/revision-manual.api.test.ts#L305 "dos resoluciones simultáneas del mismo intento")).
-**Muéstralo en:** [R__SP_Pedidos_ObtenerDetalle.sql:23](../../../database/programmability/R__SP_Pedidos_ObtenerDetalle.sql#L23 "EnVerificacion")
+**Muéstralo en:** [R__SP_Pedidos_ObtenerDetalle.sql:25](../../../database/programmability/R__SP_Pedidos_ObtenerDetalle.sql#L25 "EnVerificacion")
 
 ### ¿Por qué el job de reembolsos no procesa dos veces el mismo en las dos réplicas?
 

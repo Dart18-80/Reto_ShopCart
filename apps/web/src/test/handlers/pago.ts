@@ -4,36 +4,6 @@ import { servidor } from '../servidor';
 
 type Pedido = Respuesta<'/api/v1/checkout/sesion/pagos', 'post'>['datos'];
 
-export const pedidoDePrueba = (cambios: Partial<Pedido> = {}): Pedido => ({
-  idPedido: 41,
-  numeroPedido: 'SC-000041',
-  estado: 'Pagado',
-  estadoPago: 'Confirmado',
-  subtotal: '498.00',
-  descuento: '0.00',
-  costoEnvio: '35.00',
-  total: '533.00',
-  baseImponible: '475.89',
-  iva: '57.11',
-  montoReembolsado: '0.00',
-  codigoCupon: null,
-  envio: { nombre: 'Estándar', fechaEstimadaEntrega: '2026-11-10' },
-  fechaPago: '2026-11-05T18:05:00.000Z',
-  fechaPagoLocal: '2026-11-05',
-  tarjeta: { marca: 'Visa', ultimosDigitos: '4242' },
-  direccion: {
-    nombreRecibe: 'Ana Pérez',
-    telefonoRecibe: '55551234',
-    departamento: 'Guatemala',
-    municipio: 'Guatemala',
-    direccionLinea: '5a avenida 10-20, zona 1',
-    referencia: null,
-  },
-  lineas: [],
-  historial: [],
-  ...cambios,
-});
-
 interface ErrorDePago {
   status: number;
   codigo: string;

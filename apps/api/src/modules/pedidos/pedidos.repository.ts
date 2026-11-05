@@ -40,6 +40,7 @@ interface FilaPedido {
   NumeroPedido: string;
   Estado: string;
   EstadoPago: EstadoPago;
+  PuedeCancelar: boolean;
   Subtotal: number;
   Descuento: number;
   CostoEnvio: number;
@@ -228,6 +229,7 @@ const aPedido = (
   numeroPedido: fila.NumeroPedido,
   estado: fila.Estado,
   estadoPago: fila.EstadoPago,
+  puedeCancelar: fila.PuedeCancelar,
   subtotal: aMonto(fila.Subtotal),
   descuento: aMonto(fila.Descuento),
   costoEnvio: aMonto(fila.CostoEnvio),

@@ -2382,6 +2382,10 @@
           "numeroPedido": {
             "type": "string"
           },
+          "puedeCancelar": {
+            "description": "M5-H01: si quien pide puede cancelarlo ahora (TransicionEstadoPedido para su rol y el pago no está en verificación)",
+            "type": "boolean"
+          },
           "subtotal": {
             "pattern": "^\\d{1,10}(\\.\\d{1,2})?$",
             "type": "string"
@@ -2411,6 +2415,7 @@
           "numeroPedido",
           "estado",
           "estadoPago",
+          "puedeCancelar",
           "subtotal",
           "descuento",
           "costoEnvio",

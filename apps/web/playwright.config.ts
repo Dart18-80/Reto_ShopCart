@@ -14,14 +14,25 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] }, testIgnore: /checkout\.spec\.ts/ },
-    // El checkout usa los carritos de los dos clientes de la corrida, que otras pruebas también usan: corre después.
-    // Para correrlo solo: `pnpm test:e2e --project checkout --no-deps`.
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+      testIgnore: /(checkout|pedidos)\.spec\.ts/,
+    },
+    // El checkout y los pedidos usan los carritos de los dos clientes de la corrida, que otras pruebas también
+    // usan: corren después, cada archivo en su proyecto para que no corran a la vez entre ellos.
+    // Para correr uno solo: `pnpm test:e2e --project checkout --no-deps`.
     {
       name: 'checkout',
       use: { ...devices['Desktop Chrome'] },
       testMatch: /checkout\.spec\.ts/,
       dependencies: ['chromium'],
+    },
+    {
+      name: 'pedidos',
+      use: { ...devices['Desktop Chrome'] },
+      testMatch: /pedidos\.spec\.ts/,
+      dependencies: ['checkout'],
     },
   ],
 });

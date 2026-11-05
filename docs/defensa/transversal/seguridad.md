@@ -50,7 +50,7 @@ La identidad viaja en un **access JWT corto** (15 min, en el encabezado `Authori
 | Entrada | Ninguna ruta de cliente acepta `idUsuario`, y los cuerpos son `.strict()` | [aislamiento.api.test.ts:262](../../../apps/api/test/integracion/seguridad/aislamiento.api.test.ts#L262 "ninguna ruta de cliente acepta idUsuario en su entrada") |
 | `ejecutarSP` | El actor sale siempre del contexto, nunca del llamador | [ejecutar-sp.ts:98](../../../apps/api/src/shared/db/ejecutar-sp.ts#L98 "A-18: el actor sale siempre del contexto de la petición, nunca del llamador (RF-01)") |
 | Repositorio | No recibe el ID del cliente | [direcciones.repository.ts:70](../../../apps/api/src/modules/direcciones/direcciones.repository.ts#L70 "RF-01: el dueño sale siempre de @IDUsuarioActor") |
-| SP | Filtra por `@IDUsuarioActor`; uno ajeno no devuelve filas | [R__SP_Pedidos_ObtenerDetalle.sql:14](../../../database/programmability/R__SP_Pedidos_ObtenerDetalle.sql#L14 "p.IDUsuario = @IDUsuarioActor") |
+| SP | Filtra por `@IDUsuarioActor`; uno ajeno no devuelve filas | [R__SP_Pedidos_ObtenerDetalle.sql:17](../../../database/programmability/R__SP_Pedidos_ObtenerDetalle.sql#L17 "p.IDUsuario = @IDUsuarioActor") |
 | Servicio | Sin filas → `404`, igual que inexistente | [direcciones.service.ts:13](../../../apps/api/src/modules/direcciones/direcciones.service.ts#L13 "RF-01: una dirección ajena responde igual que una inexistente") |
 
 **La prueba de aislamiento** ([aislamiento.api.test.ts](../../../apps/api/test/integracion/seguridad/aislamiento.api.test.ts)) recorre el router real, no una lista escrita a mano:
@@ -118,7 +118,7 @@ La identidad viaja en un **access JWT corto** (15 min, en el encabezado `Authori
 ### ¿Cómo evitan que un cliente vea el pedido de otro?
 
 El ID del cliente nunca viene en la petición: sale del token y `ejecutarSP` lo agrega como `@IDUsuarioActor`; el SP filtra por él y un pedido ajeno devuelve `404`, igual que uno inexistente.
-**Muéstralo en:** [R__SP_Pedidos_ObtenerDetalle.sql:14](../../../database/programmability/R__SP_Pedidos_ObtenerDetalle.sql#L14 "p.IDUsuario = @IDUsuarioActor")
+**Muéstralo en:** [R__SP_Pedidos_ObtenerDetalle.sql:17](../../../database/programmability/R__SP_Pedidos_ObtenerDetalle.sql#L17 "p.IDUsuario = @IDUsuarioActor")
 
 ### ¿Cómo saben que no se les olvidó proteger una ruta nueva?
 

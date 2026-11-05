@@ -104,7 +104,7 @@ El migrador guarda el checksum de cada script aplicado: si un `V###` cambió, fa
 
 El cliente nunca envía su ID: sale del token, y los SPs filtran con `@IDUsuarioActor`. Un pedido ajeno responde 404, igual que uno inexistente. Una prueba recorre el router real y exige un caso de aislamiento por cada ruta de cliente que recibe un ID.
 
-**Muéstralo en:** [R__SP_Pedidos_ObtenerDetalle.sql:14](../../database/programmability/R__SP_Pedidos_ObtenerDetalle.sql#L14 "p.IDUsuario = @IDUsuarioActor") y [aislamiento.api.test.ts:233](../../apps/api/test/integracion/seguridad/aislamiento.api.test.ts#L233 "el recurso de otro cliente responde 404, igual que uno inexistente"). Detalle: [seguridad](transversal/seguridad.md).
+**Muéstralo en:** [R__SP_Pedidos_ObtenerDetalle.sql:17](../../database/programmability/R__SP_Pedidos_ObtenerDetalle.sql#L17 "p.IDUsuario = @IDUsuarioActor") y [aislamiento.api.test.ts:233](../../apps/api/test/integracion/seguridad/aislamiento.api.test.ts#L233 "el recurso de otro cliente responde 404, igual que uno inexistente"). Detalle: [seguridad](transversal/seguridad.md).
 
 ### 17. ¿Por qué 404 y no 403 para un recurso ajeno?
 

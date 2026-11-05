@@ -97,15 +97,15 @@ export async function cuantosPedidos(api: APIRequestContext): Promise<number> {
   return (await leer<{ paginacion: { total: number } }>(respuesta)).paginacion.total;
 }
 
-/** Inicia el pago y paga con la tarjeta aprobada, como lo haría la pantalla (01 §6.1 y §6.2). */
-export async function comprarCarrito(api: APIRequestContext) {
+/** Inicia el pago y paga con la tarjeta aprobada, como lo haría la pantalla (01 §6.1 y §6.2); da el pedido. */
+export async function comprarCarrito(api: APIRequestContext): Promise<number> {
   const { datos } = await leer<Datos<{ metodos: { idMetodoEnvio: number }[] }>>(
     await api.get('/api/v1/envios/metodos'),
   );
   const sesion = await api.post('/api/v1/checkout/sesion', {
     data: { idDireccion: await direccionDe(api), idMetodoEnvio: datos.metodos[0]?.idMetodoEnvio },
   });
-  expect(sesion.status(), 'iniciar el pago').toBe(201);
+  expect(sesion.status(), `iniciar el pago: ${await sesion.text()}`).toBe(201);
   const pago = await api.post('/api/v1/checkout/sesion/pagos', {
     headers: { 'idempotency-key': randomUUID() },
     data: {
@@ -116,6 +116,7 @@ export async function comprarCarrito(api: APIRequestContext) {
     },
   });
   expect(pago.status(), 'pagar').toBe(201);
+  return (await leer<Datos<{ idPedido: number }>>(pago)).datos.idPedido;
 }
 
 async function conSuApi(

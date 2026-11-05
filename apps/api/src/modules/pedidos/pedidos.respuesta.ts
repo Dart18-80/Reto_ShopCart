@@ -55,6 +55,10 @@ export const pedidoSchema = z
     numeroPedido: z.string(),
     estado: z.string(),
     estadoPago: z.enum(ESTADOS_PAGO),
+    puedeCancelar: z.boolean().openapi({
+      description:
+        'M5-H01: si quien pide puede cancelarlo ahora (TransicionEstadoPedido para su rol y el pago no está en verificación)',
+    }),
     subtotal: montoSchema,
     descuento: montoSchema,
     costoEnvio: montoSchema,
