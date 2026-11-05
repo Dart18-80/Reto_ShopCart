@@ -26,12 +26,8 @@ async function valorDeLaSemilla(apiAdmin: APIRequestContext, atributo: string, v
   return encontrado.idValorAtributo;
 }
 
-/** Una categoría y un producto propios de la corrida, con sus variantes con precio y su existencia. */
-async function productoEnTienda(
-  apiAdmin: APIRequestContext,
-  nombre: string,
-  variantes: VarianteNueva[],
-) {
+/** Una categoría y un producto propios de la corrida, todavía sin variantes. */
+async function productoNuevo(apiAdmin: APIRequestContext, nombre: string) {
   const categoria = await apiAdmin.post('/api/v1/admin/categorias', {
     data: { nombre: nombreUnico('categoria'), ilustracion: 'Camisa' },
   });
@@ -42,26 +38,36 @@ async function productoEnTienda(
   });
   expect(producto.status()).toBe(201);
   const { datos } = (await producto.json()) as { datos: { idProducto: number } };
+  return { idProducto: datos.idProducto, idCategoria: creada.idCategoria };
+}
+
+/** Las variantes con su precio y, si se pide, su existencia (sin ella, la variante queda Agotada). */
+async function agregarVariantes(
+  apiAdmin: APIRequestContext,
+  idProducto: number,
+  variantes: VarianteNueva[],
+) {
   for (const { existencia, ...variante } of variantes) {
     const respuesta = await apiAdmin.post(
-      `/api/v1/admin/productos/${String(datos.idProducto)}/variantes`,
-      { data: { sku: nombreUnico('sku').slice(-40), ...variante } },
+      `/api/v1/admin/productos/${String(idProducto)}/variantes`,
+      {
+        data: { sku: nombreUnico('sku').slice(-40), ...variante },
+      },
     );
     expect(respuesta.status()).toBe(201);
     if (existencia === undefined) continue;
-    const { datos: conVariante } = (await respuesta.json()) as {
+    const { datos } = (await respuesta.json()) as {
       datos: { variantes: { idVariante: number }[] };
     };
     const entrada = await apiAdmin.post(RUTA_ENTRADAS, {
       data: {
-        idVariante: conVariante.variantes.at(-1)?.idVariante,
+        idVariante: datos.variantes.at(-1)?.idVariante,
         cantidad: existencia,
         motivo: 'Existencia de la prueba E2E',
       },
     });
     expect(entrada.status()).toBe(201);
   }
-  return { idProducto: datos.idProducto, idCategoria: creada.idCategoria };
 }
 
 type CrearEnTienda = (nombre: string, variantes?: VarianteNueva[]) => Promise<number>;
@@ -74,8 +80,10 @@ const prueba = test.extend<{ crearEnTienda: CrearEnTienda }>({
   crearEnTienda: async ({ apiAdmin }, usar) => {
     const creados: { idProducto: number; idCategoria: number }[] = [];
     await usar(async (nombre, variantes = [{ valores: [], precio: '249.90' }]) => {
-      const creado = await productoEnTienda(apiAdmin, nombre, variantes);
+      const creado = await productoNuevo(apiAdmin, nombre);
+      // Se anota antes de agregar las variantes: si algo falla después, igual se desactiva.
       creados.push(creado);
+      await agregarVariantes(apiAdmin, creado.idProducto, variantes);
       return creado.idProducto;
     });
     for (const { idProducto, idCategoria } of creados) {
