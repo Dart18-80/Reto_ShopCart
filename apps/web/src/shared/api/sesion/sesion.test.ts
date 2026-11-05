@@ -481,3 +481,43 @@ describe('sesión: un refresh que falla tarde no pisa una sesión más nueva', (
     expect(b.estado()).toMatchObject({ tipo: 'activa' });
   });
 });
+
+describe('sesión: el nombre nuevo del perfil (M1-H02)', () => {
+  it('adopta el nombre confirmado con el mismo token y lo pasa a las demás pestañas', async () => {
+    const pestana = crearNavegador();
+    const esta = pestana();
+    const otra = pestana();
+    esta.establecer(sesionDePrueba('token-vigente'));
+    await entregarMensajes();
+
+    esta.actualizarNombre('Ana María Cliente');
+    await entregarMensajes();
+
+    for (const sesion of [esta, otra]) {
+      expect(sesion.token()).toBe('token-vigente');
+      expect(sesion.estado()).toEqual({
+        tipo: 'activa',
+        usuario: { ...usuarioDePrueba('Cliente'), nombre: 'Ana María Cliente' },
+      });
+    }
+  });
+
+  it('no avisa un cambio de usuario: la caché del mismo usuario sigue sirviendo', () => {
+    const sesion = crearNavegador()();
+    sesion.establecer(sesionDePrueba('token-vigente'));
+    const alCambiar = vi.fn();
+    sesion.alCambiarUsuario(alCambiar);
+
+    sesion.actualizarNombre('Ana María Cliente');
+
+    expect(alCambiar).not.toHaveBeenCalled();
+  });
+
+  it('sin sesión activa no hace nada: un invitado no tiene nombre que cambiar', () => {
+    const sesion = crearNavegador()();
+
+    sesion.actualizarNombre('Ana María Cliente');
+
+    expect(sesion.estado()).toEqual({ tipo: 'invitado' });
+  });
+});

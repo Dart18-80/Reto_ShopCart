@@ -9,12 +9,10 @@ const STATUS_VALIDACION = 400;
 // El backend nombra cada campo con su origen (A-06): `body.nombreRecibe`. El formulario solo tiene el cuerpo.
 const PREFIJO_CUERPO = 'body.';
 
-const erroresDeCampoSchema = z.array(z.object({ campo: z.string(), mensaje: z.string() }));
-// El 400 de manejar (A-20) trae `detalles: { errores: [...] }`; un 400 de un SP puede traer la lista directa.
-const detallesDeValidacionSchema = z.union([
-  erroresDeCampoSchema,
-  z.object({ errores: erroresDeCampoSchema }).transform(({ errores }) => errores),
-]);
+// La forma de todo 400 con campos (05 §7): la de manejar (A-20) y la que arma un servicio (M1-H02).
+const detallesDeValidacionSchema = z
+  .object({ errores: z.array(z.object({ campo: z.string(), mensaje: z.string() })) })
+  .transform(({ errores }) => errores);
 
 interface OpcionesFormularioApi<Entrada extends FieldValues, Salida, Respuesta> {
   /** El esquema de `@shopcart/shared`, el mismo que valida la API (FE-03). */

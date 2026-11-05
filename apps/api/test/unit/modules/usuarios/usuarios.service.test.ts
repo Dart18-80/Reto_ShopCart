@@ -70,7 +70,14 @@ describe('usuarios.service (E2-H04, N-15)', () => {
         { contrasenaActual: 'Otra2026', contrasenaNueva: 'Nueva2027' },
         CLIENTE,
       ),
-    ).rejects.toMatchObject({ codigo: 'PARAMETRO_INVALIDO' });
+    ).rejects.toMatchObject({
+      codigo: 'PARAMETRO_INVALIDO',
+      detalles: {
+        errores: [
+          { campo: 'body.contrasenaActual', mensaje: 'La contraseña actual no es correcta.' },
+        ],
+      },
+    });
     expect(repositorio.cambiarContrasena).not.toHaveBeenCalled();
     expect(sesiones.abrir).not.toHaveBeenCalled();
   });

@@ -154,7 +154,7 @@ Contrato del backend (A-07, `01-arquitectura.md` §5.3): access JWT de 15 minuto
 
 | Respuesta | Qué se muestra |
 |---|---|
-| `400` de validación | Cada `detalles[].campo` (`body.nombreRecibe` → `nombreRecibe`) en su campo, con `setError` |
+| `400` de validación | Cada `detalles.errores[].campo` (`body.nombreRecibe` → `nombreRecibe`) en su campo, con `setError`. Es la forma de todo 400 con campos: los de `manejar` (A-20) y los que arma un servicio, como la contraseña actual incorrecta (M1-H02) |
 | `409` o `422` | El `mensaje` del backend en un aviso arriba del formulario: esos mensajes ya son específicos (por ejemplo, el faltante de un cupón) |
 | `401` | Lo maneja el cliente `api` (§5); el formulario no lo ve |
 | `5xx` o red | Aviso genérico con el `requestId` y la opción de reintentar |

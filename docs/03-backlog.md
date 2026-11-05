@@ -774,7 +774,7 @@ El orden de construcción, por módulos (F1, módulos 1 a 11 y F6), está en [`0
 | F1-H07 | Formularios, formato y prenda | Must | 1.0 | Hecha |
 | F1-H08 | Base de E2E y pruebas transversales | Must | 0.75 | Hecha |
 | M1-H01 | Ingresar y registrarse | Must | 1.0 | Hecha |
-| M1-H02 | Perfil y contraseña | Should | 0.75 | Lista |
+| M1-H02 | Perfil y contraseña | Should | 0.75 | Hecha |
 | M2-H01 | Datos de presentación del catálogo (backend) | Must | 1.25 | Lista |
 | M2-H02 | Catálogo con búsqueda y filtros | Must | 1.0 | Lista |
 | M2-H03 | Detalle de producto | Must | 1.25 | Lista |
@@ -936,7 +936,7 @@ Escribe primero un plan corto de la API de `TablaServidor` (props y un ejemplo d
 **CA**
 - [ ] `formatearMonto("9999999999.99")` y `formatearMonto("-12.00")` dan el texto exacto, y una prueba verifica que no se convierte a `number`.
 - [ ] Con el reloj fijado a las 23:30 de Guatemala (otro día en UTC), `formatearFechaHora` muestra el día de Guatemala y `formatearFechaCalendario("2026-11-03")` muestra el 3 de noviembre.
-- [ ] Un 400 con `detalles: [{ campo: "body.nombreRecibe", … }]` marca el campo `nombreRecibe`; un 422 muestra el mensaje del backend en el aviso.
+- [ ] Un 400 con `detalles: { errores: [{ campo: "body.nombreRecibe", … }] }` marca el campo `nombreRecibe`; un 422 muestra el mensaje del backend en el aviso.
 - [ ] `Prenda` renderiza los seis tipos y toma el color con `currentColor` (prueba de componente).
 
 **Referencias:** FE-03, FE-10, FE-15, A-21, A-12.
@@ -985,14 +985,14 @@ Escribe primero un plan corto de la API de `TablaServidor` (props y un ejemplo d
 ### M1-H02 · Perfil y contraseña — `Should` · 0.75 h
 **Alcance**
 - **Backend (pequeño):**
-  - Cuando la contraseña actual no coincide, `POST /usuarios/me/contrasena` responde el mismo `400 PARAMETRO_INVALIDO` con `detalles: [{ campo: "body.contrasenaActual", mensaje }]`, para que el formulario lo marque en su campo. Con su prueba de integración.
+  - Cuando la contraseña actual no coincide, `POST /usuarios/me/contrasena` responde el mismo `400 PARAMETRO_INVALIDO` con la forma de un 400 de validación, `detalles: { errores: [{ campo: "body.contrasenaActual", mensaje }] }`, para que el formulario lo marque en su campo. Con su prueba de integración.
   - El `200` de `POST /usuarios/me/contrasena` se declara en OpenAPI con el esquema de sesión (`respuestaSesionSchema`); hoy solo tiene descripción y la web tipada no vería la sesión que el código sí devuelve. El diff de `openapi.json` va en el mismo commit y solo cambia eso.
 - Mueve a `shared` `actualizarPerfilSchema` y `cambiarContrasenaSchema`.
 - `/cuenta/perfil` con dos secciones: datos (`GET/PATCH /usuarios/me`: nombre y teléfono) y contraseña (`POST /usuarios/me/contrasena`).
 - El cambio de contraseña devuelve una sesión nueva: `sesion.establecer(respuesta)`. Las otras pestañas la reciben por el canal; las otras sesiones del usuario quedan revocadas (A-07).
 
 **CA**
-- [ ] Guardar el perfil actualiza el nombre en el encabezado sin recargar.
+- [ ] Guardar el perfil actualiza el nombre sin recargar: la sesión adopta el que confirmó el backend (mismo token, también en las demás pestañas) y se ve arriba del menú de la cuenta, con el correo, y en la barra lateral del backoffice. El encabezado sigue diciendo "Mi cuenta" (M1-H01).
 - [ ] Una contraseña actual incorrecta marca el campo `contrasenaActual`.
 - [ ] Después de cambiar la contraseña, la sesión sigue activa y un refresh posterior funciona (E2E).
 - [ ] Los tres estados de la página (carga, error y datos) se prueban.

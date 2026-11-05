@@ -6582,7 +6582,11 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            datos: components["schemas"]["Sesion"];
+                        };
+                    };
                 };
                 /** @description Datos inválidos */
                 400: {

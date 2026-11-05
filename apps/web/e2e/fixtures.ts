@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { test as base, expect, type APIRequestContext, type Page } from '@playwright/test';
-import { VARIABLE_CLIENTE } from './preparacion-global';
+import { VARIABLE_CLIENTE, VARIABLE_TOKEN_ADMIN } from './preparacion-global';
 
 export interface Credenciales {
   correo: string;
@@ -10,12 +10,6 @@ export interface Credenciales {
 interface Sesion {
   datos: { accessToken: string };
 }
-
-// El Administrador es la única cuenta que no se puede crear por la API pública; sus credenciales se configuran.
-const ADMINISTRADOR: Credenciales = {
-  correo: process.env.SHOPCART_ADMIN_CORREO ?? 'admin@shopcart.gt',
-  contrasena: process.env.SHOPCART_ADMIN_CONTRASENA ?? 'Admin2026!',
-};
 
 // Nombres únicos por corrida (`e2e-<corrida>-…`): las pruebas se repiten sin limpiar la base.
 const CORRIDA = randomUUID().slice(0, 8);
@@ -48,6 +42,22 @@ export function clienteDeLaCorrida(): Credenciales {
   return JSON.parse(guardado) as Credenciales;
 }
 
+/**
+ * Un Operador nuevo, creado por el Administrador: para las pruebas que cambian la contraseña o los datos de su
+ * cuenta sin afectar a las demás, y sin gastar el límite de registros públicos (A-07).
+ */
+export async function crearOperador(apiAdmin: APIRequestContext): Promise<Credenciales> {
+  const credenciales = {
+    correo: `${nombreUnico('operador')}@prueba.gt`,
+    contrasena: 'Operador2026!',
+  };
+  const respuesta = await apiAdmin.post('/api/v1/usuarios', {
+    data: { ...credenciales, nombre: 'Operador E2E', rol: 'Operador' },
+  });
+  expect(respuesta.status(), 'alta del Operador').toBe(201);
+  return credenciales;
+}
+
 interface FixturesDePrueba {
   /** La API con el token de un Administrador, para preparar los datos de cada prueba. */
   apiAdmin: APIRequestContext;
@@ -55,9 +65,10 @@ interface FixturesDePrueba {
 
 export const test = base.extend<FixturesDePrueba>({
   apiAdmin: async ({ playwright, baseURL }, usar) => {
-    const anonimo = await playwright.request.newContext({ baseURL });
-    const token = await iniciarSesion(anonimo, ADMINISTRADOR);
-    await anonimo.dispose();
+    // La sesión del Administrador la abrió la preparación global, una sola vez por corrida.
+    const token = process.env[VARIABLE_TOKEN_ADMIN];
+    if (!token)
+      throw new Error('Falta la sesión del Administrador: la abre e2e/preparacion-global.ts.');
     const apiAdmin = await playwright.request.newContext({
       baseURL,
       extraHTTPHeaders: { Authorization: `Bearer ${token}` },

@@ -13,6 +13,7 @@ import {
   respuestasError,
 } from '../../shared/openapi/index.js';
 import { z } from '../../shared/openapi/zod.js';
+import { respuestaSesionSchema } from '../auth/index.js';
 import type { UsuariosController } from './usuarios.controller.js';
 import {
   actualizarPerfilSchema,
@@ -57,7 +58,10 @@ registroOpenApi.registerPath({
   security: seguridad,
   request: cuerpo(cambiarContrasenaSchema),
   responses: {
-    200: { description: 'Sesión nueva; el refresh token llega en la cookie "refresh"' },
+    200: {
+      description: 'Sesión nueva; el refresh token llega en la cookie "refresh"',
+      content: { 'application/json': { schema: respuestaSesionSchema } },
+    },
     ...respuestasError(400, 401, 429),
   },
 });

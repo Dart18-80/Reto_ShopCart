@@ -23,9 +23,14 @@ interface PropsCampoFormulario<V extends FieldValues> extends Omit<
   etiqueta: string;
   /** Ayuda bajo el campo; el mensaje de error la reemplaza. */
   descripcion?: string;
-  /** Un campo `.optional()` del esquema: vacío, se envía como ausente y no como texto vacío. */
-  opcional?: boolean;
+  /**
+   * Qué se envía si el campo queda vacío: `'ausente'` para un `.optional()` del esquema y `'nulo'` para un
+   * `.nullable()` que se borra con `null` (el teléfono del perfil). Sin indicarlo, se envía el texto vacío.
+   */
+  vacio?: 'ausente' | 'nulo';
 }
+
+const VALOR_SI_VACIO = { ausente: undefined, nulo: null } as const;
 
 /**
  * Figma: Campo (6:12). Etiqueta arriba, entrada y debajo la ayuda o el error (del esquema o del backend, FE-03).
@@ -35,7 +40,7 @@ export function CampoFormulario<V extends FieldValues>({
   nombre,
   etiqueta,
   descripcion,
-  opcional = false,
+  vacio,
   ...entrada
 }: PropsCampoFormulario<V>) {
   const { control } = useFormContext<V>();
@@ -55,7 +60,7 @@ export function CampoFormulario<V extends FieldValues>({
               value={field.value ?? ''}
               onChange={(evento) => {
                 const valor = evento.target.value;
-                field.onChange(opcional && valor === '' ? undefined : valor);
+                field.onChange(vacio !== undefined && valor === '' ? VALOR_SI_VACIO[vacio] : valor);
               }}
               className="bg-card texto-base h-auto px-4 py-3 md:text-base aria-invalid:border-2"
             />

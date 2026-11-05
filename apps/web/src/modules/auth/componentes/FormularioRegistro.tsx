@@ -41,7 +41,7 @@ export function FormularioRegistro() {
           inputMode="numeric"
           autoComplete="tel-national"
           descripcion="8 dígitos, para avisarte de tu pedido."
-          opcional
+          vacio="ausente"
         />
         <Button
           type="submit"

@@ -57,3 +57,6 @@ export function crearCanalesEnMemoria() {
 
 /** El estado de la sesión de la aplicación, para las pruebas de páginas (que no pueden importar shared/api). */
 export const estadoDeLaSesion = () => sesion.estado();
+
+/** El access token vigente, para verificar que una página adoptó una sesión nueva. */
+export const tokenDeLaSesion = () => sesion.token();

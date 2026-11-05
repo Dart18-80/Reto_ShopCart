@@ -21,6 +21,8 @@ import type {
 } from './usuarios.schemas.js';
 import type { FiltrosUsuarios, PerfilConHash, Usuario } from './usuarios.types.js';
 
+const CONTRASENA_ACTUAL_INCORRECTA = 'La contraseña actual no es correcta.';
+
 interface Dependencias {
   repositorio: UsuariosRepository;
   sesiones: Sesiones;
@@ -54,8 +56,12 @@ export function crearUsuariosService({ repositorio, sesiones, versiones, reporte
     async cambiarContrasena(datos: CambiarContrasena, cliente: ClienteHttp): Promise<Sesion> {
       const perfil = await perfilConHash();
       if (!(await verificarContrasena(perfil.hashContrasena, datos.contrasenaActual))) {
+        // M1-H02: la misma forma de detalles que un 400 de validación, para que la web marque el campo.
         throw new AppError('PARAMETRO_INVALIDO', {
-          mensaje: 'La contraseña actual no es correcta.',
+          mensaje: CONTRASENA_ACTUAL_INCORRECTA,
+          detalles: {
+            errores: [{ campo: 'body.contrasenaActual', mensaje: CONTRASENA_ACTUAL_INCORRECTA }],
+          },
         });
       }
       const versionSesion = await repositorio.cambiarContrasena(

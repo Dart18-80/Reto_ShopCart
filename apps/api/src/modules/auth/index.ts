@@ -12,7 +12,7 @@ export type { LimitadoresAuth } from './auth.routes.js';
 export type { IdentidadSesion, Sesion, UsuarioSesion } from './auth.types.js';
 export { enviarSesion } from './auth.controller.js';
 export { hashearContrasena, verificarContrasena } from './auth.contrasenas.js';
-export { contrasenaSchema, correoSchema } from './auth.schemas.js';
+export { contrasenaSchema, correoSchema, respuestaSesionSchema } from './auth.schemas.js';
 
 interface DependenciasAuth {
   tokens: TokensAcceso;

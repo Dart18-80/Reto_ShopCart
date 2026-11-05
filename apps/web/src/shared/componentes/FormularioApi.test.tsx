@@ -72,11 +72,13 @@ async function llenarYEnviar(usuario: Usuario) {
 }
 
 describe('useFormularioApi (FE-03)', () => {
-  it('un 400 con detalles marca cada campo (body.nombreRecibe → nombreRecibe)', async () => {
+  it('un 400 con detalles.errores marca cada campo (body.nombreRecibe → nombreRecibe)', async () => {
     simularErrorAlCrearDireccion(400, {
-      codigo: 'PARAMETRO_INVALIDO',
+      codigo: 'VALIDACION_FALLIDA',
       mensaje: 'Los datos enviados no son válidos.',
-      detalles: [{ campo: 'body.nombreRecibe', mensaje: 'Escribe el nombre completo.' }],
+      detalles: {
+        errores: [{ campo: 'body.nombreRecibe', mensaje: 'Escribe el nombre completo.' }],
+      },
     });
     const { usuario } = renderizar(<FormularioDireccion />);
 
@@ -148,10 +150,14 @@ describe('useFormularioApi (FE-03)', () => {
 
 describe('useFormularioApi: casos borde del 400', () => {
   it.each([
-    ['un campo de la query', [{ campo: 'query.pagina', mensaje: 'Página inválida.' }]],
-    ['un campo que el formulario no tiene', [{ campo: 'body.inexistente', mensaje: 'No va.' }]],
-    ['detalles vacíos', []],
-    ['detalles que no son una lista', { campo: 'body.nombreRecibe' }],
+    ['un campo de la query', { errores: [{ campo: 'query.pagina', mensaje: 'Página inválida.' }] }],
+    [
+      'un campo que el formulario no tiene',
+      { errores: [{ campo: 'body.inexistente', mensaje: 'No va.' }] },
+    ],
+    ['errores vacíos', { errores: [] }],
+    ['detalles sin errores', { campo: 'body.nombreRecibe' }],
+    ['la lista sin envolver en errores', [{ campo: 'body.nombreRecibe', mensaje: 'No va.' }]],
   ])('con %s, el mensaje del backend va al aviso general', async (_caso, detalles) => {
     simularErrorAlCrearDireccion(400, {
       codigo: 'PARAMETRO_INVALIDO',
@@ -171,10 +177,12 @@ describe('useFormularioApi: casos borde del 400', () => {
     simularErrorAlCrearDireccion(400, {
       codigo: 'PARAMETRO_INVALIDO',
       mensaje: 'Los datos enviados no son válidos.',
-      detalles: [
-        { campo: 'body.nombreRecibe', mensaje: 'Escribe el nombre completo.' },
-        { campo: 'query.otro', mensaje: 'No va.' },
-      ],
+      detalles: {
+        errores: [
+          { campo: 'body.nombreRecibe', mensaje: 'Escribe el nombre completo.' },
+          { campo: 'query.otro', mensaje: 'No va.' },
+        ],
+      },
     });
     const { usuario } = renderizar(<FormularioDireccion />);
 
@@ -261,23 +269,5 @@ describe('useFormularioApi sin conexión (FE-02: networkMode always)', () => {
       'Sin conexión. Revisa tu internet e intenta de nuevo.',
     );
     expect(screen.getByRole('button', { name: 'Guardar' })).toBeEnabled();
-  });
-});
-
-describe('useFormularioApi: la forma real del 400 de la API', () => {
-  it('un 400 VALIDACION_FALLIDA con detalles.errores (manejar, A-20) marca cada campo', async () => {
-    simularErrorAlCrearDireccion(400, {
-      codigo: 'VALIDACION_FALLIDA',
-      mensaje: 'Los datos enviados no son válidos.',
-      detalles: { errores: [{ campo: 'body.direccionLinea', mensaje: 'No puede estar vacío.' }] },
-    });
-    const { usuario } = renderizar(<FormularioDireccion />);
-
-    await llenarYEnviar(usuario);
-
-    expect(await screen.findByLabelText('Dirección')).toHaveAccessibleDescription(
-      'No puede estar vacío.',
-    );
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });

@@ -11595,6 +11595,21 @@
         },
         "responses": {
           "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "datos": {
+                      "$ref": "#/components/schemas/Sesion"
+                    }
+                  },
+                  "required": [
+                    "datos"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
             "description": "Sesión nueva; el refresh token llega en la cookie \"refresh\""
           },
           "400": {

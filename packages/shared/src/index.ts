@@ -12,3 +12,10 @@ export { montoSchema } from './monto.js';
 export { ROLES_DE_USUARIO, type RolDeUsuario } from './roles.js';
 export { telefonoSchema } from './telefono.js';
 export { textoNvarchar } from './texto.js';
+export {
+  actualizarPerfilSchema,
+  alMenosUnCampo,
+  cambiarContrasenaSchema,
+  type ActualizarPerfil,
+  type CambiarContrasena,
+} from './usuarios.js';

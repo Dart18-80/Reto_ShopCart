@@ -192,10 +192,21 @@ export function crearSesion({ refrescar, cerrarEnServidor, bloqueo, canal }: Dep
       return renovarUnaVez(token);
     },
 
-    /** Lo usan el login y el registro: la sesión pasa también a las demás pestañas. */
+    /** Lo usan el login, el registro y el cambio de contraseña: la sesión pasa también a las demás pestañas. */
     establecer(datos: DatosSesion) {
       const sesion = soloSesion(datos);
       adoptar(sesion);
+      canal.publicar({ tipo: 'token', sesion });
+    },
+
+    /**
+     * M1-H02: tras guardar el perfil, el nombre que confirmó el backend. El token no cambia y el usuario es el
+     * mismo, así que no cuenta como cambio de sesión: la caché sigue sirviendo y un refresh en vuelo no llega tarde.
+     */
+    actualizarNombre(nombre: string) {
+      if (estado.tipo !== 'activa' || token === null) return;
+      const sesion = { accessToken: token, usuario: { ...estado.usuario, nombre } };
+      fijarEstado({ tipo: 'activa', usuario: sesion.usuario });
       canal.publicar({ tipo: 'token', sesion });
     },
 

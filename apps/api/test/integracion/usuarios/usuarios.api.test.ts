@@ -224,7 +224,7 @@ describe('POST /usuarios/me/contrasena (E2-H04, N-15)', () => {
     expect(tokens.some((fila) => fila.MotivoRevocacion === 'CambioContrasena')).toBe(true);
   });
 
-  it('con la contraseña actual incorrecta responde 400 y no cambia nada', async () => {
+  it('con la contraseña actual incorrecta responde 400 con el campo contrasenaActual (M1-H02) y no cambia nada', async () => {
     const cliente = await sesionDeCliente();
 
     const respuesta = await request(app)
@@ -233,6 +233,16 @@ describe('POST /usuarios/me/contrasena (E2-H04, N-15)', () => {
       .send({ contrasenaActual: 'NoEsLaMia2026', contrasenaNueva: 'NuevaClave2027' });
 
     expect(respuesta.status).toBe(400);
+    expect(respuesta.body).toMatchObject({
+      error: {
+        codigo: 'PARAMETRO_INVALIDO',
+        detalles: {
+          errores: [
+            { campo: 'body.contrasenaActual', mensaje: 'La contraseña actual no es correcta.' },
+          ],
+        },
+      },
+    });
     expect((await iniciarSesion(app, cliente.correo, CONTRASENA)).status).toBe(200);
   });
 });

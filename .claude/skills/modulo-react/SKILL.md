@@ -172,7 +172,7 @@ const formulario = useFormularioApi({
 - **El esquema siempre sale de `@shopcart/shared`.** Si el esquema que necesitas todavía está en la API, moverlo es parte de la historia de datos del módulo (§2). Nunca escribas un esquema paralelo en la web.
 - **`useFormularioApi` es el único lugar que traduce errores del backend:** `400` → cada campo de los detalles a su campo (`body.x` → `x`; el 400 de `manejar` trae `detalles: { errores: [{ campo, mensaje }] }`); `409`/`422` → `errorGeneral` con el mensaje del backend; `5xx`/red → aviso genérico con el `requestId`. No hagas `try/catch` en los formularios.
 - **Un 409 o 422 que es de un campo** (`CORREO_EN_USO`) va a ese campo con `campoPorCodigo: { CORREO_EN_USO: 'correo' }`; los demás códigos siguen yendo al aviso. Un `401` de credenciales nunca va a un campo (N-15).
-- **Un campo `.optional()` del esquema** lleva `opcional` en `CampoFormulario`: vacío se envía como ausente, no como `''`, que el esquema rechazaría.
+- **Un campo `.optional()` del esquema** lleva `vacio="ausente"` en `CampoFormulario`: vacío se envía como ausente, no como `''`, que el esquema rechazaría. Un `.nullable()` que se borra (el teléfono del perfil) lleva `vacio="nulo"`.
 - **El botón de enviar se deshabilita mientras la mutación está en curso.** En el pago, además, la `Idempotency-Key` se genera **una vez por intento de pago** y se reutiliza en cada reintento de ese intento (RF-06).
 - Mensajes de validación en español y junto al campo; etiquetas visibles, no solo `placeholder`.
 
