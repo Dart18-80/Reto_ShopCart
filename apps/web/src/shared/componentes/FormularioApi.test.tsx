@@ -143,3 +143,57 @@ describe('useFormularioApi (FE-03)', () => {
     expect(screen.getByRole('button', { name: 'Guardar' })).toBeEnabled();
   });
 });
+
+describe('useFormularioApi: casos borde del 400', () => {
+  it.each([
+    ['un campo de la query', [{ campo: 'query.pagina', mensaje: 'Página inválida.' }]],
+    ['un campo que el formulario no tiene', [{ campo: 'body.inexistente', mensaje: 'No va.' }]],
+    ['detalles vacíos', []],
+    ['detalles que no son una lista', { campo: 'body.nombreRecibe' }],
+  ])('con %s, el mensaje del backend va al aviso general', async (_caso, detalles) => {
+    simularErrorAlCrearDireccion(400, {
+      codigo: 'PARAMETRO_INVALIDO',
+      mensaje: 'Los datos enviados no son válidos.',
+      detalles,
+    });
+    const { usuario } = renderizar(<FormularioDireccion />);
+
+    await llenarYEnviar(usuario);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Los datos enviados no son válidos.',
+    );
+  });
+
+  it('si un detalle tiene campo y otro no, marca el campo y además muestra el aviso', async () => {
+    simularErrorAlCrearDireccion(400, {
+      codigo: 'PARAMETRO_INVALIDO',
+      mensaje: 'Los datos enviados no son válidos.',
+      detalles: [
+        { campo: 'body.nombreRecibe', mensaje: 'Escribe el nombre completo.' },
+        { campo: 'query.otro', mensaje: 'No va.' },
+      ],
+    });
+    const { usuario } = renderizar(<FormularioDireccion />);
+
+    await llenarYEnviar(usuario);
+
+    expect(await screen.findByText('Escribe el nombre completo.')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Los datos enviados no son válidos.');
+  });
+
+  it('un nombre con tildes, ñ y emoji llega íntegro al backend', async () => {
+    const cuerpos = simularErrorAlCrearDireccion(422, { codigo: 'X', mensaje: 'Rechazado.' });
+    const { usuario } = renderizar(<FormularioDireccion />);
+
+    await escribirEn(usuario, 'Quién recibe', '  Begoña Núñez 🌋  ');
+    await escribirEn(usuario, 'Teléfono', '55551234');
+    await escribirEn(usuario, 'Municipio', '101');
+    await escribirEn(usuario, 'Dirección', 'Zona 1');
+    await usuario.click(screen.getByRole('button', { name: 'Guardar' }));
+    await screen.findByRole('alert');
+
+    // textoNvarchar recorta y normaliza (NFC) antes de enviar, igual que la API.
+    expect(cuerpos).toEqual([expect.objectContaining({ nombreRecibe: 'Begoña Núñez 🌋' })]);
+  });
+});
