@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { test as base, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { VARIABLE_CLIENTE } from './preparacion-global';
 
 export interface Credenciales {
   correo: string;
@@ -39,17 +40,12 @@ export async function iniciarSesionPorApi(page: Page, credenciales: Credenciales
   await iniciarSesion(page.request, credenciales);
 }
 
-/** Registra un cliente nuevo por la API pública (A-07: el registro admite 3 por minuto por IP). */
-async function registrarCliente(request: APIRequestContext): Promise<Credenciales> {
-  const credenciales = {
-    correo: `${nombreUnico('cliente')}@prueba.gt`,
-    contrasena: 'Ensayo2026!',
-  };
-  const respuesta = await request.post('/api/v1/auth/registro', {
-    data: { ...credenciales, nombre: 'Cliente de prueba E2E' },
-  });
-  expect(respuesta.status(), 'registro del cliente de prueba').toBe(201);
-  return credenciales;
+/** El Cliente que registró la preparación global: uno por corrida, por el límite de registros (A-07). */
+export function clienteDeLaCorrida(): Credenciales {
+  const guardado = process.env[VARIABLE_CLIENTE];
+  if (!guardado)
+    throw new Error('Falta el cliente de la corrida: lo registra e2e/preparacion-global.ts.');
+  return JSON.parse(guardado) as Credenciales;
 }
 
 interface FixturesDePrueba {
@@ -57,22 +53,7 @@ interface FixturesDePrueba {
   apiAdmin: APIRequestContext;
 }
 
-interface FixturesDelWorker {
-  /** Un Cliente registrado para esta corrida; las pruebas lo comparten por el límite de registros. */
-  cliente: Credenciales;
-}
-
-export const test = base.extend<FixturesDePrueba, FixturesDelWorker>({
-  cliente: [
-    async ({ playwright }, usar, infoDelWorker) => {
-      const request = await playwright.request.newContext({
-        baseURL: infoDelWorker.project.use.baseURL,
-      });
-      await usar(await registrarCliente(request));
-      await request.dispose();
-    },
-    { scope: 'worker' },
-  ],
+export const test = base.extend<FixturesDePrueba>({
   apiAdmin: async ({ playwright, baseURL }, usar) => {
     const anonimo = await playwright.request.newContext({ baseURL });
     const token = await iniciarSesion(anonimo, ADMINISTRADOR);

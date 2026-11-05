@@ -1,5 +1,5 @@
 import type { BrowserContext, Page } from '@playwright/test';
-import { expect, iniciarSesionPorApi, test } from './fixtures';
+import { clienteDeLaCorrida, expect, iniciarSesionPorApi, test } from './fixtures';
 
 // Con sesión, el encabezado de la tienda cambia «Ingresar» por «Mi cuenta» (Figma: Encabezado tienda).
 async function esperarSesion(page: Page) {
@@ -24,8 +24,8 @@ async function contarRefreshEnVuelo(context: BrowserContext) {
 }
 
 test.describe('sesión (FE-05)', () => {
-  test('recargar la página conserva la sesión (rehidratación)', async ({ page, cliente }) => {
-    await iniciarSesionPorApi(page, cliente);
+  test('recargar la página conserva la sesión (rehidratación)', async ({ page }) => {
+    await iniciarSesionPorApi(page, clienteDeLaCorrida());
 
     await page.goto('/');
     await esperarSesion(page);
@@ -37,9 +37,8 @@ test.describe('sesión (FE-05)', () => {
   test('dos pestañas que recargan a la vez no pierden la sesión, y una tercera recarga sigue con ella', async ({
     page,
     context,
-    cliente,
   }) => {
-    await iniciarSesionPorApi(page, cliente);
+    await iniciarSesionPorApi(page, clienteDeLaCorrida());
     const otra = await context.newPage();
     await Promise.all([page.goto('/'), otra.goto('/')]);
     await Promise.all([esperarSesion(page), esperarSesion(otra)]);
@@ -61,11 +60,8 @@ test.describe('sesión (FE-05)', () => {
 });
 
 test.describe('control por rol (FE-04)', () => {
-  test('un Cliente que entra por URL al backoffice ve «Sin permiso» (RF-01)', async ({
-    page,
-    cliente,
-  }) => {
-    await iniciarSesionPorApi(page, cliente);
+  test('un Cliente que entra por URL al backoffice ve «Sin permiso» (RF-01)', async ({ page }) => {
+    await iniciarSesionPorApi(page, clienteDeLaCorrida());
 
     await page.goto('/backoffice/inventario');
 
