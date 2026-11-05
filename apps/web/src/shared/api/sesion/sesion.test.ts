@@ -431,4 +431,30 @@ describe('sesión: un refresh que falla tarde no pisa una sesión más nueva', (
     expect(sesion.estado()).toMatchObject({ tipo: 'activa' });
     expect(sesion.token()).toBe('token-del-login');
   });
+
+  it('un 401 tardío del refresh no cierra la sesión que otra pestaña abrió mientras tanto', async () => {
+    let fallar: (error: unknown) => void = () => undefined;
+    const pestana = crearNavegador();
+    const a = pestana({
+      refrescar: () =>
+        new Promise<DatosSesion>((_resolver, rechazar) => {
+          fallar = rechazar;
+        }),
+    });
+    const b = pestana();
+    a.establecer(sesionDePrueba('token-viejo'));
+    await entregarMensajes();
+
+    const renovacion = a.renovar('token-viejo');
+    await entregarMensajes();
+    b.establecer(sesionDePrueba('token-de-b', 'Operador'));
+    await entregarMensajes();
+    fallar(errorApi(401, 'REFRESH_REUTILIZADO'));
+    await renovacion;
+    await entregarMensajes();
+
+    expect(a.estado()).toMatchObject({ tipo: 'activa' });
+    expect(a.token()).toBe('token-de-b');
+    expect(b.estado()).toMatchObject({ tipo: 'activa' });
+  });
 });

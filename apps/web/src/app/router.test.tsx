@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { act, screen, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
 import { sesion, type Respuesta } from '../shared/api';
@@ -195,6 +195,22 @@ describe('router: mientras se verifica la sesión', () => {
     await usuario.click(screen.getByRole('button', { name: 'Reintentar' }));
 
     expect(await screen.findByRole('heading', { name: 'Mi perfil' })).toBeInTheDocument();
+  });
+});
+
+describe('router: la sesión se cierra con una ruta protegida abierta', () => {
+  it('lleva a /ingresar con la ruta de regreso (05 §5)', async () => {
+    const { router } = renderizarRutas(crearRutas(), { ruta: '/cuenta/perfil', rol: 'Cliente' });
+    await screen.findByRole('heading', { name: 'Mi perfil' });
+
+    // Como cuando otra pestaña cierra la sesión o el refresh se rechaza: la sesión pasa a invitado por fuera.
+    act(() => {
+      sesion.olvidar();
+    });
+
+    expect(await screen.findByRole('heading', { name: 'Ingresar' })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/ingresar');
+    expect(new URLSearchParams(router.state.location.search).get('volver')).toBe('/cuenta/perfil');
   });
 });
 
