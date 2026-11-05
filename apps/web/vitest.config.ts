@@ -1,9 +1,10 @@
 import { defineConfig, mergeConfig } from 'vitest/config';
 import vite from './vite.config.js';
 
-// Pruebas que leen archivos o corren ESLint: no usan el DOM ni la API simulada, y no cargan la aplicación.
+// Pruebas que leen archivos, corren ESLint o construyen la web: no usan el DOM ni la API simulada.
 const PRUEBAS_DE_NODE = [
   'src/app/tema.test.ts',
+  'src/app/paquetes.test.ts',
   'src/test/accesibilidad-lint.test.ts',
   'src/test/fronteras.test.ts',
 ];
