@@ -778,6 +778,13 @@ El orden de construcción, por módulos (F1, módulos 1 a 11 y F6), está en [`0
 | M2-H01 | Datos de presentación del catálogo (backend) | Must | 1.25 | Hecha |
 | M2-H02 | Catálogo con búsqueda y filtros | Must | 1.0 | Hecha |
 | M2-H03 | Detalle de producto | Must | 1.25 | Hecha |
+| M3-H01 | Ilustración y color de la línea (backend) | Should | 0.5 | Lista |
+| M3-H02 | Ver, agregar, cambiar y quitar | Must | 1.0 | Lista |
+| M3-H03 | Cupón y envío gratis | Must | 0.5 | Lista |
+| M3-H04 | Continuar al pago y fusión | Must | 0.25 | Lista |
+| M4-H01 | Direcciones | Must | 0.75 | Lista |
+| M4-H02 | Dirección y envío | Must | 0.75 | Lista |
+| M4-H03 | Pago idempotente | Must | 1.0 | Lista |
 
 ---
 
@@ -802,10 +809,10 @@ El orden de construcción, por módulos (F1, módulos 1 a 11 y F6), está en [`0
 | Bloque | Contenido | Horas | Estado |
 |---|---|---|---|
 | **F1 Base del frontend** | Proyecto, tema, contrato, cliente `api`, sesión, rutas por rol, componentes compartidos y base de E2E | 7.75 | Hecha |
-| **M1 Cuenta** | Ingresar, registrarse, perfil y contraseña | 1.75 | Lista |
-| **M2 Catálogo de la tienda** | Datos de presentación (ilustración y colores), catálogo con filtros y detalle de producto | 3.5 | Lista |
-| M3 Carrito | Líneas, garantía de precio, cupón, envíos, carrito de invitado y fusión | 2.0 | Por detallar |
-| M4 Checkout y pago | Direcciones, sesión de pago con reservas y pago idempotente | 2.5 | Por detallar |
+| **M1 Cuenta** | Ingresar, registrarse, perfil y contraseña | 1.75 | Hecha |
+| **M2 Catálogo de la tienda** | Datos de presentación (ilustración y colores), catálogo con filtros y detalle de producto | 3.5 | Hecha |
+| **M3 Carrito** | Líneas, garantía de precio, cupón, envíos, carrito de invitado y fusión | 2.25 | Lista |
+| **M4 Checkout y pago** | Direcciones, sesión de pago con reservas y pago idempotente | 2.5 | Lista |
 | M5 Mis pedidos | Listado, detalle con historial y cancelación | 1.0 | Por detallar |
 | M6 Backoffice de catálogo | Categorías, atributos, productos, variantes, imágenes y precios | 2.5 | Por detallar |
 | M7 Inventario | Entradas, ajustes, kardex, existencias y conciliación | 1.25 | Por detallar |
@@ -1063,3 +1070,148 @@ Escribe primero un plan corto de la API de `TablaServidor` (props y un ejemplo d
 - [ ] E2E: abrir el detalle de un producto creado por la API, elegir color y talla, y ver el precio de esa variante.
 
 **Referencias:** RF-02, N-06, N-19, FE-10, FE-15, FE-16.
+
+---
+
+## M3 · Carrito
+
+> Frames: Carrito escritorio `38:627` (todo en orden, con cupón y envío gratis) y móvil `38:807` (cantidad excedida, sin cupón).
+> Todos los montos (`precioUnitario`, `totalLinea`, `subtotal`, `descuento`, `total`, `faltante`) se muestran tal como llegan del backend (FE-10). La única geometría permitida es la barra de avance del envío gratis.
+
+### M3-H01 · Ilustración y color de la línea (backend) — `Should` · 0.5 h
+**Alcance**
+- `FU_Carrito_Lineas` agrega `Ilustracion` (de la categoría del producto, M2-H01) y `Color` (el valor del atributo Color de la variante, FE-16, o `NULL`). `GET /carrito` los devuelve en cada línea como `ilustracion` y `color` (nullable).
+- La miniatura de la línea es `Prenda` con esa ilustración, teñida con ese color (sin mapa, un neutro).
+
+**CA**
+- [ ] Una variante sin atributo Color responde `color: null`.
+- [ ] Las pruebas de integración del carrito siguen en verde; la foto del contrato solo agrega los dos campos.
+
+**Referencias:** FE-15, FE-16, E4-H01.
+
+### M3-H02 · Ver, agregar, cambiar y quitar — `Must` · 1.0 h
+**Alcance**
+- `modules/carrito`: `carrito.api.ts` (`GET /carrito`, `POST /carrito/lineas`, `PATCH` y `DELETE /carrito/lineas/{idLinea}`, `POST /carrito/avisos/vistos`), `carrito.keys.ts` y sus hooks. Mueve a `shared` los esquemas de cuerpo de líneas.
+- Página `/carrito` (frames `38:627` y `38:807`) para invitado y Cliente: el invitado usa su cookie `carrito_invitado` sin hacer nada especial (mismo origen, A-03).
+- **Conecta "Agregar al carrito" del detalle (M2-H03):** con la variante y la cantidad elegidas; al responder, `toast` "Agregado al carrito" con la acción "Ver carrito". El personal (Operador y Administrador) no tiene carrito: el botón no se muestra y el encabezado no muestra el ícono.
+- **Cantidad del encabezado:** `resumen.unidades` de la consulta del carrito (la anotó F1-H05).
+- **Aviso por línea**, en un solo mapa (`estado` primero, después `aviso.tipo`):
+
+| Dato | Aviso | Texto |
+|---|---|---|
+| `estado: NoDisponible` | Error | "Este producto ya no está disponible." Solo se puede eliminar; la cantidad se deshabilita |
+| `estado: Agotado` | Error | "Se agotó. Elimínalo para continuar." |
+| `estado: CantidadExcedida` | Advertencia | "Solo hay {ajustarA} disponibles. Ajusta la cantidad para continuar." con la acción "Ajustar a {ajustarA}" |
+| `aviso.tipo: CambioDePrecio` | Advertencia | "La garantía venció y el precio cambió de {precioAnterior} a {precioUnitario}." con "Entendido", que llama a `POST /carrito/avisos/vistos` |
+| `aviso.tipo: BajoDePrecio` | Éxito | "¡Bajó de precio! Antes costaba {precioAnterior}." |
+| `aviso.tipo: PrecioGarantizado` | Info | "Precio garantizado hasta el {garantiaHasta}." (fecha de Guatemala) |
+
+- Sin actualizaciones optimistas: mientras una línea cambia, su cantidad y su "Eliminar" quedan deshabilitados; las demás no.
+- Errores: `409 STOCK_INSUFICIENTE` y `422 LIMITE_LINEAS` en un aviso con el mensaje del backend.
+- Estados: esqueleto; vacío "Tu carrito está vacío" con "Ver el catálogo"; error con Reintentar.
+
+**CA**
+- [ ] Cada fila del mapa de avisos tiene su prueba con MSW.
+- [ ] Cambiar la cantidad no mueve ningún monto hasta que responde el backend.
+- [ ] Un Operador no ve el botón "Agregar al carrito" ni el ícono del carrito.
+- [ ] E2E (invitado): agregar desde el detalle, cambiar la cantidad, eliminar y ver el carrito vacío.
+- [ ] Coincide con los frames en 375 y 1280 px.
+
+**Referencias:** RF-04, N-02, N-05, N-06, E4-H01, E4-H02, FE-02, FE-10.
+
+### M3-H03 · Cupón y envío gratis — `Must` · 0.5 h
+**Alcance**
+- `PUT /carrito/cupon` y `DELETE /carrito/cupon` con su esquema en `shared`. El campo del cupón y "Aplicar"; con cupón, el aviso "Cupón {codigo} aplicado: {descripcion}" y "Quitar cupón".
+- Cada rechazo muestra **el mensaje del backend** (N-12 ya los hace específicos: vencido, agotado, mínimo no alcanzado con el faltante, límite por cliente…). El código del cupón no se valida en el navegador más allá del esquema.
+- `resumen.cuponRetirado`: aviso de Advertencia con su `mensaje`.
+- `resumen.envioGratis`: si `alcanzado`, "Tu pedido tiene envío gratis."; si no, "Te faltan {faltante} para el envío gratis." con una barra de avance (geometría, FE-10). Sin `envioGratis`, no se muestra nada.
+
+**CA**
+- [ ] Con el cupón de la semilla que demuestra cada rechazo de RF-05, la pantalla muestra el mensaje del backend (E2E con al menos el vencido y el de mínimo no alcanzado).
+- [ ] El descuento de la línea y el del resumen son los del backend: ninguna suma en el navegador.
+
+**Referencias:** RF-05, N-04, N-12, E4-H05, E4-H06.
+
+### M3-H04 · Continuar al pago y fusión — `Must` · 0.25 h
+**Alcance**
+- "Continuar al pago": un invitado va a `/ingresar?volver=/checkout`; un Cliente, a `/checkout`. Con `puedePagar: false`, el botón se deshabilita con el motivo ("Ajusta las cantidades marcadas para continuar.").
+- Al iniciar sesión con carrito de invitado, M1 ya muestra `avisosCarrito`; aquí solo se verifica de punta a punta.
+
+**CA**
+- [ ] E2E: un invitado agrega un producto, pulsa "Continuar al pago", inicia sesión y llega a `/checkout` con su producto en el carrito (fusión N-05).
+
+**Referencias:** N-05, E4-H03, FE-05.
+
+---
+
+## M4 · Checkout y pago
+
+> Frames: Dirección y envío `40:864`, Pago `40:971`, Pago móvil con tarjeta rechazada `40:1084`.
+> Solo el Cliente paga (`401` para un invitado, que el guardián ya resuelve). Cada paso es una ruta: `/checkout` y `/checkout/pago` (05 §6). Al recargar, `GET /checkout/sesion` dice en cuál va.
+
+### M4-H01 · Direcciones — `Must` · 0.75 h
+**Alcance**
+- `modules/direcciones`: `GET/POST /direcciones`, `PATCH/DELETE /direcciones/{id}`, `GET /departamentos` y `GET /departamentos/{id}/municipios`. Mueve a `shared` `crearDireccionSchema` y `actualizarDireccionSchema`.
+- `/cuenta/direcciones`: lista con la predeterminada marcada, crear, editar, eliminar y "Usar como predeterminada".
+- `FormularioDireccion` en un diálogo, reutilizable desde el checkout: departamento y luego municipio (el municipio se carga al elegir el departamento y se limpia si cambia).
+- Errores: el máximo de 10 direcciones y los demás 409/422 en el aviso del formulario.
+
+**CA**
+- [ ] Marcar una como predeterminada desmarca la anterior en la lista sin recargar (la confirma el backend).
+- [ ] Cambiar el departamento limpia el municipio elegido.
+- [ ] E2E: crear, editar y eliminar una dirección.
+
+**Referencias:** RF-01, N-17, E2-H05, FE-03.
+
+### M4-H02 · Dirección y envío — `Must` · 0.75 h
+**Alcance** (frame `40:864`):
+- `/checkout`: si `GET /checkout/sesion` devuelve una sesión activa, va directo a `/checkout/pago`.
+- Dirección de entrega con `Opción` (la predeterminada elegida) y "Agregar dirección" con el diálogo de M4-H01.
+- Método de envío con `GET /envios/metodos`: nombre, días y `costo` (con `envioGratis`, "Gratis").
+- Resumen con los datos del carrito (líneas, subtotal, descuento, envío del método elegido, tal como llega).
+- "Continuar al pago": `POST /checkout/sesion { idDireccion, idMetodoEnvio }` y va a `/checkout/pago`.
+- `409 STOCK_INSUFICIENTE`: el aviso lista las líneas de `detalles` con su disponible y ofrece "Volver al carrito". `422 CARRITO_VACIO`: va al carrito.
+
+**CA**
+- [ ] Sin direcciones, el paso muestra el formulario para agregar la primera y no deja continuar sin ella.
+- [ ] Recargar `/checkout` con una sesión activa lleva a `/checkout/pago`.
+- [ ] E2E: una variante con existencia 1 que otro cliente compra antes muestra el aviso de existencia insuficiente.
+
+**Referencias:** RF-06, N-01, N-04, N-06, E5-H01, 01 §6.1.
+
+### M4-H03 · Pago idempotente — `Must` · 1.0 h ⭐ historia grande
+Escribe primero un plan corto (la política de la llave, los estados de la pantalla y cómo se prueba) y espera la aprobación de Diego.
+
+**Alcance** (frames `40:971` y `40:1084`):
+- `/checkout/pago` con `GET /checkout/sesion`; sin sesión activa, vuelve a `/checkout`.
+- **Resumen congelado** de la sesión (dirección, envío, líneas, subtotal, descuento, envío y total, tal como llegan).
+- **Cuenta regresiva** desde `expiraEn` ("Tus productos están apartados por mm:ss minutos más."). Al llegar a cero, aviso de que la reserva venció y "Volver a empezar", que lleva a `/checkout`.
+- Formulario con `pagarSchema` de `shared` (número, mes, año y CVV). La vigencia de la tarjeta la valida el backend (su 400 marca el campo).
+- **Llave de idempotencia (RF-06):** una por intento, generada con `crypto.getRandomValues` (no `crypto.randomUUID`, que solo existe en contexto seguro, igual que Web Locks en F1-H04) y guardada en memoria mientras dura el intento.
+
+| Respuesta | Qué hace la pantalla | Llave del siguiente intento |
+|---|---|---|
+| `201` o `200` (ya pagado) | Invalida el carrito y va a `/pedidos/{id}?nuevo=1` | — |
+| Red o `504 PAGO_SIN_CONFIRMAR` | Aviso con el mensaje del backend ("no se te cobrará dos veces") y "Reintentar" | **La misma** |
+| `409 PAGO_EN_CURSO` | Aviso "Estamos procesando tu pago" y "Reintentar" | **La misma** |
+| `402 PAGO_RECHAZADO` | Aviso de Error con el mensaje del backend | Nueva |
+| `409 PAGO_NO_COMPLETADO` | Aviso con el mensaje del backend | Nueva |
+| `409 SESION_VENCIDA` | Aviso y vuelve a `/checkout` | — |
+| `409 MAX_INTENTOS` | Aviso y vuelve al carrito | — |
+| `422 LLAVE_REUTILIZADA` | No debe pasar con esta política: error con el `requestId` | — |
+
+- El número de tarjeta y el CVV se borran del formulario después de cada respuesta, y nunca se guardan ni se registran.
+- "Cambiar dirección o envío": `DELETE /checkout/sesion` (libera reservas y cupón) y vuelve a `/checkout`.
+- Mientras el pago está en curso, el botón queda deshabilitado (F1 ya evita el doble envío).
+
+**CA**
+- [ ] La tabla de la llave tiene una prueba por fila (unitaria de la política y con MSW).
+- [ ] E2E: **doble clic en "Pagar" produce un solo pedido** (verificado por la API).
+- [ ] E2E: `4000 0000 0000 0002` muestra el rechazo; después `4242 4242 4242 4242` crea el pedido.
+- [ ] E2E: `4000 0000 0000 0119` (tiempo agotado) muestra el aviso; "Reintentar" con la misma llave termina en **un solo** pedido y un solo cobro.
+- [ ] La cuenta regresiva llega a cero con el reloj simulado y muestra el aviso.
+- [ ] Coincide con los frames en 375 y 1280 px.
+
+**Referencias:** RF-06, N-01, N-03, N-07, E5-H02, E5-H03, 01 §6.2.
+
+Hasta M5, `/pedidos/{id}` muestra un marcador "Pedido #{id} creado". M5 la convierte en el detalle real.

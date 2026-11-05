@@ -339,7 +339,9 @@ Desde el módulo 5 se puede demostrar una compra completa de punta a punta.
 | Catálogo | escritorio [`22:2`](https://www.figma.com/design/x3DB2aj5gZUsAGZFD1TyOG?node-id=22-2) · móvil [`23:516`](https://www.figma.com/design/x3DB2aj5gZUsAGZFD1TyOG?node-id=23-516) | 2 |
 | Detalle de producto | escritorio [`24:314`](https://www.figma.com/design/x3DB2aj5gZUsAGZFD1TyOG?node-id=24-314) · móvil [`24:406`](https://www.figma.com/design/x3DB2aj5gZUsAGZFD1TyOG?node-id=24-406) | 2 |
 | Ingresar | escritorio [`26:414`](https://www.figma.com/design/x3DB2aj5gZUsAGZFD1TyOG?node-id=26-414) · móvil con credenciales incorrectas [`26:460`](https://www.figma.com/design/x3DB2aj5gZUsAGZFD1TyOG?node-id=26-460) | 1 |
+| Carrito | escritorio [`38:627`](https://www.figma.com/design/x3DB2aj5gZUsAGZFD1TyOG?node-id=38-627) · móvil [`38:807`](https://www.figma.com/design/x3DB2aj5gZUsAGZFD1TyOG?node-id=38-807) | 3 |
+| Checkout | dirección y envío [`40:864`](https://www.figma.com/design/x3DB2aj5gZUsAGZFD1TyOG?node-id=40-864) · pago [`40:971`](https://www.figma.com/design/x3DB2aj5gZUsAGZFD1TyOG?node-id=40-971) · pago móvil con tarjeta rechazada [`40:1084`](https://www.figma.com/design/x3DB2aj5gZUsAGZFD1TyOG?node-id=40-1084) | 4 |
 | Backoffice de Pedidos | [`26:519`](https://www.figma.com/design/x3DB2aj5gZUsAGZFD1TyOG?node-id=26-519) | layout del backoffice (F1-H05) y 8 |
 
-- **Componentes de layout** (página *Componentes*): Encabezado tienda, Barra lateral backoffice, Elemento de menú, Paginación, Chip, Selector, Casilla, Cantidad, Aviso, Tarjeta de producto (Normal y Compacta) e íconos.
+- **Componentes de layout** (página *Componentes*): Encabezado tienda, Barra lateral backoffice, Elemento de menú, Paginación, Chip, Selector, Casilla, Cantidad, Aviso, Tarjeta de producto (Normal y Compacta), Línea de carrito, Opción, Pasos del checkout, Fila de resumen e íconos.
 - **Al implementar una pantalla:** la historia cita su frame; Claude Code compara una captura de Playwright en 375 y 1280 px con la del frame antes de cerrarla.
