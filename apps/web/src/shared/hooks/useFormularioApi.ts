@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { UseMutationResult } from '@tanstack/react-query';
-import { useState, type SubmitEvent } from 'react';
+import { useRef, useState, type SubmitEvent } from 'react';
 import { useForm, type DefaultValues, type FieldValues, type Path } from 'react-hook-form';
 import { z } from 'zod';
 import { ErrorApi } from '../api';
@@ -34,6 +34,8 @@ export function useFormularioApi<Entrada extends FieldValues, Salida, Respuesta>
     defaultValues: valoresIniciales,
   });
   const [errorGeneral, setErrorGeneral] = useState<ErrorApi | null>(null);
+  // isPending llega en el render siguiente: un doble clic alcanzaría a enviar dos veces sin esta guarda.
+  const enviandoAhora = useRef(false);
 
   /** Pone cada error de validación en su campo; devuelve si alguno no tenía campo en este formulario. */
   function marcarCampos(error: ErrorApi): boolean {
@@ -55,6 +57,8 @@ export function useFormularioApi<Entrada extends FieldValues, Salida, Respuesta>
   }
 
   async function guardar(valores: Salida) {
+    if (enviandoAhora.current) return;
+    enviandoAhora.current = true;
     setErrorGeneral(null);
     let respuesta: Respuesta;
     try {
@@ -65,6 +69,8 @@ export function useFormularioApi<Entrada extends FieldValues, Salida, Respuesta>
       if (errorApi.status !== STATUS_VALIDACION || marcarCampos(errorApi))
         setErrorGeneral(errorApi);
       return;
+    } finally {
+      enviandoAhora.current = false;
     }
     // Fuera del try: si falla lo que sigue a un éxito, el aviso de error invitaría a reenviar y duplicar.
     alTerminar?.(respuesta);

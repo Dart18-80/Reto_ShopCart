@@ -220,3 +220,25 @@ describe('useFormularioApi: un error que no es del backend', () => {
     expect(screen.getByRole('button', { name: 'Guardar' })).toBeEnabled();
   });
 });
+
+describe('useFormularioApi: doble envío', () => {
+  it('un doble clic en Guardar envía una sola vez', async () => {
+    const creacion = simularCreacionPendiente();
+    const { usuario } = renderizar(<FormularioDireccion />);
+    await escribirEn(usuario, 'Quién recibe', 'Ana Pérez');
+    await escribirEn(usuario, 'Teléfono', '55551234');
+    await escribirEn(usuario, 'Municipio', '101');
+    await escribirEn(usuario, 'Dirección', 'Zona 1');
+
+    await usuario.dblClick(screen.getByRole('button', { name: 'Guardar' }));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Guardar' })).toBeDisabled();
+    });
+    creacion.responder();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Guardar' })).toBeEnabled();
+    });
+    expect(creacion.envios()).toBe(1);
+  });
+});

@@ -49,11 +49,13 @@ const DIRECCION_CREADA: RespuestaCrearDireccion = {
 /** `POST /api/v1/direcciones` que no responde hasta que la prueba llama a `responder()`. */
 export function simularCreacionPendiente() {
   let responder: () => void = () => undefined;
+  let envios = 0;
   servidor.use(
     http.post(
       RUTA,
       () =>
         new Promise<Response>((resolver) => {
+          envios += 1;
           responder = () => {
             resolver(HttpResponse.json(DIRECCION_CREADA, { status: 201 }));
           };
@@ -64,5 +66,6 @@ export function simularCreacionPendiente() {
     responder: () => {
       responder();
     },
+    envios: () => envios,
   };
 }
