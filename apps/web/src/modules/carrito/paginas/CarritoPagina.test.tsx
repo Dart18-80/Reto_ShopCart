@@ -44,7 +44,8 @@ describe('CarritoPagina: líneas y resumen (M3-H02)', () => {
     expect(screen.getByText('2 productos, 3 unidades')).toBeInTheDocument();
     const resumen = within(screen.getByRole('region', { name: 'Resumen' }));
     expect(resumen.getByText('Se elige en el siguiente paso')).toBeInTheDocument();
-    expect(resumen.getAllByText('Q957.00')).toHaveLength(2);
+    // El subtotal, el total y el total de la barra fija de móvil (38:807).
+    expect(resumen.getAllByText('Q957.00')).toHaveLength(3);
   });
 
   it('el encabezado muestra las unidades del carrito', async () => {
@@ -345,5 +346,39 @@ describe('CarritoPagina: cupón y envío gratis (M3-H03)', () => {
     abrirCarrito();
 
     expect(await screen.findByText('Tu pedido tiene envío gratis.')).toBeInTheDocument();
+  });
+});
+
+describe('CarritoPagina: continuar al pago (M3-H04)', () => {
+  it('un invitado va a ingresar y vuelve al checkout', async () => {
+    simularCarrito(carritoDePrueba());
+    const { usuario, router } = abrirCarrito();
+
+    await usuario.click(await screen.findByRole('button', { name: 'Continuar al pago' }));
+
+    expect(router.state.location.pathname).toBe('/ingresar');
+    expect(new URLSearchParams(router.state.location.search).get('volver')).toBe('/checkout');
+  });
+
+  it('un Cliente va directo al checkout', async () => {
+    simularCarrito(carritoDePrueba());
+    const { usuario, router } = renderizarRutas(crearRutas(), { ruta: '/carrito', rol: 'Cliente' });
+
+    await usuario.click(await screen.findByRole('button', { name: 'Continuar al pago' }));
+
+    expect(router.state.location.pathname).toBe('/checkout');
+  });
+
+  it('con puedePagar: false el botón se deshabilita con el motivo', async () => {
+    simularCarrito(
+      carritoDePrueba([lineaDePrueba({ estado: 'CantidadExcedida', cantidad: 2, ajustarA: 1 })], {
+        puedePagar: false,
+      }),
+    );
+    abrirCarrito();
+
+    const boton = await screen.findByRole('button', { name: 'Continuar al pago' });
+    expect(boton).toBeDisabled();
+    expect(boton).toHaveAccessibleDescription('Ajusta las cantidades marcadas para continuar.');
   });
 });

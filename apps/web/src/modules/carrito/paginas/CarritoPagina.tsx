@@ -4,6 +4,7 @@ import { formatearConteo } from '../../../shared/formato/conteo';
 import { useTituloPagina } from '../../../shared/hooks/useTituloPagina';
 import { Button } from '../../../shared/ui/button';
 import type { Carrito } from '../carrito.api';
+import { ContinuarAlPago } from '../componentes/ContinuarAlPago';
 import { CuponCarrito } from '../componentes/CuponCarrito';
 import { FilaCarrito } from '../componentes/FilaCarrito';
 import { ResumenCarrito } from '../componentes/ResumenCarrito';
@@ -39,14 +40,18 @@ export function CarritoPagina() {
       </header>
       <EstadoVista consulta={carrito} vacio={VACIO} esVacio={sinLineas}>
         {({ lineas, resumen: delCarrito }) => (
-          <div className="flex flex-col gap-6 md:flex-row md:items-start md:gap-12">
+          <div className="flex flex-col gap-6 pb-36 md:flex-row md:items-start md:gap-12 md:pb-0">
             <ul aria-label="Productos del carrito" className="min-w-0 flex-1">
               {lineas.map((linea) => (
                 <FilaCarrito key={linea.idLinea} linea={linea} />
               ))}
             </ul>
             <div className="md:w-100 md:shrink-0">
-              <ResumenCarrito resumen={delCarrito} antes={<CuponCarrito resumen={delCarrito} />} />
+              <ResumenCarrito
+                resumen={delCarrito}
+                antes={<CuponCarrito resumen={delCarrito} />}
+                despues={<ContinuarAlPago resumen={delCarrito} />}
+              />
             </div>
           </div>
         )}

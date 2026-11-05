@@ -781,7 +781,7 @@ El orden de construcción, por módulos (F1, módulos 1 a 11 y F6), está en [`0
 | M3-H01 | Ilustración y color de la línea (backend) | Should | 0.5 | Hecha |
 | M3-H02 | Ver, agregar, cambiar y quitar | Must | 1.0 | Hecha |
 | M3-H03 | Cupón y envío gratis | Must | 0.5 | Hecha |
-| M3-H04 | Continuar al pago y fusión | Must | 0.25 | Lista |
+| M3-H04 | Continuar al pago y fusión | Must | 0.25 | Hecha |
 | M4-H01 | Direcciones | Must | 0.75 | Lista |
 | M4-H02 | Dirección y envío | Must | 0.75 | Lista |
 | M4-H03 | Pago idempotente | Must | 1.0 | Lista |
@@ -811,7 +811,7 @@ El orden de construcción, por módulos (F1, módulos 1 a 11 y F6), está en [`0
 | **F1 Base del frontend** | Proyecto, tema, contrato, cliente `api`, sesión, rutas por rol, componentes compartidos y base de E2E | 7.75 | Hecha |
 | **M1 Cuenta** | Ingresar, registrarse, perfil y contraseña | 1.75 | Hecha |
 | **M2 Catálogo de la tienda** | Datos de presentación (ilustración y colores), catálogo con filtros y detalle de producto | 3.5 | Hecha |
-| **M3 Carrito** | Líneas, garantía de precio, cupón, envíos, carrito de invitado y fusión | 2.25 | Lista |
+| **M3 Carrito** | Líneas, garantía de precio, cupón, envíos, carrito de invitado y fusión | 2.25 | Hecha |
 | **M4 Checkout y pago** | Direcciones, sesión de pago con reservas y pago idempotente | 2.5 | Lista |
 | M5 Mis pedidos | Listado, detalle con historial y cancelación | 1.0 | Por detallar |
 | M6 Backoffice de catálogo | Categorías, atributos, productos, variantes, imágenes y precios | 2.5 | Por detallar |
