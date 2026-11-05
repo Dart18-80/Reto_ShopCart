@@ -1,6 +1,7 @@
 import { LayoutGrid, Menu, ShoppingBag, User } from 'lucide-react';
 import { useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router';
+import { ContadorCarrito } from '../../modules/carrito';
 import { useSesion } from '../../shared/hooks/useSesion';
 import { Button } from '../../shared/ui/button';
 import {
@@ -120,6 +121,7 @@ export function EncabezadoTienda() {
           {puedeAbrir(RUTA_CARRITO, estado) && (
             <Link to={RUTA_CARRITO} aria-label="Carrito" className={ACCION}>
               <ShoppingBag aria-hidden className="size-5" />
+              <ContadorCarrito />
             </Link>
           )}
           <div className="hidden md:block">

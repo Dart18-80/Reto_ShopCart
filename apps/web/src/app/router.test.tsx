@@ -7,6 +7,7 @@ import { renderizarRutas } from '../test/renderizar';
 import { sesionDePrueba } from '../test/sesion';
 import { servidor } from '../test/servidor';
 import { crearRutas } from './router';
+import { simularCarrito } from '../test/handlers/carrito';
 
 // Una página del backoffice que falla al renderizar, para ver el errorElement de su área.
 vi.mock('../modules/bitacora/paginas/BitacoraPagina', () => ({
@@ -109,8 +110,9 @@ describe('router: guardián por rol', () => {
   });
 
   it('el buscador del encabezado lleva al catálogo con el texto en la URL', async () => {
+    simularCarrito();
     const { usuario, router } = renderizarRutas(crearRutas(), { ruta: '/carrito' });
-    await screen.findByRole('heading', { name: 'Carrito' });
+    await screen.findByRole('heading', { name: 'Tu carrito' });
 
     await usuario.type(
       screen.getByRole('searchbox', { name: 'Buscar productos' }),

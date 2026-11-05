@@ -1,12 +1,14 @@
-import { ILUSTRACIONES_PRENDA, montoSchema } from '@shopcart/shared';
-import { idEnRutaSchema, idSchema } from '../../shared/http/index.js';
+import {
+  actualizarCantidadSchema as actualizarCantidadCompartido,
+  agregarLineaSchema as agregarLineaCompartido,
+  ILUSTRACIONES_PRENDA,
+  montoSchema,
+} from '@shopcart/shared';
+import { idEnRutaSchema } from '../../shared/http/index.js';
+import { registroOpenApi } from '../../shared/openapi/index.js';
 import { z } from '../../shared/openapi/zod.js';
 import { ESTADOS_EXISTENCIA } from '../catalogo/index.js';
 import { ESTADOS_LINEA, TIPOS_AJUSTE_FUSION, TIPOS_AVISO } from './carrito.types.js';
-
-// Tope técnico de una línea, lejos del desborde de INT; el límite real es el disponible (N-06).
-const CANTIDAD_MAXIMA = 1_000_000;
-const cantidadSchema = z.number().int().min(1).max(CANTIDAD_MAXIMA);
 
 export const COOKIE_CARRITO = 'carrito_invitado';
 // N-05: 256 bits en base64url. Un valor que no puede ser un token cuenta como cookie ausente.
@@ -19,17 +21,15 @@ export const cookiesCarritoSchema = z.object({
     .transform((valor) => (valor !== undefined && TOKEN_INVITADO.test(valor) ? valor : undefined)),
 });
 
-// RF-01: .strict() rechaza un idCarrito colado en el cuerpo; el carrito sale de la sesión o la cookie.
-export const agregarLineaSchema = z
-  .object({ idVariante: idSchema, cantidad: cantidadSchema })
-  .strict()
-  .openapi('AgregarLineaCarrito');
-
-// Para quitar una línea se usa DELETE: cantidad 0 se rechaza.
-export const actualizarCantidadSchema = z
-  .object({ cantidad: cantidadSchema })
-  .strict()
-  .openapi('ActualizarCantidadCarrito');
+// FE-03: los cuerpos de las líneas viven en @shopcart/shared, los mismos que valida la web.
+export const agregarLineaSchema = registroOpenApi.register(
+  'AgregarLineaCarrito',
+  agregarLineaCompartido,
+);
+export const actualizarCantidadSchema = registroOpenApi.register(
+  'ActualizarCantidadCarrito',
+  actualizarCantidadCompartido,
+);
 
 export const aplicarCuponSchema = z
   .object({ codigo: z.string().trim().min(1).max(30) })

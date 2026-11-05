@@ -1,6 +1,7 @@
 import { Link } from 'react-router';
 import { Aviso } from '../../../shared/componentes/Aviso';
 import { Monto } from '../../../shared/componentes/Monto';
+import { useSesion } from '../../../shared/hooks/useSesion';
 import type { ProductoTienda } from '../catalogo.api';
 import { useSeleccionVariante } from '../hooks/useSeleccionVariante';
 import { precioMenor } from '../seleccionVariante';
@@ -17,6 +18,7 @@ interface PropsFichaProducto {
 
 /** Figma 24:314 y 24:406 (M2-H03): el detalle de un producto, con la variante elegida en la URL. */
 export function FichaProducto({ producto, idVarianteEnUrl, alResolver }: PropsFichaProducto) {
+  const { tieneRol } = useSesion();
   const seleccion = useSeleccionVariante({
     variantes: producto.variantes,
     idVarianteEnUrl,
@@ -82,10 +84,14 @@ export function FichaProducto({ producto, idVarianteEnUrl, alResolver }: PropsFi
               }}
             />
           ))}
-          <CompraProducto
-            faltan={seleccion.faltan}
-            agotada={variante?.estadoExistencia === 'Agotado'}
-          />
+          {/* M3-H02: el personal no tiene carrito; ocultar el botón es experiencia, la autoridad es el backend. */}
+          {!tieneRol('Operador', 'Administrador') && (
+            <CompraProducto
+              idVariante={variante?.idVariante}
+              faltan={seleccion.faltan}
+              agotada={variante?.estadoExistencia === 'Agotado'}
+            />
+          )}
           <Aviso tipo="info">
             {`Al agregarlo, su precio queda garantizado por ${String(producto.diasGarantiaPrecio)} días: si sube, pagas el anterior; si baja, pagas el nuevo.`}
           </Aviso>

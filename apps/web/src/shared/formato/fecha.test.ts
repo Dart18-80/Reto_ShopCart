@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { formatearFechaCalendario, formatearFechaHora } from './fecha';
+import { formatearDiaYMes, formatearFechaCalendario, formatearFechaHora } from './fecha';
 
 // 23:30 del 3 de noviembre en Guatemala (UTC-6) es 05:30 del 4 de noviembre en UTC.
 const MEDIA_NOCHE_DE_GUATEMALA_EN_UTC = '2026-11-04T05:30:00.000Z';
@@ -52,5 +52,15 @@ describe('formatearFechaCalendario (FE-10)', () => {
   it('un texto que no es AAAA-MM-DD es un error del programa', () => {
     expect(() => formatearFechaCalendario('03/11/2026')).toThrow(/AAAA-MM-DD/);
     expect(() => formatearFechaCalendario('2026-13-01')).toThrow(/AAAA-MM-DD/);
+  });
+});
+
+describe('formatearDiaYMes (FE-10)', () => {
+  it('un instante en la noche de Guatemala (ya otro día en UTC) es el día de Guatemala, con el mes completo', () => {
+    expect(formatearDiaYMes('2026-11-09T05:30:00.000Z')).toBe('8 de noviembre');
+  });
+
+  it('un texto que no es una fecha con zona es un error del programa', () => {
+    expect(() => formatearDiaYMes('2026-11-08')).toThrow();
   });
 });

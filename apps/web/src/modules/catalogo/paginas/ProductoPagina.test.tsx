@@ -6,6 +6,12 @@ import {
   simularProducto,
   simularProductoFallido,
 } from '../../../test/handlers/catalogo';
+import {
+  carritoDePrueba,
+  simularCarrito,
+  simularOperacion,
+  simularOperacionFallida,
+} from '../../../test/handlers/carrito';
 import { renderizarRutas } from '../../../test/renderizar';
 
 const abrir = (ruta = '/productos/50') => renderizarRutas(crearRutas(), { ruta });
@@ -158,5 +164,49 @@ describe('ProductoPagina: contenido', () => {
 
     expect(await screen.findByText('No pudimos cargar el producto.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Reintentar' })).toBeInTheDocument();
+  });
+});
+
+describe('ProductoPagina: agregar al carrito (M3-H02)', () => {
+  it('agrega la variante elegida con su cantidad y avisa «Agregado al carrito»', async () => {
+    simularProducto();
+    simularCarrito(carritoDePrueba([]));
+    const recibidas = simularOperacion('post', '/lineas', carritoDePrueba());
+    const { usuario } = abrir('/productos/50?variante=4');
+
+    await usuario.click(await screen.findByRole('button', { name: 'Agregar uno' }));
+    await usuario.click(screen.getByRole('button', { name: 'Agregar al carrito' }));
+
+    expect(await screen.findByText('Agregado al carrito')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ver carrito' })).toBeInTheDocument();
+    expect(recibidas.map((r) => r.cuerpo)).toEqual([{ idVariante: 4, cantidad: 2 }]);
+  });
+
+  it('un 422 LIMITE_LINEAS se avisa con el mensaje del backend', async () => {
+    simularProducto();
+    simularCarrito(carritoDePrueba([]));
+    simularOperacionFallida(
+      'post',
+      '/lineas',
+      422,
+      'LIMITE_LINEAS',
+      'Tu carrito ya tiene 30 productos distintos.',
+    );
+    const { usuario } = abrir('/productos/50?variante=4');
+
+    await usuario.click(await screen.findByRole('button', { name: 'Agregar al carrito' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Tu carrito ya tiene 30 productos distintos.',
+    );
+  });
+
+  it('un Operador no ve «Agregar al carrito» ni el ícono del carrito', async () => {
+    simularProducto();
+    renderizarRutas(crearRutas(), { ruta: '/productos/50?variante=4', rol: 'Operador' });
+
+    expect(await screen.findByRole('heading', { name: 'Camisa Oxford' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Agregar al carrito' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Carrito/ })).not.toBeInTheDocument();
   });
 });

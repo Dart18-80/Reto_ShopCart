@@ -11,6 +11,12 @@ const formatoFechaHora = new Intl.DateTimeFormat('es-GT', {
   hourCycle: 'h23',
 });
 
+const formatoDiaYMes = new Intl.DateTimeFormat('es-GT', {
+  timeZone: ZONA_DE_LA_TIENDA,
+  day: 'numeric',
+  month: 'long',
+});
+
 // Las abreviaturas de Intl para es-GT; una prueba verifica que coinciden con las de formatearFechaHora.
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sept', 'oct', 'nov', 'dic'];
 const PATRON_CALENDARIO = /^(\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
@@ -26,14 +32,21 @@ function diasDelMes(anio: number, mes: number): number {
   return DIAS_POR_MES[mes - 1] ?? 0;
 }
 
-/** Un instante del backend (ISO 8601 en UTC) en la hora de Guatemala: «3 nov 2026, 23:30». */
-export function formatearFechaHora(instante: string): string {
+function aInstante(instante: string): Date {
   const fecha = PATRON_INSTANTE.test(instante) ? new Date(instante) : null;
   if (!fecha || Number.isNaN(fecha.getTime())) {
     throw new Error(`«${instante}» no es una fecha con hora (ISO 8601 con zona).`);
   }
-  return formatoFechaHora.format(fecha);
+  return fecha;
 }
+
+/** Un instante del backend (ISO 8601 en UTC) en la hora de Guatemala: «3 nov 2026, 23:30». */
+export const formatearFechaHora = (instante: string): string =>
+  formatoFechaHora.format(aInstante(instante));
+
+/** El día de Guatemala de un instante, sin año ni hora: «8 de noviembre» (la garantía del carrito). */
+export const formatearDiaYMes = (instante: string): string =>
+  formatoDiaYMes.format(aInstante(instante));
 
 /**
  * Una fecha sin hora («2026-11-03»): nunca pasa por `new Date()`, que la leería como medianoche UTC, es decir,

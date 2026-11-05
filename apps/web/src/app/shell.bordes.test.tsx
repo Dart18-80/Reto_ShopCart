@@ -7,6 +7,7 @@ import { renderizar, renderizarRutas } from '../test/renderizar';
 import { servidor } from '../test/servidor';
 import { crearRutas } from './router';
 import { SelectorTema } from './tema/SelectorTema';
+import { simularCarrito } from '../test/handlers/carrito';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -15,8 +16,9 @@ afterEach(() => {
 
 describe('buscador del encabezado: casos borde', () => {
   it('solo espacios lleva al catálogo sin texto', async () => {
+    simularCarrito();
     const { usuario, router } = renderizarRutas(crearRutas(), { ruta: '/carrito' });
-    await screen.findByRole('heading', { name: 'Carrito' });
+    await screen.findByRole('heading', { name: 'Tu carrito' });
 
     await usuario.type(screen.getByRole('searchbox', { name: 'Buscar productos' }), '   {Enter}');
 

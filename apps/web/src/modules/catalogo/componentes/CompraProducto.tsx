@@ -1,59 +1,68 @@
-import { Minus, Plus } from 'lucide-react';
 import { useState } from 'react';
+import { useNavigate } from 'react-router';
+import { toast } from 'sonner';
+import { Aviso } from '../../../shared/componentes/Aviso';
+import { Cantidad } from '../../../shared/componentes/Cantidad';
 import { Button } from '../../../shared/ui/button';
+import { useAgregarAlCarrito } from '../../carrito';
 
-const CANTIDAD_MINIMA = 1;
+const CANTIDAD_INICIAL = 1;
+const RUTA_CARRITO = '/carrito';
 
 interface PropsCompraProducto {
+  /** La variante elegida; sin ella, el botón dice qué falta. */
+  idVariante: number | undefined;
   /** Los atributos que faltan por elegir, en minúscula y en su orden («talla», «color»). */
   faltan: string[];
   agotada: boolean;
 }
 
-function textoDelBoton({ faltan, agotada }: PropsCompraProducto): string {
+function textoDelBoton({ faltan, agotada }: Omit<PropsCompraProducto, 'idVariante'>): string {
   if (faltan.length > 0) return `Elige ${faltan.join(' y ')}`;
   return agotada ? 'Agotado' : 'Agregar al carrito';
 }
 
 /**
- * Figma: Cantidad y «Agregar al carrito» (24:314; en móvil, la barra fija de 24:406). M2-H03: el botón queda
- * deshabilitado; la acción y el límite de la cantidad (el disponible, que decide el backend) llegan con M3.
+ * Figma: Cantidad y «Agregar al carrito» (24:314; en móvil, la barra fija de 24:406). La cantidad no tiene más
+ * límite que el que pone el backend: un 409 STOCK_INSUFICIENTE o un 422 LIMITE_LINEAS se avisan con su mensaje.
  */
-export function CompraProducto(props: PropsCompraProducto) {
-  const [cantidad, setCantidad] = useState(CANTIDAD_MINIMA);
+export function CompraProducto({ idVariante, faltan, agotada }: PropsCompraProducto) {
+  const [cantidad, setCantidad] = useState(CANTIDAD_INICIAL);
+  const agregar = useAgregarAlCarrito();
+  const navigate = useNavigate();
+  const puedeAgregar = idVariante !== undefined && !agotada;
+
   return (
-    <div className="bg-card fixed inset-x-0 bottom-0 z-10 flex gap-3 border-t p-4 md:static md:z-auto md:border-0 md:bg-transparent md:p-0">
-      <div className="bg-card flex items-center rounded-md border">
+    <div className="flex flex-col gap-3">
+      {agregar.error && <Aviso tipo="error">{agregar.error.mensaje}</Aviso>}
+      <div className="bg-card fixed inset-x-0 bottom-0 z-10 flex gap-3 border-t p-4 md:static md:z-auto md:border-0 md:bg-transparent md:p-0">
+        <Cantidad valor={cantidad} onCambiar={setCantidad} deshabilitada={agregar.isPending} />
         <Button
           type="button"
-          variant="ghost"
-          size="icon"
-          aria-label="Quitar uno"
-          disabled={cantidad <= CANTIDAD_MINIMA}
+          disabled={!puedeAgregar || agregar.isPending}
           onClick={() => {
-            setCantidad((actual) => actual - 1);
+            if (idVariante === undefined) return;
+            agregar.mutate(
+              { idVariante, cantidad },
+              {
+                onSuccess: () => {
+                  toast.success('Agregado al carrito', {
+                    action: {
+                      label: 'Ver carrito',
+                      onClick: () => {
+                        void navigate(RUTA_CARRITO);
+                      },
+                    },
+                  });
+                },
+              },
+            );
           }}
+          className="control-boton h-auto flex-1 px-6 py-3"
         >
-          <Minus aria-hidden />
-        </Button>
-        <output aria-label="Cantidad" className="texto-base-fuerte w-8 text-center">
-          {cantidad}
-        </output>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label="Agregar uno"
-          onClick={() => {
-            setCantidad((actual) => actual + 1);
-          }}
-        >
-          <Plus aria-hidden />
+          {textoDelBoton({ faltan, agotada })}
         </Button>
       </div>
-      <Button type="button" disabled className="control-boton h-auto flex-1 px-6 py-3">
-        {textoDelBoton(props)}
-      </Button>
     </div>
   );
 }

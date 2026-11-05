@@ -8,6 +8,12 @@ export {
   type DatosRegistro,
 } from './auth.js';
 export {
+  actualizarCantidadSchema,
+  agregarLineaSchema,
+  type ActualizarCantidad,
+  type AgregarLinea,
+} from './carrito.js';
+export {
   consultaBusquedaSchema,
   DIRECCIONES_ORDEN,
   filtroPrecioSchema,

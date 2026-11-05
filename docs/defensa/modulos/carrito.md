@@ -39,7 +39,7 @@ sequenceDiagram
 
 | Regla | Dónde vive | Archivo:línea | Decisión |
 |---|---|---|---|
-| El carrito se resuelve desde el token o la cookie, nunca desde un ID enviado | Repositorio (sin parámetro de carrito) + Zod `.strict()` | [carrito.repository.ts:171](../../../apps/api/src/modules/carrito/carrito.repository.ts#L171 "nunca recibe ni devuelve el ID del carrito"), [carrito.schemas.ts:22](../../../apps/api/src/modules/carrito/carrito.schemas.ts#L22 "rechaza un idCarrito colado en el cuerpo") | N-05, RF-01 |
+| El carrito se resuelve desde el token o la cookie, nunca desde un ID enviado | Repositorio (sin parámetro de carrito) + Zod `.strict()` | [carrito.repository.ts:171](../../../apps/api/src/modules/carrito/carrito.repository.ts#L171 "nunca recibe ni devuelve el ID del carrito"), [shared/carrito.ts:8](../../../packages/shared/src/carrito.ts#L8 "rechaza un idCarrito colado en el cuerpo") | N-05, RF-01 |
 | Con sesión de Cliente manda su carrito; la cookie se ignora | SP (`@RolActor`) | [R__SP_Carrito_AgregarLinea.sql:27](../../../database/programmability/R__SP_Carrito_AgregarLinea.sql#L27 "CASE WHEN @RolActor = 'Cliente' THEN @IDUsuarioActor END") | N-05, A-18 |
 | Un carrito es de un cliente o de un invitado, nunca de ambos | Constraint `CK_Carrito_DuenoUnico` | [V006__carrito_cupones_envios.sql:54](../../../database/migrations/V006__carrito_cupones_envios.sql#L54 "CK_Carrito_DuenoUnico") | N-05 |
 | Un solo carrito Activo por cliente | Índice único filtrado `UX_Carrito_ActivoPorUsuario` | [V006__carrito_cupones_envios.sql:59](../../../database/migrations/V006__carrito_cupones_envios.sql#L59 "CREATE UNIQUE INDEX UX_Carrito_ActivoPorUsuario") | N-05 |
@@ -73,8 +73,8 @@ sequenceDiagram
 
 ## Modos de falla
 
-- **Entrada inválida** (campos extra, cantidad fuera de 1 a 1 000 000, código vacío): 400 `PARAMETRO_INVALIDO` desde Zod ([carrito.schemas.ts:8](../../../apps/api/src/modules/carrito/carrito.schemas.ts#L8 "CANTIDAD_MAXIMA = 1_000_000")).
-- **Cookie mal formada:** cuenta como ausente, no como error ([carrito.schemas.ts:13](../../../apps/api/src/modules/carrito/carrito.schemas.ts#L13 "TOKEN_INVITADO")). Una cookie cuyo carrito ya no está Activo: `GET` la borra ([carrito.controller.ts:98](../../../apps/api/src/modules/carrito/carrito.controller.ts#L98 "if (consulta.cookieObsoleta) borrarCookieCarrito(res);")) y `POST` crea otro carrito con un token nuevo ([carrito.service.ts:94](../../../apps/api/src/modules/carrito/carrito.service.ts#L94 "crearCarritoInvitado(linea, comprador.ip)")).
+- **Entrada inválida** (campos extra, cantidad fuera de 1 a 1 000 000, código vacío): 400 `PARAMETRO_INVALIDO` desde Zod ([shared/carrito.ts:5](../../../packages/shared/src/carrito.ts#L5 "CANTIDAD_MAXIMA = 1_000_000")).
+- **Cookie mal formada:** cuenta como ausente, no como error ([carrito.schemas.ts:15](../../../apps/api/src/modules/carrito/carrito.schemas.ts#L15 "TOKEN_INVITADO")). Una cookie cuyo carrito ya no está Activo: `GET` la borra ([carrito.controller.ts:98](../../../apps/api/src/modules/carrito/carrito.controller.ts#L98 "if (consulta.cookieObsoleta) borrarCookieCarrito(res);")) y `POST` crea otro carrito con un token nuevo ([carrito.service.ts:94](../../../apps/api/src/modules/carrito/carrito.service.ts#L94 "crearCarritoInvitado(linea, comprador.ip)")).
 - **Token de acceso inválido:** 401, nunca cae a invitado ([carrito.api.test.ts:194](../../../apps/api/test/integracion/carrito/carrito.api.test.ts#L194 "un token inválido responde 401 y no cae a invitado")).
 - **Operador o Admin:** 403 `SIN_PERMISO` ([autenticar.ts:74](../../../apps/api/src/shared/http/autenticar.ts#L74 "new AppError('SIN_PERMISO')")).
 - **Línea ajena o inexistente:** 404 `NO_ENCONTRADO` (50001) ([catalogo.ts:30](../../../apps/api/src/shared/errors/catalogo.ts#L30 "NO_ENCONTRADO: { http: 404, numeroSql: 50001")).
