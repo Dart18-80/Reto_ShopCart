@@ -1,4 +1,11 @@
-import type { Canal, DatosSesion, MensajeSesion, Rol, Usuario } from '../shared/api';
+import {
+  sesion,
+  type Canal,
+  type DatosSesion,
+  type MensajeSesion,
+  type Rol,
+  type Usuario,
+} from '../shared/api';
 
 const USUARIOS_DE_PRUEBA = {
   Cliente: { idUsuario: 101, correo: 'cliente@prueba.gt', nombre: 'Ana Cliente', rol: 'Cliente' },
@@ -47,3 +54,6 @@ export function crearCanalesEnMemoria() {
     };
   };
 }
+
+/** El estado de la sesión de la aplicación, para las pruebas de páginas (que no pueden importar shared/api). */
+export const estadoDeLaSesion = () => sesion.estado();

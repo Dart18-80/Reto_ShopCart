@@ -42,7 +42,7 @@ describe('router: guardián por rol', () => {
   it('un invitado que entra a una ruta de cuenta va a /ingresar con la ruta de regreso', async () => {
     const { router } = renderizarRutas(crearRutas(), { ruta: '/cuenta/perfil?pestana=datos' });
 
-    expect(await screen.findByRole('heading', { name: 'Ingresar' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Ingresa a tu cuenta' })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/ingresar');
     expect(new URLSearchParams(router.state.location.search).get('volver')).toBe(
       '/cuenta/perfil?pestana=datos',
@@ -132,7 +132,7 @@ describe('router: guardián por rol', () => {
 
     await usuario.click(screen.getByRole('button', { name: 'Cerrar sesión' }));
 
-    expect(await screen.findByRole('heading', { name: 'Ingresar' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Ingresa a tu cuenta' })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/ingresar');
   });
 
@@ -232,7 +232,7 @@ describe('router: la sesión se cierra con una ruta protegida abierta', () => {
       sesion.olvidar();
     });
 
-    expect(await screen.findByRole('heading', { name: 'Ingresar' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Ingresa a tu cuenta' })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/ingresar');
     expect(new URLSearchParams(router.state.location.search).get('volver')).toBe('/cuenta/perfil');
   });

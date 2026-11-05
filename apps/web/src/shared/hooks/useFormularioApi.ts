@@ -9,7 +9,12 @@ const STATUS_VALIDACION = 400;
 // El backend nombra cada campo con su origen (A-06): `body.nombreRecibe`. El formulario solo tiene el cuerpo.
 const PREFIJO_CUERPO = 'body.';
 
-const detallesDeValidacionSchema = z.array(z.object({ campo: z.string(), mensaje: z.string() }));
+const erroresDeCampoSchema = z.array(z.object({ campo: z.string(), mensaje: z.string() }));
+// El 400 de manejar (A-20) trae `detalles: { errores: [...] }`; un 400 de un SP puede traer la lista directa.
+const detallesDeValidacionSchema = z.union([
+  erroresDeCampoSchema,
+  z.object({ errores: erroresDeCampoSchema }).transform(({ errores }) => errores),
+]);
 
 interface OpcionesFormularioApi<Entrada extends FieldValues, Salida, Respuesta> {
   /** El esquema de `@shopcart/shared`, el mismo que valida la API (FE-03). */
@@ -17,6 +22,11 @@ interface OpcionesFormularioApi<Entrada extends FieldValues, Salida, Respuesta> 
   mutacion: UseMutationResult<Respuesta, ErrorApi, Salida>;
   valoresIniciales: DefaultValues<Entrada>;
   alTerminar?: (respuesta: Respuesta) => void;
+  /**
+   * Los 409 o 422 que corresponden a un campo y no al formulario entero: `{ CORREO_EN_USO: 'correo' }` pone el
+   * mensaje del backend en ese campo en lugar del aviso general.
+   */
+  campoPorCodigo?: Partial<Record<string, Path<Entrada>>>;
 }
 
 /**
@@ -28,6 +38,7 @@ export function useFormularioApi<Entrada extends FieldValues, Salida, Respuesta>
   mutacion,
   valoresIniciales,
   alTerminar,
+  campoPorCodigo = {},
 }: OpcionesFormularioApi<Entrada, Salida, Respuesta>) {
   const form = useForm<Entrada, unknown, Salida>({
     resolver: zodResolver(esquema),
@@ -56,6 +67,15 @@ export function useFormularioApi<Entrada extends FieldValues, Salida, Respuesta>
     return quedoSinCampo;
   }
 
+  function mostrarError(error: ErrorApi) {
+    const campoDelCodigo = campoPorCodigo[error.codigo];
+    if (campoDelCodigo !== undefined) {
+      form.setError(campoDelCodigo, { type: 'server', message: error.mensaje });
+      return;
+    }
+    if (error.status !== STATUS_VALIDACION || marcarCampos(error)) setErrorGeneral(error);
+  }
+
   async function guardar(valores: Salida) {
     if (enviandoAhora.current) return;
     enviandoAhora.current = true;
@@ -66,8 +86,7 @@ export function useFormularioApi<Entrada extends FieldValues, Salida, Respuesta>
     } catch (error) {
       // Lo que no es ErrorApi (un 2xx que no se pudo leer, un bug) también se avisa: nunca un envío sin respuesta.
       const errorApi = error instanceof ErrorApi ? error : ErrorApi.inesperado(error);
-      if (errorApi.status !== STATUS_VALIDACION || marcarCampos(errorApi))
-        setErrorGeneral(errorApi);
+      mostrarError(errorApi);
       return;
     } finally {
       enviandoAhora.current = false;

@@ -773,7 +773,7 @@ El orden de construcción, por módulos (F1, módulos 1 a 11 y F6), está en [`0
 | F1-H06 | Componentes de datos: `EstadoVista`, `TablaServidor` y URL | Must | 1.0 | Hecha |
 | F1-H07 | Formularios, formato y prenda | Must | 1.0 | Hecha |
 | F1-H08 | Base de E2E y pruebas transversales | Must | 0.75 | Hecha |
-| M1-H01 | Ingresar y registrarse | Must | 1.0 | Lista |
+| M1-H01 | Ingresar y registrarse | Must | 1.0 | Hecha |
 | M1-H02 | Perfil y contraseña | Should | 0.75 | Lista |
 | M2-H01 | Datos de presentación del catálogo (backend) | Must | 1.25 | Lista |
 | M2-H02 | Catálogo con búsqueda y filtros | Must | 1.0 | Lista |

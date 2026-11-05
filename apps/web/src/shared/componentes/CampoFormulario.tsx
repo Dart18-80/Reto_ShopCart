@@ -23,6 +23,8 @@ interface PropsCampoFormulario<V extends FieldValues> extends Omit<
   etiqueta: string;
   /** Ayuda bajo el campo; el mensaje de error la reemplaza. */
   descripcion?: string;
+  /** Un campo `.optional()` del esquema: vacío, se envía como ausente y no como texto vacío. */
+  opcional?: boolean;
 }
 
 /**
@@ -33,6 +35,7 @@ export function CampoFormulario<V extends FieldValues>({
   nombre,
   etiqueta,
   descripcion,
+  opcional = false,
   ...entrada
 }: PropsCampoFormulario<V>) {
   const { control } = useFormContext<V>();
@@ -49,6 +52,11 @@ export function CampoFormulario<V extends FieldValues>({
             <Input
               {...entrada}
               {...field}
+              value={field.value ?? ''}
+              onChange={(evento) => {
+                const valor = evento.target.value;
+                field.onChange(opcional && valor === '' ? undefined : valor);
+              }}
               className="bg-card texto-base h-auto px-4 py-3 md:text-base aria-invalid:border-2"
             />
           </FormControl>

@@ -104,7 +104,7 @@ describe('cerrar sesión: casos borde', () => {
 
     await usuario.click(screen.getByRole('button', { name: 'Cerrar sesión' }));
 
-    expect(await screen.findByRole('heading', { name: 'Ingresar' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Ingresa a tu cuenta' })).toBeInTheDocument();
     expect(sesion.estado()).toEqual({ tipo: 'invitado' });
   });
 });

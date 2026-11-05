@@ -1,38 +1,19 @@
-import { telefonoSchema, textoNvarchar } from '@shopcart/shared';
+import {
+  contrasenaSchema,
+  correoSchema,
+  loginSchema as loginCompartido,
+  registroSchema as registroCompartido,
+} from '@shopcart/shared';
 import { ROLES_DE_USUARIO } from '../../shared/http/index.js';
 import { avisoFusionSchema } from '../carrito/index.js';
+import { registroOpenApi } from '../../shared/openapi/index.js';
 import { z } from '../../shared/openapi/zod.js';
 
-// N-15: mínimo 8 caracteres con letras y números. El máximo evita que un cuerpo enorme se vuelva trabajo
-// de argon2. Las contraseñas no se recortan: los espacios son parte de ellas.
-export const contrasenaSchema = z
-  .string()
-  .min(8, 'Mínimo 8 caracteres.')
-  .max(128, 'Máximo 128 caracteres.')
-  .regex(/\p{L}/u, 'Debe incluir al menos una letra.')
-  .regex(/\d/, 'Debe incluir al menos un número.');
-
-// Usuario.Correo es NVARCHAR(254).
-export const correoSchema = textoNvarchar(254).pipe(z.email('El correo no es válido.'));
-
-export const registroSchema = z
-  .object({
-    correo: correoSchema,
-    contrasena: contrasenaSchema,
-    nombre: textoNvarchar(100),
-    telefono: telefonoSchema.optional(),
-  })
-  .strict()
-  .openapi('Registro');
-
-// En el login no se valida la forma de la contraseña: cualquier fallo responde el mismo 401 (N-15).
-export const loginSchema = z
-  .object({
-    correo: textoNvarchar(254),
-    contrasena: z.string().min(1).max(128),
-  })
-  .strict()
-  .openapi('Login');
+// FE-03: los esquemas de entrada viven en @shopcart/shared, los mismos que valida la web; aquí se registran en OpenAPI
+// con su nombre de componente.
+export { contrasenaSchema, correoSchema };
+export const registroSchema = registroOpenApi.register('Registro', registroCompartido);
+export const loginSchema = registroOpenApi.register('Login', loginCompartido);
 
 export const sesionSchema = z
   .object({
@@ -67,5 +48,4 @@ export const cookiesRefreshSchema = z.object({
     ),
 });
 
-export type DatosRegistro = z.infer<typeof registroSchema>;
-export type DatosLogin = z.infer<typeof loginSchema>;
+export type { DatosLogin, DatosRegistro } from '@shopcart/shared';

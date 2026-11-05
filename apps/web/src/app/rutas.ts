@@ -100,6 +100,15 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ),
   },
   {
+    ruta: '/registro',
+    area: 'tienda',
+    acceso: PUBLICO,
+    pagina: diferida(
+      () => import('../modules/auth/paginas/RegistroPagina'),
+      (m) => m.RegistroPagina,
+    ),
+  },
+  {
     ruta: '/cuenta/perfil',
     area: 'cuenta',
     acceso: CON_SESION,

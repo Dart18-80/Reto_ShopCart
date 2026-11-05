@@ -263,3 +263,21 @@ describe('useFormularioApi sin conexión (FE-02: networkMode always)', () => {
     expect(screen.getByRole('button', { name: 'Guardar' })).toBeEnabled();
   });
 });
+
+describe('useFormularioApi: la forma real del 400 de la API', () => {
+  it('un 400 VALIDACION_FALLIDA con detalles.errores (manejar, A-20) marca cada campo', async () => {
+    simularErrorAlCrearDireccion(400, {
+      codigo: 'VALIDACION_FALLIDA',
+      mensaje: 'Los datos enviados no son válidos.',
+      detalles: { errores: [{ campo: 'body.direccionLinea', mensaje: 'No puede estar vacío.' }] },
+    });
+    const { usuario } = renderizar(<FormularioDireccion />);
+
+    await llenarYEnviar(usuario);
+
+    expect(await screen.findByLabelText('Dirección')).toHaveAccessibleDescription(
+      'No puede estar vacío.',
+    );
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+});
