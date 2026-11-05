@@ -65,6 +65,8 @@ services:
     image: mcr.microsoft.com/mssql/server:2022-CU27-GDR1-ubuntu-22.04@sha256:cf8f0ab2ebe61feec2eed2629061a07d247f791c2a8ddda74a4ac9f06a291718
     # Cierra con un checkpoint de las bases: el mismo margen que la API.
     stop_grace_period: 15s
+    # Vuelve solo después de reiniciar Docker Desktop, igual que la API: nunca hace falta down -v para recuperarlo.
+    restart: unless-stopped
     environment:
       ACCEPT_EULA: 'Y'
       MSSQL_PID: Developer
@@ -124,6 +126,7 @@ services:
     user: redis
     # Guarda el volcado al recibir SIGTERM: el mismo margen que la API.
     stop_grace_period: 15s
+    restart: unless-stopped
     environment:
       REDIS_CONTRASENA: ${REDIS_CONTRASENA:?Define REDIS_CONTRASENA en .env (ver .env.example)}
       REDIS_PORT: ${REDIS_PORT:-6379}

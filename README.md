@@ -69,6 +69,14 @@ Para empezar de cero (borra la base): `docker compose down -v && docker compose 
 
 Redis corre con el usuario `redis`, no como root. Un entorno levantado antes de ese cambio puede tener en `/data` un `dump.rdb` de root que impide arrancar a Redis. Se recrea sin perder nada importante, porque Redis solo guarda lo que se puede perder: `docker compose rm -sfv redis && docker compose up -d redis`.
 
+### Solución de problemas
+
+**Nunca hace falta `docker compose down -v` para recuperar el entorno:** ese comando borra la base y solo sirve para empezar de cero a propósito.
+
+- **Después de reiniciar Docker Desktop o la computadora:** todos los servicios tienen `restart: unless-stopped`, así que vuelven solos. Si alguno quedó detenido, `docker compose up -d` lo levanta con los mismos datos; `docker compose ps` debe mostrar todo `healthy`.
+- **Una réplica de la API reinicia en bucle (`Restarting`):** casi siempre es porque SQL Server o Redis todavía no aceptan conexiones; `docker compose up -d` y esperar a que queden `healthy`. Los logs dicen la causa: `docker compose logs --tail=20 api-1`.
+- **Después de cambiar la API, la web o el migrador:** `docker compose up -d --build`.
+
 ### Variables de entorno
 
 Cada valor tiene una sola fuente en `.env`: Compose, el migrador y la API leen las mismas variables (`.env.example` documenta cada una). `.env` está en `.gitignore`: el repositorio no tiene credenciales reales.
