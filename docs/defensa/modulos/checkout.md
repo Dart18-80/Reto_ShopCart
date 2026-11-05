@@ -42,7 +42,7 @@ Antes, `POST /checkout/sesion` bloquea el carrito y las variantes en orden de `I
 | Regla | Dónde vive | Archivo:línea | Decisión |
 | --- | --- | --- | --- |
 | Solo un Cliente compra | Rutas y SP (`50005`) | [checkout.routes.ts:78](../../../apps/api/src/modules/checkout/checkout.routes.ts#L78 "autorizar('Cliente')"), [R__SP_Checkout_RegistrarIntentoPago.sql:35](../../../database/programmability/R__SP_Checkout_RegistrarIntentoPago.sql#L35 "THROW 50005") | N-05, RF-01 |
-| El cliente sale del token; el cuerpo no acepta `idUsuario` ni `idCarrito` | Zod `.strict()` | [checkout.schemas.ts:10](../../../apps/api/src/modules/checkout/checkout.schemas.ts#L10 ".strict()") | RF-01 |
+| El cliente sale del token; el cuerpo no acepta `idUsuario` ni `idCarrito` | Zod `.strict()` | [checkout.schemas.ts:11](../../../apps/api/src/modules/checkout/checkout.schemas.ts#L11 ".strict()") | RF-01 |
 | Reserva todo o nada bajo el bloqueo de la variante | `SP_Inventario_ReservarExistencia` | [R__SP_Inventario_ReservarExistencia.sql:52](../../../database/programmability/R__SP_Inventario_ReservarExistencia.sql#L52 "THROW 50301") | N-06, A-02 |
 | Lo que se cobra queda congelado en la sesión | SP (`LineaSesionCheckout`) | [R__SP_Checkout_IniciarSesion.sql:151](../../../database/programmability/R__SP_Checkout_IniciarSesion.sql#L151 "N-02: lo que se cobra queda congelado") | N-02, M-04 |
 | Mismo contenido (hash) y sesión vigente: se reutiliza (200) | SP | [R__SP_Checkout_IniciarSesion.sql:121](../../../database/programmability/R__SP_Checkout_IniciarSesion.sql#L121 "@HashActiva = @Hash") | N-02 |
@@ -61,7 +61,7 @@ Antes, `POST /checkout/sesion` bloquea el carrito y las variantes en orden de `I
 | Un intento con pedido nunca se anula | SP (`50005`) | [R__SP_Checkout_ActualizarIntentoPago.sql:70](../../../database/programmability/R__SP_Checkout_ActualizarIntentoPago.sql#L70 "No se anula un intento de pago con pedido") | RF-06 |
 | La pasarela nunca dentro de una transacción | Servicio | [checkout.pago.ts:259](../../../apps/api/src/modules/checkout/checkout.pago.ts#L259 "pasarela.autorizar") | N-03, A-02 |
 | De la tarjeta solo se guardan marca y últimos 4 | Servicio + logs redactados | [checkout.pago.ts:327](../../../apps/api/src/modules/checkout/checkout.pago.ts#L327 "marcaDeTarjeta"), [logger.ts:8](../../../apps/api/src/shared/observability/logger.ts#L8 "numeroTarjeta") | N-03 |
-| Tarjeta vencida: `400` sin llegar a la pasarela | Zod con el `Reloj` | [checkout.schemas.ts:71](../../../apps/api/src/modules/checkout/checkout.schemas.ts#L71 "tarjetaVencida(datos, reloj.ahora())") | N-03 |
+| Tarjeta vencida: `400` sin llegar a la pasarela | Zod con el `Reloj` | [checkout.schemas.ts:61](../../../apps/api/src/modules/checkout/checkout.schemas.ts#L61 "tarjetaVencida(datos, reloj.ahora())") | N-03 |
 | La expiración no vence una sesión con el arrendamiento vivo | Job (SP) | [R__SP_Checkout_ExpirarSesiones.sql:56](../../../database/programmability/R__SP_Checkout_ExpirarSesiones.sql#L56 "ArrendadoHasta > SYSUTCDATETIME()") | N-03, A-04 |
 | La conciliación captura solo con pedido, y nunca el de un cancelado | SP (`50005`) | [R__SP_Checkout_ResolverIntentoConciliado.sql:73](../../../database/programmability/R__SP_Checkout_ResolverIntentoConciliado.sql#L73 "No se captura un intento de pago sin pedido"), [R__SP_Checkout_ResolverIntentoConciliado.sql:79](../../../database/programmability/R__SP_Checkout_ResolverIntentoConciliado.sql#L79 "No se captura el cobro de un pedido cancelado") | RF-06, N-09 |
 

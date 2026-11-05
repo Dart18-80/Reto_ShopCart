@@ -1,11 +1,8 @@
 import { useId, useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { CampoFormulario } from '../../../shared/componentes/CampoFormulario';
-import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '../../../shared/ui/form';
+import { CampoSeleccion, CLASE_SELECT } from '../../../shared/componentes/CampoSeleccion';
 import { useDepartamentos, useMunicipios } from '../hooks/useDirecciones';
-
-const CLASE_SELECT =
-  'bg-card texto-base h-12 w-full rounded-md border px-3 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none aria-invalid:border-2 aria-invalid:border-destructive disabled:opacity-50';
 
 interface PropsCamposDireccion {
   /** El departamento del municipio guardado, al editar. */
@@ -19,7 +16,7 @@ interface PropsCamposDireccion {
  * municipio: no viaja al backend. Al cambiarlo, el municipio elegido se limpia.
  */
 export function CamposDireccion({ idDepartamentoInicial, vacioOpcional }: PropsCamposDireccion) {
-  const { control, setValue } = useFormContext();
+  const { setValue } = useFormContext();
   const [idDepartamento, setIdDepartamento] = useState(idDepartamentoInicial);
   const departamentos = useDepartamentos();
   const municipios = useMunicipios(idDepartamento);
@@ -69,39 +66,15 @@ export function CamposDireccion({ idDepartamentoInicial, vacioOpcional }: PropsC
             <p className="texto-nota text-oferta">{departamentos.error.mensaje}</p>
           )}
         </div>
-        <FormField
-          control={control}
-          name="idMunicipio"
-          render={({ field }) => (
-            <FormItem className="flex flex-col gap-1.5">
-              <FormLabel className="control-etiqueta text-foreground data-[error=true]:text-foreground">
-                Municipio
-              </FormLabel>
-              <FormControl>
-                <select
-                  name={field.name}
-                  ref={field.ref}
-                  onBlur={field.onBlur}
-                  value={typeof field.value === 'number' ? field.value : ''}
-                  disabled={idDepartamento === undefined || municipios.isPending}
-                  onChange={(evento) => {
-                    field.onChange(
-                      evento.target.value === '' ? undefined : Number(evento.target.value),
-                    );
-                  }}
-                  className={CLASE_SELECT}
-                >
-                  <option value="">Elige un municipio</option>
-                  {municipios.data?.map((municipio) => (
-                    <option key={municipio.idMunicipio} value={municipio.idMunicipio}>
-                      {municipio.nombre}
-                    </option>
-                  ))}
-                </select>
-              </FormControl>
-              <FormMessage className="texto-nota text-oferta" />
-            </FormItem>
-          )}
+        <CampoSeleccion
+          nombre="idMunicipio"
+          etiqueta="Municipio"
+          sinElegir="Elige un municipio"
+          opciones={(municipios.data ?? []).map((municipio) => ({
+            valor: municipio.idMunicipio,
+            etiqueta: municipio.nombre,
+          }))}
+          deshabilitado={idDepartamento === undefined || municipios.isPending}
         />
       </div>
       <CampoFormulario nombre="direccionLinea" etiqueta="Dirección" autoComplete="street-address" />

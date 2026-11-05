@@ -76,7 +76,7 @@ async function agregarVariantes(
   }
 }
 
-type CrearEnTienda = (nombre: string, variantes?: VarianteNueva[]) => Promise<number>;
+export type CrearEnTienda = (nombre: string, variantes?: VarianteNueva[]) => Promise<number>;
 
 /**
  * Las pruebas corren contra la tienda real: al terminar, lo que crearon se desactiva (primero el producto y después

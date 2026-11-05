@@ -20,7 +20,9 @@ Porque iniciar el pago reserva: quien no consigue la reserva no llega a la pasar
 
 No. Cada pago lleva una `Idempotency-Key`; la base tiene un `UNIQUE` sobre ella y el SP que registra el intento lo busca con bloqueo antes de insertar. Un reintento con la misma llave devuelve el mismo pedido, y uno con la misma llave pero otra tarjeta responde 422.
 
-**Muéstralo en:** [V007__checkout.sql:97](../../database/migrations/V007__checkout.sql#L97 "UQ_IntentoPago_LlaveIdempotencia UNIQUE (LlaveIdempotencia)"). Detalle: [checkout](modulos/checkout.md).
+En la web (M4-H03), la llave es una por intento y vive solo en memoria, junto con la tarjeta de ese intento. Ante una respuesta incierta (red, `504`, otro 5xx o `409 PAGO_EN_CURSO`) el intento se conserva, y «Reintentar» reenvía exactamente la misma solicitud con la misma llave, así ese 422 nunca llega. Solo un rechazo, un `400` o una sesión perdida terminan el intento: el siguiente lleva una llave nueva. Mientras se paga, el formulario queda deshabilitado, así un doble clic es una sola petición.
+
+**Muéstralo en:** [V007__checkout.sql:97](../../database/migrations/V007__checkout.sql#L97 "UQ_IntentoPago_LlaveIdempotencia UNIQUE (LlaveIdempotencia)"); en la web, [politicaDePago.ts:41](../../apps/web/src/modules/checkout/politicaDePago.ts#L41 "if (error.esDeRed || error.status >= PRIMER_STATUS_DEL_SERVIDOR) return REINTENTAR;") y [usePagar.ts:41](../../apps/web/src/modules/checkout/hooks/usePagar.ts#L41 "if (desenlace.tipo !== 'reintentar') intento.terminar();"). Detalle: [checkout](modulos/checkout.md).
 
 ### 4. La pasarela autoriza, pero la respuesta se pierde y la réplica muere. ¿Qué queda?
 

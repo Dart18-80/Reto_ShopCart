@@ -3,5 +3,10 @@
     "metodo": "GET",
     "ruta": "/api/v1/health",
     "motivo": "Healthcheck de Docker y de nginx (RNF-4); ninguna pantalla lo consume."
+  },
+  {
+    "metodo": "GET",
+    "ruta": "/api/v1/direcciones/{id}",
+    "motivo": "GET /direcciones ya trae cada dirección completa: la cuenta edita desde la lista (M4-H01) y el checkout elige de ella (M4-H02)."
   }
 ]

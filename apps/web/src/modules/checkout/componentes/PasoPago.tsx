@@ -1,0 +1,127 @@
+import { montoMenorOIgual, pagarSchema, type Pagar } from '@shopcart/shared';
+import { useNavigate } from 'react-router';
+import { toast } from 'sonner';
+import { AvisoFormulario } from '../../../shared/componentes/AvisoFormulario';
+import { Monto } from '../../../shared/componentes/Monto';
+import { useFormularioApi } from '../../../shared/hooks/useFormularioApi';
+import { Button } from '../../../shared/ui/button';
+import type { SesionPago } from '../checkout.api';
+import { useCancelarSesionPago } from '../hooks/useCancelarSesionPago';
+import { useCuentaRegresiva } from '../hooks/useCuentaRegresiva';
+import { useIntentoDePago } from '../hooks/useIntentoDePago';
+import { usePagar } from '../hooks/usePagar';
+import { diasDeEntrega } from '../diasDeEntrega';
+import { desenlaceDelPago } from '../politicaDePago';
+import { AvisoPago } from './AvisoPago';
+import { AvisoReserva } from './AvisoReserva';
+import { FormularioPago } from './FormularioPago';
+import { ResumenPedido } from './ResumenPedido';
+
+const RUTA_CHECKOUT = '/checkout';
+const RUTA_CARRITO = '/carrito';
+const SIN_COSTO = '0.00';
+const rutaDelPedido = (idPedido: number) => `/pedidos/${String(idPedido)}?nuevo=1`;
+
+/** El envío congelado en la sesión: «Gratis» si su costo es cero (N-04), comparado como texto (FE-10). */
+function EnvioDeLaSesion({ costo }: { costo: string }) {
+  return montoMenorOIgual(costo, SIN_COSTO) ? 'Gratis' : <Monto valor={costo} />;
+}
+
+/**
+ * M4-H03 (Figma 40:971 y 40:1084): paga la sesión congelada. La llave de idempotencia vive en el intento (una por
+ * intento, RF-06) y la tabla de la llave decide cada respuesta (politicaDePago).
+ */
+export function PasoPago({ sesion }: { sesion: SesionPago }) {
+  const navigate = useNavigate();
+  const intento = useIntentoDePago();
+  const cancelar = useCancelarSesionPago();
+  const restante = useCuentaRegresiva(sesion.expiraEn);
+
+  const volverAlCheckout = () => {
+    cancelar.mutate(undefined, { onSuccess: () => void navigate(RUTA_CHECKOUT) });
+  };
+
+  const pagar = usePagar({
+    intento,
+    // N-03: el número y el CVV no se quedan en la pantalla después de ninguna respuesta.
+    alResponder: () => {
+      formulario.form.resetField('numeroTarjeta', { keepError: true });
+      formulario.form.resetField('cvv', { keepError: true });
+    },
+    alPagar: (pedido) => void navigate(rutaDelPedido(pedido.idPedido)),
+    alPerderSesion: (desenlace, mensaje) => {
+      toast.error(mensaje);
+      if (desenlace.tipo === 'volverAlCheckout') volverAlCheckout();
+      else void navigate(RUTA_CARRITO);
+    },
+  });
+  const formulario = useFormularioApi({
+    esquema: pagarSchema,
+    mutacion: pagar,
+    valoresIniciales: { numeroTarjeta: '', cvv: '' },
+  });
+
+  const desenlace = pagar.error ? desenlaceDelPago(pagar.error) : null;
+  const porReintentar = desenlace?.tipo === 'reintentar';
+  const reintentar = () => {
+    const pendiente: Pagar | null = intento.pendiente();
+    if (pendiente) pagar.mutate(pendiente);
+  };
+
+  return (
+    <div className="flex flex-col gap-8 pb-36 md:flex-row md:items-start md:gap-12 md:pb-0">
+      <section aria-labelledby="titulo-tarjeta" className="flex min-w-0 flex-1 flex-col gap-5">
+        <h2 id="titulo-tarjeta" className="display-titulo-3">
+          Datos de la tarjeta
+        </h2>
+        {pagar.error && desenlace && (
+          <AvisoPago
+            error={pagar.error}
+            desenlace={desenlace}
+            alReintentar={reintentar}
+            reintentando={pagar.isPending}
+          />
+        )}
+        <AvisoReserva
+          restanteMs={restante}
+          alVolverAEmpezar={volverAlCheckout}
+          volviendo={cancelar.isPending}
+        />
+        <FormularioPago
+          form={formulario.form}
+          enviar={formulario.enviar}
+          deshabilitado={formulario.enviando || porReintentar || restante === 0}
+          total={sesion.total}
+        />
+      </section>
+      <div className="md:w-105 md:shrink-0">
+        <ResumenPedido
+          encabezado={
+            <div className="flex flex-col gap-0.5">
+              <p className="texto-pequeno-fuerte">{`Entrega a ${sesion.direccion.nombreRecibe}`}</p>
+              <p className="texto-nota text-muted-foreground">
+                {`${sesion.direccion.direccionLinea}, ${sesion.direccion.municipio}, ${sesion.direccion.departamento}. ${sesion.envio.nombre}: ${diasDeEntrega(sesion.envio.diasMin, sesion.envio.diasMax)}.`}
+              </p>
+            </div>
+          }
+          lineas={sesion.lineas.map((linea) => ({ ...linea, clave: linea.idVariante }))}
+          subtotal={sesion.subtotal}
+          descuento={sesion.descuento}
+          codigoCupon={sesion.codigoCupon}
+          envio={<EnvioDeLaSesion costo={sesion.envio.costo} />}
+          total={sesion.total}
+        >
+          <AvisoFormulario error={cancelar.error} />
+          <Button
+            variant="ghost"
+            disabled={cancelar.isPending || pagar.isPending}
+            onClick={volverAlCheckout}
+            className="control-boton h-auto self-start px-6 py-3"
+          >
+            Cambiar dirección o envío
+          </Button>
+        </ResumenPedido>
+      </div>
+    </div>
+  );
+}

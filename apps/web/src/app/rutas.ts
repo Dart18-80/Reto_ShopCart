@@ -109,6 +109,15 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ),
   },
   {
+    ruta: '/pedidos/:id',
+    area: 'tienda',
+    acceso: SOLO_CLIENTE,
+    pagina: diferida(
+      () => import('../modules/pedidos/paginas/PedidoPagina'),
+      (m) => m.PedidoPagina,
+    ),
+  },
+  {
     ruta: '/ingresar',
     area: 'tienda',
     acceso: PUBLICO,

@@ -15,6 +15,7 @@ export {
   type AgregarLinea,
   type AplicarCupon,
 } from './carrito.js';
+export { pagarSchema, type Pagar } from './checkout.js';
 export {
   consultaBusquedaSchema,
   DIRECCIONES_ORDEN,

@@ -1,5 +1,6 @@
-import { montoSchema } from '@shopcart/shared';
+import { montoSchema, pagarSchema as pagarCompartido } from '@shopcart/shared';
 import { idSchema } from '../../shared/http/index.js';
+import { registroOpenApi } from '../../shared/openapi/index.js';
 import { z } from '../../shared/openapi/zod.js';
 import { tarjetaVencida } from '../../shared/pasarela/index.js';
 import type { Reloj } from '../../shared/reloj/index.js';
@@ -51,19 +52,8 @@ export const sesionPagoSchema = z
   })
   .openapi('SesionPago');
 
-// N-03: los datos de la tarjeta solo viajan a la pasarela; nunca se guardan ni se registran (pino redacta
-// numeroTarjeta y cvv).
-export const pagarSchema = z
-  .object({
-    numeroTarjeta: z
-      .string()
-      .regex(/^\d{13,19}$/, 'El número de tarjeta tiene de 13 a 19 dígitos.'),
-    mesVencimiento: z.number().int().min(1).max(12),
-    anioVencimiento: z.number().int().min(2000).max(2100),
-    cvv: z.string().regex(/^\d{3,4}$/, 'El CVV tiene 3 o 4 dígitos.'),
-  })
-  .strict()
-  .openapi('Pagar');
+// FE-03: el cuerpo del pago vive en @shopcart/shared, el mismo que valida el formulario de la web.
+export const pagarSchema = registroOpenApi.register('Pagar', pagarCompartido);
 
 /** El cuerpo del pago con la tarjeta vigente a la fecha del reloj (la validación de la petición). */
 export const pagarVigenteSchema = (reloj: Reloj) =>

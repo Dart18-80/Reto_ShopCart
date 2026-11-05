@@ -17,6 +17,8 @@ interface PropsResumenPedido {
   codigoCupon: string | null;
   envio: ReactNode;
   total: string;
+  /** Lo que va bajo el título: en el pago, a dónde y cómo llega (M4-H03). */
+  encabezado?: ReactNode;
   /** El aviso y la acción del paso, debajo del total. */
   children: ReactNode;
 }
@@ -32,6 +34,7 @@ export function ResumenPedido({
   codigoCupon,
   envio,
   total,
+  encabezado,
   children,
 }: PropsResumenPedido) {
   return (
@@ -42,6 +45,7 @@ export function ResumenPedido({
       <h2 id="titulo-tu-pedido" className="display-titulo-3">
         Tu pedido
       </h2>
+      {encabezado}
       <ul aria-label="Productos del pedido" className="flex flex-col gap-3.5">
         {lineas.map((linea) => (
           <li key={linea.clave} className="flex items-start justify-between gap-4">

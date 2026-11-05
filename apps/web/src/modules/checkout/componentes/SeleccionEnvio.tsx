@@ -1,6 +1,6 @@
 import { RadioGroup } from '../../../shared/ui/radio-group';
 import type { MetodoEnvio } from '../../envios';
-import { plazoDeEntrega } from '../plazoDeEntrega';
+import { diasDeEntrega } from '../diasDeEntrega';
 import { CostoEnvio } from './CostoEnvio';
 import { Opcion } from './Opcion';
 
@@ -25,7 +25,7 @@ export function SeleccionEnvio({ metodos, elegido, alElegir }: PropsSeleccionEnv
           key={metodo.idMetodoEnvio}
           valor={String(metodo.idMetodoEnvio)}
           titulo={metodo.nombre}
-          detalle={plazoDeEntrega(metodo.diasMin, metodo.diasMax)}
+          detalle={`Llega en ${diasDeEntrega(metodo.diasMin, metodo.diasMax)}.`}
           extra={<CostoEnvio metodo={metodo} />}
         />
       ))}

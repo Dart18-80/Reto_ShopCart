@@ -90,6 +90,13 @@ export async function agregarAlCarrito(api: APIRequestContext, idVariante: numbe
   expect(respuesta.status(), 'agregar al carrito').toBe(200);
 }
 
+/** Cuántos pedidos tiene el Cliente: la E2E verifica por la API que un pago produjo uno solo. */
+export async function cuantosPedidos(api: APIRequestContext): Promise<number> {
+  const respuesta = await api.get('/api/v1/pedidos?tamano=1');
+  expect(respuesta.status(), 'listar los pedidos').toBe(200);
+  return (await leer<{ paginacion: { total: number } }>(respuesta)).paginacion.total;
+}
+
 /** Inicia el pago y paga con la tarjeta aprobada, como lo haría la pantalla (01 §6.1 y §6.2). */
 export async function comprarCarrito(api: APIRequestContext) {
   const { datos } = await leer<Datos<{ metodos: { idMetodoEnvio: number }[] }>>(

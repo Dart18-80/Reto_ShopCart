@@ -96,7 +96,7 @@ Criterio: si la regla se rompe con dos peticiones simultáneas o con una escritu
 | Transiciones de estado del pedido | `SP_Pedidos_CambiarEstado` + trigger `TR_Pedidos_ValidarTransicion` | [R__TR_Pedidos_ValidarTransicion.sql:5](../../../database/programmability/R__TR_Pedidos_ValidarTransicion.sql#L5 "CREATE OR ALTER TRIGGER dbo.TR_Pedidos_ValidarTransicion") | N-08 |
 | Un pago por llave | constraint `UQ_IntentoPago_LlaveIdempotencia` | [V007__checkout.sql:97](../../../database/migrations/V007__checkout.sql#L97 "UQ_IntentoPago_LlaveIdempotencia UNIQUE (LlaveIdempotencia)") | N-03 |
 | Llamar a la pasarela fuera de toda transacción | servicio `checkout.pago` | [checkout.pago.ts:51](../../../apps/api/src/modules/checkout/checkout.pago.ts#L51 "Ninguna llamada a") | N-03, A-02 |
-| Tarjeta no vencida (depende del reloj) | Zod con el puerto `Reloj` | [checkout.schemas.ts:69](../../../apps/api/src/modules/checkout/checkout.schemas.ts#L69 "export const pagarVigenteSchema = (reloj: Reloj)") | A-20 |
+| Tarjeta no vencida (depende del reloj) | Zod con el puerto `Reloj` | [checkout.schemas.ts:59](../../../apps/api/src/modules/checkout/checkout.schemas.ts#L59 "export const pagarVigenteSchema = (reloj: Reloj)") | A-20 |
 | Rate limiting del login | middleware con Redis | [auth.routes.ts:78](../../../apps/api/src/modules/auth/auth.routes.ts#L78 "limitarIntentos(limitadores.login, porIpYCorreo)") | A-07 |
 | Token revocado por versión de sesión | middleware `autenticar` con Redis | [autenticar.ts:47](../../../apps/api/src/shared/http/autenticar.ts#L47 "await sesionRevocada(actor, versiones)") | A-07 |
 
