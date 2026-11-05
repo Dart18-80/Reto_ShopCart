@@ -11,7 +11,7 @@
     "lint": "eslint . && prettier --check . && pnpm openapi:verificar",
     "format": "prettier --write .",
     "typecheck": "pnpm -r --if-present typecheck",
-    "test": "pnpm -r --if-present test",
+    "test": "pnpm -r --workspace-concurrency=1 --if-present test",
     "build": "pnpm -r --if-present build",
     "db:migrar": "pnpm --filter @shopcart/migrator migrar",
     "ledger:verificar": "pnpm --filter @shopcart/migrator ledger:verificar",

@@ -34,8 +34,10 @@ export default mergeConfig(
             include: PRUEBAS_DE_NODE,
             environment: 'node',
             // Las que levantan ESLint (con el resolver de TypeScript) o construyen la web son lentas y se pelean por
-            // la CPU con las del DOM: bajo la carga de `pnpm test`, en paralelo, una se agotó con 60 s. En serie y con
-            // un límite propio, cada una tiene la máquina para sí y el límite solo cae ante un cuelgue real.
+            // la CPU: en paralelo con las del DOM, bajo `pnpm test`, se agotaba una de ellas (60 s) o una del DOM (5 s).
+            // Corren después de todo el DOM (grupo 1), una a la vez y con un límite propio: cada una tiene la
+            // máquina para sí y el límite solo cae ante un cuelgue real.
+            sequence: { groupOrder: 1 },
             fileParallelism: false,
             testTimeout: LIMITE_PRUEBAS_DE_NODE_MS,
             hookTimeout: LIMITE_PRUEBAS_DE_NODE_MS,

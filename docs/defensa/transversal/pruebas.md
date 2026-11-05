@@ -27,7 +27,7 @@ Los SPs de prueba son 88 `R__SP_Pruebas_*` y 3 triggers `R__TR_Pruebas_*` en [da
 |---|---|---|
 | `pnpm lint` | ESLint (incluidas las fronteras entre módulos) y Prettier | [package.json:11](../../../package.json#L11 "eslint . && prettier --check .") |
 | `pnpm typecheck` | `tsc --noEmit` en cada paquete | [package.json:13](../../../package.json#L13 "pnpm -r --if-present typecheck") |
-| `pnpm test` | Unitarias de la API y del migrador | [package.json:14](../../../package.json#L14 "pnpm -r --if-present test") |
+| `pnpm test` | Unitarias del migrador, del contrato, de la API y de la web, un paquete a la vez (en paralelo, dos Vitest con un worker por núcleo cada uno agotaban pruebas por falta de CPU) | [package.json:14](../../../package.json#L14 "pnpm -r --workspace-concurrency=1 --if-present test") |
 | `pnpm test:integracion` | Integración del migrador, luego recrea y migra `shopcart_test`, luego integración de la API | [package.json:18](../../../package.json#L18 "migrar:pruebas") |
 | `pnpm test:concurrencia` | RNF-3 contra el entorno levantado | [package.json:20](../../../package.json#L20 "test:concurrencia") |
 | `pnpm test:entorno` | Verificación de entrega contra Docker | [package.json:21](../../../package.json#L21 "test:entorno") |
