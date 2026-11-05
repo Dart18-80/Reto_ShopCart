@@ -1,4 +1,4 @@
-import { montoSchema } from '@shopcart/shared';
+import { ILUSTRACIONES_PRENDA, montoSchema } from '@shopcart/shared';
 import { idEnRutaSchema, idSchema } from '../../shared/http/index.js';
 import { z } from '../../shared/openapi/zod.js';
 import { ESTADOS_EXISTENCIA } from '../catalogo/index.js';
@@ -47,6 +47,10 @@ const lineaCarritoSchema = z
     sku: z.string(),
     descripcionAtributos: z.string(),
     imagen: z.string().nullable(),
+    ilustracion: z.enum(ILUSTRACIONES_PRENDA),
+    color: z.string().nullable().openapi({
+      description: 'FE-16: el valor del atributo Color de la variante; null si no tiene',
+    }),
     cantidad: z.number().int(),
     precioUnitario: montoSchema,
     totalLinea: montoSchema,

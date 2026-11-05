@@ -1,3 +1,4 @@
+import type { IlustracionPrenda } from '@shopcart/shared';
 import sql from 'mssql';
 import {
   bigintANumero,
@@ -28,6 +29,9 @@ interface FilaLinea {
   SKU: string;
   DescripcionAtributos: string;
   Imagen: string | null;
+  // CK_Categoria_Ilustracion garantiza que es una de la lista.
+  Ilustracion: IlustracionPrenda;
+  Color: string | null;
   Cantidad: number;
   PrecioUnitario: number;
   TotalLinea: number;
@@ -89,6 +93,8 @@ const aCarrito = (lineas: FilaLinea[], resumen: FilaResumen): Carrito => ({
     sku: fila.SKU,
     descripcionAtributos: fila.DescripcionAtributos,
     imagen: fila.Imagen,
+    ilustracion: fila.Ilustracion,
+    color: fila.Color,
     cantidad: fila.Cantidad,
     precioUnitario: aMonto(fila.PrecioUnitario),
     totalLinea: aMonto(fila.TotalLinea),

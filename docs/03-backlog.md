@@ -778,7 +778,7 @@ El orden de construcción, por módulos (F1, módulos 1 a 11 y F6), está en [`0
 | M2-H01 | Datos de presentación del catálogo (backend) | Must | 1.25 | Hecha |
 | M2-H02 | Catálogo con búsqueda y filtros | Must | 1.0 | Hecha |
 | M2-H03 | Detalle de producto | Must | 1.25 | Hecha |
-| M3-H01 | Ilustración y color de la línea (backend) | Should | 0.5 | Lista |
+| M3-H01 | Ilustración y color de la línea (backend) | Should | 0.5 | Hecha |
 | M3-H02 | Ver, agregar, cambiar y quitar | Must | 1.0 | Lista |
 | M3-H03 | Cupón y envío gratis | Must | 0.5 | Lista |
 | M3-H04 | Continuar al pago y fusión | Must | 0.25 | Lista |

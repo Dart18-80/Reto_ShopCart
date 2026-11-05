@@ -1,3 +1,4 @@
+import type { IlustracionPrenda } from '@shopcart/shared';
 import type { Decimal } from 'decimal.js';
 import type { CodigoError } from '../../shared/errors/index.js';
 import type { EstadoExistencia } from '../catalogo/index.js';
@@ -23,6 +24,9 @@ export interface LineaCarrito {
   sku: string;
   descripcionAtributos: string;
   imagen: string | null;
+  ilustracion: IlustracionPrenda;
+  /** FE-16: el valor del atributo Color de la variante; null si no tiene. */
+  color: string | null;
   cantidad: number;
   precioUnitario: Decimal;
   totalLinea: Decimal;

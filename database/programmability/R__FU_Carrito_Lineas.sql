@@ -10,6 +10,8 @@
 -- PrecioGarantizado (garantía vigente y el precio subió) o BajoDePrecio (el vigente es menor que el garantizado).
 -- N-06: la existencia solo se muestra como etiqueta; la cifra, en el umbral o por debajo. El disponible no
 -- descuenta las reservas de la sesión de pago activa del mismo carrito (E5-H01).
+-- M3-H01 (FE-15, FE-16): la ilustración de la categoría y el valor del atributo Color de la variante (NULL si no
+-- tiene), para la miniatura de la línea.
 CREATE OR ALTER FUNCTION dbo.FU_Carrito_Lineas (@IDCarrito INT)
 RETURNS TABLE
 AS
@@ -21,6 +23,8 @@ RETURN
             v.SKU,
             v.DescripcionAtributos,
             img.Url                AS Imagen,
+            cat.Ilustracion,
+            col.Color,
             l.Cantidad,
             pr.PrecioEfectivo      AS PrecioUnitario,
             pr.IDPrecioVarianteEfectivo,
@@ -41,11 +45,17 @@ RETURN
     FROM    dbo.LineaCarrito AS l
     JOIN    dbo.Variante       AS v  ON v.IDVariante = l.IDVariante
     JOIN    dbo.Producto       AS p  ON p.IDProducto = v.IDProducto
+    JOIN    dbo.Categoria      AS cat ON cat.IDCategoria = p.IDCategoria
     JOIN    dbo.PrecioVariante AS pg ON pg.IDPrecioVariante = l.IDPrecioVarianteGarantizado
     OUTER APPLY dbo.FU_Catalogo_PrecioVigente(l.IDVariante) AS pv
     CROSS APPLY dbo.FU_Carrito_Disponible(@IDCarrito, l.IDVariante) AS d
     CROSS APPLY (SELECT TOP (1) ps.UmbralUltimasUnidades AS Umbral
                  FROM dbo.ParametroSistema AS ps ORDER BY ps.IDParametroSistema) AS u
+    OUTER APPLY (SELECT va.Valor AS Color
+                 FROM   dbo.VarianteValorAtributo AS vva
+                 JOIN   dbo.Atributo      AS a  ON a.IDAtributo = vva.IDAtributo AND a.Nombre = N'Color'
+                 JOIN   dbo.ValorAtributo AS va ON va.IDValorAtributo = vva.IDValorAtributo
+                 WHERE  vva.IDVariante = l.IDVariante) AS col
     OUTER APPLY (SELECT TOP (1) i.Url
                  FROM dbo.ImagenProducto AS i
                  WHERE i.IDProducto = p.IDProducto AND i.EsPrincipal = 1) AS img

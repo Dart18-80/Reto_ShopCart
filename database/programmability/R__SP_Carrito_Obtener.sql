@@ -104,21 +104,22 @@ BEGIN
         DescripcionAtributos NVARCHAR(200), Imagen NVARCHAR(500), Cantidad INT, PrecioUnitario DECIMAL(12,2),
         TotalLinea DECIMAL(15,2), TotalComprable DECIMAL(15,2), DescuentoLinea DECIMAL(15,2), Estado VARCHAR(20), AjustarA INT,
         EstadoExistencia VARCHAR(20), UnidadesRestantes INT, FechaGarantiaHasta DATETIME2(3), Aviso VARCHAR(20),
-        AvisoPrecioAnterior DECIMAL(12,2), FechaAgregado DATETIME2(3));
+        AvisoPrecioAnterior DECIMAL(12,2), FechaAgregado DATETIME2(3), Ilustracion VARCHAR(20),
+        Color NVARCHAR(50));
 
     INSERT INTO @Lineas
     SELECT l.IDLineaCarrito, l.IDVariante, l.IDProducto, l.Producto, l.SKU, l.DescripcionAtributos, l.Imagen,
            l.Cantidad, l.PrecioUnitario, l.TotalLinea, l.TotalComprable, COALESCE(dc.DescuentoLinea, 0), l.Estado,
            l.AjustarA,
            l.EstadoExistencia, l.UnidadesRestantes, l.FechaGarantiaHasta, l.Aviso, l.AvisoPrecioAnterior,
-           l.FechaAgregado
+           l.FechaAgregado, l.Ilustracion, l.Color
     FROM   dbo.FU_Carrito_Lineas(@IDCarrito) AS l
     LEFT JOIN dbo.FU_Cupones_CalculoDescuento(@IDCupon, @IDCarrito) AS dc ON dc.IDLineaCarrito = l.IDLineaCarrito;
 
     SELECT l.IDLineaCarrito, l.IDVariante, l.IDProducto, l.Producto, l.SKU, l.DescripcionAtributos, l.Imagen,
            l.Cantidad, l.PrecioUnitario, l.TotalLinea, l.TotalComprable, l.DescuentoLinea, l.Estado, l.AjustarA,
            l.EstadoExistencia,
-           l.UnidadesRestantes, l.FechaGarantiaHasta, l.Aviso, l.AvisoPrecioAnterior
+           l.UnidadesRestantes, l.FechaGarantiaHasta, l.Aviso, l.AvisoPrecioAnterior, l.Ilustracion, l.Color
     FROM   @Lineas AS l
     ORDER BY l.FechaAgregado, l.IDLineaCarrito;
 

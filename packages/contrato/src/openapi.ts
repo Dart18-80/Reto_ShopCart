@@ -7289,6 +7289,8 @@ export interface components {
                 tipo: "PrecioGarantizado" | "BajoDePrecio" | "CambioDePrecio";
             } | null;
             cantidad: number;
+            /** @description FE-16: el valor del atributo Color de la variante; null si no tiene */
+            color: string | null;
             descripcionAtributos: string;
             descuentoLinea: string;
             /** @enum {string} */
@@ -7303,6 +7305,8 @@ export interface components {
             idLinea: number;
             idProducto: number;
             idVariante: number;
+            /** @enum {string} */
+            ilustracion: "Camisa" | "Pantalon" | "Vestido" | "Chaqueta" | "Tenis" | "Gorra";
             imagen: string | null;
             precioUnitario: string;
             producto: string;

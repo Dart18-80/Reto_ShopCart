@@ -1712,6 +1712,13 @@
           "cantidad": {
             "type": "integer"
           },
+          "color": {
+            "description": "FE-16: el valor del atributo Color de la variante; null si no tiene",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "descripcionAtributos": {
             "type": "string"
           },
@@ -1764,6 +1771,17 @@
           "idVariante": {
             "type": "integer"
           },
+          "ilustracion": {
+            "enum": [
+              "Camisa",
+              "Pantalon",
+              "Vestido",
+              "Chaqueta",
+              "Tenis",
+              "Gorra"
+            ],
+            "type": "string"
+          },
           "imagen": {
             "type": [
               "string",
@@ -1798,6 +1816,8 @@
           "sku",
           "descripcionAtributos",
           "imagen",
+          "ilustracion",
+          "color",
           "cantidad",
           "precioUnitario",
           "totalLinea",

@@ -22,6 +22,8 @@ export const lineaSchema = z.strictObject({
   sku: z.string(),
   descripcionAtributos: z.string(),
   imagen: z.string().nullable(),
+  ilustracion: z.enum(['Camisa', 'Pantalon', 'Vestido', 'Chaqueta', 'Tenis', 'Gorra']),
+  color: z.string().nullable(),
   cantidad: z.number(),
   precioUnitario: z.string(),
   totalLinea: z.string(),
