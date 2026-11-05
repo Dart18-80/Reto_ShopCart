@@ -1,7 +1,28 @@
-import type { Bloqueo, Canal, MensajeSesion } from './sesion';
+import { z } from 'zod';
+import type { Bloqueo, Canal, MensajeSesion, Rol } from './sesion';
 
 const NOMBRE_DEL_BLOQUEO = 'shopcart-refresh';
 const NOMBRE_DEL_CANAL = 'shopcart-sesion';
+
+const rolSchema = z.enum(['Cliente', 'Operador', 'Administrador']) satisfies z.ZodType<Rol>;
+
+// Lo que otra pestaña puede publicar. Un mensaje que no cumple (otra versión de la app tras un despliegue,
+// cualquier otro script del mismo origen) se ignora: nunca cambia la sesión.
+const mensajeSesionSchema = z.discriminatedUnion('tipo', [
+  z.object({ tipo: z.literal('cerrada') }),
+  z.object({
+    tipo: z.literal('token'),
+    sesion: z.object({
+      accessToken: z.string().min(1),
+      usuario: z.object({
+        idUsuario: z.number().int().positive(),
+        correo: z.string(),
+        nombre: z.string(),
+        rol: rolSchema,
+      }),
+    }),
+  }),
+]) satisfies z.ZodType<MensajeSesion>;
 
 /** Serializa las tareas solo dentro de esta pestaña: una empieza cuando termina la anterior, aunque falle. */
 export function crearBloqueoDeLaPestana(): Bloqueo {
@@ -25,7 +46,7 @@ export function crearBloqueoDelNavegador(): Bloqueo {
   return { exclusivo: (tarea) => locks.request(NOMBRE_DEL_BLOQUEO, tarea) };
 }
 
-/** Solo el mismo origen puede publicar en el canal, es decir, esta misma aplicación en otra pestaña. */
+/** Solo el mismo origen puede publicar en el canal; aun así, cada mensaje se valida antes de usarlo. */
 export function crearCanalDelNavegador(): Canal {
   const canal = new BroadcastChannel(NOMBRE_DEL_CANAL);
   return {
@@ -33,8 +54,9 @@ export function crearCanalDelNavegador(): Canal {
       canal.postMessage(mensaje);
     },
     alRecibir(receptor) {
-      canal.onmessage = (evento: MessageEvent<MensajeSesion>) => {
-        receptor(evento.data);
+      canal.onmessage = (evento: MessageEvent<unknown>) => {
+        const mensaje = mensajeSesionSchema.safeParse(evento.data);
+        if (mensaje.success) receptor(mensaje.data);
       };
     },
   };

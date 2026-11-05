@@ -77,4 +77,48 @@ describe('canal del navegador', () => {
 
     await expect(recibido).resolves.toEqual({ tipo: 'cerrada' });
   });
+
+  it('un mensaje mal formado (otra versión de la app, otro script) se ignora', async () => {
+    const otraPestana = new BroadcastChannel('shopcart-sesion');
+    const receptor = crearCanalDelNavegador();
+    const recibidos: MensajeSesion[] = [];
+    const llegoElValido = new Promise<void>((resolver) => {
+      receptor.alRecibir((mensaje) => {
+        recibidos.push(mensaje);
+        if (mensaje.tipo === 'cerrada') resolver();
+      });
+    });
+    const usuario = { idUsuario: 7, correo: 'ana@prueba.gt', nombre: 'Ana', rol: 'Cliente' };
+
+    for (const malo of [
+      'cerrada',
+      null,
+      { tipo: 'otro' },
+      { tipo: 'token' },
+      { tipo: 'token', sesion: { accessToken: 123, usuario } },
+      { tipo: 'token', sesion: { accessToken: 'x', usuario: { ...usuario, rol: 'Root' } } },
+      { tipo: 'token', sesion: { accessToken: 'x', usuario: { ...usuario, idUsuario: '7' } } },
+    ]) {
+      otraPestana.postMessage(malo);
+    }
+    otraPestana.postMessage({ tipo: 'cerrada' });
+    await llegoElValido;
+    otraPestana.close();
+
+    expect(recibidos).toEqual([{ tipo: 'cerrada' }]);
+  });
+
+  it('un token bien formado de otra pestaña llega con solo los campos de la sesión', async () => {
+    const otraPestana = new BroadcastChannel('shopcart-sesion');
+    const receptor = crearCanalDelNavegador();
+    const recibido = new Promise<MensajeSesion>((resolver) => {
+      receptor.alRecibir(resolver);
+    });
+    const sesion = sesionDePrueba('token-de-otra-pestana');
+
+    otraPestana.postMessage({ tipo: 'token', sesion: { ...sesion, extra: 'no se usa' } });
+
+    await expect(recibido).resolves.toEqual({ tipo: 'token', sesion });
+    otraPestana.close();
+  });
 });
