@@ -56,13 +56,18 @@ export function useFormularioApi<Entrada extends FieldValues, Salida, Respuesta>
 
   async function guardar(valores: Salida) {
     setErrorGeneral(null);
+    let respuesta: Respuesta;
     try {
-      const respuesta = await mutacion.mutateAsync(valores);
-      alTerminar?.(respuesta);
+      respuesta = await mutacion.mutateAsync(valores);
     } catch (error) {
-      if (!(error instanceof ErrorApi)) throw error;
-      if (error.status !== STATUS_VALIDACION || marcarCampos(error)) setErrorGeneral(error);
+      // Lo que no es ErrorApi (un 2xx que no se pudo leer, un bug) también se avisa: nunca un envío sin respuesta.
+      const errorApi = error instanceof ErrorApi ? error : ErrorApi.inesperado(error);
+      if (errorApi.status !== STATUS_VALIDACION || marcarCampos(errorApi))
+        setErrorGeneral(errorApi);
+      return;
     }
+    // Fuera del try: si falla lo que sigue a un éxito, el aviso de error invitaría a reenviar y duplicar.
+    alTerminar?.(respuesta);
   }
 
   return {

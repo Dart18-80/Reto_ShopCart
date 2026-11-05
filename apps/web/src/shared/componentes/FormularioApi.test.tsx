@@ -1,6 +1,7 @@
 import { telefonoSchema, textoNvarchar } from '@shopcart/shared';
 import { useMutation } from '@tanstack/react-query';
 import { screen, waitFor } from '@testing-library/react';
+import { http, HttpResponse } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import {
@@ -9,6 +10,7 @@ import {
   simularErrorAlCrearDireccion,
 } from '../../test/handlers/direcciones';
 import { renderizar } from '../../test/renderizar';
+import { servidor } from '../../test/servidor';
 import { AvisoFormulario } from './AvisoFormulario';
 import { CampoFormulario } from './CampoFormulario';
 import { Button } from '../ui/button';
@@ -195,5 +197,26 @@ describe('useFormularioApi: casos borde del 400', () => {
 
     // textoNvarchar recorta y normaliza (NFC) antes de enviar, igual que la API.
     expect(cuerpos).toEqual([expect.objectContaining({ nombreRecibe: 'Begoña Núñez 🌋' })]);
+  });
+});
+
+describe('useFormularioApi: un error que no es del backend', () => {
+  it('un 201 con un cuerpo que no es JSON muestra el aviso genérico, nunca nada', async () => {
+    servidor.use(
+      http.post(
+        '/api/v1/direcciones',
+        () =>
+          new HttpResponse('<html>creada</html>', {
+            status: 201,
+            headers: { 'Content-Type': 'text/html' },
+          }),
+      ),
+    );
+    const { usuario } = renderizar(<FormularioDireccion />);
+
+    await llenarYEnviar(usuario);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Algo salió mal de nuestro lado');
+    expect(screen.getByRole('button', { name: 'Guardar' })).toBeEnabled();
   });
 });

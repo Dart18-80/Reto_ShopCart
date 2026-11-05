@@ -25,6 +25,8 @@ interface DatosErrorApi {
   mensaje: string;
   detalles: unknown;
   requestId: string | null;
+  /** El error original (un TypeError, un SyntaxError): no se muestra, queda para depurar en las devtools. */
+  causa?: unknown;
 }
 
 /** FE-13: la única forma en que un error del backend o de la red llega a los hooks y a la vista. */
@@ -35,8 +37,8 @@ export class ErrorApi extends Error {
   readonly detalles: unknown;
   readonly requestId: string | null;
 
-  constructor({ status, codigo, mensaje, detalles, requestId }: DatosErrorApi) {
-    super(mensaje);
+  constructor({ status, codigo, mensaje, detalles, requestId, causa }: DatosErrorApi) {
+    super(mensaje, { cause: causa });
     this.name = 'ErrorApi';
     this.status = status;
     this.codigo = codigo;
@@ -60,13 +62,14 @@ export class ErrorApi extends Error {
   }
 
   /** Una falla del lado de la web que no es una respuesta del backend (un 2xx sin cuerpo, un lock que falla). */
-  static inesperado(): ErrorApi {
+  static inesperado(causa?: unknown): ErrorApi {
     return new ErrorApi({
       status: STATUS_SIN_RESPUESTA,
       codigo: CODIGO_RESPUESTA_INESPERADA,
       mensaje: MENSAJE_INESPERADO,
       detalles: undefined,
       requestId: null,
+      causa,
     });
   }
 
