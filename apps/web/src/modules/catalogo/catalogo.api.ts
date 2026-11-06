@@ -1,8 +1,10 @@
 import type {
   ActualizarCategoria,
   ConsultaBusqueda,
+  ConsultaProductosAdmin,
   CrearAtributo,
   CrearCategoria,
+  CrearProducto,
   CrearValorAtributo,
 } from '@shopcart/shared';
 import { api, ErrorApi, type Respuesta } from '../../shared/api';
@@ -14,6 +16,9 @@ export type ProductoTienda = Respuesta<'/api/v1/productos/{id}', 'get'>['datos']
 export type EstadoExistencia = ProductoTienda['variantes'][number]['estadoExistencia'];
 export type CategoriaAdmin = Respuesta<'/api/v1/admin/categorias', 'get'>['datos'][number];
 export type Atributo = Respuesta<'/api/v1/admin/atributos', 'get'>['datos'][number];
+export type ListaProductosAdmin = Respuesta<'/api/v1/admin/productos', 'get'>;
+export type ProductoResumenAdmin = ListaProductosAdmin['datos'][number];
+export type ProductoAdmin = Respuesta<'/api/v1/admin/productos/{id}', 'get'>['datos'];
 /** M6-H02: lo que el Admin hace con una categoría desde su fila. */
 export type AccionCategoria = 'activar' | 'desactivar' | 'eliminar';
 
@@ -101,4 +106,27 @@ export async function crearValorAtributo(
     params: { path: { id: idAtributo } },
     body: cuerpo,
   });
+}
+
+// --- Backoffice (M6-H03): productos, solo Admin.
+
+/** La consulta validada vuelve a la forma de la query string: el booleano viaja como 'true' o 'false'. */
+export async function listarProductosAdmin({
+  activo,
+  ...consulta
+}: ConsultaProductosAdmin): Promise<ListaProductosAdmin> {
+  const { data } = await api.GET('/api/v1/admin/productos', {
+    params: {
+      query: {
+        ...consulta,
+        activo: activo === undefined ? undefined : activo ? 'true' : 'false',
+      },
+    },
+  });
+  return cuerpoDe(data);
+}
+
+export async function crearProducto(cuerpo: CrearProducto): Promise<ProductoAdmin> {
+  const { data } = await api.POST('/api/v1/admin/productos', { body: cuerpo });
+  return cuerpoDe(data).datos;
 }

@@ -1,6 +1,5 @@
-import type { ConsultaBusqueda, IlustracionPrenda } from '@shopcart/shared';
+import type { ConsultaBusqueda, IlustracionPrenda, OrdenProductosAdmin } from '@shopcart/shared';
 import type { Decimal } from 'decimal.js';
-import type { OrdenProductosAdmin } from './catalogo.schemas.js';
 
 export interface CategoriaPublica {
   idCategoria: number;

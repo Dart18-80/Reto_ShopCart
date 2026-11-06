@@ -1,4 +1,4 @@
-import type { ConsultaBusqueda } from '@shopcart/shared';
+import type { ConsultaBusqueda, ConsultaProductosAdmin } from '@shopcart/shared';
 
 export const catalogoKeys = {
   todo: ['catalogo'] as const,
@@ -9,4 +9,9 @@ export const catalogoKeys = {
   admin: () => [...catalogoKeys.todo, 'admin'] as const,
   categoriasAdmin: () => [...catalogoKeys.admin(), 'categorias'] as const,
   atributos: () => [...catalogoKeys.admin(), 'atributos'] as const,
+  productosAdmin: () => [...catalogoKeys.admin(), 'productos'] as const,
+  listaProductosAdmin: (consulta: ConsultaProductosAdmin) =>
+    [...catalogoKeys.productosAdmin(), 'lista', consulta] as const,
+  productoAdmin: (idProducto: number) =>
+    [...catalogoKeys.productosAdmin(), 'detalle', idProducto] as const,
 };

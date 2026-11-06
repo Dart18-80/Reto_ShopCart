@@ -18,15 +18,21 @@ export {
 export { pagarSchema, type Pagar } from './checkout.js';
 export {
   actualizarCategoriaSchema,
+  consultaProductosAdminSchema,
   crearAtributoSchema,
   crearCategoriaSchema,
+  crearProductoSchema,
   crearValorAtributoSchema,
   ilustracionSchema,
   ordenDespliegueSchema,
+  ordenProductosAdminSchema,
   type ActualizarCategoria,
+  type ConsultaProductosAdmin,
   type CrearAtributo,
   type CrearCategoria,
+  type CrearProducto,
   type CrearValorAtributo,
+  type OrdenProductosAdmin,
 } from './catalogo-admin.js';
 export {
   consultaBusquedaSchema,

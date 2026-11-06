@@ -139,3 +139,34 @@ export function simularCatalogoAdmin(
   );
   return recibidos;
 }
+
+type ListaProductosAdmin = Respuesta<'/api/v1/admin/productos', 'get'>;
+export type ProductoResumenAdmin = ListaProductosAdmin['datos'][number];
+
+export const productoResumenDePrueba = (
+  cambios: Partial<ProductoResumenAdmin> = {},
+): ProductoResumenAdmin => ({
+  idProducto: 5,
+  nombre: 'Camisa Oxford',
+  idCategoria: 1,
+  categoria: 'Camisas y blusas',
+  activo: true,
+  variantes: 4,
+  variantesActivas: 4,
+  ...cambios,
+});
+
+/** `GET /admin/productos` con los productos indicados; guarda la consulta de cada petición. */
+export function simularProductosAdmin(productos: ProductoResumenAdmin[]) {
+  const consultas: URLSearchParams[] = [];
+  servidor.use(
+    http.get('/api/v1/admin/productos', ({ request }) => {
+      consultas.push(new URL(request.url).searchParams);
+      return HttpResponse.json({
+        datos: productos,
+        paginacion: { pagina: 1, tamano: 20, total: productos.length, totalPaginas: 1 },
+      });
+    }),
+  );
+  return consultas;
+}

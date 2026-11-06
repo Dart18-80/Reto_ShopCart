@@ -1,23 +1,18 @@
 import {
   actualizarCategoriaSchema as actualizarCategoriaCompartido,
   consultaBusquedaSchema,
+  consultaProductosAdminSchema,
   crearAtributoSchema as crearAtributoCompartido,
   crearCategoriaSchema as crearCategoriaCompartido,
+  crearProductoSchema as crearProductoCompartido,
   crearValorAtributoSchema as crearValorAtributoCompartido,
   ilustracionSchema,
-  LARGO_MAXIMO_TEXTO_BUSQUEDA,
   montoSchema,
-  ordenConsultaSchema,
   ordenDespliegueSchema,
   textoNvarchar,
 } from '@shopcart/shared';
 import { Decimal } from 'decimal.js';
-import {
-  booleanoConsultaSchema,
-  consultaPaginacionSchema,
-  idEnRutaSchema,
-  idSchema,
-} from '../../shared/http/index.js';
+import { idEnRutaSchema, idSchema } from '../../shared/http/index.js';
 import { registroOpenApi } from '../../shared/openapi/index.js';
 import { z } from '../../shared/openapi/zod.js';
 import { ESTADOS_EXISTENCIA } from './catalogo.types.js';
@@ -90,15 +85,10 @@ export const atributoSchema = z
 
 // --- Productos e imágenes (E3-H03). Nombre NVARCHAR(150), Descripcion NVARCHAR(2000).
 
-export const crearProductoSchema = z
-  .object({
-    idCategoria: idSchema,
-    nombre: textoNvarchar(150),
-    descripcion: textoNvarchar(2000).optional(),
-    activo: z.boolean().default(true),
-  })
-  .strict()
-  .openapi('CrearProducto');
+export const crearProductoSchema = registroOpenApi.register(
+  'CrearProducto',
+  crearProductoCompartido,
+);
 
 // PATCH: lo que no llega se conserva; descripcion en null se quita.
 export const actualizarProductoSchema = z
@@ -113,21 +103,8 @@ export const actualizarProductoSchema = z
 
 export const paramsIdProductoSchema = z.object({ id: idEnRutaSchema });
 
-export const ordenProductosAdminSchema = ordenConsultaSchema(
-  ['nombre', 'categoria', 'recientes'],
-  'nombre',
-  'asc',
-);
-
-// "categoria", igual que en la búsqueda pública.
-export const listarProductosSchema = consultaPaginacionSchema.extend({
-  categoria: idEnRutaSchema.optional(),
-  activo: booleanoConsultaSchema.optional(),
-  texto: textoNvarchar(LARGO_MAXIMO_TEXTO_BUSQUEDA).optional(),
-  ...ordenProductosAdminSchema.shape,
-});
-
-export type OrdenProductosAdmin = z.infer<typeof ordenProductosAdminSchema>;
+// M6-H03: la consulta vive en @shopcart/shared, la misma que arma la tabla del backoffice.
+export const listarProductosSchema = consultaProductosAdminSchema;
 
 const MAXIMO_IMAGENES = 20;
 

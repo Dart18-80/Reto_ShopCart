@@ -1,5 +1,7 @@
 import { z } from 'zod';
-import { ILUSTRACIONES_PRENDA } from './catalogo.js';
+import { ILUSTRACIONES_PRENDA, LARGO_MAXIMO_TEXTO_BUSQUEDA } from './catalogo.js';
+import { booleanoConsultaSchema, consultaPaginacionSchema, idEnRutaSchema } from './consultas.js';
+import { ordenConsultaSchema } from './orden.js';
 import { textoNvarchar } from './texto.js';
 import { alMenosUnCampo } from './usuarios.js';
 
@@ -41,7 +43,39 @@ export const crearValorAtributoSchema = z
   .object({ valor: textoNvarchar(50), orden: ordenDespliegueSchema.optional() })
   .strict();
 
+// --- Productos (E3-H03, M6-H03).
+
+// El mismo ID INT de idSchema, con el mensaje que ve quien no eligió la categoría en el formulario.
+const ELIGE_UNA_CATEGORIA = 'Elige una categoría.';
+const idCategoriaSchema = z.int32({ error: ELIGE_UNA_CATEGORIA }).positive(ELIGE_UNA_CATEGORIA);
+
+export const crearProductoSchema = z
+  .object({
+    idCategoria: idCategoriaSchema,
+    nombre: textoNvarchar(150),
+    descripcion: textoNvarchar(2000).optional(),
+    activo: z.boolean().default(true),
+  })
+  .strict();
+
+export const ordenProductosAdminSchema = ordenConsultaSchema(
+  ['nombre', 'categoria', 'recientes'],
+  'nombre',
+  'asc',
+);
+
+// "categoria", igual que en la búsqueda pública.
+export const consultaProductosAdminSchema = consultaPaginacionSchema.extend({
+  categoria: idEnRutaSchema.optional(),
+  activo: booleanoConsultaSchema.optional(),
+  texto: textoNvarchar(LARGO_MAXIMO_TEXTO_BUSQUEDA).optional(),
+  ...ordenProductosAdminSchema.shape,
+});
+
 export type CrearCategoria = z.infer<typeof crearCategoriaSchema>;
 export type ActualizarCategoria = z.infer<typeof actualizarCategoriaSchema>;
 export type CrearAtributo = z.infer<typeof crearAtributoSchema>;
 export type CrearValorAtributo = z.infer<typeof crearValorAtributoSchema>;
+export type CrearProducto = z.infer<typeof crearProductoSchema>;
+export type ConsultaProductosAdmin = z.infer<typeof consultaProductosAdminSchema>;
+export type OrdenProductosAdmin = z.infer<typeof ordenProductosAdminSchema>;
