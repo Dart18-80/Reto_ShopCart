@@ -158,6 +158,8 @@ export function crearCatalogoController(servicio: CatalogoService): CatalogoCont
           idCategoria: query.categoria ?? null,
           activo: query.activo ?? null,
           texto: query.texto ?? null,
+          orden: query.orden,
+          direccion: query.direccion,
         }),
       );
     }),

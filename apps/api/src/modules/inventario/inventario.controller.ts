@@ -2,6 +2,7 @@ import type { RequestHandler } from 'express';
 import { encabezadoIdempotenciaOpcionalSchema, manejar } from '../../shared/http/index.js';
 import {
   consultaExistenciasSchema,
+  listarExistenciasSchema,
   consultaKardexSchema,
   registrarAjusteSchema,
   registrarEntradaSchema,
@@ -41,8 +42,8 @@ export function crearInventarioController(servicio: InventarioService): Inventar
       res.json(await servicio.obtenerKardex(query.variante, query));
     }),
 
-    listarExistencias: manejar({ query: consultaExistenciasSchema }, async ({ query }, res) => {
-      res.json(await servicio.listarExistencias(query.variante ?? null, query));
+    listarExistencias: manejar({ query: listarExistenciasSchema }, async ({ query }, res) => {
+      res.json(await servicio.listarExistencias(query.variante ?? null, query, query));
     }),
 
     conciliar: manejar({}, async (_entrada, res) => {

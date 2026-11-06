@@ -4637,6 +4637,37 @@
               ],
               "type": "string"
             }
+          },
+          {
+            "description": "Columna del orden (por defecto, vigencia); el desempate es siempre la PK.",
+            "in": "query",
+            "name": "orden",
+            "required": false,
+            "schema": {
+              "default": "vigencia",
+              "description": "Columna del orden (por defecto, vigencia); el desempate es siempre la PK.",
+              "enum": [
+                "codigo",
+                "vigencia",
+                "usos"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "asc o desc (por defecto, desc).",
+            "in": "query",
+            "name": "direccion",
+            "required": false,
+            "schema": {
+              "default": "desc",
+              "description": "asc o desc (por defecto, desc).",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -5765,6 +5796,38 @@
             }
           },
           {
+            "description": "Columna del orden (por defecto, fecha); el desempate es siempre la PK.",
+            "in": "query",
+            "name": "orden",
+            "required": false,
+            "schema": {
+              "default": "fecha",
+              "description": "Columna del orden (por defecto, fecha); el desempate es siempre la PK.",
+              "enum": [
+                "fecha",
+                "total",
+                "numero",
+                "estado"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "asc o desc (por defecto, desc).",
+            "in": "query",
+            "name": "direccion",
+            "required": false,
+            "schema": {
+              "default": "desc",
+              "description": "asc o desc (por defecto, desc).",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string"
+            }
+          },
+          {
             "in": "query",
             "name": "estado",
             "required": false,
@@ -6224,6 +6287,37 @@
             "name": "texto",
             "required": false,
             "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Columna del orden (por defecto, nombre); el desempate es siempre la PK.",
+            "in": "query",
+            "name": "orden",
+            "required": false,
+            "schema": {
+              "default": "nombre",
+              "description": "Columna del orden (por defecto, nombre); el desempate es siempre la PK.",
+              "enum": [
+                "nombre",
+                "categoria",
+                "recientes"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "asc o desc (por defecto, asc).",
+            "in": "query",
+            "name": "direccion",
+            "required": false,
+            "schema": {
+              "default": "asc",
+              "description": "asc o desc (por defecto, asc).",
+              "enum": [
+                "asc",
+                "desc"
+              ],
               "type": "string"
             }
           }
@@ -8308,6 +8402,35 @@
               "minLength": 1,
               "type": "string"
             }
+          },
+          {
+            "description": "Columna del orden (por defecto, fecha); el desempate es siempre la PK.",
+            "in": "query",
+            "name": "orden",
+            "required": false,
+            "schema": {
+              "default": "fecha",
+              "description": "Columna del orden (por defecto, fecha); el desempate es siempre la PK.",
+              "enum": [
+                "fecha"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "asc o desc (por defecto, desc).",
+            "in": "query",
+            "name": "direccion",
+            "required": false,
+            "schema": {
+              "default": "desc",
+              "description": "asc o desc (por defecto, desc).",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -9370,6 +9493,36 @@
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
+            }
+          },
+          {
+            "description": "Columna del orden (por defecto, total); el desempate es siempre la PK.",
+            "in": "query",
+            "name": "orden",
+            "required": false,
+            "schema": {
+              "default": "total",
+              "description": "Columna del orden (por defecto, total); el desempate es siempre la PK.",
+              "enum": [
+                "inactividad",
+                "total"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "asc o desc (por defecto, desc).",
+            "in": "query",
+            "name": "direccion",
+            "required": false,
+            "schema": {
+              "default": "desc",
+              "description": "asc o desc (por defecto, desc).",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string"
             }
           }
         ],
@@ -10726,6 +10879,37 @@
             "schema": {
               "type": "number"
             }
+          },
+          {
+            "description": "Columna del orden (por defecto, disponible); el desempate es siempre la PK.",
+            "in": "query",
+            "name": "orden",
+            "required": false,
+            "schema": {
+              "default": "disponible",
+              "description": "Columna del orden (por defecto, disponible); el desempate es siempre la PK.",
+              "enum": [
+                "sku",
+                "producto",
+                "disponible"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "asc o desc (por defecto, asc).",
+            "in": "query",
+            "name": "direccion",
+            "required": false,
+            "schema": {
+              "default": "asc",
+              "description": "asc o desc (por defecto, asc).",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -11415,6 +11599,38 @@
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
+            }
+          },
+          {
+            "description": "Columna del orden (por defecto, recientes); el desempate es siempre la PK.",
+            "in": "query",
+            "name": "orden",
+            "required": false,
+            "schema": {
+              "default": "recientes",
+              "description": "Columna del orden (por defecto, recientes); el desempate es siempre la PK.",
+              "enum": [
+                "nombre",
+                "correo",
+                "rol",
+                "recientes"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "asc o desc (por defecto, desc).",
+            "in": "query",
+            "name": "direccion",
+            "required": false,
+            "schema": {
+              "default": "desc",
+              "description": "asc o desc (por defecto, desc).",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string"
             }
           },
           {

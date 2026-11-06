@@ -1,4 +1,4 @@
-import { montoSchema, textoNvarchar } from '@shopcart/shared';
+import { montoSchema, ordenConsultaSchema, textoNvarchar } from '@shopcart/shared';
 import { Decimal } from 'decimal.js';
 import {
   booleanoConsultaSchema,
@@ -92,6 +92,8 @@ export const paramsIdCuponSchema = z.object({ id: idEnRutaSchema });
 
 export const listarCuponesSchema = consultaPaginacionSchema.extend({
   activo: booleanoConsultaSchema.optional(),
+  // M6-H01: vigencia ordena por FechaInicio.
+  ...ordenConsultaSchema(['codigo', 'vigencia', 'usos'], 'vigencia', 'desc').shape,
 });
 
 export const cuponSchema = z

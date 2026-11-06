@@ -3,6 +3,7 @@ import {
   ILUSTRACIONES_PRENDA,
   LARGO_MAXIMO_TEXTO_BUSQUEDA,
   montoSchema,
+  ordenConsultaSchema,
   textoNvarchar,
 } from '@shopcart/shared';
 import { Decimal } from 'decimal.js';
@@ -119,12 +120,21 @@ export const actualizarProductoSchema = z
 
 export const paramsIdProductoSchema = z.object({ id: idEnRutaSchema });
 
+export const ordenProductosAdminSchema = ordenConsultaSchema(
+  ['nombre', 'categoria', 'recientes'],
+  'nombre',
+  'asc',
+);
+
 // "categoria", igual que en la búsqueda pública.
 export const listarProductosSchema = consultaPaginacionSchema.extend({
   categoria: idEnRutaSchema.optional(),
   activo: booleanoConsultaSchema.optional(),
   texto: textoNvarchar(LARGO_MAXIMO_TEXTO_BUSQUEDA).optional(),
+  ...ordenProductosAdminSchema.shape,
 });
+
+export type OrdenProductosAdmin = z.infer<typeof ordenProductosAdminSchema>;
 
 const MAXIMO_IMAGENES = 20;
 

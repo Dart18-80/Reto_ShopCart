@@ -2,6 +2,7 @@ import {
   actualizarPerfilSchema as actualizarPerfilCompartido,
   alMenosUnCampo,
   cambiarContrasenaSchema as cambiarContrasenaCompartido,
+  ordenConsultaSchema,
   telefonoSchema,
   textoNvarchar,
 } from '@shopcart/shared';
@@ -27,7 +28,16 @@ export const cambiarContrasenaSchema = registroOpenApi.register(
   cambiarContrasenaCompartido,
 );
 
+export const ordenUsuariosSchema = ordenConsultaSchema(
+  ['nombre', 'correo', 'rol', 'recientes'],
+  'recientes',
+  'desc',
+);
+
+export type OrdenUsuarios = z.infer<typeof ordenUsuariosSchema>;
+
 export const listarUsuariosSchema = consultaPaginacionSchema.extend({
+  ...ordenUsuariosSchema.shape,
   rol: z.enum(ROLES_DE_USUARIO).optional(),
   activo: z
     .enum(['true', 'false'])

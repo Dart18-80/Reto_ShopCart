@@ -1,4 +1,4 @@
-import { montoSchema } from '@shopcart/shared';
+import { montoSchema, ordenConsultaSchema } from '@shopcart/shared';
 import { rangoDeFechasSchema, consultaPaginacionSchema } from '../../shared/http/index.js';
 import { z } from '../../shared/openapi/zod.js';
 import { AGRUPACIONES } from './reportes.types.js';
@@ -10,9 +10,14 @@ export const consultaVentasSchema = rangoDeFechasSchema.safeExtend({
   agrupacion: z.enum(AGRUPACIONES).default('dia'),
 });
 
-export const consultaCarritosSchema = rangoDeFechasSchema.safeExtend(
-  consultaPaginacionSchema.shape,
-);
+// M6-H01: por defecto, del mayor monto potencial al menor (lo supone la exportación); inactividad desc es la
+// última actividad más antigua primero.
+export const ordenCarritosSchema = ordenConsultaSchema(['inactividad', 'total'], 'total', 'desc');
+
+export const consultaCarritosSchema = rangoDeFechasSchema.safeExtend({
+  ...consultaPaginacionSchema.shape,
+  ...ordenCarritosSchema.shape,
+});
 
 export type ConsultaRango = z.infer<typeof consultaRangoSchema>;
 export type ConsultaVentas = z.infer<typeof consultaVentasSchema>;

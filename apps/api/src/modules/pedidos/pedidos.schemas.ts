@@ -5,7 +5,11 @@ import {
   idEnRutaSchema,
   idSchema,
 } from '../../shared/http/index.js';
-import { cancelarPedidoSchema as cancelarCompartido, textoNvarchar } from '@shopcart/shared';
+import {
+  cancelarPedidoSchema as cancelarCompartido,
+  ordenConsultaSchema,
+  textoNvarchar,
+} from '@shopcart/shared';
 import { registroOpenApi } from '../../shared/openapi/index.js';
 import { z } from '../../shared/openapi/zod.js';
 import { ESTADOS_PEDIDO, ESTADOS_REEMBOLSO, RESOLUCIONES_PAGO } from './pedidos.types.js';
@@ -17,6 +21,8 @@ export const listarPedidosPropiosSchema = consultaPaginacionSchema;
 // A-12: las fechas de la gestión son días de Guatemala sobre FechaPagoLocal, igual que los reportes (N-11).
 export const listarPedidosGestionSchema = rangoDeFechasSchema.safeExtend({
   ...consultaPaginacionSchema.shape,
+  // M6-H01: numero se resuelve por IDPedido; estado, por EstadoPedido.Orden.
+  ...ordenConsultaSchema(['fecha', 'total', 'numero', 'estado'], 'fecha', 'desc').shape,
   estado: z.enum(ESTADOS_PEDIDO).optional(),
   idCliente: z.coerce.number().pipe(idSchema).optional(),
 });

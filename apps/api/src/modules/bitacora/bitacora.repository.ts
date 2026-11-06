@@ -45,6 +45,8 @@ export const bitacoraRepository = {
       Hasta: { tipo: sql.Date, valor: consulta.hasta ?? null },
       Pagina: { tipo: sql.Int, valor: consulta.pagina },
       Tamano: { tipo: sql.Int, valor: consulta.tamano },
+      Orden: { tipo: sql.VarChar(20), valor: consulta.orden },
+      Direccion: { tipo: sql.VarChar(4), valor: consulta.direccion },
     });
     return { filas: filas.map(aRegistro), total };
   },

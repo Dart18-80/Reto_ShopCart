@@ -9,6 +9,7 @@ import { z } from '../../shared/openapi/zod.js';
 import type { InventarioController } from './inventario.controller.js';
 import {
   consultaExistenciasSchema,
+  listarExistenciasSchema,
   consultaKardexSchema,
   descuadreSchema,
   existenciaBodegaSchema,
@@ -71,7 +72,7 @@ registroOpenApi.registerPath({
   tags: ['Inventario'],
   summary: 'Existencia física, reservada y disponible por variante (Operador o Admin)',
   security: seguridad,
-  request: { query: consultaExistenciasSchema },
+  request: { query: listarExistenciasSchema },
   responses: { 200: listado('Existencias', existenciaSchema), ...respuestasError(400, 401, 403) },
 });
 registroOpenApi.registerPath({

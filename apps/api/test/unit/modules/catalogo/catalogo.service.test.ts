@@ -135,6 +135,8 @@ describe('catalogo.service: productos y variantes (E3-H03, N-06, N-14)', () => {
     const respuesta = await servicio.listarProductosAdmin({
       pagina: 2,
       tamano: 20,
+      orden: 'nombre',
+      direccion: 'asc',
       idCategoria: null,
       activo: null,
       texto: null,

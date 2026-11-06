@@ -1,4 +1,5 @@
 import type { RolDeUsuario } from '../../shared/http/index.js';
+import type { OrdenUsuarios } from './usuarios.schemas.js';
 
 export interface Usuario {
   idUsuario: number;
@@ -20,7 +21,7 @@ export interface PerfilConHash extends Usuario {
   hashContrasena: string;
 }
 
-export interface FiltrosUsuarios {
+export interface FiltrosUsuarios extends OrdenUsuarios {
   pagina: number;
   tamano: number;
   rol: RolDeUsuario | null;

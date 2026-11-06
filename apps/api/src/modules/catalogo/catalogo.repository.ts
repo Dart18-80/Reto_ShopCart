@@ -441,6 +441,8 @@ export const catalogoRepository = {
         IDCategoria: { tipo: sql.Int, valor: filtros.idCategoria },
         Activo: { tipo: sql.Bit, valor: filtros.activo },
         Texto: { tipo: sql.NVarChar(150), valor: filtros.texto },
+        Orden: { tipo: sql.VarChar(20), valor: filtros.orden },
+        Direccion: { tipo: sql.VarChar(4), valor: filtros.direccion },
       },
     );
     const productos = filas.map((fila): ProductoResumen => ({

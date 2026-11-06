@@ -67,7 +67,7 @@ Los errores que nacen en la API (por ejemplo `VALIDACION_FALLIDA`) están en el 
 | Paso | Qué pasa | Dónde |
 | --- | --- | --- |
 | Entrada JSON | El monto llega como texto con hasta 10 enteros y 2 decimales | [monto.ts:4](../../../packages/shared/src/monto.ts#L4 "export const montoSchema = z") |
-| Zod → servicio | Se transforma en `Decimal` | [catalogo.schemas.ts:175](../../../apps/api/src/modules/catalogo/catalogo.schemas.ts#L175 ".transform((precio) => new Decimal(precio))") |
+| Zod → servicio | Se transforma en `Decimal` | [catalogo.schemas.ts:185](../../../apps/api/src/modules/catalogo/catalogo.schemas.ts#L185 ".transform((precio) => new Decimal(precio))") |
 | Servicio → SP | `ejecutarSP` convierte el `Decimal` a número solo en el borde | [ejecutar-sp.ts:93](../../../apps/api/src/shared/db/ejecutar-sp.ts#L93 "valor instanceof Decimal ? montoParaSql(valor) : valor") |
 | SP → repositorio | El driver entrega `DECIMAL` como `number`; se convierte una sola vez con `aMonto` | [index.ts:12](../../../apps/api/src/shared/dinero/index.ts#L12 "export function aMonto(valor: number): Decimal") y [checkout.repository.ts:83](../../../apps/api/src/modules/checkout/checkout.repository.ts#L83 "total: aMonto(fila.Total)") |
 | Salida JSON | Texto con dos decimales (`"149.90"`) | [index.ts:32](../../../apps/api/src/shared/dinero/index.ts#L32 "export function montoATexto(monto: Decimal): string") |

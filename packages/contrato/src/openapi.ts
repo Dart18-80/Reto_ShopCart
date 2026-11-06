@@ -724,6 +724,10 @@ export interface paths {
                     pagina?: number;
                     tamano?: number;
                     activo?: "true" | "false";
+                    /** @description Columna del orden (por defecto, vigencia); el desempate es siempre la PK. */
+                    orden?: "codigo" | "vigencia" | "usos";
+                    /** @description asc o desc (por defecto, desc). */
+                    direccion?: "asc" | "desc";
                 };
                 header?: never;
                 path?: never;
@@ -1645,6 +1649,10 @@ export interface paths {
                     hasta?: string;
                     pagina?: number;
                     tamano?: number;
+                    /** @description Columna del orden (por defecto, fecha); el desempate es siempre la PK. */
+                    orden?: "fecha" | "total" | "numero" | "estado";
+                    /** @description asc o desc (por defecto, desc). */
+                    direccion?: "asc" | "desc";
                     estado?: "Pagado" | "EnPreparacion" | "Despachado" | "Entregado" | "Cancelado" | "DevueltoParcial" | "Devuelto";
                     idCliente?: number;
                 };
@@ -1995,6 +2003,10 @@ export interface paths {
                     categoria?: number;
                     activo?: "true" | "false";
                     texto?: string;
+                    /** @description Columna del orden (por defecto, nombre); el desempate es siempre la PK. */
+                    orden?: "nombre" | "categoria" | "recientes";
+                    /** @description asc o desc (por defecto, asc). */
+                    direccion?: "asc" | "desc";
                 };
                 header?: never;
                 path?: never;
@@ -3776,6 +3788,10 @@ export interface paths {
                     tamano?: number;
                     modulo?: "Catalogo" | "Inventario" | "Cupones" | "Pedidos" | "Envios" | "Usuarios" | "Configuracion";
                     entidad?: string;
+                    /** @description Columna del orden (por defecto, fecha); el desempate es siempre la PK. */
+                    orden?: "fecha";
+                    /** @description asc o desc (por defecto, desc). */
+                    direccion?: "asc" | "desc";
                 };
                 header?: never;
                 path?: never;
@@ -4700,6 +4716,10 @@ export interface paths {
                     hasta?: string;
                     pagina?: number;
                     tamano?: number;
+                    /** @description Columna del orden (por defecto, total); el desempate es siempre la PK. */
+                    orden?: "inactividad" | "total";
+                    /** @description asc o desc (por defecto, desc). */
+                    direccion?: "asc" | "desc";
                 };
                 header?: never;
                 path?: never;
@@ -5843,6 +5863,10 @@ export interface paths {
                     pagina?: number;
                     tamano?: number;
                     variante?: number;
+                    /** @description Columna del orden (por defecto, disponible); el desempate es siempre la PK. */
+                    orden?: "sku" | "producto" | "disponible";
+                    /** @description asc o desc (por defecto, asc). */
+                    direccion?: "asc" | "desc";
                 };
                 header?: never;
                 path?: never;
@@ -6343,6 +6367,10 @@ export interface paths {
                 query?: {
                     pagina?: number;
                     tamano?: number;
+                    /** @description Columna del orden (por defecto, recientes); el desempate es siempre la PK. */
+                    orden?: "nombre" | "correo" | "rol" | "recientes";
+                    /** @description asc o desc (por defecto, desc). */
+                    direccion?: "asc" | "desc";
                     rol?: "Cliente" | "Operador" | "Administrador";
                     activo?: "true" | "false";
                 };

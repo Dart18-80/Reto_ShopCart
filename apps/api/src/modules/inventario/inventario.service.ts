@@ -1,6 +1,6 @@
 import { paginar, solicitudIdempotente, type RespuestaPaginada } from '../../shared/http/index.js';
 import type { InventarioRepository } from './inventario.repository.js';
-import type { RegistrarAjuste, RegistrarEntrada } from './inventario.schemas.js';
+import type { OrdenExistencias, RegistrarAjuste, RegistrarEntrada } from './inventario.schemas.js';
 import type {
   Descuadre,
   Existencia,
@@ -35,8 +35,9 @@ export function crearInventarioService({ repositorio }: Dependencias) {
     async listarExistencias(
       idVariante: number | null,
       pagina: Pagina,
+      orden: OrdenExistencias,
     ): Promise<RespuestaPaginada<Existencia>> {
-      const { existencias, total } = await repositorio.listarExistencias(idVariante, pagina);
+      const { existencias, total } = await repositorio.listarExistencias(idVariante, pagina, orden);
       return paginar(existencias, total, pagina);
     },
 

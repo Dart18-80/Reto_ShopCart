@@ -1,4 +1,6 @@
 import { rangoDeFechasSchema, consultaPaginacionSchema } from '../../shared/http/index.js';
+// Después de shared/http: @shopcart/shared se evalúa con Zod ya extendido con .openapi().
+import { ordenConsultaSchema } from '@shopcart/shared';
 import { z } from '../../shared/openapi/zod.js';
 import { MODULOS_BITACORA } from './bitacora.types.js';
 
@@ -7,6 +9,7 @@ export const consultaBitacoraSchema = rangoDeFechasSchema.safeExtend({
   ...consultaPaginacionSchema.shape,
   modulo: z.enum(MODULOS_BITACORA).optional(),
   entidad: z.string().trim().min(1).max(50).optional(),
+  ...ordenConsultaSchema(['fecha'], 'fecha', 'desc').shape,
 });
 
 export type ConsultaBitacora = z.infer<typeof consultaBitacoraSchema>;

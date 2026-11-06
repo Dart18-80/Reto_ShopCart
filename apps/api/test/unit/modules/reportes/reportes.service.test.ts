@@ -200,7 +200,7 @@ describe('caché de reportes (E7-H04, A-11)', () => {
 
   it('un cambio en un carrito invalida carritos abandonados y el resumen, pero no los reportes de ventas', async () => {
     const { servicio, repositorio, invalidador } = preparar();
-    const consulta = { pagina: 1, tamano: 20 };
+    const consulta = { pagina: 1, tamano: 20, orden: 'total', direccion: 'desc' } as const;
     await servicio.ventasPorCategoria({});
     await servicio.carritosAbandonados(consulta);
     await servicio.resumen(RANGO);
@@ -217,7 +217,7 @@ describe('caché de reportes (E7-H04, A-11)', () => {
 
   it('una venta invalida los reportes de ventas y el resumen, pero no los carritos abandonados', async () => {
     const { servicio, repositorio, invalidador } = preparar();
-    const consulta = { pagina: 1, tamano: 20 };
+    const consulta = { pagina: 1, tamano: 20, orden: 'total', direccion: 'desc' } as const;
     await servicio.topProductos({});
     await servicio.carritosAbandonados(consulta);
 
@@ -299,7 +299,7 @@ describe('caché de reportes (E7-H04, A-11)', () => {
 
   it('los carritos abandonados restauran la fecha y el monto al salir de la caché', async () => {
     const { servicio, repositorio } = preparar();
-    const consulta = { pagina: 1, tamano: 20 };
+    const consulta = { pagina: 1, tamano: 20, orden: 'total', direccion: 'desc' } as const;
     await servicio.carritosAbandonados(consulta);
 
     const { filas } = await servicio.carritosAbandonados(consulta);

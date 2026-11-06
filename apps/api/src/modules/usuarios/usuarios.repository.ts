@@ -87,6 +87,8 @@ export const usuariosRepository = {
       Tamano: { tipo: sql.Int, valor: filtros.tamano },
       Rol: { tipo: sql.VarChar(20), valor: filtros.rol },
       Activo: { tipo: sql.Bit, valor: filtros.activo },
+      Orden: { tipo: sql.VarChar(20), valor: filtros.orden },
+      Direccion: { tipo: sql.VarChar(4), valor: filtros.direccion },
     });
     return { usuarios: filas.map(aUsuario), total };
   },

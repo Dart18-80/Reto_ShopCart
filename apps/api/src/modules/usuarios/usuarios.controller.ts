@@ -48,6 +48,8 @@ export function crearUsuariosController(servicio: UsuariosService): UsuariosCont
           tamano: query.tamano,
           rol: query.rol ?? null,
           activo: query.activo ?? null,
+          orden: query.orden,
+          direccion: query.direccion,
         }),
       );
     }),

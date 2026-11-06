@@ -72,6 +72,8 @@ El repositorio solo llama a `ejecutarSP` con el nombre del SP y parámetros tipa
 
 Solo se concatenan fragmentos constantes; los valores viajan como parámetros de `sp_executesql` y el orden sale de una lista blanca resuelta con `CASE`. Un texto como `' OR 1=1 --` se busca como texto.
 
+Los listados del backoffice (M6-H01) ni siquiera usan SQL dinámico: `orden` es un enum de Zod por endpoint, el SP lo vuelve a validar contra la misma lista blanca y ordena con un `CASE` por columna y dirección, con el desempate por la PK. Un `orden` fuera de la lista responde 400 antes de llegar a la base ([R__SP_Pedidos_Listar.sql:31](../../database/programmability/R__SP_Pedidos_Listar.sql#L31 "@Orden NOT IN ('fecha', 'total', 'numero', 'estado')")).
+
 **Muéstralo en:** [R__SP_Catalogo_BuscarProductos.sql:69](../../database/programmability/R__SP_Catalogo_BuscarProductos.sql#L69 "EXEC sys.sp_executesql @Sql,"). Detalle: [catálogo](modulos/catalogo.md).
 
 ### 12. ¿Qué pasa si un SP falla a la mitad?
@@ -140,7 +142,7 @@ No: los spans de SQL llevan el nombre del SP y no sus parámetros, los de Redis 
 
 Un token en la URL queda en el log de nginx, en el historial del navegador y en el `Referer`. El stream exige `Authorization` y el cliente usa `fetch` con el cuerpo como stream (A-25). Hoy lo consumen las pruebas y `curl -N`; el dashboard web es de la Fase 2.
 
-**Muéstralo en:** [reportes.schemas.ts:74](../../apps/api/src/modules/reportes/reportes.schemas.ts#L74 "authorization: z.string().optional()"). Detalle: [reportes](modulos/reportes.md).
+**Muéstralo en:** [reportes.schemas.ts:79](../../apps/api/src/modules/reportes/reportes.schemas.ts#L79 "authorization: z.string().optional()"). Detalle: [reportes](modulos/reportes.md).
 
 ## Réplicas y fallas
 

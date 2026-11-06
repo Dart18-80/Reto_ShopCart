@@ -2,7 +2,7 @@
 
 ## Qué hace
 
-Lleva la existencia física de cada variante, el kardex (ledger inmutable de movimientos) y las reservas que hace el checkout. Endpoints, todos para Operador y Administrador ([inventario.routes.ts:108](../../../apps/api/src/modules/inventario/inventario.routes.ts#L108 "router.use(autenticar, autorizar('Operador', 'Administrador'))")): `POST /inventario/entradas`, `POST /inventario/ajustes` (ambos con `Idempotency-Key` opcional), `GET /inventario/kardex`, `/existencias`, `/conciliacion` y `/bodega`. SPs clave: `SP_Inventario_RegistrarMovimiento` (el único que toca `ExistenciaFisica` y escribe el kardex), `SP_Inventario_ReservarExistencia` (el único que reserva), `SP_Inventario_LiberarReservas`, la función `FU_Inventario_Disponible` y la vista `VW_Inventario_Conciliacion`.
+Lleva la existencia física de cada variante, el kardex (ledger inmutable de movimientos) y las reservas que hace el checkout. Endpoints, todos para Operador y Administrador ([inventario.routes.ts:109](../../../apps/api/src/modules/inventario/inventario.routes.ts#L109 "router.use(autenticar, autorizar('Operador', 'Administrador'))")): `POST /inventario/entradas`, `POST /inventario/ajustes` (ambos con `Idempotency-Key` opcional), `GET /inventario/kardex`, `/existencias`, `/conciliacion` y `/bodega`. SPs clave: `SP_Inventario_RegistrarMovimiento` (el único que toca `ExistenciaFisica` y escribe el kardex), `SP_Inventario_ReservarExistencia` (el único que reserva), `SP_Inventario_LiberarReservas`, la función `FU_Inventario_Disponible` y la vista `VW_Inventario_Conciliacion`.
 
 El servicio no valida saldos: los valida el SP bajo el bloqueo de la variante ([inventario.service.ts:22](../../../apps/api/src/modules/inventario/inventario.service.ts#L22 "solicitudIdempotente(llave, 'Inventario.Entrada', datos)")).
 
@@ -60,7 +60,7 @@ El segundo cliente que pide la misma variante espera en el `UPDLOCK` y, cuando e
 | Misma `Idempotency-Key` → mismo movimiento; otro contenido → 422 | SP + `UNIQUE (IDUsuario, LlaveIdempotencia)` | [V013__arrendamiento_y_solicitud_idempotente.sql:32](../../../database/migrations/V013__arrendamiento_y_solicitud_idempotente.sql#L32 "UQ_SolicitudIdempotente_IDUsuarioLlave") | E5-H03 |
 | La física cuadra con la suma del kardex | `VW_Inventario_Conciliacion` (debe estar vacía) | [R__VW_Inventario_Conciliacion.sql:22](../../../database/programmability/R__VW_Inventario_Conciliacion.sql#L22 "v.ExistenciaFisica <> k.SumaKardex") | N-07 |
 | Existencia de bodega = física + pagado sin despachar | `VW_Inventario_ExistenciaBodega` | [R__VW_Inventario_ExistenciaBodega.sql:17](../../../database/programmability/R__VW_Inventario_ExistenciaBodega.sql#L17 "e.Codigo IN ('Pagado', 'EnPreparacion')") | N-07 |
-| Solo Operador y Administrador | Middleware `autorizar` | [inventario.routes.ts:108](../../../apps/api/src/modules/inventario/inventario.routes.ts#L108 "autorizar('Operador', 'Administrador')") | RF-01 |
+| Solo Operador y Administrador | Middleware `autorizar` | [inventario.routes.ts:109](../../../apps/api/src/modules/inventario/inventario.routes.ts#L109 "autorizar('Operador', 'Administrador')") | RF-01 |
 
 ## Concurrencia y réplicas
 

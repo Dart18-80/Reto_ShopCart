@@ -6,7 +6,7 @@ import {
   ejecutarSPPaginado,
   type ParametrosSP,
 } from '../../shared/db/index.js';
-import type { RegistrarAjuste, RegistrarEntrada } from './inventario.schemas.js';
+import type { OrdenExistencias, RegistrarAjuste, RegistrarEntrada } from './inventario.schemas.js';
 import type {
   Descuadre,
   Existencia,
@@ -146,12 +146,15 @@ export const inventarioRepository = {
   async listarExistencias(
     idVariante: number | null,
     pagina: Pagina,
+    orden: OrdenExistencias,
   ): Promise<{ existencias: Existencia[]; total: number }> {
     const { filas, total } = await ejecutarSPPaginado<FilaExistencia>(
       'SP_Inventario_ListarExistencias',
       {
         IDVariante: { tipo: sql.Int, valor: idVariante },
         ...paginacion(pagina),
+        Orden: { tipo: sql.VarChar(20), valor: orden.orden },
+        Direccion: { tipo: sql.VarChar(4), valor: orden.direccion },
       },
     );
     const existencias = filas.map((fila): Existencia => ({

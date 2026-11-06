@@ -20,6 +20,7 @@ import {
   actualizarUsuarioSchema,
   cambiarContrasenaSchema,
   crearInternoSchema,
+  ordenUsuariosSchema,
   paramsIdUsuarioSchema,
   usuarioSchema,
 } from './usuarios.schemas.js';
@@ -73,6 +74,7 @@ registroOpenApi.registerPath({
   security: seguridad,
   request: {
     query: consultaPaginacionSchema.extend({
+      ...ordenUsuariosSchema.shape,
       rol: z.enum(ROLES_DE_USUARIO).optional(),
       activo: z.enum(['true', 'false']).optional(),
     }),

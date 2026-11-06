@@ -316,6 +316,8 @@ export const pedidosRepository = {
       Hasta: { tipo: sql.Date, valor: filtros.hasta ?? null },
       Pagina: { tipo: sql.Int, valor: filtros.pagina },
       Tamano: { tipo: sql.Int, valor: filtros.tamano },
+      Orden: { tipo: sql.VarChar(20), valor: filtros.orden },
+      Direccion: { tipo: sql.VarChar(4), valor: filtros.direccion },
     });
     return { filas: filas.map(aResumenGestion), total };
   },

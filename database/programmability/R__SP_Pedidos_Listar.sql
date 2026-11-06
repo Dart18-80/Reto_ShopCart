@@ -1,4 +1,5 @@
--- RF-07: la gestión de pedidos para el Operador y el Admin, los más recientes primero, con filtros opcionales
+-- RF-07: la gestión de pedidos para el Operador y el Admin (por defecto, los más recientes primero; M6-H01:
+-- @Orden fecha | total | numero | estado y @Direccion), con filtros opcionales
 -- por estado, cliente y rango de fechas. Las fechas son días de Guatemala sobre FechaPagoLocal (A-12), igual
 -- que los reportes (N-11). Dos conjuntos (sqlserver-sp §5): la página y el total del filtro.
 -- Cada filtro tiene su índice: IX_Pedido_Gestion (estado), IX_Pedido_Cliente (cliente), IX_Pedido_Reportes
@@ -11,6 +12,8 @@ CREATE OR ALTER PROCEDURE dbo.SP_Pedidos_Listar
     @Hasta          DATE             = NULL,
     @Pagina         INT              = 1,
     @Tamano         INT              = 20,
+    @Orden          VARCHAR(20)      = 'fecha',
+    @Direccion      VARCHAR(4)       = 'desc',
     @IDUsuarioActor INT              = NULL,
     @RolActor       VARCHAR(20)      = NULL,
     @RequestId      UNIQUEIDENTIFIER = NULL
@@ -22,6 +25,11 @@ BEGIN
         THROW 50005, N'Solo el Operador y el Administrador gestionan pedidos.', 1;
     IF @Pagina < 1 OR @Tamano NOT BETWEEN 1 AND 100
         THROW 50003, N'Los parámetros de paginación no son válidos.', 1;
+    -- M6-H01 (A-10): el orden sale de una lista blanca; la API la valida con Zod y el SP la revalida (un NULL
+    -- explícito no es «sin orden»).
+    IF @Orden IS NULL OR @Direccion IS NULL
+       OR @Orden NOT IN ('fecha', 'total', 'numero', 'estado') OR @Direccion NOT IN ('asc', 'desc')
+        THROW 50003, N'El ordenamiento no es válido.', 1;
     IF @Desde > @Hasta
         THROW 50003, N'La fecha inicial no puede ser posterior a la final.', 1;
 
@@ -41,7 +49,17 @@ BEGIN
       AND  (@IDClienteFiltro IS NULL OR p.IDUsuario = @IDClienteFiltro)
       AND  (@Desde IS NULL OR p.FechaPagoLocal >= @Desde)
       AND  (@Hasta IS NULL OR p.FechaPagoLocal <= @Hasta)
-    ORDER BY p.FechaPago DESC, p.IDPedido DESC
+    ORDER BY
+        CASE WHEN @Orden = 'fecha' AND @Direccion = 'asc'  THEN p.FechaPago END ASC,
+        CASE WHEN @Orden = 'fecha' AND @Direccion = 'desc' THEN p.FechaPago END DESC,
+        CASE WHEN @Orden = 'total' AND @Direccion = 'asc'  THEN p.Total END ASC,
+        CASE WHEN @Orden = 'total' AND @Direccion = 'desc' THEN p.Total END DESC,
+        CASE WHEN @Orden = 'estado' AND @Direccion = 'asc'  THEN e.Orden END ASC,
+        CASE WHEN @Orden = 'estado' AND @Direccion = 'desc' THEN e.Orden END DESC,
+        -- numero es el IDPedido (NumeroPedido = 'SC-' + IDPedido): lo resuelve el desempate.
+        -- Desempate estable por la PK: dos páginas nunca repiten ni saltan filas.
+        CASE WHEN @Direccion = 'asc'  THEN p.IDPedido END ASC,
+        CASE WHEN @Direccion = 'desc' THEN p.IDPedido END DESC
     OFFSET (@Pagina - 1) * @Tamano ROWS
     FETCH NEXT @Tamano ROWS ONLY
     OPTION (RECOMPILE);

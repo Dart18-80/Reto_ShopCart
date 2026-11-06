@@ -26,6 +26,8 @@ async function adminsActivos(): Promise<number[]> {
       usuariosRepository.listar({
         pagina,
         tamano: TAMANO_PAGINA,
+        orden: 'recientes',
+        direccion: 'desc',
         rol: 'Administrador',
         activo: true,
       }),

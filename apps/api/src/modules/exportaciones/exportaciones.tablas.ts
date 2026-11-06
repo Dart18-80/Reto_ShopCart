@@ -156,6 +156,9 @@ export const TABLAS = {
           ...filtros,
           pagina,
           tamano: TAMANO_MAXIMO_PAGINA,
+          // El orden del reporte en pantalla: del mayor monto potencial al menor.
+          orden: 'total',
+          direccion: 'desc',
         });
         carritos.push(...filas);
         if (filas.length === 0 || carritos.length >= total || carritos.length > limiteFilas) break;
