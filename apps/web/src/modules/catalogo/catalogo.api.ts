@@ -8,6 +8,7 @@ import type {
   CrearCategoria,
   CrearProducto,
   CrearValorAtributo,
+  DatosPrecio,
   DatosVariante,
   GuardarImagenes,
 } from '@shopcart/shared';
@@ -28,6 +29,10 @@ export type AccionCategoria = 'activar' | 'desactivar' | 'eliminar';
 /** M6-H04: lo mismo para un producto o una variante. */
 export type AccionEstado = AccionCategoria;
 export type VarianteAdmin = ProductoAdmin['variantes'][number];
+export type VersionPrecio = Respuesta<
+  '/api/v1/admin/variantes/{id}/precios',
+  'get'
+>['datos'][number];
 
 // El middleware de errores ya convirtió toda respuesta de error en ErrorApi: un 2xx sin cuerpo es inesperado.
 function cuerpoDe<D>(data: D | undefined): D {
@@ -204,4 +209,25 @@ export async function cambiarVariante(idVariante: number, accion: AccionEstado):
   } else {
     await api.POST('/api/v1/admin/variantes/{id}/desactivar', { params });
   }
+}
+
+// --- Backoffice (M6-H05): precios versionados. Responden el historial, de la versión más reciente a la más antigua.
+
+export async function historialPrecios(idVariante: number): Promise<VersionPrecio[]> {
+  const { data } = await api.GET('/api/v1/admin/variantes/{id}/precios', {
+    params: { path: { id: idVariante } },
+  });
+  return cuerpoDe(data).datos;
+}
+
+/** RF-02: abre una versión nueva; los pedidos hechos conservan el suyo (N-02 protege los carritos con garantía). */
+export async function cambiarPrecio(
+  idVariante: number,
+  cuerpo: DatosPrecio,
+): Promise<VersionPrecio[]> {
+  const { data } = await api.PUT('/api/v1/admin/variantes/{id}/precio', {
+    params: { path: { id: idVariante } },
+    body: cuerpo,
+  });
+  return cuerpoDe(data).datos;
 }

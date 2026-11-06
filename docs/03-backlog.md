@@ -791,7 +791,7 @@ El orden de construcción, por módulos (F1, módulos 1 a 11 y F6), está en [`0
 | M6-H02 | Categorías y atributos | Must | 1.0 | Hecha |
 | M6-H03 | Lista y alta de productos | Must | 0.75 | Hecha |
 | M6-H04 | Editar producto, imágenes y variantes | Must | 1.0 | Hecha |
-| M6-H05 | Precios versionados | Must | 0.5 | Lista |
+| M6-H05 | Precios versionados | Must | 0.5 | Hecha |
 | M7-H01 | Existencias con búsqueda y conciliación | Must | 0.75 | Lista |
 | M7-H02 | Entradas, ajustes y kardex | Must | 0.75 | Lista |
 
@@ -823,7 +823,7 @@ El orden de construcción, por módulos (F1, módulos 1 a 11 y F6), está en [`0
 | **M3 Carrito** | Líneas, garantía de precio, cupón, envíos, carrito de invitado y fusión | 2.25 | Hecha |
 | **M4 Checkout y pago** | Direcciones, sesión de pago con reservas y pago idempotente | 2.5 | Hecha |
 | **M5 Mis pedidos** | Listado, detalle con historial y cancelación | 1.0 | Hecha |
-| **M6 Backoffice de catálogo** | Orden del servidor en los listados, categorías, atributos, productos, variantes, imágenes y precios | 4.75 | Lista |
+| **M6 Backoffice de catálogo** | Orden del servidor en los listados, categorías, atributos, productos, variantes, imágenes y precios | 4.75 | Hecha |
 | **M7 Inventario** | Entradas, ajustes, kardex, existencias y conciliación | 1.5 | Lista |
 | M8 Gestión de pedidos | Estados, devoluciones, reembolsos y pagos en revisión | 2.0 | Por detallar |
 | M9 Cupones, envíos y configuración | Administración | 1.25 | Por detallar |

@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import { Aviso } from '../../../shared/componentes/Aviso';
 import { Monto } from '../../../shared/componentes/Monto';
 import { TablaLocal, type ColumnaTabla } from '../../../shared/componentes/TablaServidor';
@@ -6,6 +5,7 @@ import { formatearConteo } from '../../../shared/formato/conteo';
 import { Button } from '../../../shared/ui/button';
 import type { AccionEstado, Atributo, ProductoAdmin, VarianteAdmin } from '../catalogo.api';
 import { useCambiarVariante } from '../hooks/useProductoAdmin';
+import { DialogoCambiarPrecio } from './DialogoCambiarPrecio';
 import { DialogoEditarVariante, DialogoNuevaVariante } from './DialogoVariante';
 
 type Cambiar = (idVariante: number, accion: AccionEstado) => void;
@@ -21,8 +21,6 @@ interface PropsColumnas {
   atributos: Atributo[];
   cambiar: Cambiar;
   ocupada: boolean;
-  /** Lo que se agrega a las acciones de cada fila (Cambiar precio, M6-H05). */
-  accionesExtra?: (variante: VarianteAdmin) => ReactNode;
 }
 
 const columnas = ({
@@ -30,7 +28,6 @@ const columnas = ({
   atributos,
   cambiar,
   ocupada,
-  accionesExtra,
 }: PropsColumnas): ColumnaTabla<VarianteAdmin, never>[] => [
   {
     id: 'sku',
@@ -70,7 +67,7 @@ const columnas = ({
     alineacion: 'fin',
     celda: (v) => (
       <div className="flex flex-wrap justify-end gap-1">
-        {accionesExtra?.(v)}
+        <DialogoCambiarPrecio idProducto={idProducto} variante={v} />
         <DialogoEditarVariante idProducto={idProducto} variante={v} atributos={atributos} />
         <Button
           variant="ghost"
@@ -102,11 +99,10 @@ const columnas = ({
 interface PropsVariantesProducto {
   producto: ProductoAdmin;
   atributos: Atributo[];
-  accionesExtra?: (variante: VarianteAdmin) => ReactNode;
 }
 
 /** M6-H04 (Figma 48:1309): las variantes con su precio vigente, su disponible y sus acciones. */
-export function VariantesProducto({ producto, atributos, accionesExtra }: PropsVariantesProducto) {
+export function VariantesProducto({ producto, atributos }: PropsVariantesProducto) {
   const cambio = useCambiarVariante(producto.idProducto);
   const cambiar: Cambiar = (idVariante, accion) => {
     cambio.mutate({ idVariante, accion });
@@ -132,7 +128,6 @@ export function VariantesProducto({ producto, atributos, accionesExtra }: PropsV
             atributos,
             cambiar,
             ocupada: cambio.isPending,
-            accionesExtra,
           })}
           filas={producto.variantes}
           claveFila={(v) => v.idVariante}

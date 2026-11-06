@@ -12,6 +12,8 @@ export const catalogoKeys = {
   productosAdmin: () => [...catalogoKeys.admin(), 'productos'] as const,
   listaProductosAdmin: (consulta: ConsultaProductosAdmin) =>
     [...catalogoKeys.productosAdmin(), 'lista', consulta] as const,
+  preciosVariante: (idVariante: number) =>
+    [...catalogoKeys.admin(), 'precios', idVariante] as const,
   productoAdmin: (idProducto: number) =>
     [...catalogoKeys.productosAdmin(), 'detalle', idProducto] as const,
 };

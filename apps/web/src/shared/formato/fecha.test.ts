@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { formatearDiaYMes, formatearFechaCalendario, formatearFechaHora } from './fecha';
+import {
+  formatearDia,
+  formatearDiaYMes,
+  formatearFechaCalendario,
+  formatearFechaHora,
+} from './fecha';
 
 // 23:30 del 3 de noviembre en Guatemala (UTC-6) es 05:30 del 4 de noviembre en UTC.
 const MEDIA_NOCHE_DE_GUATEMALA_EN_UTC = '2026-11-04T05:30:00.000Z';
@@ -62,5 +67,11 @@ describe('formatearDiaYMes (FE-10)', () => {
 
   it('un texto que no es una fecha con zona es un error del programa', () => {
     expect(() => formatearDiaYMes('2026-11-08')).toThrow();
+  });
+});
+
+describe('formatearDia (FE-10)', () => {
+  it('el día de Guatemala de un instante, sin hora: el de la noche ya es otro día en UTC', () => {
+    expect(formatearDia(MEDIA_NOCHE_DE_GUATEMALA_EN_UTC)).toBe('3 nov 2026');
   });
 });

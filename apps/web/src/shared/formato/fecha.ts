@@ -11,6 +11,13 @@ const formatoFechaHora = new Intl.DateTimeFormat('es-GT', {
   hourCycle: 'h23',
 });
 
+const formatoDia = new Intl.DateTimeFormat('es-GT', {
+  timeZone: ZONA_DE_LA_TIENDA,
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+});
+
 const formatoDiaYMes = new Intl.DateTimeFormat('es-GT', {
   timeZone: ZONA_DE_LA_TIENDA,
   day: 'numeric',
@@ -43,6 +50,9 @@ function aInstante(instante: string): Date {
 /** Un instante del backend (ISO 8601 en UTC) en la hora de Guatemala: «3 nov 2026, 23:30». */
 export const formatearFechaHora = (instante: string): string =>
   formatoFechaHora.format(aInstante(instante));
+
+/** El día de Guatemala de un instante, sin hora: «1 oct 2026» (la vigencia de un precio, M6-H05). */
+export const formatearDia = (instante: string): string => formatoDia.format(aInstante(instante));
 
 /** El día de Guatemala de un instante, sin año ni hora: «8 de noviembre» (la garantía del carrito). */
 export const formatearDiaYMes = (instante: string): string =>

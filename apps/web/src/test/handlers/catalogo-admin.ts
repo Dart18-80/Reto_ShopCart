@@ -262,3 +262,36 @@ export function simularProductoAdmin(
   );
   return recibidos;
 }
+
+export type VersionPrecio = Respuesta<
+  '/api/v1/admin/variantes/{id}/precios',
+  'get'
+>['datos'][number];
+
+/**
+ * El historial de precios de una variante (M6-H05), como el backend: el más reciente primero; cambiar el precio
+ * cierra la versión vigente y abre la nueva. Guarda cada cuerpo recibido.
+ */
+export function simularPreciosVariante(versiones: VersionPrecio[], ahora: string) {
+  let historial = [...versiones];
+  const recibidos: unknown[] = [];
+  servidor.use(
+    http.get('/api/v1/admin/variantes/:id/precios', () => HttpResponse.json({ datos: historial })),
+    http.put('/api/v1/admin/variantes/:id/precio', async ({ request }) => {
+      const cuerpo = (await request.json()) as { precio: string };
+      recibidos.push(cuerpo);
+      historial = [
+        {
+          idPrecioVariante: 99,
+          precio: cuerpo.precio,
+          usuario: { idUsuario: 1, nombre: 'Administrador Demo' },
+          vigenteDesde: ahora,
+          vigenteHasta: null,
+        },
+        ...historial.map((v) => (v.vigenteHasta === null ? { ...v, vigenteHasta: ahora } : v)),
+      ];
+      return HttpResponse.json({ datos: historial });
+    }),
+  );
+  return recibidos;
+}
