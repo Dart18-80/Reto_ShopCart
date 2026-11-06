@@ -58,4 +58,31 @@ pruebaDeCompra.describe('mis pedidos (M5)', () => {
       ).toBeVisible();
     },
   );
+
+  pruebaDeCompra(
+    'un pedido pagado se cancela con su motivo y queda Cancelado con su historial (M5-H02)',
+    async ({ crearEnTienda, comprador }) => {
+      const idProducto = await crearEnTienda(`Gorra ${nombreUnico('cancelar')}`, [
+        { valores: [], precio: '120.00', existencia: 5 },
+      ]);
+      await agregarAlCarrito(comprador.api, await varianteDe(comprador.api, idProducto));
+      await direccionDe(comprador.api);
+      const idPedido = await comprarCarrito(comprador.api);
+
+      await pagina.goto(`/pedidos/${String(idPedido)}`);
+      await pagina.getByRole('button', { name: 'Cancelar pedido' }).click();
+      const dialogo = pagina.getByRole('dialog', { name: 'Cancelar el pedido' });
+      await dialogo.getByLabel('Motivo').fill('Me equivoqué de talla');
+      await dialogo.getByRole('button', { name: 'Cancelar pedido' }).click();
+
+      await expect(pagina.getByText(/^Cancelamos tu pedido\./)).toBeVisible();
+      await expect(pagina.getByRole('heading', { level: 1 }).locator('..')).toContainText(
+        'Cancelado',
+      );
+      const seguimiento = pagina.getByRole('region', { name: 'Seguimiento' });
+      await expect(seguimiento).toContainText('Cancelado');
+      await expect(seguimiento).toContainText('Me equivoqué de talla');
+      await expect(pagina.getByRole('button', { name: 'Cancelar pedido' })).toBeHidden();
+    },
+  );
 });

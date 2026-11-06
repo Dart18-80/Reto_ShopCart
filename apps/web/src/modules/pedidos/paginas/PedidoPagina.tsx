@@ -10,10 +10,13 @@ import { useParametrosUrl } from '../../../shared/hooks/useParametrosUrl';
 import { useTituloPagina } from '../../../shared/hooks/useTituloPagina';
 import { Button } from '../../../shared/ui/button';
 import { ArticulosPedido } from '../componentes/ArticulosPedido';
+import { AvisoCancelacion } from '../componentes/AvisoCancelacion';
+import { DialogoCancelarPedido } from '../componentes/DialogoCancelarPedido';
 import { EntregaPedido } from '../componentes/EntregaPedido';
 import { PagoPedido } from '../componentes/PagoPedido';
 import { SeguimientoPedido } from '../componentes/SeguimientoPedido';
 import type { Pedido } from '../pedidos.api';
+import { useCancelarPedido } from '../hooks/useCancelarPedido';
 import { usePedido } from '../hooks/usePedido';
 
 const STATUS_NO_ENCONTRADO = 404;
@@ -46,10 +49,17 @@ function PedidoNoEncontrado() {
   );
 }
 
-function FichaPedido({ pedido, nuevo }: { pedido: Pedido; nuevo: boolean }) {
+interface PropsFichaPedido {
+  pedido: Pedido;
+  nuevo: boolean;
+  cancelar: ReturnType<typeof useCancelarPedido>;
+}
+
+function FichaPedido({ pedido, nuevo, cancelar }: PropsFichaPedido) {
   return (
     <div className="flex flex-col gap-6">
-      {nuevo && <Aviso tipo="exito">{AGRADECIMIENTO[pedido.estadoPago]}</Aviso>}
+      {nuevo && !cancelar.data && <Aviso tipo="exito">{AGRADECIMIENTO[pedido.estadoPago]}</Aviso>}
+      {cancelar.data && <AvisoCancelacion cancelacion={cancelar.data} />}
       <nav aria-label="Ruta" className="texto-pequeno text-muted-foreground">
         <Link to="/pedidos" className="hover:underline">
           Mis pedidos
@@ -61,6 +71,7 @@ function FichaPedido({ pedido, nuevo }: { pedido: Pedido; nuevo: boolean }) {
           <h1 className="display-titulo-1">{`Pedido ${pedido.numeroPedido}`}</h1>
           <EstadoPedido estado={pedido.estado} />
         </div>
+        <DialogoCancelarPedido puedeCancelar={pedido.puedeCancelar} mutacion={cancelar} />
       </div>
       <div className="grid items-start gap-6 md:grid-cols-[1fr_19rem]">
         <div className="flex min-w-0 flex-col gap-6">
@@ -78,6 +89,7 @@ function FichaPedido({ pedido, nuevo }: { pedido: Pedido; nuevo: boolean }) {
 
 function DetallePedido({ idPedido }: { idPedido: number }) {
   const consulta = usePedido(idPedido);
+  const cancelar = useCancelarPedido(idPedido);
   const parametros = useParametrosUrl(consultaDetalleSchema);
   useTituloPagina(consulta.data ? `Pedido ${consulta.data.numeroPedido}` : 'Pedido');
 
@@ -87,7 +99,9 @@ function DetallePedido({ idPedido }: { idPedido: number }) {
   }
   return (
     <EstadoVista consulta={consulta} vacio={SIN_USO} esVacio={NUNCA_VACIO}>
-      {(pedido) => <FichaPedido pedido={pedido} nuevo={parametros.valores.nuevo === '1'} />}
+      {(pedido) => (
+        <FichaPedido pedido={pedido} nuevo={parametros.valores.nuevo === '1'} cancelar={cancelar} />
+      )}
     </EstadoVista>
   );
 }

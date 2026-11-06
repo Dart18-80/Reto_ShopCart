@@ -5,7 +5,8 @@ import {
   idEnRutaSchema,
   idSchema,
 } from '../../shared/http/index.js';
-import { textoNvarchar } from '@shopcart/shared';
+import { cancelarPedidoSchema as cancelarCompartido, textoNvarchar } from '@shopcart/shared';
+import { registroOpenApi } from '../../shared/openapi/index.js';
 import { z } from '../../shared/openapi/zod.js';
 import { ESTADOS_PEDIDO, ESTADOS_REEMBOLSO, RESOLUCIONES_PAGO } from './pedidos.types.js';
 
@@ -35,11 +36,8 @@ export const cambiarEstadoSchema = z
 
 export type CambiarEstado = z.infer<typeof cambiarEstadoSchema>;
 
-// N-09: el motivo de una cancelación es obligatorio (textoNvarchar no admite solo espacios).
-export const cancelarPedidoSchema = z
-  .object({ motivo: textoNvarchar(250) })
-  .strict()
-  .openapi('CancelarPedido');
+// FE-03: el cuerpo de la cancelación vive en @shopcart/shared, el mismo que valida el diálogo de la web.
+export const cancelarPedidoSchema = registroOpenApi.register('CancelarPedido', cancelarCompartido);
 
 export const paramsIdReembolsoSchema = z.object({ id: idEnRutaSchema });
 

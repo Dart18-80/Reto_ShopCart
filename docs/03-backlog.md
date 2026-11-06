@@ -786,7 +786,7 @@ El orden de construcción, por módulos (F1, módulos 1 a 11 y F6), está en [`0
 | M4-H02 | Dirección y envío | Must | 0.75 | Hecha |
 | M4-H03 | Pago idempotente | Must | 1.0 | Hecha |
 | M5-H01 | Lista y detalle de mis pedidos | Must | 0.75 | Hecha |
-| M5-H02 | Cancelar mi pedido | Must | 0.25 | Lista |
+| M5-H02 | Cancelar mi pedido | Must | 0.25 | Hecha |
 | M6-H01 | Orden del servidor en los listados del backoffice (backend) | Must | 1.5 | Lista |
 | M6-H02 | Categorías y atributos | Must | 1.0 | Lista |
 | M6-H03 | Lista y alta de productos | Must | 0.75 | Lista |
@@ -822,7 +822,7 @@ El orden de construcción, por módulos (F1, módulos 1 a 11 y F6), está en [`0
 | **M2 Catálogo de la tienda** | Datos de presentación (ilustración y colores), catálogo con filtros y detalle de producto | 3.5 | Hecha |
 | **M3 Carrito** | Líneas, garantía de precio, cupón, envíos, carrito de invitado y fusión | 2.25 | Hecha |
 | **M4 Checkout y pago** | Direcciones, sesión de pago con reservas y pago idempotente | 2.5 | Hecha |
-| **M5 Mis pedidos** | Listado, detalle con historial y cancelación | 1.0 | Lista |
+| **M5 Mis pedidos** | Listado, detalle con historial y cancelación | 1.0 | Hecha |
 | **M6 Backoffice de catálogo** | Orden del servidor en los listados, categorías, atributos, productos, variantes, imágenes y precios | 4.75 | Lista |
 | **M7 Inventario** | Entradas, ajustes, kardex, existencias y conciliación | 1.5 | Lista |
 | M8 Gestión de pedidos | Estados, devoluciones, reembolsos y pagos en revisión | 2.0 | Por detallar |

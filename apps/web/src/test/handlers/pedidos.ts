@@ -109,3 +109,40 @@ export function simularPedido(pedido: PedidoDePrueba | null) {
     ),
   );
 }
+
+type EstadoReembolso = Respuesta<
+  '/api/v1/pedidos/{id}/cancelar',
+  'post'
+>['datos']['reembolso']['estado'];
+
+interface ErrorDeCancelacion {
+  status: number;
+  codigo: string;
+  mensaje: string;
+}
+
+/**
+ * `POST /pedidos/{id}/cancelar`: responde el pedido cancelado con su reembolso, o el error indicado. Guarda cada
+ * cuerpo recibido.
+ */
+export function simularCancelacion(
+  respuesta: { pedido: PedidoDePrueba; estadoReembolso: EstadoReembolso } | ErrorDeCancelacion,
+) {
+  const recibidos: unknown[] = [];
+  servidor.use(
+    http.post('/api/v1/pedidos/:id/cancelar', async ({ request }) => {
+      recibidos.push(await request.json());
+      if ('status' in respuesta) {
+        const { status, ...error } = respuesta;
+        return HttpResponse.json({ error: { ...error, requestId: 'req-can' } }, { status });
+      }
+      return HttpResponse.json({
+        datos: {
+          pedido: respuesta.pedido,
+          reembolso: { idReembolso: 9, estado: respuesta.estadoReembolso },
+        },
+      });
+    }),
+  );
+  return recibidos;
+}

@@ -1,4 +1,4 @@
-import type { consultaPaginacionSchema } from '@shopcart/shared';
+import type { CancelarPedido, consultaPaginacionSchema } from '@shopcart/shared';
 import type { z } from 'zod';
 import { api, ErrorApi, type Respuesta } from '../../shared/api';
 
@@ -6,6 +6,8 @@ export type ConsultaMisPedidos = z.output<typeof consultaPaginacionSchema>;
 export type ListaDePedidos = Respuesta<'/api/v1/pedidos', 'get'>;
 export type ResumenPedido = ListaDePedidos['datos'][number];
 export type Pedido = Respuesta<'/api/v1/pedidos/{id}', 'get'>['datos'];
+export type Cancelacion = Respuesta<'/api/v1/pedidos/{id}/cancelar', 'post'>['datos'];
+export type EstadoReembolso = Cancelacion['reembolso']['estado'];
 
 // El middleware de errores ya convirtió toda respuesta de error en ErrorApi: un 2xx sin cuerpo es inesperado.
 function cuerpoDe<D>(data: D | undefined): D {
@@ -23,5 +25,17 @@ export async function listarMisPedidos(consulta: ConsultaMisPedidos): Promise<Li
 /** Un pedido ajeno responde 404, igual que uno inexistente (RF-01). */
 export async function obtenerPedido(idPedido: number): Promise<Pedido> {
   const { data } = await api.GET('/api/v1/pedidos/{id}', { params: { path: { id: idPedido } } });
+  return cuerpoDe(data).datos;
+}
+
+/** N-09, RF-07: cancela el pedido con su motivo; responde el pedido actualizado y el reembolso que creó. */
+export async function cancelarPedido(
+  idPedido: number,
+  cuerpo: CancelarPedido,
+): Promise<Cancelacion> {
+  const { data } = await api.POST('/api/v1/pedidos/{id}/cancelar', {
+    params: { path: { id: idPedido } },
+    body: cuerpo,
+  });
   return cuerpoDe(data).datos;
 }

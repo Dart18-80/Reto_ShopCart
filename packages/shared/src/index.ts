@@ -41,6 +41,7 @@ export {
   type CrearDireccion,
 } from './direcciones.js';
 export { montoMenorOIgual, montoSchema } from './monto.js';
+export { cancelarPedidoSchema, type CancelarPedido } from './pedidos.js';
 export { ROLES_DE_USUARIO, type RolDeUsuario } from './roles.js';
 export { telefonoSchema } from './telefono.js';
 export { textoNvarchar } from './texto.js';
