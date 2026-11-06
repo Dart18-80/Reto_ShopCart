@@ -58,20 +58,32 @@ export const otroClienteDeLaCorrida = (): ClienteRegistrado =>
   clienteRegistrado(VARIABLE_OTRO_CLIENTE);
 
 /**
- * Un Operador nuevo, creado por el Administrador: para las pruebas que cambian la contraseña o los datos de su
- * cuenta sin afectar a las demás, y sin gastar el límite de registros públicos (A-07).
+ * Un usuario interno nuevo, creado por el Administrador: para las pruebas que cambian la contraseña o los datos de
+ * su cuenta sin afectar a las demás, y sin gastar el límite de registros públicos (A-07).
  */
-export async function crearOperador(apiAdmin: APIRequestContext): Promise<Credenciales> {
+async function crearInterno(
+  apiAdmin: APIRequestContext,
+  rol: 'Operador' | 'Administrador',
+): Promise<Credenciales> {
   const credenciales = {
-    correo: `${nombreUnico('operador')}@prueba.gt`,
-    contrasena: 'Operador2026!',
+    correo: `${nombreUnico(rol.toLowerCase())}@prueba.gt`,
+    contrasena: `${rol}2026!`,
   };
   const respuesta = await apiAdmin.post('/api/v1/usuarios', {
-    data: { ...credenciales, nombre: 'Operador E2E', rol: 'Operador' },
+    data: { ...credenciales, nombre: `${rol} E2E`, rol },
   });
-  expect(respuesta.status(), 'alta del Operador').toBe(201);
+  expect(respuesta.status(), `alta del ${rol}`).toBe(201);
   return credenciales;
 }
+
+export const crearOperador = (apiAdmin: APIRequestContext) => crearInterno(apiAdmin, 'Operador');
+
+/**
+ * Un Administrador nuevo para las pruebas del backoffice que entran por la pantalla: cada uno tiene su propio
+ * límite de login (5 por minuto por correo), así no gastan el de la cuenta de la semilla.
+ */
+export const crearAdministrador = (apiAdmin: APIRequestContext) =>
+  crearInterno(apiAdmin, 'Administrador');
 
 interface FixturesDePrueba {
   /** La API con el token de un Administrador, para preparar los datos de cada prueba. */

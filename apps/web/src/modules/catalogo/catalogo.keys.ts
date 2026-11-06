@@ -6,4 +6,7 @@ export const catalogoKeys = {
   busqueda: (consulta: ConsultaBusqueda) => [...catalogoKeys.busquedas(), consulta] as const,
   categorias: () => [...catalogoKeys.todo, 'categorias'] as const,
   producto: (idProducto: number) => [...catalogoKeys.todo, 'producto', idProducto] as const,
+  admin: () => [...catalogoKeys.todo, 'admin'] as const,
+  categoriasAdmin: () => [...catalogoKeys.admin(), 'categorias'] as const,
+  atributos: () => [...catalogoKeys.admin(), 'atributos'] as const,
 };

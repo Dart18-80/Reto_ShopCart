@@ -262,3 +262,29 @@ export function TablaServidor<T, C extends ConsultaTabla>({
     </section>
   );
 }
+
+const SIN_ORDEN: CambiarVista = () => undefined;
+
+/**
+ * Una lista corta que el servidor no pagina (las categorías, M6-H02): la misma tabla desde `md` y las mismas
+ * tarjetas por debajo que TablaServidor, sin orden ni paginación.
+ */
+export function TablaLocal<T>({
+  titulo,
+  columnas,
+  filas,
+  claveFila,
+}: {
+  titulo: string;
+  columnas: readonly ColumnaTabla<T, never>[];
+  filas: T[];
+  claveFila: (fila: T) => string | number;
+}) {
+  const pantallaAncha = usePantallaAncha();
+  const vista = { titulo, columnas, filas, claveFila, actualizando: false };
+  return pantallaAncha ? (
+    <Tabla {...vista} orden={undefined} direccion={undefined} cambiarVista={SIN_ORDEN} />
+  ) : (
+    <Tarjetas {...vista} />
+  );
+}

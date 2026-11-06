@@ -17,6 +17,18 @@ export {
 } from './carrito.js';
 export { pagarSchema, type Pagar } from './checkout.js';
 export {
+  actualizarCategoriaSchema,
+  crearAtributoSchema,
+  crearCategoriaSchema,
+  crearValorAtributoSchema,
+  ilustracionSchema,
+  ordenDespliegueSchema,
+  type ActualizarCategoria,
+  type CrearAtributo,
+  type CrearCategoria,
+  type CrearValorAtributo,
+} from './catalogo-admin.js';
+export {
   consultaBusquedaSchema,
   DIRECCIONES_ORDEN,
   filtroPrecioSchema,

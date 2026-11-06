@@ -59,6 +59,7 @@ const versionesJson = (versiones: VersionPrecio[]) =>
 
 export interface CatalogoController {
   listarCategorias: RequestHandler;
+  listarCategoriasAdmin: RequestHandler;
   crearCategoria: RequestHandler;
   actualizarCategoria: RequestHandler;
   activarCategoria: RequestHandler;
@@ -90,6 +91,10 @@ export function crearCatalogoController(servicio: CatalogoService): CatalogoCont
   return {
     listarCategorias: manejar({}, async (_entrada, res) => {
       res.json({ datos: await servicio.listarCategorias() });
+    }),
+
+    listarCategoriasAdmin: manejar({}, async (_entrada, res) => {
+      res.json({ datos: await servicio.listarCategoriasAdmin() });
     }),
 
     crearCategoria: manejar({ body: crearCategoriaSchema }, async ({ body }, res) => {

@@ -788,7 +788,7 @@ El orden de construcción, por módulos (F1, módulos 1 a 11 y F6), está en [`0
 | M5-H01 | Lista y detalle de mis pedidos | Must | 0.75 | Hecha |
 | M5-H02 | Cancelar mi pedido | Must | 0.25 | Hecha |
 | M6-H01 | Orden del servidor en los listados del backoffice (backend) | Must | 1.5 | Hecha |
-| M6-H02 | Categorías y atributos | Must | 1.0 | Lista |
+| M6-H02 | Categorías y atributos | Must | 1.0 | Hecha |
 | M6-H03 | Lista y alta de productos | Must | 0.75 | Lista |
 | M6-H04 | Editar producto, imágenes y variantes | Must | 1.0 | Lista |
 | M6-H05 | Precios versionados | Must | 0.5 | Lista |

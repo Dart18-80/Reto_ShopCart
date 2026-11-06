@@ -1,9 +1,14 @@
 import {
+  actualizarCategoriaSchema as actualizarCategoriaCompartido,
   consultaBusquedaSchema,
-  ILUSTRACIONES_PRENDA,
+  crearAtributoSchema as crearAtributoCompartido,
+  crearCategoriaSchema as crearCategoriaCompartido,
+  crearValorAtributoSchema as crearValorAtributoCompartido,
+  ilustracionSchema,
   LARGO_MAXIMO_TEXTO_BUSQUEDA,
   montoSchema,
   ordenConsultaSchema,
+  ordenDespliegueSchema,
   textoNvarchar,
 } from '@shopcart/shared';
 import { Decimal } from 'decimal.js';
@@ -13,39 +18,24 @@ import {
   idEnRutaSchema,
   idSchema,
 } from '../../shared/http/index.js';
+import { registroOpenApi } from '../../shared/openapi/index.js';
 import { z } from '../../shared/openapi/zod.js';
 import { ESTADOS_EXISTENCIA } from './catalogo.types.js';
 
 const alMenosUnCampo = (cambios: object) => Object.keys(cambios).length > 0;
 const MENSAJE_SIN_CAMPOS = 'Indica al menos un campo.';
 
-// Orden de despliegue: SMALLINT en la tabla. Sin orden, el SP lo pone después del último.
-const ordenSchema = z.number().int().min(0).max(32_767);
+// FE-03: los cuerpos de categorías y atributos viven en @shopcart/shared, los mismos que validan los formularios
+// del backoffice (M6-H02).
 
-// --- Categorías (E3-H01). Largos de la tabla y los SPs: Nombre NVARCHAR(80), Descripcion NVARCHAR(300).
-
-// FE-15: la misma lista del CHECK de la base; sin ilustración, la base pone la suya por defecto.
-const ilustracionSchema = z.enum(ILUSTRACIONES_PRENDA);
-
-export const crearCategoriaSchema = z
-  .object({
-    nombre: textoNvarchar(80),
-    descripcion: textoNvarchar(300).optional(),
-    ilustracion: ilustracionSchema.optional(),
-  })
-  .strict()
-  .openapi('CrearCategoria');
-
-// PATCH: lo que no llega se conserva; descripcion en null se quita.
-export const actualizarCategoriaSchema = z
-  .object({
-    nombre: textoNvarchar(80).optional(),
-    descripcion: textoNvarchar(300).nullable().optional(),
-    ilustracion: ilustracionSchema.optional(),
-  })
-  .strict()
-  .refine(alMenosUnCampo, MENSAJE_SIN_CAMPOS)
-  .openapi('ActualizarCategoria');
+export const crearCategoriaSchema = registroOpenApi.register(
+  'CrearCategoria',
+  crearCategoriaCompartido,
+);
+export const actualizarCategoriaSchema = registroOpenApi.register(
+  'ActualizarCategoria',
+  actualizarCategoriaCompartido,
+);
 
 export const paramsIdCategoriaSchema = z.object({ id: idEnRutaSchema });
 
@@ -62,17 +52,20 @@ export const categoriaSchema = categoriaPublicaSchema
   .extend({ activo: z.boolean() })
   .openapi('Categoria');
 
+export const categoriaAdminSchema = categoriaSchema
+  .extend({ productos: z.number().int() })
+  .openapi('CategoriaAdmin');
+
 // --- Atributos (E3-H02).
 
-export const crearAtributoSchema = z
-  .object({ nombre: textoNvarchar(50), orden: ordenSchema.optional() })
-  .strict()
-  .openapi('CrearAtributo');
-
-export const crearValorAtributoSchema = z
-  .object({ valor: textoNvarchar(50), orden: ordenSchema.optional() })
-  .strict()
-  .openapi('CrearValorAtributo');
+export const crearAtributoSchema = registroOpenApi.register(
+  'CrearAtributo',
+  crearAtributoCompartido,
+);
+export const crearValorAtributoSchema = registroOpenApi.register(
+  'CrearValorAtributo',
+  crearValorAtributoCompartido,
+);
 
 export const paramsIdAtributoSchema = z.object({ id: idEnRutaSchema });
 
@@ -148,7 +141,7 @@ const imagenSchema = z
   .object({
     url: urlImagenSchema,
     textoAlternativo: textoNvarchar(150),
-    orden: ordenSchema,
+    orden: ordenDespliegueSchema,
     esPrincipal: z.boolean(),
   })
   .strict();

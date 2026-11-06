@@ -24,6 +24,7 @@ import type {
 import type {
   Atributo,
   Categoria,
+  CategoriaAdmin,
   CategoriaPublica,
   EstadoExistencia,
   FiltrosBusqueda,
@@ -66,6 +67,10 @@ const aCategoria = (fila: FilaCategoria): Categoria => ({
   ...aCategoriaPublica(fila),
   activo: fila.Activo,
 });
+
+interface FilaCategoriaAdmin extends FilaCategoria {
+  Productos: number;
+}
 
 function unica(filas: FilaCategoria[], sp: string): Categoria {
   const [fila] = filas;
@@ -332,6 +337,12 @@ export const catalogoRepository = {
   async listarCategorias(): Promise<CategoriaPublica[]> {
     const filas = await ejecutarSP<FilaCategoriaPublica>('SP_Catalogo_ListarCategorias');
     return filas.map(aCategoriaPublica);
+  },
+
+  /** M6-H02: todas, activas o no, con cuántos productos tienen. */
+  async listarCategoriasAdmin(): Promise<CategoriaAdmin[]> {
+    const filas = await ejecutarSP<FilaCategoriaAdmin>('SP_Catalogo_ListarCategoriasAdmin');
+    return filas.map((fila) => ({ ...aCategoria(fila), productos: fila.Productos }));
   },
 
   async crearCategoria(datos: CrearCategoria): Promise<Categoria> {

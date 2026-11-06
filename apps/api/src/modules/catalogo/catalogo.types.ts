@@ -13,6 +13,11 @@ export interface Categoria extends CategoriaPublica {
   activo: boolean;
 }
 
+/** M6-H02: la categoría en la lista del Admin, con cuántos productos tiene. */
+export interface CategoriaAdmin extends Categoria {
+  productos: number;
+}
+
 export interface ValorAtributo {
   idValorAtributo: number;
   valor: string;

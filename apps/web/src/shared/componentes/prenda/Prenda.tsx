@@ -4,7 +4,7 @@ import { clasesDelColor } from './colores';
 import { TRAZOS } from './trazos';
 
 // El nombre que se lee de cada ilustración (la base guarda «Pantalon», sin tilde).
-const NOMBRE_DE_LA_PRENDA: Record<IlustracionPrenda, string> = {
+export const NOMBRE_DE_LA_PRENDA: Record<IlustracionPrenda, string> = {
   Camisa: 'Camisa',
   Pantalon: 'Pantalón',
   Vestido: 'Vestido',

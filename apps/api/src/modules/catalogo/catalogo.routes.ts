@@ -15,6 +15,7 @@ import {
   atributoSchema,
   cambiarPrecioSchema,
   categoriaPublicaSchema,
+  categoriaAdminSchema,
   categoriaSchema,
   crearAtributoSchema,
   crearCategoriaSchema,
@@ -118,6 +119,13 @@ registroOpenApi.registerPath({
 // --- Categorías (E3-H01)
 
 const categoria = (descripcion: string) => datos(descripcion, categoriaSchema);
+registrarAdmin({
+  metodo: 'get',
+  ruta: '/categorias',
+  resumen: 'Todas las categorías, activas o no, con cuántos productos tienen (M6-H02)',
+  exito: [200, datos('Categorías', z.array(categoriaAdminSchema))],
+  errores: [],
+});
 registrarAdmin({
   metodo: 'post',
   ruta: '/categorias',
@@ -339,6 +347,7 @@ export function crearCatalogoRouter(
   router.get('/productos', controller.buscarProductos);
   router.get('/productos/:id', controller.obtenerProductoTienda);
 
+  router.get('/admin/categorias', ...soloAdmin, controller.listarCategoriasAdmin);
   router.post('/admin/categorias', ...soloAdmin, controller.crearCategoria);
   router.patch('/admin/categorias/:id', ...soloAdmin, controller.actualizarCategoria);
   router.post('/admin/categorias/:id/activar', ...soloAdmin, controller.activarCategoria);

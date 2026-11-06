@@ -215,7 +215,47 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Todas las categorías, activas o no, con cuántos productos tienen (M6-H02) (Admin) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Categorías */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            datos: components["schemas"]["CategoriaAdmin"][];
+                        };
+                    };
+                };
+                /** @description Sin sesión o token inválido */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description El rol no tiene permiso */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
         put?: never;
         /** Crea una categoría; nombre único sin distinguir mayúsculas (Admin) */
         post: {
@@ -7062,6 +7102,9 @@ export interface components {
         };
         Categoria: components["schemas"]["CategoriaPublica"] & {
             activo: boolean;
+        };
+        CategoriaAdmin: components["schemas"]["Categoria"] & {
+            productos: number;
         };
         CategoriaPublica: {
             descripcion: string | null;

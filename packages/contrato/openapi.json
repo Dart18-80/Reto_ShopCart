@@ -723,6 +723,24 @@
           }
         ]
       },
+      "CategoriaAdmin": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Categoria"
+          },
+          {
+            "properties": {
+              "productos": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "productos"
+            ],
+            "type": "object"
+          }
+        ]
+      },
       "CategoriaPublica": {
         "properties": {
           "descripcion": {
@@ -4043,6 +4061,60 @@
       }
     },
     "/api/v1/admin/categorias": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "datos": {
+                      "items": {
+                        "$ref": "#/components/schemas/CategoriaAdmin"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "datos"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Categorías"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Sin sesión o token inválido"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "El rol no tiene permiso"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Todas las categorías, activas o no, con cuántos productos tienen (M6-H02) (Admin)",
+        "tags": [
+          "Catálogo"
+        ]
+      },
       "post": {
         "requestBody": {
           "content": {

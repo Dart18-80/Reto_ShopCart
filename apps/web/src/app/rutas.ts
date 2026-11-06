@@ -216,6 +216,16 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ),
   },
   {
+    // M6-H02: se llega con el botón «Categorías y atributos» de Productos y precios (Figma 48:1169), sin menú.
+    ruta: '/backoffice/catalogo/categorias',
+    area: 'backoffice',
+    acceso: SOLO_ADMINISTRADOR,
+    pagina: diferida(
+      () => import('../modules/catalogo/paginas/CategoriasPagina'),
+      (m) => m.CategoriasPagina,
+    ),
+  },
+  {
     ruta: '/backoffice/inventario',
     area: 'backoffice',
     acceso: PERSONAL,

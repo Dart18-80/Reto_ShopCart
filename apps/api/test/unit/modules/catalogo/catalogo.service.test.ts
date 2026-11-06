@@ -33,6 +33,7 @@ const PRODUCTO: ProductoAdmin = {
 function preparar() {
   const repositorio = {
     listarCategorias: vi.fn(() => Promise.resolve([])),
+    listarCategoriasAdmin: vi.fn(() => Promise.resolve([])),
     crearCategoria: vi.fn(() => Promise.resolve(CATEGORIA)),
     actualizarCategoria: vi.fn(() => Promise.resolve(CATEGORIA)),
     cambiarEstadoCategoria: vi.fn((_id: number, activo: boolean) =>

@@ -17,6 +17,7 @@ import type {
 import type {
   Atributo,
   Categoria,
+  CategoriaAdmin,
   CategoriaPublica,
   FiltrosBusqueda,
   FiltrosProductos,
@@ -44,6 +45,8 @@ function productoExistente<T extends ProductoAdmin | ProductoTienda>(producto: T
 export function crearCatalogoService({ repositorio, reportes }: Dependencias) {
   return {
     listarCategorias: (): Promise<CategoriaPublica[]> => repositorio.listarCategorias(),
+
+    listarCategoriasAdmin: (): Promise<CategoriaAdmin[]> => repositorio.listarCategoriasAdmin(),
 
     crearCategoria: (datos: CrearCategoria): Promise<Categoria> =>
       repositorio.crearCategoria(datos),
