@@ -58,3 +58,9 @@ export interface Pagina {
   pagina: number;
   tamano: number;
 }
+
+/** M7-H01: una variante, o el texto que se busca en el producto y en el SKU. */
+export interface FiltrosExistencias {
+  idVariante: number | null;
+  texto: string | null;
+}

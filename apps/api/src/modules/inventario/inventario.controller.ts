@@ -43,7 +43,13 @@ export function crearInventarioController(servicio: InventarioService): Inventar
     }),
 
     listarExistencias: manejar({ query: listarExistenciasSchema }, async ({ query }, res) => {
-      res.json(await servicio.listarExistencias(query.variante ?? null, query, query));
+      res.json(
+        await servicio.listarExistencias(
+          { idVariante: query.variante ?? null, texto: query.texto ?? null },
+          query,
+          query,
+        ),
+      );
     }),
 
     conciliar: manejar({}, async (_entrada, res) => {

@@ -71,6 +71,12 @@ export {
   type ActualizarDireccion,
   type CrearDireccion,
 } from './direcciones.js';
+export {
+  consultaExistenciasSchema,
+  ordenExistenciasSchema,
+  type ConsultaExistencias,
+  type OrdenExistencias,
+} from './inventario.js';
 export { montoMenorOIgual, montoSchema } from './monto.js';
 export { ordenConsultaSchema, type DireccionOrden } from './orden.js';
 export { cancelarPedidoSchema, type CancelarPedido } from './pedidos.js';

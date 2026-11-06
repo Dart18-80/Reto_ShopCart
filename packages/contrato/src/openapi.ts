@@ -5903,6 +5903,7 @@ export interface paths {
                     pagina?: number;
                     tamano?: number;
                     variante?: number;
+                    texto?: string;
                     /** @description Columna del orden (por defecto, disponible); el desempate es siempre la PK. */
                     orden?: "sku" | "producto" | "disponible";
                     /** @description asc o desc (por defecto, asc). */

@@ -10953,6 +10953,14 @@
             }
           },
           {
+            "in": "query",
+            "name": "texto",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "description": "Columna del orden (por defecto, disponible); el desempate es siempre la PK.",
             "in": "query",
             "name": "orden",

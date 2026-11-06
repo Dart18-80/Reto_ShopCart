@@ -1,4 +1,7 @@
-import { ordenConsultaSchema, textoNvarchar } from '@shopcart/shared';
+import {
+  consultaExistenciasSchema as consultaExistenciasCompartida,
+  textoNvarchar,
+} from '@shopcart/shared';
 import { consultaPaginacionSchema, idEnRutaSchema, idSchema } from '../../shared/http/index.js';
 import { z } from '../../shared/openapi/zod.js';
 import { TIPOS_MOVIMIENTO } from './inventario.types.js';
@@ -39,18 +42,9 @@ export const consultaExistenciasSchema = consultaPaginacionSchema.extend({
   variante: idEnRutaSchema.optional(),
 });
 
-// M6-H01: solo la lista de existencias se ordena (la de bodega y el kardex conservan su orden).
-export const ordenExistenciasSchema = ordenConsultaSchema(
-  ['sku', 'producto', 'disponible'],
-  'disponible',
-  'asc',
-);
-
-export const listarExistenciasSchema = consultaExistenciasSchema.extend(
-  ordenExistenciasSchema.shape,
-);
-
-export type OrdenExistencias = z.infer<typeof ordenExistenciasSchema>;
+// M6-H01, M7-H01: la lista de existencias se ordena y se busca con la consulta de @shopcart/shared, la misma de la
+// tabla del backoffice (la de bodega y el kardex conservan la suya).
+export const listarExistenciasSchema = consultaExistenciasCompartida;
 
 export const movimientoSchema = z
   .object({

@@ -6,10 +6,12 @@ import {
   ejecutarSPPaginado,
   type ParametrosSP,
 } from '../../shared/db/index.js';
-import type { OrdenExistencias, RegistrarAjuste, RegistrarEntrada } from './inventario.schemas.js';
+import type { OrdenExistencias } from '@shopcart/shared';
+import type { RegistrarAjuste, RegistrarEntrada } from './inventario.schemas.js';
 import type {
   Descuadre,
   Existencia,
+  FiltrosExistencias,
   ExistenciaBodega,
   Movimiento,
   Pagina,
@@ -144,7 +146,7 @@ export const inventarioRepository = {
   },
 
   async listarExistencias(
-    idVariante: number | null,
+    { idVariante, texto }: FiltrosExistencias,
     pagina: Pagina,
     orden: OrdenExistencias,
   ): Promise<{ existencias: Existencia[]; total: number }> {
@@ -152,6 +154,7 @@ export const inventarioRepository = {
       'SP_Inventario_ListarExistencias',
       {
         IDVariante: { tipo: sql.Int, valor: idVariante },
+        Texto: { tipo: sql.NVarChar(150), valor: texto },
         ...paginacion(pagina),
         Orden: { tipo: sql.VarChar(20), valor: orden.orden },
         Direccion: { tipo: sql.VarChar(4), valor: orden.direccion },

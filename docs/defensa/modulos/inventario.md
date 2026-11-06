@@ -4,7 +4,7 @@
 
 Lleva la existencia física de cada variante, el kardex (ledger inmutable de movimientos) y las reservas que hace el checkout. Endpoints, todos para Operador y Administrador ([inventario.routes.ts:109](../../../apps/api/src/modules/inventario/inventario.routes.ts#L109 "router.use(autenticar, autorizar('Operador', 'Administrador'))")): `POST /inventario/entradas`, `POST /inventario/ajustes` (ambos con `Idempotency-Key` opcional), `GET /inventario/kardex`, `/existencias`, `/conciliacion` y `/bodega`. SPs clave: `SP_Inventario_RegistrarMovimiento` (el único que toca `ExistenciaFisica` y escribe el kardex), `SP_Inventario_ReservarExistencia` (el único que reserva), `SP_Inventario_LiberarReservas`, la función `FU_Inventario_Disponible` y la vista `VW_Inventario_Conciliacion`.
 
-El servicio no valida saldos: los valida el SP bajo el bloqueo de la variante ([inventario.service.ts:22](../../../apps/api/src/modules/inventario/inventario.service.ts#L22 "solicitudIdempotente(llave, 'Inventario.Entrada', datos)")).
+El servicio no valida saldos: los valida el SP bajo el bloqueo de la variante ([inventario.service.ts:24](../../../apps/api/src/modules/inventario/inventario.service.ts#L24 "solicitudIdempotente(llave, 'Inventario.Entrada', datos)")).
 
 ## Flujo crítico
 
