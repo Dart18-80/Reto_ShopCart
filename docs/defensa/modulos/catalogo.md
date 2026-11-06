@@ -59,7 +59,7 @@ Puntos que demuestran que no hay inyección:
 | Producto activo solo en categoría activa | SP bajo bloqueo de la categoría | [R__SP_Catalogo_CambiarEstadoProducto.sql:39](../../../database/programmability/R__SP_Catalogo_CambiarEstadoProducto.sql#L39 "THROW 50206") | N-14 |
 | Categoría no se desactiva con productos activos | SP con `UPDLOCK, HOLDLOCK` | [R__SP_Catalogo_CambiarEstadoCategoria.sql:32](../../../database/programmability/R__SP_Catalogo_CambiarEstadoCategoria.sql#L32 "THROW 50204") | N-14 |
 | Imágenes: exactamente una principal, órdenes únicos | Zod + SP + índice único filtrado | [V004__catalogo.sql:44](../../../database/migrations/V004__catalogo.sql#L44 "UX_ImagenProducto_Principal") | N-19 |
-| SKU ASCII visible de 1 a 40, máximo 4 valores, precio con 2 decimales | Zod | [catalogo.schemas.ts:147](../../../apps/api/src/modules/catalogo/catalogo.schemas.ts#L147 "El SKU tiene de 1 a 40 caracteres ASCII visibles") | A-08 |
+| SKU ASCII visible de 1 a 40, máximo 4 valores, precio con 2 decimales | Zod | [catalogo-admin.ts:129](../../../packages/shared/src/catalogo-admin.ts#L129 "El SKU tiene de 1 a 40 caracteres ASCII visibles") | A-08 |
 
 ## Concurrencia y réplicas
 

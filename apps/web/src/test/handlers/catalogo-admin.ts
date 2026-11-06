@@ -170,3 +170,95 @@ export function simularProductosAdmin(productos: ProductoResumenAdmin[]) {
   );
   return consultas;
 }
+
+export type ProductoAdmin = Respuesta<'/api/v1/admin/productos/{id}', 'get'>['datos'];
+export type VarianteAdmin = ProductoAdmin['variantes'][number];
+
+export const varianteAdminDePrueba = (cambios: Partial<VarianteAdmin> = {}): VarianteAdmin => ({
+  idVariante: 50,
+  sku: 'CAM-OXF-AZ-M',
+  descripcionAtributos: 'Azul / M',
+  activo: true,
+  precio: '249.00',
+  existenciaFisica: 24,
+  reservado: 2,
+  disponible: 22,
+  valores: [
+    { idAtributo: 2, atributo: 'Color', idValorAtributo: 21, valor: 'Azul' },
+    { idAtributo: 1, atributo: 'Talla', idValorAtributo: 12, valor: 'M' },
+  ],
+  ...cambios,
+});
+
+export const productoAdminDePrueba = (cambios: Partial<ProductoAdmin> = {}): ProductoAdmin => ({
+  idProducto: 5,
+  idCategoria: 1,
+  categoria: 'Camisas y blusas',
+  nombre: 'Camisa Oxford',
+  descripcion: 'Camisa de algodón Oxford.',
+  activo: true,
+  imagenes: [
+    {
+      idImagenProducto: 1,
+      url: '/static/productos/camisas.svg',
+      textoAlternativo: 'Camisa Oxford',
+      orden: 1,
+      esPrincipal: true,
+    },
+  ],
+  variantes: [varianteAdminDePrueba()],
+  ...cambios,
+});
+
+/**
+ * El producto del editor (M6-H04): `GET /admin/productos/{id}` y cada operación sobre él y sus variantes. Las
+ * operaciones responden 200/201/204 o el error de `errores` («DELETE producto», «POST variante»…). Guarda cada una.
+ */
+export function simularProductoAdmin(
+  producto: ProductoAdmin | null,
+  errores: Partial<Record<string, ErrorSimulado>> = {},
+) {
+  const recibidos: Recibido[] = [];
+  const responder = async (metodo: string, ruta: string, request: Request) => {
+    const texto = await request.text();
+    recibidos.push(texto === '' ? { metodo, ruta } : { metodo, ruta, cuerpo: JSON.parse(texto) });
+    const error = errores[`${metodo} ${ruta}`];
+    if (error) return responderError(error);
+    return metodo === 'DELETE'
+      ? new HttpResponse(null, { status: 204 })
+      : HttpResponse.json({ datos: producto }, { status: metodo === 'POST' ? 201 : 200 });
+  };
+  servidor.use(
+    http.get('/api/v1/admin/productos/:id', () =>
+      producto
+        ? HttpResponse.json({ datos: producto })
+        : responderError({
+            status: 404,
+            codigo: 'NO_ENCONTRADO',
+            mensaje: 'El producto no existe.',
+          }),
+    ),
+    http.patch('/api/v1/admin/productos/:id', ({ request }) =>
+      responder('PATCH', 'producto', request),
+    ),
+    http.delete('/api/v1/admin/productos/:id', ({ request }) =>
+      responder('DELETE', 'producto', request),
+    ),
+    http.post('/api/v1/admin/productos/:id/:accion', ({ params, request }) =>
+      responder('POST', String(params.accion), request),
+    ),
+    http.put('/api/v1/admin/productos/:id/imagenes', ({ request }) =>
+      responder('PUT', 'imagenes', request),
+    ),
+    http.patch('/api/v1/admin/variantes/:id', ({ request }) =>
+      responder('PATCH', 'variante', request),
+    ),
+    http.delete('/api/v1/admin/variantes/:id', ({ request }) =>
+      responder('DELETE', 'variante', request),
+    ),
+    http.post('/api/v1/admin/variantes/:id/:accion', ({ params, request }) =>
+      responder('POST', `variante ${String(params.accion)}`, request),
+    ),
+  );
+  return recibidos;
+}

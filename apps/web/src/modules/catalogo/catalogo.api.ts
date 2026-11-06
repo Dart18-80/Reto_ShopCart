@@ -1,11 +1,15 @@
 import type {
   ActualizarCategoria,
+  ActualizarProducto,
+  ActualizarVariante,
   ConsultaBusqueda,
   ConsultaProductosAdmin,
   CrearAtributo,
   CrearCategoria,
   CrearProducto,
   CrearValorAtributo,
+  DatosVariante,
+  GuardarImagenes,
 } from '@shopcart/shared';
 import { api, ErrorApi, type Respuesta } from '../../shared/api';
 
@@ -21,6 +25,9 @@ export type ProductoResumenAdmin = ListaProductosAdmin['datos'][number];
 export type ProductoAdmin = Respuesta<'/api/v1/admin/productos/{id}', 'get'>['datos'];
 /** M6-H02: lo que el Admin hace con una categoría desde su fila. */
 export type AccionCategoria = 'activar' | 'desactivar' | 'eliminar';
+/** M6-H04: lo mismo para un producto o una variante. */
+export type AccionEstado = AccionCategoria;
+export type VarianteAdmin = ProductoAdmin['variantes'][number];
 
 // El middleware de errores ya convirtió toda respuesta de error en ErrorApi: un 2xx sin cuerpo es inesperado.
 function cuerpoDe<D>(data: D | undefined): D {
@@ -129,4 +136,72 @@ export async function listarProductosAdmin({
 export async function crearProducto(cuerpo: CrearProducto): Promise<ProductoAdmin> {
   const { data } = await api.POST('/api/v1/admin/productos', { body: cuerpo });
   return cuerpoDe(data).datos;
+}
+
+// --- Backoffice (M6-H04): el editor de un producto, sus imágenes y sus variantes. Toda operación responde y la
+// pantalla vuelve a pedir el producto: lo que se ve es lo que confirmó el backend.
+
+export async function obtenerProductoAdmin(idProducto: number): Promise<ProductoAdmin> {
+  const { data } = await api.GET('/api/v1/admin/productos/{id}', {
+    params: { path: { id: idProducto } },
+  });
+  return cuerpoDe(data).datos;
+}
+
+export async function actualizarProducto(
+  idProducto: number,
+  cambios: ActualizarProducto,
+): Promise<void> {
+  await api.PATCH('/api/v1/admin/productos/{id}', {
+    params: { path: { id: idProducto } },
+    body: cambios,
+  });
+}
+
+/** N-14: activar, desactivar o eliminar (solo sin historial: PRODUCTO_CON_HISTORIAL). */
+export async function cambiarProducto(idProducto: number, accion: AccionEstado): Promise<void> {
+  const params = { path: { id: idProducto } };
+  if (accion === 'eliminar') {
+    await api.DELETE('/api/v1/admin/productos/{id}', { params });
+  } else if (accion === 'activar') {
+    await api.POST('/api/v1/admin/productos/{id}/activar', { params });
+  } else {
+    await api.POST('/api/v1/admin/productos/{id}/desactivar', { params });
+  }
+}
+
+/** N-19: la lista completa de imágenes reemplaza la anterior. */
+export async function guardarImagenes(idProducto: number, cuerpo: GuardarImagenes): Promise<void> {
+  await api.PUT('/api/v1/admin/productos/{id}/imagenes', {
+    params: { path: { id: idProducto } },
+    body: cuerpo,
+  });
+}
+
+export async function crearVariante(idProducto: number, cuerpo: DatosVariante): Promise<void> {
+  await api.POST('/api/v1/admin/productos/{id}/variantes', {
+    params: { path: { id: idProducto } },
+    body: cuerpo,
+  });
+}
+
+export async function actualizarVariante(
+  idVariante: number,
+  cambios: ActualizarVariante,
+): Promise<void> {
+  await api.PATCH('/api/v1/admin/variantes/{id}', {
+    params: { path: { id: idVariante } },
+    body: cambios,
+  });
+}
+
+export async function cambiarVariante(idVariante: number, accion: AccionEstado): Promise<void> {
+  const params = { path: { id: idVariante } };
+  if (accion === 'eliminar') {
+    await api.DELETE('/api/v1/admin/variantes/{id}', { params });
+  } else if (accion === 'activar') {
+    await api.POST('/api/v1/admin/variantes/{id}/activar', { params });
+  } else {
+    await api.POST('/api/v1/admin/variantes/{id}/desactivar', { params });
+  }
 }

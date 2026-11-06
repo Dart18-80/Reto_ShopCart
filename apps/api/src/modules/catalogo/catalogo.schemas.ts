@@ -1,24 +1,24 @@
 import {
   actualizarCategoriaSchema as actualizarCategoriaCompartido,
+  actualizarProductoSchema as actualizarProductoCompartido,
+  actualizarVarianteSchema as actualizarVarianteCompartido,
+  cambiarPrecioSchema as cambiarPrecioCompartido,
   consultaBusquedaSchema,
   consultaProductosAdminSchema,
   crearAtributoSchema as crearAtributoCompartido,
   crearCategoriaSchema as crearCategoriaCompartido,
   crearProductoSchema as crearProductoCompartido,
+  crearVarianteSchema as crearVarianteCompartido,
+  guardarImagenesSchema as guardarImagenesCompartido,
   crearValorAtributoSchema as crearValorAtributoCompartido,
   ilustracionSchema,
   montoSchema,
-  ordenDespliegueSchema,
-  textoNvarchar,
 } from '@shopcart/shared';
 import { Decimal } from 'decimal.js';
-import { idEnRutaSchema, idSchema } from '../../shared/http/index.js';
+import { idEnRutaSchema } from '../../shared/http/index.js';
 import { registroOpenApi } from '../../shared/openapi/index.js';
 import { z } from '../../shared/openapi/zod.js';
 import { ESTADOS_EXISTENCIA } from './catalogo.types.js';
-
-const alMenosUnCampo = (cambios: object) => Object.keys(cambios).length > 0;
-const MENSAJE_SIN_CAMPOS = 'Indica al menos un campo.';
 
 // FE-03: los cuerpos de categorías y atributos viven en @shopcart/shared, los mismos que validan los formularios
 // del backoffice (M6-H02).
@@ -90,80 +90,36 @@ export const crearProductoSchema = registroOpenApi.register(
   crearProductoCompartido,
 );
 
-// PATCH: lo que no llega se conserva; descripcion en null se quita.
-export const actualizarProductoSchema = z
-  .object({
-    idCategoria: idSchema.optional(),
-    nombre: textoNvarchar(150).optional(),
-    descripcion: textoNvarchar(2000).nullable().optional(),
-  })
-  .strict()
-  .refine(alMenosUnCampo, MENSAJE_SIN_CAMPOS)
-  .openapi('ActualizarProducto');
+export const actualizarProductoSchema = registroOpenApi.register(
+  'ActualizarProducto',
+  actualizarProductoCompartido,
+);
 
 export const paramsIdProductoSchema = z.object({ id: idEnRutaSchema });
 
 // M6-H03: la consulta vive en @shopcart/shared, la misma que arma la tabla del backoffice.
 export const listarProductosSchema = consultaProductosAdminSchema;
 
-const MAXIMO_IMAGENES = 20;
-
-// N-19: una URL absoluta o una ruta servida por el contenedor web (/static/productos/…).
-const urlImagenSchema = textoNvarchar(500).refine(
-  (url) => url.startsWith('/') || /^https?:\/\//i.test(url),
-  'La URL debe empezar con / o con http(s)://.',
+// M6-H04: los cuerpos del editor viven en @shopcart/shared. Las rutas documentan el esquema compartido; el
+// controlador valida con la versión de entrada, que además pasa el precio de texto a Decimal (A-21).
+export const guardarImagenesSchema = registroOpenApi.register(
+  'GuardarImagenes',
+  guardarImagenesCompartido,
 );
 
-const imagenSchema = z
-  .object({
-    url: urlImagenSchema,
-    textoAlternativo: textoNvarchar(150),
-    orden: ordenDespliegueSchema,
-    esPrincipal: z.boolean(),
-  })
-  .strict();
+export const crearVarianteSchema = registroOpenApi.register(
+  'CrearVariante',
+  crearVarianteCompartido,
+);
+export const crearVarianteEntradaSchema = crearVarianteSchema.transform(({ precio, ...resto }) => ({
+  ...resto,
+  precio: new Decimal(precio),
+}));
 
-// El SP vuelve a validar lo mismo (A-22); aquí se responde antes y con el campo en el error.
-export const guardarImagenesSchema = z
-  .object({ imagenes: z.array(imagenSchema).max(MAXIMO_IMAGENES) })
-  .strict()
-  .refine(
-    ({ imagenes }) =>
-      imagenes.length === 0 || imagenes.filter((imagen) => imagen.esPrincipal).length === 1,
-    { message: 'Debe haber exactamente una imagen principal.', path: ['imagenes'] },
-  )
-  .refine(
-    ({ imagenes }) => new Set(imagenes.map((imagen) => imagen.orden)).size === imagenes.length,
-    { message: 'Dos imágenes no pueden tener el mismo orden.', path: ['imagenes'] },
-  )
-  .openapi('GuardarImagenes');
-
-// --- Variantes (E3-H03).
-
-// SKU VARCHAR(40): solo ASCII visible, porque un carácter fuera de ASCII se perdería en la base.
-const skuSchema = z
-  .string()
-  .trim()
-  .regex(/^[\x21-\x7E]{1,40}$/, 'El SKU tiene de 1 a 40 caracteres ASCII visibles, sin espacios.');
-
-// A-22: la combinación son IDs de ValorAtributo; el SP valida existencia, repetidos y el conjunto.
-const MAXIMO_VALORES = 4;
-const valoresSchema = z.array(idSchema).max(MAXIMO_VALORES);
-
-const precioSchema = montoSchema
-  .refine((precio) => !/^0+(\.0+)?$/.test(precio), 'El precio debe ser mayor que cero.')
-  .transform((precio) => new Decimal(precio));
-
-export const crearVarianteSchema = z
-  .object({ sku: skuSchema, valores: valoresSchema, precio: precioSchema })
-  .strict()
-  .openapi('CrearVariante');
-
-export const actualizarVarianteSchema = z
-  .object({ sku: skuSchema.optional(), valores: valoresSchema.optional() })
-  .strict()
-  .refine(alMenosUnCampo, MENSAJE_SIN_CAMPOS)
-  .openapi('ActualizarVariante');
+export const actualizarVarianteSchema = registroOpenApi.register(
+  'ActualizarVariante',
+  actualizarVarianteCompartido,
+);
 
 export const paramsIdVarianteSchema = z.object({ id: idEnRutaSchema });
 
@@ -195,10 +151,13 @@ export const productoBusquedaSchema = z
 
 // --- Precios (E3-H04).
 
-export const cambiarPrecioSchema = z
-  .object({ precio: precioSchema })
-  .strict()
-  .openapi('CambiarPrecio');
+export const cambiarPrecioSchema = registroOpenApi.register(
+  'CambiarPrecio',
+  cambiarPrecioCompartido,
+);
+export const cambiarPrecioEntradaSchema = cambiarPrecioSchema.transform(({ precio }) => ({
+  precio: new Decimal(precio),
+}));
 
 export const versionPrecioSchema = z
   .object({
@@ -306,6 +265,6 @@ export type CrearValorAtributo = z.infer<typeof crearValorAtributoSchema>;
 export type CrearProducto = z.infer<typeof crearProductoSchema>;
 export type ActualizarProducto = z.infer<typeof actualizarProductoSchema>;
 export type GuardarImagenes = z.infer<typeof guardarImagenesSchema>;
-export type CrearVariante = z.infer<typeof crearVarianteSchema>;
+export type CrearVariante = z.output<typeof crearVarianteEntradaSchema>;
 export type ActualizarVariante = z.infer<typeof actualizarVarianteSchema>;
-export type CambiarPrecio = z.infer<typeof cambiarPrecioSchema>;
+export type CambiarPrecio = z.output<typeof cambiarPrecioEntradaSchema>;

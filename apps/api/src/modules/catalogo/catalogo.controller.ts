@@ -6,12 +6,12 @@ import {
   actualizarProductoSchema,
   actualizarVarianteSchema,
   buscarProductosSchema,
-  cambiarPrecioSchema,
+  cambiarPrecioEntradaSchema,
   crearAtributoSchema,
   crearCategoriaSchema,
   crearProductoSchema,
   crearValorAtributoSchema,
-  crearVarianteSchema,
+  crearVarianteEntradaSchema,
   guardarImagenesSchema,
   listarProductosSchema,
   paramsIdAtributoSchema,
@@ -207,7 +207,7 @@ export function crearCatalogoController(servicio: CatalogoService): CatalogoCont
     ),
 
     crearVariante: manejar(
-      { params: paramsIdProductoSchema, body: crearVarianteSchema },
+      { params: paramsIdProductoSchema, body: crearVarianteEntradaSchema },
       async ({ params, body }, res) => {
         const producto = await servicio.crearVariante(params.id, body);
         res.status(HTTP_CREADO).json({ datos: productoAdminJson(producto) });
@@ -239,7 +239,7 @@ export function crearCatalogoController(servicio: CatalogoService): CatalogoCont
     }),
 
     cambiarPrecio: manejar(
-      { params: paramsIdVarianteSchema, body: cambiarPrecioSchema },
+      { params: paramsIdVarianteSchema, body: cambiarPrecioEntradaSchema },
       async ({ params, body }, res) => {
         res.json({ datos: versionesJson(await servicio.cambiarPrecio(params.id, body)) });
       },

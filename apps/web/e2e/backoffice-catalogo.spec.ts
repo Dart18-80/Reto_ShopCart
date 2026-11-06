@@ -1,4 +1,5 @@
 import { crearAdministrador, expect, iniciarSesionPorApi, nombreUnico, test } from './fixtures';
+import { prueba } from './tienda';
 
 interface Lista<T> {
   datos: T[];
@@ -37,4 +38,33 @@ test.describe('backoffice: categorías y atributos (M6-H02)', () => {
       }
     }
   });
+});
+
+prueba.describe('backoffice: editor de producto (M6-H04)', () => {
+  prueba(
+    'una variante nueva aparece en el detalle de la tienda con su color y su talla',
+    async ({ page, apiAdmin, crearEnTienda }) => {
+      const nombre = `Camisa ${nombreUnico('editor')}`;
+      const idProducto = await crearEnTienda(nombre, []);
+      await iniciarSesionPorApi(page, await crearAdministrador(apiAdmin));
+
+      await page.goto(`/backoffice/catalogo/productos/${String(idProducto)}`);
+      await page.getByRole('button', { name: 'Agregar variante' }).click();
+      const dialogo = page.getByRole('dialog', { name: 'Agregar variante' });
+      await dialogo.getByLabel('SKU').fill(nombreUnico('sku').slice(-40));
+      await dialogo.getByLabel('Color').selectOption('Azul');
+      await dialogo.getByLabel('Talla').selectOption('M');
+      await dialogo.getByLabel('Precio inicial').fill('199.00');
+      await dialogo.getByRole('button', { name: 'Guardar variante' }).click();
+      await expect(dialogo).toBeHidden();
+      await expect(page.getByRole('row').filter({ hasText: 'Q199.00' })).toBeVisible();
+
+      await page.goto(`/productos/${String(idProducto)}`);
+      await expect(page.getByRole('heading', { name: nombre })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Azul' })).toBeVisible();
+      await expect(
+        page.getByRole('group', { name: 'Talla' }).getByRole('button', { name: 'M' }),
+      ).toBeVisible();
+    },
+  );
 });
