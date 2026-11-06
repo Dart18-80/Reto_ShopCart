@@ -1,40 +1,23 @@
+import { consultaPaginacionSchema, idEnRutaSchema } from '../../shared/http/index.js';
+import { registroOpenApi } from '../../shared/openapi/index.js';
+import { z } from '../../shared/openapi/zod.js';
 import {
   consultaExistenciasSchema as consultaExistenciasCompartida,
-  textoNvarchar,
+  registrarAjusteSchema as registrarAjusteCompartido,
+  registrarEntradaSchema as registrarEntradaCompartido,
 } from '@shopcart/shared';
-import { consultaPaginacionSchema, idEnRutaSchema, idSchema } from '../../shared/http/index.js';
-import { z } from '../../shared/openapi/zod.js';
 import { TIPOS_MOVIMIENTO } from './inventario.types.js';
 
-// Tope técnico de un movimiento: mantiene lejos el desborde de INT al sumar a la existencia.
-const CANTIDAD_MAXIMA = 1_000_000;
-
-// CA de E3-H06: un motivo ausente, vacío o de solo espacios lo rechaza el SP con MOTIVO_REQUERIDO, no Zod.
-const motivoSchema = z.union([textoNvarchar(250), z.string().regex(/^\s*$/)]).optional();
-
-export const registrarEntradaSchema = z
-  .object({
-    idVariante: idSchema,
-    cantidad: z.number().int().min(1).max(CANTIDAD_MAXIMA),
-    motivo: motivoSchema,
-    referencia: textoNvarchar(100).optional(),
-  })
-  .strict()
-  .openapi('RegistrarEntrada');
-
-export const registrarAjusteSchema = z
-  .object({
-    idVariante: idSchema,
-    cantidad: z
-      .number()
-      .int()
-      .min(-CANTIDAD_MAXIMA)
-      .max(CANTIDAD_MAXIMA)
-      .refine((cantidad) => cantidad !== 0, 'La cantidad del ajuste no puede ser cero.'),
-    motivo: motivoSchema,
-  })
-  .strict()
-  .openapi('RegistrarAjuste');
+// FE-03 (M7-H02): los cuerpos de entradas y ajustes viven en @shopcart/shared, los mismos que validan los
+// formularios del backoffice.
+export const registrarEntradaSchema = registroOpenApi.register(
+  'RegistrarEntrada',
+  registrarEntradaCompartido,
+);
+export const registrarAjusteSchema = registroOpenApi.register(
+  'RegistrarAjuste',
+  registrarAjusteCompartido,
+);
 
 export const consultaKardexSchema = consultaPaginacionSchema.extend({ variante: idEnRutaSchema });
 

@@ -8,5 +8,10 @@
     "metodo": "GET",
     "ruta": "/api/v1/direcciones/{id}",
     "motivo": "GET /direcciones ya trae cada dirección completa: la cuenta edita desde la lista (M4-H01) y el checkout elige de ella (M4-H02)."
+  },
+  {
+    "metodo": "GET",
+    "ruta": "/api/v1/inventario/bodega",
+    "motivo": "Could de E3 (VW_Inventario_ExistenciaBodega): ninguna historia de la fase 2 tiene pantalla de bodega; /backoffice/inventario (M7-H01) muestra física, reservado y disponible."
   }
 ]

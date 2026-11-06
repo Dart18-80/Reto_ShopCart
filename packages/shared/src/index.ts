@@ -72,10 +72,15 @@ export {
   type CrearDireccion,
 } from './direcciones.js';
 export {
+  CANTIDAD_MAXIMA_MOVIMIENTO,
   consultaExistenciasSchema,
   ordenExistenciasSchema,
+  registrarAjusteSchema,
+  registrarEntradaSchema,
   type ConsultaExistencias,
   type OrdenExistencias,
+  type RegistrarAjuste,
+  type RegistrarEntrada,
 } from './inventario.js';
 export { montoMenorOIgual, montoSchema } from './monto.js';
 export { ordenConsultaSchema, type DireccionOrden } from './orden.js';

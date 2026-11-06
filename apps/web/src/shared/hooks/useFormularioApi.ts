@@ -14,6 +14,13 @@ const detallesDeValidacionSchema = z
   .object({ errores: z.array(z.object({ campo: z.string(), mensaje: z.string() })) })
   .transform(({ errores }) => errores);
 
+/**
+ * El campo de un código del backend. Con `mensaje`, el texto se arma con lo que el backend manda en `detalles`
+ * (el máximo ajustable de M7-H02); sin él, va el mensaje del backend tal cual.
+ */
+export type CampoDelCodigo<Entrada extends FieldValues> =
+  Path<Entrada> | { campo: Path<Entrada>; mensaje: (error: ErrorApi) => string };
+
 interface OpcionesFormularioApi<Entrada extends FieldValues, Salida, Respuesta> {
   /** El esquema de `@shopcart/shared`, el mismo que valida la API (FE-03). */
   esquema: z.ZodType<Salida, Entrada>;
@@ -25,7 +32,7 @@ interface OpcionesFormularioApi<Entrada extends FieldValues, Salida, Respuesta> 
    * Los 409 o 422 que corresponden a un campo y no al formulario entero: `{ CORREO_EN_USO: 'correo' }` pone el
    * mensaje del backend en ese campo en lugar del aviso general.
    */
-  campoPorCodigo?: Partial<Record<string, Path<Entrada>>>;
+  campoPorCodigo?: Partial<Record<string, CampoDelCodigo<Entrada>>>;
 }
 
 /**
@@ -69,7 +76,11 @@ export function useFormularioApi<Entrada extends FieldValues, Salida, Respuesta>
   function mostrarError(error: ErrorApi) {
     const campoDelCodigo = campoPorCodigo[error.codigo];
     if (campoDelCodigo !== undefined) {
-      form.setError(campoDelCodigo, { type: 'server', message: error.mensaje });
+      const { campo, mensaje } =
+        typeof campoDelCodigo === 'string'
+          ? { campo: campoDelCodigo, mensaje: error.mensaje }
+          : { campo: campoDelCodigo.campo, mensaje: campoDelCodigo.mensaje(error) };
+      form.setError(campo, { type: 'server', message: mensaje });
       return;
     }
     if (error.status !== STATUS_VALIDACION || marcarCampos(error)) setErrorGeneral(error);

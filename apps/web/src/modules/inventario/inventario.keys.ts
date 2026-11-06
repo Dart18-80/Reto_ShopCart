@@ -6,4 +6,6 @@ export const inventarioKeys = {
   listaExistencias: (consulta: ConsultaExistencias) =>
     [...inventarioKeys.existencias(), consulta] as const,
   conciliacion: () => [...inventarioKeys.todo, 'conciliacion'] as const,
+  kardex: (idVariante: number, pagina: number) =>
+    [...inventarioKeys.todo, 'kardex', idVariante, pagina] as const,
 };

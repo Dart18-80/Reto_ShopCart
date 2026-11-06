@@ -2,7 +2,8 @@
 -- (FU_Inventario_Disponible), paginadas (M6-H01: @Orden sku | producto | disponible y @Direccion; por
 -- defecto, lo menos disponible primero); con @IDVariante, solo esa variante. M7-H01: @Texto busca en el nombre del
 -- producto sin tildes ni mayúsculas (A-10, como la tienda) y en el SKU por su prefijo; se busca literal
--- (FU_Catalogo_PatronBusqueda escapa los comodines) y viaja como parámetro.
+-- (FU_Catalogo_PatronBusqueda escapa los comodines) y viaja como parámetro. RNF-1: el '%texto%' recorre solo
+-- Producto (A-10); el prefijo del SKU usa UQ_Variante_SKU, y va en VARCHAR como la columna para no convertirla.
 CREATE OR ALTER PROCEDURE dbo.SP_Inventario_ListarExistencias
     @IDVariante     INT,
     @Texto          NVARCHAR(150)    = NULL,
