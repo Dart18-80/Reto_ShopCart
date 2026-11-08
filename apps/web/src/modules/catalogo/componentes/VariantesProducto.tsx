@@ -1,4 +1,5 @@
 import { Aviso } from '../../../shared/componentes/Aviso';
+import { DialogoConfirmacion } from '../../../shared/componentes/DialogoConfirmacion';
 import { Monto } from '../../../shared/componentes/Monto';
 import { TablaLocal, type ColumnaTabla } from '../../../shared/componentes/TablaServidor';
 import { formatearConteo } from '../../../shared/formato/conteo';
@@ -80,17 +81,19 @@ const columnas = ({
         >
           {v.activo ? 'Desactivar' : 'Activar'}
         </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={ocupada}
-          aria-label={`Eliminar ${v.sku}`}
-          onClick={() => {
+        <DialogoConfirmacion
+          titulo={`¿Eliminar ${v.sku}?`}
+          descripcion="Se borra la variante con su historial de precios, y no se puede deshacer. Si no se puede eliminar, verás el motivo."
+          textoConfirmar="Eliminar variante"
+          disparador={
+            <Button variant="ghost" size="sm" disabled={ocupada} aria-label={`Eliminar ${v.sku}`}>
+              Eliminar
+            </Button>
+          }
+          alConfirmar={() => {
             cambiar(v.idVariante, 'eliminar');
           }}
-        >
-          Eliminar
-        </Button>
+        />
       </div>
     ),
   },

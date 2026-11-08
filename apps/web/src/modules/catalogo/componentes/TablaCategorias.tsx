@@ -1,4 +1,5 @@
 import { Aviso } from '../../../shared/componentes/Aviso';
+import { DialogoConfirmacion } from '../../../shared/componentes/DialogoConfirmacion';
 import { Prenda } from '../../../shared/componentes/prenda/Prenda';
 import { TablaLocal, type ColumnaTabla } from '../../../shared/componentes/TablaServidor';
 import { Button } from '../../../shared/ui/button';
@@ -40,17 +41,19 @@ function Acciones({
       >
         {activo ? 'Desactivar' : 'Activar'}
       </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        disabled={ocupada}
-        aria-label={`Eliminar ${nombre}`}
-        onClick={() => {
+      <DialogoConfirmacion
+        titulo={`¿Eliminar ${nombre}?`}
+        descripcion="Se borra la categoría, y no se puede deshacer. Si no se puede eliminar, verás el motivo."
+        textoConfirmar="Eliminar categoría"
+        disparador={
+          <Button variant="ghost" size="sm" disabled={ocupada} aria-label={`Eliminar ${nombre}`}>
+            Eliminar
+          </Button>
+        }
+        alConfirmar={() => {
           cambiar(idCategoria, 'eliminar');
         }}
-      >
-        Eliminar
-      </Button>
+      />
     </div>
   );
 }

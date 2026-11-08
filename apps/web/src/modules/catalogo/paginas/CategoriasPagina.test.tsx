@@ -116,6 +116,10 @@ describe('CategoriasPagina (M6-H02)', () => {
     const { usuario } = abrir();
 
     await usuario.click(await screen.findByRole('button', { name: 'Eliminar Camisas y blusas' }));
+    const confirmacion = within(
+      await screen.findByRole('alertdialog', { name: '¿Eliminar Camisas y blusas?' }),
+    );
+    await usuario.click(confirmacion.getByRole('button', { name: 'Eliminar categoría' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'La categoría tiene productos: solo se puede desactivar.',

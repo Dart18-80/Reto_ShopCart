@@ -138,6 +138,24 @@ describe('GestionCatalogoPagina, productos y precios (M6-H03)', () => {
     expect(recibidos).toEqual([{ nombre: 'Bufanda', idCategoria: 2, activo: true }]);
   });
 
+  it('si las categorías no cargan, lo dice con Reintentar y la tabla sigue funcionando', async () => {
+    preparar();
+    servidor.use(
+      http.get('/api/v1/admin/categorias', () =>
+        HttpResponse.json(
+          { error: { codigo: 'ERROR_INTERNO', mensaje: 'Algo salió mal.', requestId: 'r' } },
+          { status: 500 },
+        ),
+      ),
+    );
+    abrir();
+
+    const aviso = await screen.findByRole('alert');
+    expect(aviso).toHaveTextContent('No pudimos cargar las categorías.');
+    expect(within(aviso).getByRole('button', { name: 'Reintentar' })).toBeInTheDocument();
+    expect(await screen.findByText('Camisa Oxford')).toBeInTheDocument();
+  });
+
   it('sin categoría elegida, el formulario lo marca con el mismo esquema que la API', async () => {
     preparar();
     const { usuario } = abrir();

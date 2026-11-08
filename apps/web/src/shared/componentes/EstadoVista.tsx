@@ -37,7 +37,14 @@ const ESQUELETO = (
   </div>
 );
 
-function AvisoDeError({ error, onReintentar }: { error: ErrorApi; onReintentar: () => void }) {
+interface PropsAvisoDeError {
+  error: ErrorApi;
+  onReintentar: () => void;
+  /** Qué no se pudo cargar, cuando la página tiene más de una consulta. */
+  titulo?: string;
+}
+
+function AvisoDeError({ error, onReintentar, titulo }: PropsAvisoDeError) {
   return (
     <Aviso
       tipo="error"
@@ -48,6 +55,7 @@ function AvisoDeError({ error, onReintentar }: { error: ErrorApi; onReintentar: 
         </Button>
       }
     >
+      {titulo && <p className="texto-pequeno-fuerte">{titulo}</p>}
       <p>{error.mensaje}</p>
       {error.requestId && (
         <p className="texto-nota text-muted-foreground mt-1">
@@ -55,6 +63,29 @@ function AvisoDeError({ error, onReintentar }: { error: ErrorApi; onReintentar: 
         </p>
       )}
     </Aviso>
+  );
+}
+
+/**
+ * Una consulta auxiliar (las opciones de un formulario o de un filtro) que falla no se calla: se avisa arriba con
+ * Reintentar, mientras el resto de la página sigue funcionando.
+ */
+export function AvisoConsultaFallida({
+  consulta,
+  titulo,
+}: {
+  consulta: UseQueryResult;
+  titulo: string;
+}) {
+  if (!consulta.isError) return null;
+  return (
+    <AvisoDeError
+      error={consulta.error}
+      titulo={titulo}
+      onReintentar={() => {
+        void consulta.refetch();
+      }}
+    />
   );
 }
 

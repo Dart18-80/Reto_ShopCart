@@ -4,7 +4,8 @@ import { Link, useNavigate, useParams } from 'react-router';
 import type { ErrorApi } from '../../../shared/api';
 import { Aviso } from '../../../shared/componentes/Aviso';
 import { AvisoDePagina } from '../../../shared/componentes/AvisoDePagina';
-import { EstadoVista } from '../../../shared/componentes/EstadoVista';
+import { DialogoConfirmacion } from '../../../shared/componentes/DialogoConfirmacion';
+import { AvisoConsultaFallida, EstadoVista } from '../../../shared/componentes/EstadoVista';
 import { useTituloPagina } from '../../../shared/hooks/useTituloPagina';
 import { Button } from '../../../shared/ui/button';
 import type { ProductoAdmin } from '../catalogo.api';
@@ -89,15 +90,19 @@ function Editor({ producto }: { producto: ProductoAdmin }) {
           )}
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button
-            variant="ghost"
-            disabled={cambiar.isPending}
-            onClick={() => {
+          <DialogoConfirmacion
+            titulo={`¿Eliminar ${producto.nombre}?`}
+            descripcion="Se borran el producto, sus imágenes y sus variantes, y no se puede deshacer. Si no se puede eliminar, verás el motivo."
+            textoConfirmar="Eliminar producto"
+            disparador={
+              <Button variant="ghost" disabled={cambiar.isPending}>
+                Eliminar producto
+              </Button>
+            }
+            alConfirmar={() => {
               cambiar.mutate('eliminar', { onSuccess: () => void navigate(RUTA_LISTA) });
             }}
-          >
-            Eliminar producto
-          </Button>
+          />
           <Button
             variant="outline"
             disabled={cambiar.isPending}
@@ -121,6 +126,8 @@ function Editor({ producto }: { producto: ProductoAdmin }) {
           }}
         />
       )}
+      <AvisoConsultaFallida consulta={categorias} titulo="No pudimos cargar las categorías." />
+      <AvisoConsultaFallida consulta={atributos} titulo="No pudimos cargar los atributos." />
       <div className="grid items-start gap-6 md:grid-cols-[1fr_20rem]">
         <DatosProducto producto={producto} categorias={categorias.data ?? []} />
         <ImagenesProducto producto={producto} />

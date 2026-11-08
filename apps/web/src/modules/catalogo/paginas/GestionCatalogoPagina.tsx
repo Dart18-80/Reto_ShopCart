@@ -1,5 +1,6 @@
 import { consultaProductosAdminSchema, type OrdenProductosAdmin } from '@shopcart/shared';
 import { Link } from 'react-router';
+import { AvisoConsultaFallida } from '../../../shared/componentes/EstadoVista';
 import { TablaServidor, type ColumnaTabla } from '../../../shared/componentes/TablaServidor';
 import { useParametrosUrl } from '../../../shared/hooks/useParametrosUrl';
 import { useTituloPagina } from '../../../shared/hooks/useTituloPagina';
@@ -87,6 +88,7 @@ export function GestionCatalogoPagina() {
           <DialogoNuevoProducto categorias={lista} />
         </div>
       </div>
+      <AvisoConsultaFallida consulta={categorias} titulo="No pudimos cargar las categorías." />
       <TablaServidor
         titulo="Productos"
         columnas={columnas}

@@ -1,4 +1,5 @@
 import { screen, waitFor, within } from '@testing-library/react';
+import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
 import { crearRutas } from '../../../app/router';
 import {
@@ -10,6 +11,7 @@ import {
   varianteAdminDePrueba,
 } from '../../../test/handlers/catalogo-admin';
 import { renderizarRutas } from '../../../test/renderizar';
+import { servidor } from '../../../test/servidor';
 
 const abrir = () =>
   renderizarRutas(crearRutas(), { ruta: '/backoffice/catalogo/productos/5', rol: 'Administrador' });
@@ -100,6 +102,8 @@ describe('ProductoAdminPagina, el editor de producto (M6-H04)', () => {
     const { usuario } = abrir();
 
     await usuario.click(await screen.findByRole('button', { name: 'Eliminar producto' }));
+    const confirmacion = within(await screen.findByRole('alertdialog'));
+    await usuario.click(confirmacion.getByRole('button', { name: 'Eliminar producto' }));
     const aviso = await screen.findByRole('alert');
     expect(aviso).toHaveTextContent(
       'El producto tiene ventas o movimientos: desactívalo en lugar de eliminarlo.',
@@ -112,6 +116,53 @@ describe('ProductoAdminPagina, el editor de producto (M6-H04)', () => {
         'POST desactivar',
       ]);
     });
+  });
+
+  it('eliminar pide confirmación: «Cancelar» no envía nada', async () => {
+    const recibidos = preparar();
+    const { usuario } = abrir();
+
+    await usuario.click(await screen.findByRole('button', { name: 'Eliminar producto' }));
+    const confirmacion = within(
+      await screen.findByRole('alertdialog', { name: '¿Eliminar Camisa Oxford?' }),
+    );
+    await usuario.click(confirmacion.getByRole('button', { name: 'Cancelar' }));
+
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(recibidos).toEqual([]);
+  });
+
+  it('eliminar una variante confirmada la envía al backend', async () => {
+    const recibidos = preparar();
+    const { usuario } = abrir();
+
+    const tabla = await variantes();
+    await usuario.click(tabla.getByRole('button', { name: 'Eliminar CAM-OXF-BL-S' }));
+    const confirmacion = within(
+      await screen.findByRole('alertdialog', { name: '¿Eliminar CAM-OXF-BL-S?' }),
+    );
+    await usuario.click(confirmacion.getByRole('button', { name: 'Eliminar variante' }));
+
+    await waitFor(() => {
+      expect(recibidos.map((r) => `${r.metodo} ${r.ruta}`)).toEqual(['DELETE variante']);
+    });
+  });
+
+  it('si los atributos no cargan, lo dice con Reintentar en lugar de dejar el formulario sin opciones', async () => {
+    preparar();
+    servidor.use(
+      http.get('/api/v1/admin/atributos', () =>
+        HttpResponse.json(
+          { error: { codigo: 'ERROR_INTERNO', mensaje: 'Algo salió mal.', requestId: 'r' } },
+          { status: 500 },
+        ),
+      ),
+    );
+    abrir();
+
+    const aviso = await screen.findByRole('alert');
+    expect(aviso).toHaveTextContent('No pudimos cargar los atributos.');
+    expect(within(aviso).getByRole('button', { name: 'Reintentar' })).toBeInTheDocument();
   });
 
   it('agregar una variante: SKU, un valor por atributo y el precio inicial', async () => {
