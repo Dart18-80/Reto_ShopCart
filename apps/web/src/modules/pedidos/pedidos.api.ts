@@ -3,7 +3,10 @@ import type {
   CancelarPedido,
   ConsultaPedidosGestion,
   consultaPaginacionSchema,
+  ConsultaReembolsos,
   RegistrarDevolucion,
+  ResolverPago,
+  ResolverReembolso,
 } from '@shopcart/shared';
 import type { z } from 'zod';
 import { api, ErrorApi, type Respuesta } from '../../shared/api';
@@ -17,6 +20,14 @@ export type EstadoReembolso = Cancelacion['reembolso']['estado'];
 export type ListaGestion = Respuesta<'/api/v1/admin/pedidos', 'get'>;
 export type ResumenGestion = ListaGestion['datos'][number];
 export type PedidoGestion = Respuesta<'/api/v1/admin/pedidos/{id}', 'get'>['datos'];
+export type ListaReembolsos = Respuesta<'/api/v1/admin/reembolsos', 'get'>;
+export type Reembolso = ListaReembolsos['datos'][number];
+export type ListaPagosEnRevision = Respuesta<'/api/v1/admin/pagos/en-revision', 'get'>;
+export type PagoEnRevision = ListaPagosEnRevision['datos'][number];
+export type ReembolsoReintentado = Respuesta<
+  '/api/v1/admin/reembolsos/{id}/reintentar',
+  'post'
+>['datos'];
 export type DevolucionRegistrada = Respuesta<
   '/api/v1/admin/pedidos/{id}/devoluciones',
   'post'
@@ -105,3 +116,50 @@ export async function registrarDevolucion(
   });
   return cuerpoDe(data).datos;
 }
+
+// --- Revisión manual (E9-H04, M8-H05): solo el Administrador.
+
+export async function listarReembolsos(consulta: ConsultaReembolsos): Promise<ListaReembolsos> {
+  const { data } = await api.GET('/api/v1/admin/reembolsos', { params: { query: consulta } });
+  return cuerpoDe(data);
+}
+
+/** N-09: vuelve a Pendiente un Fallido y lo procesa con la misma llave (nunca reembolsa dos veces). */
+export async function reintentarReembolso(idReembolso: number): Promise<ReembolsoReintentado> {
+  const { data } = await api.POST('/api/v1/admin/reembolsos/{id}/reintentar', {
+    params: { path: { id: idReembolso } },
+  });
+  return cuerpoDe(data).datos;
+}
+
+export async function resolverReembolso(
+  idReembolso: number,
+  cuerpo: ResolverReembolso,
+): Promise<Reembolso> {
+  const { data } = await api.POST('/api/v1/admin/reembolsos/{id}/resolver', {
+    params: { path: { id: idReembolso } },
+    body: cuerpo,
+  });
+  return cuerpoDe(data).datos;
+}
+
+export async function listarPagosEnRevision(
+  consulta: ConsultaMisPedidos,
+): Promise<ListaPagosEnRevision> {
+  const { data } = await api.GET('/api/v1/admin/pagos/en-revision', {
+    params: { query: consulta },
+  });
+  return cuerpoDe(data);
+}
+
+// El contrato describe `pedido` (un Pedido o null) con un allOf que openapi-typescript vuelve inservible; el tipo
+// sale de lo que devuelve el cliente `api`, que sí lo resuelve.
+export async function resolverPago(idIntentoPago: number, cuerpo: ResolverPago) {
+  const { data } = await api.POST('/api/v1/admin/pagos/{id}/resolver', {
+    params: { path: { id: idIntentoPago } },
+    body: cuerpo,
+  });
+  return cuerpoDe(data).datos;
+}
+
+export type PagoResuelto = Awaited<ReturnType<typeof resolverPago>>;

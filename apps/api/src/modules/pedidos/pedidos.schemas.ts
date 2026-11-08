@@ -7,12 +7,13 @@ import {
   cambiarEstadoPedidoSchema as cambiarEstadoCompartido,
   cancelarPedidoSchema as cancelarCompartido,
   consultaPedidosGestionSchema,
+  consultaReembolsosSchema,
   registrarDevolucionSchema as registrarDevolucionCompartido,
-  textoNvarchar,
+  resolverPagoSchema as resolverPagoCompartido,
+  resolverReembolsoSchema as resolverReembolsoCompartido,
 } from '@shopcart/shared';
 import { registroOpenApi } from '../../shared/openapi/index.js';
 import { z } from '../../shared/openapi/zod.js';
-import { ESTADOS_REEMBOLSO, RESOLUCIONES_PAGO } from './pedidos.types.js';
 
 export const paramsIdPedidoSchema = z.object({ id: idEnRutaSchema });
 
@@ -37,9 +38,8 @@ export const cancelarPedidoSchema = registroOpenApi.register('CancelarPedido', c
 
 export const paramsIdReembolsoSchema = z.object({ id: idEnRutaSchema });
 
-export const listarReembolsosSchema = consultaPaginacionSchema.extend({
-  estado: z.enum(ESTADOS_REEMBOLSO).optional(),
-});
+// FE-03: la consulta y los cuerpos de la revisión manual viven en @shopcart/shared (M8-H05).
+export const listarReembolsosSchema = consultaReembolsosSchema;
 
 export type ListarReembolsos = z.infer<typeof listarReembolsosSchema>;
 
@@ -50,17 +50,14 @@ export const listarPagosEnRevisionSchema = consultaPaginacionSchema;
 
 export type ListarPagosEnRevision = z.infer<typeof listarPagosEnRevisionSchema>;
 
-export const resolverPagoSchema = z
-  .object({ resolucion: z.enum(RESOLUCIONES_PAGO), motivo: textoNvarchar(250) })
-  .strict()
-  .openapi('ResolverPago');
+export const resolverPagoSchema = registroOpenApi.register('ResolverPago', resolverPagoCompartido);
 
 export type ResolverPago = z.infer<typeof resolverPagoSchema>;
 
-export const resolverReembolsoSchema = z
-  .object({ motivo: textoNvarchar(250), referencia: textoNvarchar(100) })
-  .strict()
-  .openapi('ResolverReembolso');
+export const resolverReembolsoSchema = registroOpenApi.register(
+  'ResolverReembolso',
+  resolverReembolsoCompartido,
+);
 
 export type ResolverReembolso = z.infer<typeof resolverReembolsoSchema>;
 

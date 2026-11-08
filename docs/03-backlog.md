@@ -798,7 +798,7 @@ El orden de construcción, por módulos (F1, módulos 1 a 11 y F6), está en [`0
 | M8-H02 | Lista y detalle de gestión | Must | 0.75 | Hecha |
 | M8-H03 | Cambiar estado y cancelar | Must | 0.5 | Hecha |
 | M8-H04 | Devoluciones | Must | 0.5 | Hecha |
-| M8-H05 | Reembolsos y pagos en revisión | Should | 0.75 | Lista |
+| M8-H05 | Reembolsos y pagos en revisión | Should | 0.75 | Hecha |
 | M9-H01 | Cupones | Must | 0.75 | Lista |
 | M9-H02 | Envíos y configuración | Should | 0.5 | Lista |
 | M10-H01 | Usuarios | Must | 0.75 | Lista |

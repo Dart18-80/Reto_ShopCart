@@ -1,4 +1,4 @@
-import type { ConsultaPedidosGestion } from '@shopcart/shared';
+import type { ConsultaPedidosGestion, ConsultaReembolsos } from '@shopcart/shared';
 import type { ConsultaMisPedidos } from './pedidos.api';
 
 export const pedidosKeys = {
@@ -12,4 +12,11 @@ export const pedidosKeys = {
   listaGestion: (consulta: ConsultaPedidosGestion) =>
     [...pedidosKeys.listasGestion(), consulta] as const,
   detalleGestion: (idPedido: number) => [...pedidosKeys.gestion(), 'detalle', idPedido] as const,
+  // M8-H05: la revisión manual del Administrador.
+  reembolsos: () => [...pedidosKeys.todo, 'reembolsos'] as const,
+  listaReembolsos: (consulta: ConsultaReembolsos) =>
+    [...pedidosKeys.reembolsos(), consulta] as const,
+  pagosEnRevision: () => [...pedidosKeys.todo, 'pagos-en-revision'] as const,
+  listaPagosEnRevision: (consulta: ConsultaMisPedidos) =>
+    [...pedidosKeys.pagosEnRevision(), consulta] as const,
 };

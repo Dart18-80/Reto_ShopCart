@@ -1,7 +1,9 @@
-import type { EstadoPedido } from '@shopcart/shared';
+import type { EstadoPedido, EstadoReembolso, ResolucionPago } from '@shopcart/shared';
 import type { Decimal } from 'decimal.js';
 
-export type { EstadoPedido };
+// Los estados y las resoluciones viven en @shopcart/shared: la web los usa en sus filtros y formularios.
+export { ESTADOS_REEMBOLSO, RESOLUCIONES_PAGO } from '@shopcart/shared';
+export type { EstadoPedido, EstadoReembolso, ResolucionPago };
 
 export interface LineaPedido {
   idDetallePedido: number;
@@ -99,16 +101,6 @@ export interface ResumenPedidoGestion extends ResumenPedido {
   cliente: { idUsuario: number; nombre: string; correo: string };
 }
 
-/** N-09, N-10: el estado de un reembolso. */
-export const ESTADOS_REEMBOLSO = [
-  'Pendiente',
-  'Completado',
-  'Fallido',
-  'ResueltoManual',
-  'NoAplica',
-] as const;
-export type EstadoReembolso = (typeof ESTADOS_REEMBOLSO)[number];
-
 /** E9-H04: un cobro capturado sin pedido se devuelve con un reembolso SinPedido, que apunta al intento. */
 export const ORIGENES_REEMBOLSO = ['Cancelacion', 'Devolucion', 'SinPedido'] as const;
 
@@ -132,10 +124,6 @@ export interface Reembolso {
   referenciaResolucion: string | null;
   fechaResolucion: Date | null;
 }
-
-/** E9-H04 (decisión del PO): cómo resuelve el Admin un pago en revisión. */
-export const RESOLUCIONES_PAGO = ['CobroVerificado', 'SinCobro', 'Reembolsar'] as const;
-export type ResolucionPago = (typeof RESOLUCIONES_PAGO)[number];
 
 export const CAUSAS_REVISION = ['AutorizacionInexistente', 'CobroSinPedido'] as const;
 

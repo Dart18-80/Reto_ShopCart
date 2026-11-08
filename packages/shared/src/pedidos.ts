@@ -86,3 +86,42 @@ export const registrarDevolucionSchema = z
   .strict();
 
 export type RegistrarDevolucion = z.infer<typeof registrarDevolucionSchema>;
+
+// --- Revisión manual (E9-H04; M8-H05 la usa en el backoffice del Administrador).
+
+/** N-09, N-10: los estados de un reembolso. */
+export const ESTADOS_REEMBOLSO = [
+  'Pendiente',
+  'Completado',
+  'Fallido',
+  'ResueltoManual',
+  'NoAplica',
+] as const;
+export type EstadoReembolso = (typeof ESTADOS_REEMBOLSO)[number];
+
+/** E9-H04 (decisión del PO): cómo resuelve el Admin un pago en revisión. */
+export const RESOLUCIONES_PAGO = ['CobroVerificado', 'SinCobro', 'Reembolsar'] as const;
+export type ResolucionPago = (typeof RESOLUCIONES_PAGO)[number];
+
+export const consultaReembolsosSchema = consultaPaginacionSchema.extend({
+  estado: z.enum(ESTADOS_REEMBOLSO).optional(),
+});
+
+export type ConsultaReembolsos = z.infer<typeof consultaReembolsosSchema>;
+
+const ELIGE_UNA_RESOLUCION = 'Elige cómo se resuelve.';
+
+export const resolverPagoSchema = z
+  .object({
+    resolucion: z.enum(RESOLUCIONES_PAGO, { error: ELIGE_UNA_RESOLUCION }),
+    motivo: textoNvarchar(250),
+  })
+  .strict();
+
+export type ResolverPago = z.infer<typeof resolverPagoSchema>;
+
+export const resolverReembolsoSchema = z
+  .object({ motivo: textoNvarchar(250), referencia: textoNvarchar(100) })
+  .strict();
+
+export type ResolverReembolso = z.infer<typeof resolverReembolsoSchema>;
