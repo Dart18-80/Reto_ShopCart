@@ -71,7 +71,11 @@ function FichaPedido({ pedido, nuevo, cancelar }: PropsFichaPedido) {
           <h1 className="display-titulo-1">{`Pedido ${pedido.numeroPedido}`}</h1>
           <EstadoPedido estado={pedido.estado} />
         </div>
-        <DialogoCancelarPedido puedeCancelar={pedido.puedeCancelar} mutacion={cancelar} />
+        <DialogoCancelarPedido
+          puedeCancelar={pedido.puedeCancelar}
+          mutacion={cancelar}
+          descripcion="Los productos vuelven a la tienda y el cobro se reembolsa a tu tarjeta."
+        />
       </div>
       <div className="grid items-start gap-6 md:grid-cols-[1fr_19rem]">
         <div className="flex min-w-0 flex-col gap-6">

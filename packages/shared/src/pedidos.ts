@@ -21,6 +21,18 @@ export const cancelarPedidoSchema = z.object({ motivo: textoNvarchar(250) }).str
 
 export type CancelarPedido = z.infer<typeof cancelarPedidoSchema>;
 
+// RF-07, N-08: un cambio de estado desde la gestión, con concurrencia optimista (estadoEsperado); el motivo es
+// opcional (NVARCHAR(250)).
+export const cambiarEstadoPedidoSchema = z
+  .object({
+    estadoEsperado: z.enum(ESTADOS_PEDIDO),
+    estadoNuevo: z.enum(ESTADOS_PEDIDO),
+    motivo: textoNvarchar(250).optional(),
+  })
+  .strict();
+
+export type CambiarEstadoPedido = z.infer<typeof cambiarEstadoPedidoSchema>;
+
 // M6-H01: numero se resuelve por IDPedido; estado, por EstadoPedido.Orden.
 export const ordenPedidosGestionSchema = ordenConsultaSchema(
   ['fecha', 'total', 'numero', 'estado'],

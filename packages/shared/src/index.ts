@@ -86,10 +86,12 @@ export {
 export { montoMenorOIgual, montoSchema } from './monto.js';
 export { ordenConsultaSchema, type DireccionOrden } from './orden.js';
 export {
+  cambiarEstadoPedidoSchema,
   cancelarPedidoSchema,
   consultaPedidosGestionSchema,
   ESTADOS_PEDIDO,
   ordenPedidosGestionSchema,
+  type CambiarEstadoPedido,
   type CancelarPedido,
   type ConsultaPedidosGestion,
   type EstadoPedido,

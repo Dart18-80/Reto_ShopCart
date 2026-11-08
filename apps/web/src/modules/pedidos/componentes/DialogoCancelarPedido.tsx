@@ -21,13 +21,19 @@ interface PropsDialogoCancelarPedido {
   /** El backend decide si se puede (M5-H01); sin eso no hay botón. */
   puedeCancelar: boolean;
   mutacion: UseMutationResult<Cancelacion, ErrorApi, CancelarPedido>;
+  /** Qué pasa al cancelar, dicho a quien cancela: el Cliente o el personal (M8-H03). */
+  descripcion: string;
 }
 
 /**
  * M5-H02: el motivo es obligatorio con el mismo esquema que la API (N-09). El diálogo sigue abierto aunque el
  * botón desaparezca: si el backend responde que ya no se puede cancelar, su mensaje se queda a la vista.
  */
-export function DialogoCancelarPedido({ puedeCancelar, mutacion }: PropsDialogoCancelarPedido) {
+export function DialogoCancelarPedido({
+  puedeCancelar,
+  mutacion,
+  descripcion,
+}: PropsDialogoCancelarPedido) {
   const [abierto, setAbierto] = useState(false);
   const formulario = useFormularioApi({
     esquema: cancelarPedidoSchema,
@@ -49,9 +55,7 @@ export function DialogoCancelarPedido({ puedeCancelar, mutacion }: PropsDialogoC
       )}
       <DialogContent>
         <DialogTitle className="display-titulo-3">Cancelar el pedido</DialogTitle>
-        <DialogDescription className="texto-pequeno">
-          Los productos vuelven a la tienda y el cobro se reembolsa a tu tarjeta.
-        </DialogDescription>
+        <DialogDescription className="texto-pequeno">{descripcion}</DialogDescription>
         <Form {...formulario.form}>
           <form onSubmit={formulario.enviar} noValidate className="flex flex-col gap-5">
             <AvisoFormulario error={formulario.errorGeneral} />

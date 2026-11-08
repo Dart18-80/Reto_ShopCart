@@ -1,4 +1,5 @@
 import type {
+  CambiarEstadoPedido,
   CancelarPedido,
   ConsultaPedidosGestion,
   consultaPaginacionSchema,
@@ -60,6 +61,30 @@ export async function listarPedidosGestion(
 export async function obtenerPedidoGestion(idPedido: number): Promise<PedidoGestion> {
   const { data } = await api.GET('/api/v1/admin/pedidos/{id}', {
     params: { path: { id: idPedido } },
+  });
+  return cuerpoDe(data).datos;
+}
+
+/** N-08: el SP lo mueve solo si sigue en `estadoEsperado` (si no, 409 CONFLICTO_CONCURRENCIA). */
+export async function cambiarEstadoPedido(
+  idPedido: number,
+  cuerpo: CambiarEstadoPedido,
+): Promise<Pedido> {
+  const { data } = await api.POST('/api/v1/admin/pedidos/{id}/estado', {
+    params: { path: { id: idPedido } },
+    body: cuerpo,
+  });
+  return cuerpoDe(data).datos;
+}
+
+/** N-09: la cancelación desde la gestión; responde el pedido y el reembolso que creó. */
+export async function cancelarPedidoGestion(
+  idPedido: number,
+  cuerpo: CancelarPedido,
+): Promise<Cancelacion> {
+  const { data } = await api.POST('/api/v1/admin/pedidos/{id}/cancelar', {
+    params: { path: { id: idPedido } },
+    body: cuerpo,
   });
   return cuerpoDe(data).datos;
 }

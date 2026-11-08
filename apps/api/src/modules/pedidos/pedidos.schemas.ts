@@ -5,9 +5,9 @@ import {
   idSchema,
 } from '../../shared/http/index.js';
 import {
+  cambiarEstadoPedidoSchema as cambiarEstadoCompartido,
   cancelarPedidoSchema as cancelarCompartido,
   consultaPedidosGestionSchema,
-  ESTADOS_PEDIDO,
   textoNvarchar,
 } from '@shopcart/shared';
 import { registroOpenApi } from '../../shared/openapi/index.js';
@@ -24,15 +24,11 @@ export const listarPedidosGestionSchema = consultaPedidosGestionSchema;
 export type ListarPedidosPropios = z.infer<typeof listarPedidosPropiosSchema>;
 export type ListarPedidosGestion = z.infer<typeof listarPedidosGestionSchema>;
 
-// RF-07: el motivo es opcional en los cambios de gestión (NVARCHAR(250)).
-export const cambiarEstadoSchema = z
-  .object({
-    estadoEsperado: z.enum(ESTADOS_PEDIDO),
-    estadoNuevo: z.enum(ESTADOS_PEDIDO),
-    motivo: textoNvarchar(250).optional(),
-  })
-  .strict()
-  .openapi('CambiarEstadoPedido');
+// FE-03: el cambio de estado vive en @shopcart/shared, el mismo que valida el diálogo de la gestión.
+export const cambiarEstadoSchema = registroOpenApi.register(
+  'CambiarEstadoPedido',
+  cambiarEstadoCompartido,
+);
 
 export type CambiarEstado = z.infer<typeof cambiarEstadoSchema>;
 

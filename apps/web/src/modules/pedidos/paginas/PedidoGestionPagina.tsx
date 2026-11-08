@@ -1,20 +1,26 @@
 import { idEnRutaSchema } from '@shopcart/shared';
 import { SearchX } from 'lucide-react';
 import { Link, useParams } from 'react-router';
+import { Aviso } from '../../../shared/componentes/Aviso';
 import { AvisoDePagina } from '../../../shared/componentes/AvisoDePagina';
 import { EstadoPedido } from '../../../shared/componentes/EstadoPedido';
 import { EstadoVista } from '../../../shared/componentes/EstadoVista';
 import { useTituloPagina } from '../../../shared/hooks/useTituloPagina';
 import { Button } from '../../../shared/ui/button';
+import { AccionesPedidoGestion } from '../componentes/AccionesPedidoGestion';
 import { ArticulosPedido } from '../componentes/ArticulosPedido';
+import { AvisoReembolsoGestion } from '../componentes/AvisoReembolsoGestion';
 import { ClientePedido } from '../componentes/ClientePedido';
 import { EntregaPedido } from '../componentes/EntregaPedido';
 import { HistorialGestion } from '../componentes/HistorialGestion';
 import { PagoPedido } from '../componentes/PagoPedido';
+import { useCambiarEstadoPedido, useCancelarPedidoGestion } from '../hooks/useAccionesGestion';
 import { usePedidoGestion } from '../hooks/usePedidosGestion';
 import type { PedidoGestion } from '../pedidos.api';
 
 const STATUS_NO_ENCONTRADO = 404;
+const CONFLICTO = 'CONFLICTO_CONCURRENCIA';
+const NO_CANCELABLE = 'NO_CANCELABLE';
 const RUTA_LISTA = '/backoffice/pedidos';
 // El pedido existe si la consulta respondió: nunca es «vacío».
 const NUNCA_VACIO = () => false;
@@ -36,18 +42,58 @@ function PedidoNoEncontrado() {
   );
 }
 
+function AvisosDeAcciones({
+  cambiar,
+  cancelar,
+}: {
+  cambiar: ReturnType<typeof useCambiarEstadoPedido>;
+  cancelar: ReturnType<typeof useCancelarPedidoGestion>;
+}) {
+  return (
+    <>
+      {cambiar.error?.codigo === CONFLICTO && (
+        <Aviso tipo="advertencia">
+          El pedido cambió mientras lo veías. Ya ves su estado actual: revisa antes de seguir.
+        </Aviso>
+      )}
+      {cancelar.error?.codigo === NO_CANCELABLE && (
+        <Aviso tipo="error">{cancelar.error.mensaje}</Aviso>
+      )}
+      {cancelar.data && (
+        <AvisoReembolsoGestion
+          hecho="Cancelamos el pedido."
+          monto={cancelar.data.pedido.montoReembolsado}
+          estado={cancelar.data.reembolso.estado}
+        />
+      )}
+    </>
+  );
+}
+
 function FichaPedidoGestion({ pedido }: { pedido: PedidoGestion }) {
+  const cambiar = useCambiarEstadoPedido(pedido.idPedido);
+  const cancelar = useCancelarPedidoGestion(pedido.idPedido);
   return (
     <div className="flex flex-col gap-6">
+      <AvisosDeAcciones cambiar={cambiar} cancelar={cancelar} />
       <nav aria-label="Ruta" className="texto-pequeno text-muted-foreground">
         <Link to={RUTA_LISTA} className="hover:underline">
           Pedidos
         </Link>
         {` / Pedido ${pedido.numeroPedido}`}
       </nav>
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="display-titulo-1">{`Pedido ${pedido.numeroPedido}`}</h1>
-        <EstadoPedido estado={pedido.estado} />
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="display-titulo-1">{`Pedido ${pedido.numeroPedido}`}</h1>
+          <EstadoPedido estado={pedido.estado} />
+        </div>
+        {/* Con otro estado cambian las acciones: los diálogos del estado anterior se cierran solos. */}
+        <AccionesPedidoGestion
+          key={pedido.estado}
+          pedido={pedido}
+          cambiar={cambiar}
+          cancelar={cancelar}
+        />
       </div>
       <div className="grid items-start gap-6 md:grid-cols-[1fr_19rem]">
         <div className="flex min-w-0 flex-col gap-6">

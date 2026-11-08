@@ -8,6 +8,7 @@ import {
 } from './compras';
 import {
   crearAdministrador,
+  crearOperador,
   expect,
   iniciarSesionPorApi,
   nombreUnico,
@@ -128,6 +129,56 @@ pruebaDeCompra.describe('mis pedidos (M5)', () => {
       await pagina.goto(`/pedidos/${String(idPedido)}`);
       const articulos = pagina.getByRole('region', { name: 'Artículos' });
       await expect(articulos.getByRole('listitem').first()).toContainText('Q100.00');
+    },
+  );
+});
+
+pruebaDeCompra.describe('gestión de pedidos (M8)', () => {
+  pruebaDeCompra(
+    'un Operador lleva un pedido de Pagado a Entregado y el historial registra cada paso con su rol (M8-H03)',
+    async ({ browser, apiAdmin, crearEnTienda, comprador }, informacion) => {
+      const idProducto = await crearEnTienda(`Gorra ${nombreUnico('ciclo')}`, [
+        { valores: [], precio: '80.00', existencia: 5 },
+      ]);
+      await agregarAlCarrito(comprador.api, await varianteDe(comprador.api, idProducto));
+      await direccionDe(comprador.api);
+      const idPedido = await comprarCarrito(comprador.api);
+      const numero = `SC-${String(idPedido).padStart(6, '0')}`;
+
+      const contexto = await browser.newContext({ baseURL: informacion.project.use.baseURL });
+      const operador = await contexto.newPage();
+      try {
+        await iniciarSesionPorApi(operador, await crearOperador(apiAdmin));
+        await operador.goto('/backoffice/pedidos?estado=Pagado');
+        await operador.getByRole('link', { name: numero }).click();
+        await expect(operador.getByRole('heading', { name: `Pedido ${numero}` })).toBeVisible();
+
+        for (const [accion, motivo] of [
+          ['Pasar a En preparación', ''],
+          ['Marcar como despachado', 'Guía 4521'],
+          ['Marcar como entregado', ''],
+        ] as const) {
+          await operador.getByRole('button', { name: accion }).click();
+          const dialogo = operador.getByRole('dialog', { name: accion });
+          if (motivo !== '') await dialogo.getByLabel('Motivo (opcional)').fill(motivo);
+          await dialogo.getByRole('button', { name: accion }).click();
+          await expect(dialogo).toBeHidden();
+        }
+
+        await expect(operador.getByRole('heading', { level: 1 }).locator('..')).toContainText(
+          'Entregado',
+        );
+        const historial = operador.getByRole('region', { name: 'Historial' });
+        for (const estado of ['En preparación', 'Despachado', 'Entregado']) {
+          await expect(historial.getByRole('listitem').filter({ hasText: estado })).toContainText(
+            '· Operador',
+          );
+        }
+        await expect(historial).toContainText('Motivo: Guía 4521');
+        await expect(operador.getByRole('button', { name: /Pasar a|Marcar como/ })).toBeHidden();
+      } finally {
+        await contexto.close();
+      }
     },
   );
 });

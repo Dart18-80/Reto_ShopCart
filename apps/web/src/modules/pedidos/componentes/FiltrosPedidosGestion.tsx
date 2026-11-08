@@ -2,7 +2,6 @@ import {
   ESTADOS_PEDIDO,
   LARGO_MAXIMO_TEXTO_BUSQUEDA,
   type ConsultaPedidosGestion,
-  type EstadoPedido,
 } from '@shopcart/shared';
 import { useId } from 'react';
 import { CLASE_SELECT } from '../../../shared/componentes/CampoSeleccion';
@@ -10,9 +9,7 @@ import { nombreDelEstado } from '../../../shared/componentes/EstadoPedido';
 import { FiltroRangoFechas } from '../../../shared/componentes/FiltroRangoFechas';
 import { FiltroTexto } from '../../../shared/componentes/FiltroTexto';
 import type { ParametrosUrl } from '../../../shared/hooks/useParametrosUrl';
-
-const esEstado = (valor: string): valor is EstadoPedido =>
-  (ESTADOS_PEDIDO as readonly string[]).includes(valor);
+import { esEstadoPedido } from '../estados';
 
 /**
  * Figma 26:519: el cliente por nombre o correo, el estado y el rango de días de Guatemala; todo en la URL y
@@ -46,7 +43,7 @@ export function FiltrosPedidosGestion({
           value={valores.estado ?? ''}
           onChange={(evento) => {
             const valor = evento.target.value;
-            cambiar({ estado: esEstado(valor) ? valor : undefined });
+            cambiar({ estado: esEstadoPedido(valor) ? valor : undefined });
           }}
           className={CLASE_SELECT}
         >

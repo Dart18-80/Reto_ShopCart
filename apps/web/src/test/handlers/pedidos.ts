@@ -115,7 +115,7 @@ type EstadoReembolso = Respuesta<
   'post'
 >['datos']['reembolso']['estado'];
 
-interface ErrorDeCancelacion {
+interface ErrorSimulado {
   status: number;
   codigo: string;
   mensaje: string;
@@ -126,7 +126,7 @@ interface ErrorDeCancelacion {
  * cuerpo recibido.
  */
 export function simularCancelacion(
-  respuesta: { pedido: PedidoDePrueba; estadoReembolso: EstadoReembolso } | ErrorDeCancelacion,
+  respuesta: { pedido: PedidoDePrueba; estadoReembolso: EstadoReembolso } | ErrorSimulado,
 ) {
   const recibidos: unknown[] = [];
   servidor.use(
@@ -223,4 +223,41 @@ export function simularPedidoGestion(inicial: PedidoGestionDePrueba | null) {
       actual = pedido;
     },
   };
+}
+
+const responderError = ({ status, ...error }: ErrorSimulado) =>
+  HttpResponse.json({ error: { ...error, requestId: 'req-ges' } }, { status });
+
+/** `POST /admin/pedidos/{id}/estado`: el pedido con su nuevo estado, o el error indicado. Guarda cada cuerpo. */
+export function simularCambioEstado(respuesta: PedidoDePrueba | ErrorSimulado) {
+  const recibidos: unknown[] = [];
+  servidor.use(
+    http.post('/api/v1/admin/pedidos/:id/estado', async ({ request }) => {
+      recibidos.push(await request.json());
+      return 'status' in respuesta
+        ? responderError(respuesta)
+        : HttpResponse.json({ datos: respuesta });
+    }),
+  );
+  return recibidos;
+}
+
+/** `POST /admin/pedidos/{id}/cancelar`: el pedido cancelado con su reembolso, o el error indicado. */
+export function simularCancelacionGestion(
+  respuesta: { pedido: PedidoDePrueba; estadoReembolso: EstadoReembolso } | ErrorSimulado,
+) {
+  const recibidos: unknown[] = [];
+  servidor.use(
+    http.post('/api/v1/admin/pedidos/:id/cancelar', async ({ request }) => {
+      recibidos.push(await request.json());
+      if ('status' in respuesta) return responderError(respuesta);
+      return HttpResponse.json({
+        datos: {
+          pedido: respuesta.pedido,
+          reembolso: { idReembolso: 9, estado: respuesta.estadoReembolso },
+        },
+      });
+    }),
+  );
+  return recibidos;
 }
