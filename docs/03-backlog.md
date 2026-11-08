@@ -794,6 +794,19 @@ El orden de construcción, por módulos (F1, módulos 1 a 11 y F6), está en [`0
 | M6-H05 | Precios versionados | Must | 0.5 | Hecha |
 | M7-H01 | Existencias con búsqueda y conciliación | Must | 0.75 | Hecha |
 | M7-H02 | Entradas, ajustes y kardex | Must | 0.75 | Hecha |
+| M8-H01 | Detalle para el personal y filtro por cliente (backend) | Must | 0.5 | Lista |
+| M8-H02 | Lista y detalle de gestión | Must | 0.75 | Lista |
+| M8-H03 | Cambiar estado y cancelar | Must | 0.5 | Lista |
+| M8-H04 | Devoluciones | Must | 0.5 | Lista |
+| M8-H05 | Reembolsos y pagos en revisión | Should | 0.75 | Lista |
+| M9-H01 | Cupones | Must | 0.75 | Lista |
+| M9-H02 | Envíos y configuración | Should | 0.5 | Lista |
+| M10-H01 | Usuarios | Must | 0.75 | Lista |
+| M10-H02 | Bitácora | Must | 0.5 | Lista |
+| M11-H01 | Dashboard con gráficas | Must | 1.25 | Lista |
+| M11-H02 | Tiempo real | Could | 0.5 | Lista |
+| M11-H03 | Exportaciones | Could | 0.5 | Lista |
+| F6-H01 | Entrega | Must | 1.0 | Lista |
 
 ---
 
@@ -825,11 +838,11 @@ El orden de construcción, por módulos (F1, módulos 1 a 11 y F6), está en [`0
 | **M5 Mis pedidos** | Listado, detalle con historial y cancelación | 1.0 | Hecha |
 | **M6 Backoffice de catálogo** | Orden del servidor en los listados, categorías, atributos, productos, variantes, imágenes y precios | 4.75 | Hecha |
 | **M7 Inventario** | Entradas, ajustes, kardex, existencias y conciliación | 1.5 | Hecha |
-| M8 Gestión de pedidos | Estados, devoluciones, reembolsos y pagos en revisión | 2.0 | Por detallar |
-| M9 Cupones, envíos y configuración | Administración | 1.25 | Por detallar |
-| M10 Usuarios y bitácora | Administración | 1.25 | Por detallar |
-| M11 Dashboard | Gráficas, tiempo real y exportaciones | 2.0 | Por detallar |
-| F6 Cierre | README final, matriz completa (`contrato:cobertura --estricto`), ensayo de la demo y verificación desde cero | 1.5 | Por detallar |
+| **M8 Gestión de pedidos** | Detalle y filtros del personal, estados, cancelación, devoluciones, reembolsos y pagos en revisión | 3.0 | Lista |
+| **M9 Cupones, envíos y configuración** | Cupones, métodos de envío y parámetros del sistema | 1.25 | Lista |
+| **M10 Usuarios y bitácora** | Usuarios del personal y bitácora con sus cambios | 1.25 | Lista |
+| **M11 Dashboard** | Gráficas, tiempo real y exportaciones | 2.25 | Lista |
+| **F6 Cierre** | README final, matriz completa (`contrato:cobertura --estricto`) y verificación desde cero | 1.0 | Lista |
 
 ---
 
@@ -1374,3 +1387,178 @@ Hasta M5, `/pedidos/{id}` muestra un marcador "Pedido #{id} creado". M5 la convi
 - [ ] Después de una entrada, el kardex muestra el movimiento con la existencia anterior y la resultante, y la conciliación sigue en verde (E2E).
 
 **Referencias:** RF-03, N-07, N-16, E3-H06.
+
+---
+
+## Cómo se trabaja M8 a F6
+
+**La calidad manda sobre la velocidad.** Cada historia se cierra completa: DoD de §6.1, pruebas, `revisor-shopcart` al cerrar el módulo y corrección de todo lo CRÍTICO, ALTO y MEDIO antes de pasar al siguiente. Ninguna historia se recorta ni se deja a medias para ganar tiempo.
+
+Orden: **M8 → M9 → M10 → M11 → F6**, cada módulo con todas sus historias. La prioridad `Must`/`Should`/`Could` indica el valor para el producto (y el orden dentro del módulo), no una lista de cosas que se pueden saltar.
+
+**Dudas:** si una duda cambia lo que el sistema hace (una regla de negocio, la seguridad, el contrato de la API, un flujo distinto del frame), detente y pregunta. Solo los detalles de redacción o de presentación que no cambian el comportamiento los decides tú, siguiendo el contrato y 05 §1, y los anotas en el resumen del módulo.
+
+No hay frames nuevos: el backoffice reutiliza el layout y la tabla de `26:519`, los diálogos de `48:1461` y `48:1617`, y el detalle de pedido de `47:1222`.
+
+---
+
+## M8 · Gestión de pedidos
+
+### M8-H01 · Detalle para el personal y filtro por cliente (backend) — `Must` · 0.5 h
+**Alcance**
+- `GET /admin/pedidos/{id}` (Operador y Administrador): el `Pedido` de siempre más `cliente { idUsuario, nombre, correo }`, `transicionesPermitidas` (los estados a los que **el rol del actor** puede llevarlo, de `TransicionEstadoPedido`), `puedeCancelar`, `puedeDevolver` (N-10: Entregado o DevueltoParcial dentro del plazo) y, en cada línea, `devolvible` (lo vendido menos lo devuelto). Todo lo calcula el SP.
+- `GET /admin/pedidos` acepta `cliente` (texto: nombre o correo, sin tildes ni mayúsculas, escapado como en M7-H01), además de `idCliente`.
+
+**CA**
+- [ ] Un Operador recibe solo las transiciones de su rol; un pedido Cancelado responde `transicionesPermitidas: []`.
+- [ ] `devolvible` baja después de una devolución parcial (integración).
+- [ ] Un Cliente recibe 403. La foto del contrato solo agrega la ruta y el filtro.
+
+**Referencias:** RF-07, RF-08, N-08, N-09, N-10, E6-H01.
+
+### M8-H02 · Lista y detalle de gestión — `Must` · 0.75 h
+**Alcance**
+- `/backoffice/pedidos` con `TablaServidor` (frame `26:519`): número, fecha, cliente, estado y total; filtros de estado, cliente (texto) y rango de fechas (`AAAA-MM-DD`, FE-10), y el orden de M6-H01.
+- `/backoffice/pedidos/{id}`: los mismos bloques del detalle del Cliente (reutiliza los componentes de M5) más el cliente y el historial con rol y motivo.
+
+**CA**
+- [ ] Filtrar por estado, cliente y rango cambia la URL y lo resuelve el servidor (enunciado RF-08).
+- [ ] Un Operador entra; un Cliente ve "Sin permiso".
+
+**Referencias:** RF-07, RF-08, FE-06.
+
+### M8-H03 · Cambiar estado y cancelar — `Must` · 0.5 h
+**Alcance**
+- Un botón por cada estado de `transicionesPermitidas` ("Pasar a En preparación", "Marcar como despachado", "Marcar como entregado"), con un diálogo de motivo opcional. Envía `estadoEsperado` con el estado que se está viendo (concurrencia optimista).
+- `409 CONFLICTO_CONCURRENCIA`: aviso "El pedido cambió mientras lo veías" y se vuelve a consultar. `409 TRANSICION_INVALIDA`: aviso con el mensaje del backend.
+- "Cancelar pedido" con `puedeCancelar` y motivo obligatorio (`POST /admin/pedidos/{id}/cancelar`); muestra el reembolso que devuelve.
+
+**CA**
+- [ ] E2E: un Operador lleva un pedido de Pagado a Entregado y el historial registra cada paso con su rol.
+- [ ] Con MSW, un 409 de concurrencia vuelve a consultar el pedido.
+
+**Referencias:** RF-07, N-08, N-09, E6-H02, E6-H03.
+
+### M8-H04 · Devoluciones — `Must` · 0.5 h
+**Alcance**
+- Con `puedeDevolver`, "Registrar devolución": un diálogo con cada línea, su cantidad a devolver (de 0 a `devolvible`) y el motivo (`registrarDevolucionSchema` a `shared`).
+- `422 DEVOLUCION_EXCEDE_VENDIDO` y `422 PLAZO_DEVOLUCION_VENCIDO` con el mensaje del backend. Al responder, se actualiza el pedido y se muestra el reembolso.
+
+**CA**
+- [ ] E2E: una devolución parcial deja el pedido en Devuelto parcial y el inventario la reintegra (se ve en el kardex con `ReingresoDevolucion`).
+
+**Referencias:** RF-07, N-10, E6-H04.
+
+### M8-H05 · Reembolsos y pagos en revisión — `Should` · 0.75 h
+**Alcance**
+- `/backoffice/reembolsos` (Administrador): `GET /admin/reembolsos?estado=`, "Reintentar" y "Resolver" (diálogo con los datos que pide el esquema).
+- `/backoffice/pagos-en-revision` (Administrador): `GET /admin/pagos/en-revision` y "Resolver".
+- Errores con el mensaje del backend (incluidos los de E9-H04: plazo mínimo y "no aplica").
+
+**CA**
+- [ ] Un reembolso Fallido se reintenta y su estado se actualiza sin recargar.
+
+**Referencias:** N-09, N-03, E9-H04.
+
+---
+
+## M9 · Cupones, envíos y configuración
+
+### M9-H01 · Cupones — `Must` · 0.75 h
+**Alcance**
+- **Backend:** `SP_Cupones_Crear` usa la forma estándar de `detalles` (A-19), como el resto de la API.
+- `/backoffice/cupones` con `TablaServidor`: código, tipo y valor, alcance (todo o una categoría), vigencia, usos comprometidos de su límite y estado; orden de M6-H01.
+- Crear y editar en un diálogo con `crearCuponSchema` y `actualizarCuponSchema` en `shared`; activar y desactivar.
+- `409 CUPON_USADO_NO_EDITABLE` y bajar el límite por debajo de los usos: mensaje del backend en el aviso o en su campo.
+
+**CA**
+- [ ] E2E: crear un cupón de porcentaje para una categoría y aplicarlo en el carrito.
+- [ ] Los montos y porcentajes viajan como texto (FE-10).
+
+**Referencias:** RF-05, N-12, E4-H04.
+
+### M9-H02 · Envíos y configuración — `Should` · 0.5 h
+**Alcance**
+- `/backoffice/envios`: los métodos con nombre, costo, días y estado; editar con `PUT /admin/envios/metodos/{id}`.
+- `/backoffice/configuracion`: el formulario de `ParametroSistema` con `GET/PATCH /admin/configuracion` (envío gratis, días de garantía, minutos de reserva, carritos abandonados…).
+
+**CA**
+- [ ] Cambiar los minutos de reserva cambia el texto del paso 1 del checkout (E2E o MSW).
+
+**Referencias:** N-02, N-04, A-14, E4-H06.
+
+---
+
+## M10 · Usuarios y bitácora
+
+### M10-H01 · Usuarios — `Must` · 0.75 h
+**Alcance**
+- `/backoffice/usuarios` (Administrador) con `TablaServidor`: nombre, correo, rol, estado y fecha; filtros de rol y estado; orden de M6-H01.
+- Crear Operador o Administrador (diálogo con contraseña inicial), editar, activar y desactivar, con sus esquemas en `shared`.
+- `409 ULTIMO_ADMIN` y "no puedes desactivarte a ti mismo": mensaje del backend.
+
+**CA**
+- [ ] E2E: desactivar a un Operador hace que su sesión deje de funcionar de inmediato (A-07: la próxima petición responde 401).
+
+**Referencias:** RF-01, N-15, E2-H04.
+
+### M10-H02 · Bitácora — `Must` · 0.5 h
+**Alcance**
+- `/backoffice/bitacora` (Administrador) con `TablaServidor`: fecha, usuario, módulo, entidad y acción; filtros de módulo, entidad y rango; orden por fecha.
+- Cada fila se expande y muestra los cambios campo por campo ("antes → después") a partir de `valorAnterior` y `valorNuevo`. Solo lectura.
+
+**CA**
+- [ ] Después de cambiar un precio en M6, la bitácora muestra el cambio con el valor anterior y el nuevo (E2E).
+
+**Referencias:** RF-09, M-01, E7-H02.
+
+---
+
+## M11 · Dashboard
+
+### M11-H01 · Dashboard con gráficas — `Must` · 1.25 h
+**Alcance** (FE-07, 05 §11):
+- `/backoffice` (Administrador): rango de fechas en la URL (por defecto, el del backend).
+- Tarjetas del resumen (`GET /dashboard/resumen`); ventas por periodo (`GET /dashboard/ventas` con `agrupacion` día, semana o mes y el selector quetzales o pedidos, sin doble eje); ventas por categoría (barras horizontales); top 10 (barras horizontales); carritos abandonados (`TablaServidor` con el orden de M6-H01).
+- Cada gráfica con "Ver como tabla", sus propios estados y las barras negativas con su tono y la etiqueta "neto con devoluciones" (N-11). Montos convertidos a número solo para la geometría.
+
+**CA**
+- [ ] Cambiar la agrupación y el rango cambia la URL y las consultas.
+- [ ] Una gráfica que falla no tumba las demás (MSW).
+- [ ] E2E: después de un pedido de prueba, el resumen del día lo incluye.
+
+**Referencias:** RF-08, N-11, FE-07, FE-10.
+
+### M11-H02 · Tiempo real — `Could` · 0.5 h
+Como en FE-11 (05 §11): `useTiempoRealReportes` con `eventsource-parser`, invalidación por dominio e indicador "En vivo / Reconectando… / En pausa".
+
+**CA**
+- [ ] E2E: con el dashboard abierto, un pedido nuevo actualiza el resumen sin recargar.
+
+### M11-H03 · Exportaciones — `Could` · 0.5 h
+**Alcance**
+- "Exportar" en cada reporte (Excel o PDF) con `POST /admin/reportes/{reporte}/exportaciones`, usando los mismos filtros que se ven en pantalla.
+- "Mis exportaciones" con `GET /admin/exportaciones`: reporte, formato, fecha y estado; la descarga con `GET /admin/exportaciones/{id}/archivo` cuando está Completada, y el mensaje del backend cuando falló.
+
+**CA**
+- [ ] E2E: exportar las ventas en Excel, esperar a que quede Completada y descargar el archivo.
+
+**Referencias:** RF-08, E8-H03.
+
+---
+
+## F6 · Cierre de la Fase 2
+
+### F6-H01 · Entrega — `Must` · 1.0 h
+**Alcance**
+- `pnpm contrato:cobertura --estricto` en verde. En `exclusiones.json` solo van los endpoints que no tienen pantalla por diseño (como `GET /inventario/bodega`), cada uno con su motivo.
+- **README:** sección del frontend (cómo correrlo, decisiones FE-xx en una tabla con enlace a 05, librerías y su justificación, pruebas y E2E, capturas opcionales) y las credenciales de prueba de los tres roles. Las mejoras futuras, si las hay, con su porqué.
+- **Verificación desde cero:** `docker compose down -v`, `up -d --build`, todas las suites, `test:concurrencia` y `test:e2e`. Después, **otra vez `down -v` y `up -d`** para dejar la base solo con la semilla demo, sin datos de las E2E.
+- `revisor-shopcart` sobre toda la Fase 2 y corrección de lo CRÍTICO, ALTO y MEDIO.
+- Tag `fase-2` en el último commit verificado. El push lo hace Diego.
+
+**CA**
+- [ ] Una persona que solo lee el README levanta el proyecto y compra con las credenciales de prueba.
+- [ ] Todo en verde desde cero, con la salida real en el resumen.
+
+**Referencias:** enunciado §05 (Calidad y entorno), §07 y §08.
