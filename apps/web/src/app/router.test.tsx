@@ -1,6 +1,6 @@
 import { act, screen, waitFor, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { sesion, type Respuesta } from '../shared/api';
 import { ANCHO_TELEFONO, simularPantalla } from '../test/pantalla';
 import { renderizarRutas } from '../test/renderizar';
@@ -8,6 +8,12 @@ import { sesionDePrueba } from '../test/sesion';
 import { servidor } from '../test/servidor';
 import { crearRutas } from './router';
 import { simularCarrito } from '../test/handlers/carrito';
+import { simularPedidosGestion } from '../test/handlers/pedidos';
+
+// La primera página del Operador (/backoffice/pedidos) pide la lista de la gestión.
+beforeEach(() => {
+  simularPedidosGestion([]);
+});
 
 // Una página del backoffice que falla al renderizar, para ver el errorElement de su área.
 vi.mock('../modules/bitacora/paginas/BitacoraPagina', () => ({
@@ -53,7 +59,7 @@ describe('router: guardián por rol', () => {
   it('un Operador no ve en el menú lo que es solo del Administrador', async () => {
     renderizarRutas(crearRutas(), { ruta: '/backoffice/pedidos', rol: 'Operador' });
 
-    await screen.findByRole('heading', { name: 'Gestión de pedidos' });
+    await screen.findByRole('heading', { name: 'Pedidos', level: 1 });
     const menu = menuDelBackoffice();
     expect(within(menu).getByRole('link', { name: 'Pedidos' })).toBeInTheDocument();
     expect(within(menu).getByRole('link', { name: 'Inventario' })).toBeInTheDocument();
@@ -83,7 +89,7 @@ describe('router: guardián por rol', () => {
   it('/backoffice lleva a la primera página que el rol puede ver', async () => {
     const { router } = renderizarRutas(crearRutas(), { ruta: '/backoffice', rol: 'Operador' });
 
-    await screen.findByRole('heading', { name: 'Gestión de pedidos' });
+    await screen.findByRole('heading', { name: 'Pedidos', level: 1 });
     expect(router.state.location.pathname).toBe('/backoffice/pedidos');
   });
 
@@ -129,7 +135,7 @@ describe('router: guardián por rol', () => {
       ruta: '/backoffice/pedidos',
       rol: 'Operador',
     });
-    await screen.findByRole('heading', { name: 'Gestión de pedidos' });
+    await screen.findByRole('heading', { name: 'Pedidos', level: 1 });
     expect(screen.getByText('Luis Operador')).toBeInTheDocument();
 
     await usuario.click(screen.getByRole('button', { name: 'Cerrar sesión' }));
@@ -208,7 +214,7 @@ describe('router: menú móvil del backoffice', () => {
       ruta: '/backoffice/pedidos',
       rol: 'Operador',
     });
-    await screen.findByRole('heading', { name: 'Gestión de pedidos' });
+    await screen.findByRole('heading', { name: 'Pedidos', level: 1 });
 
     await usuario.click(screen.getByRole('button', { name: 'Abrir el menú' }));
     const panel = await screen.findByRole('dialog');

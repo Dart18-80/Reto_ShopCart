@@ -63,6 +63,7 @@ export {
   consultaPaginacionSchema,
   idEnRutaSchema,
   idSchema,
+  rangoDeFechasSchema,
   TAMANO_MAXIMO_PAGINA,
 } from './consultas.js';
 export {
@@ -84,7 +85,16 @@ export {
 } from './inventario.js';
 export { montoMenorOIgual, montoSchema } from './monto.js';
 export { ordenConsultaSchema, type DireccionOrden } from './orden.js';
-export { cancelarPedidoSchema, type CancelarPedido } from './pedidos.js';
+export {
+  cancelarPedidoSchema,
+  consultaPedidosGestionSchema,
+  ESTADOS_PEDIDO,
+  ordenPedidosGestionSchema,
+  type CancelarPedido,
+  type ConsultaPedidosGestion,
+  type EstadoPedido,
+  type OrdenPedidosGestion,
+} from './pedidos.js';
 export { ROLES_DE_USUARIO, type RolDeUsuario } from './roles.js';
 export { telefonoSchema } from './telefono.js';
 export { textoNvarchar } from './texto.js';

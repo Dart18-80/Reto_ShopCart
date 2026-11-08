@@ -1,5 +1,4 @@
 import {
-  rangoDeFechasSchema,
   consultaPaginacionSchema,
   idBigintEnRutaSchema,
   idEnRutaSchema,
@@ -7,28 +6,20 @@ import {
 } from '../../shared/http/index.js';
 import {
   cancelarPedidoSchema as cancelarCompartido,
-  LARGO_MAXIMO_TEXTO_BUSQUEDA,
-  ordenConsultaSchema,
+  consultaPedidosGestionSchema,
+  ESTADOS_PEDIDO,
   textoNvarchar,
 } from '@shopcart/shared';
 import { registroOpenApi } from '../../shared/openapi/index.js';
 import { z } from '../../shared/openapi/zod.js';
-import { ESTADOS_PEDIDO, ESTADOS_REEMBOLSO, RESOLUCIONES_PAGO } from './pedidos.types.js';
+import { ESTADOS_REEMBOLSO, RESOLUCIONES_PAGO } from './pedidos.types.js';
 
 export const paramsIdPedidoSchema = z.object({ id: idEnRutaSchema });
 
 export const listarPedidosPropiosSchema = consultaPaginacionSchema;
 
-// A-12: las fechas de la gestión son días de Guatemala sobre FechaPagoLocal, igual que los reportes (N-11).
-export const listarPedidosGestionSchema = rangoDeFechasSchema.safeExtend({
-  ...consultaPaginacionSchema.shape,
-  // M6-H01: numero se resuelve por IDPedido; estado, por EstadoPedido.Orden.
-  ...ordenConsultaSchema(['fecha', 'total', 'numero', 'estado'], 'fecha', 'desc').shape,
-  estado: z.enum(ESTADOS_PEDIDO).optional(),
-  idCliente: z.coerce.number().pipe(idSchema).optional(),
-  // M8-H01: nombre o correo, sin tildes ni mayúsculas; se busca literal.
-  cliente: textoNvarchar(LARGO_MAXIMO_TEXTO_BUSQUEDA).optional(),
-});
+// FE-03: la consulta de la gestión vive en @shopcart/shared; la web la valida igual en la URL.
+export const listarPedidosGestionSchema = consultaPedidosGestionSchema;
 
 export type ListarPedidosPropios = z.infer<typeof listarPedidosPropiosSchema>;
 export type ListarPedidosGestion = z.infer<typeof listarPedidosGestionSchema>;

@@ -13,7 +13,11 @@ interface EntradaManifest {
 const RAIZ_WEB = resolve(import.meta.dirname, '../..');
 // Textos que solo existen en el layout y las páginas del backoffice. Las etiquetas del menú no sirven: la definición
 // de rutas (FE-04) va en el paquete principal porque de ella salen el guardián y los menús.
-const SOLO_BACKOFFICE = ['Secciones del backoffice', 'Gestión de pedidos', 'Gestión del catálogo'];
+const SOLO_BACKOFFICE = [
+  'Secciones del backoffice',
+  'Prepara, despacha y da seguimiento a los pedidos pagados.',
+  'Catálogo de la tienda, sus variantes y precios.',
+];
 const CONSTRUCCION_MS = 120_000;
 
 let salida = '';

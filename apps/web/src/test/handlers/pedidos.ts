@@ -146,3 +146,81 @@ export function simularCancelacion(
   );
   return recibidos;
 }
+
+// --- Gestión (M8): Operador y Administrador.
+
+type ListaGestion = Respuesta<'/api/v1/admin/pedidos', 'get'>;
+type ResumenGestion = ListaGestion['datos'][number];
+export type PedidoGestionDePrueba = Respuesta<'/api/v1/admin/pedidos/{id}', 'get'>['datos'];
+
+const CLIENTE = { idUsuario: 7, nombre: 'María López', correo: 'maria@correo.gt' };
+
+export const resumenGestionDePrueba = (cambios: Partial<ResumenGestion> = {}): ResumenGestion => ({
+  ...resumenDePrueba(),
+  cliente: CLIENTE,
+  ...cambios,
+});
+
+export const pedidoGestionDePrueba = (
+  cambios: Partial<PedidoGestionDePrueba> = {},
+): PedidoGestionDePrueba => {
+  const base = pedidoDePrueba();
+  return {
+    ...base,
+    lineas: base.lineas.map((linea) => ({
+      ...linea,
+      devolvible: linea.cantidad - linea.cantidadDevuelta,
+    })),
+    cliente: CLIENTE,
+    transicionesPermitidas: ['EnPreparacion'],
+    puedeDevolver: false,
+    ...cambios,
+  };
+};
+
+/** `GET /admin/pedidos` con la página indicada; guarda la consulta de cada petición. */
+export function simularPedidosGestion(
+  pedidos: ResumenGestion[],
+  paginacion: Partial<ListaGestion['paginacion']> = {},
+) {
+  const consultas: URLSearchParams[] = [];
+  servidor.use(
+    http.get('/api/v1/admin/pedidos', ({ request }) => {
+      consultas.push(new URL(request.url).searchParams);
+      return HttpResponse.json({
+        datos: pedidos,
+        paginacion: {
+          pagina: 1,
+          tamano: 20,
+          total: pedidos.length,
+          totalPaginas: 1,
+          ...paginacion,
+        },
+      });
+    }),
+  );
+  return consultas;
+}
+
+/**
+ * `GET /admin/pedidos/{id}`: el pedido, o `404` si no existe. `reemplazar` cambia lo que responden las lecturas
+ * siguientes (otro empleado lo movió) y `lecturas` cuenta cuántas veces se pidió.
+ */
+export function simularPedidoGestion(inicial: PedidoGestionDePrueba | null) {
+  let actual = inicial;
+  const lecturas = { total: 0 };
+  servidor.use(
+    http.get('/api/v1/admin/pedidos/:id', () => {
+      lecturas.total += 1;
+      return actual
+        ? HttpResponse.json({ datos: actual })
+        : HttpResponse.json(NO_ENCONTRADO, { status: 404 });
+    }),
+  );
+  return {
+    lecturas,
+    reemplazar: (pedido: PedidoGestionDePrueba) => {
+      actual = pedido;
+    },
+  };
+}

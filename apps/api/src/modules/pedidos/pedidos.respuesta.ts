@@ -1,9 +1,8 @@
-import { montoSchema } from '@shopcart/shared';
+import { ESTADOS_PEDIDO, montoSchema } from '@shopcart/shared';
 import { montoATexto } from '../../shared/dinero/index.js';
 import { z } from '../../shared/openapi/zod.js';
 import {
   CAUSAS_REVISION,
-  ESTADOS_PEDIDO,
   ESTADOS_PAGO,
   ESTADOS_REEMBOLSO,
   ORIGENES_REEMBOLSO,

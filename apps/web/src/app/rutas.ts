@@ -176,6 +176,15 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ),
   },
   {
+    ruta: '/backoffice/pedidos/:id',
+    area: 'backoffice',
+    acceso: PERSONAL,
+    pagina: diferida(
+      () => import('../modules/pedidos/paginas/PedidoGestionPagina'),
+      (m) => m.PedidoGestionPagina,
+    ),
+  },
+  {
     ruta: '/backoffice/pagos-en-revision',
     area: 'backoffice',
     acceso: SOLO_ADMINISTRADOR,

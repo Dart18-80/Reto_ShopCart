@@ -1,16 +1,7 @@
+import type { EstadoPedido } from '@shopcart/shared';
 import type { Decimal } from 'decimal.js';
 
-/** N-08: los estados del pedido (EstadoPedido.Codigo). */
-export const ESTADOS_PEDIDO = [
-  'Pagado',
-  'EnPreparacion',
-  'Despachado',
-  'Entregado',
-  'Cancelado',
-  'DevueltoParcial',
-  'Devuelto',
-] as const;
-export type EstadoPedido = (typeof ESTADOS_PEDIDO)[number];
+export type { EstadoPedido };
 
 export interface LineaPedido {
   idDetallePedido: number;
