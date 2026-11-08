@@ -14,7 +14,11 @@ import { ClientePedido } from '../componentes/ClientePedido';
 import { EntregaPedido } from '../componentes/EntregaPedido';
 import { HistorialGestion } from '../componentes/HistorialGestion';
 import { PagoPedido } from '../componentes/PagoPedido';
-import { useCambiarEstadoPedido, useCancelarPedidoGestion } from '../hooks/useAccionesGestion';
+import {
+  useCambiarEstadoPedido,
+  useCancelarPedidoGestion,
+  useRegistrarDevolucion,
+} from '../hooks/useAccionesGestion';
 import { usePedidoGestion } from '../hooks/usePedidosGestion';
 import type { PedidoGestion } from '../pedidos.api';
 
@@ -45,9 +49,11 @@ function PedidoNoEncontrado() {
 function AvisosDeAcciones({
   cambiar,
   cancelar,
+  devolver,
 }: {
   cambiar: ReturnType<typeof useCambiarEstadoPedido>;
   cancelar: ReturnType<typeof useCancelarPedidoGestion>;
+  devolver: ReturnType<typeof useRegistrarDevolucion>;
 }) {
   return (
     <>
@@ -66,6 +72,13 @@ function AvisosDeAcciones({
           estado={cancelar.data.reembolso.estado}
         />
       )}
+      {devolver.data && (
+        <AvisoReembolsoGestion
+          hecho="Registramos la devolución."
+          monto={devolver.data.devolucion.montoReembolso}
+          estado={devolver.data.reembolso.estado}
+        />
+      )}
     </>
   );
 }
@@ -73,9 +86,10 @@ function AvisosDeAcciones({
 function FichaPedidoGestion({ pedido }: { pedido: PedidoGestion }) {
   const cambiar = useCambiarEstadoPedido(pedido.idPedido);
   const cancelar = useCancelarPedidoGestion(pedido.idPedido);
+  const devolver = useRegistrarDevolucion(pedido.idPedido);
   return (
     <div className="flex flex-col gap-6">
-      <AvisosDeAcciones cambiar={cambiar} cancelar={cancelar} />
+      <AvisosDeAcciones cambiar={cambiar} cancelar={cancelar} devolver={devolver} />
       <nav aria-label="Ruta" className="texto-pequeno text-muted-foreground">
         <Link to={RUTA_LISTA} className="hover:underline">
           Pedidos
@@ -93,6 +107,7 @@ function FichaPedidoGestion({ pedido }: { pedido: PedidoGestion }) {
           pedido={pedido}
           cambiar={cambiar}
           cancelar={cancelar}
+          devolver={devolver}
         />
       </div>
       <div className="grid items-start gap-6 md:grid-cols-[1fr_19rem]">

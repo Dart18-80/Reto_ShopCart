@@ -91,11 +91,13 @@ export {
   consultaPedidosGestionSchema,
   ESTADOS_PEDIDO,
   ordenPedidosGestionSchema,
+  registrarDevolucionSchema,
   type CambiarEstadoPedido,
   type CancelarPedido,
   type ConsultaPedidosGestion,
   type EstadoPedido,
   type OrdenPedidosGestion,
+  type RegistrarDevolucion,
 } from './pedidos.js';
 export { ROLES_DE_USUARIO, type RolDeUsuario } from './roles.js';
 export { telefonoSchema } from './telefono.js';

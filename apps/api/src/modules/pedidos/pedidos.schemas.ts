@@ -2,12 +2,12 @@ import {
   consultaPaginacionSchema,
   idBigintEnRutaSchema,
   idEnRutaSchema,
-  idSchema,
 } from '../../shared/http/index.js';
 import {
   cambiarEstadoPedidoSchema as cambiarEstadoCompartido,
   cancelarPedidoSchema as cancelarCompartido,
   consultaPedidosGestionSchema,
+  registrarDevolucionSchema as registrarDevolucionCompartido,
   textoNvarchar,
 } from '@shopcart/shared';
 import { registroOpenApi } from '../../shared/openapi/index.js';
@@ -64,29 +64,10 @@ export const resolverReembolsoSchema = z
 
 export type ResolverReembolso = z.infer<typeof resolverReembolsoSchema>;
 
-// N-10: el SP valida contra lo vendido bajo bloqueo; aquí solo la forma (líneas únicas, cantidades > 0).
-const MAX_LINEAS_DEVOLUCION = 50;
-const CANTIDAD_MAXIMA = 1_000_000;
-export const registrarDevolucionSchema = z
-  .object({
-    motivo: textoNvarchar(250),
-    lineas: z
-      .array(
-        z
-          .object({
-            idDetallePedido: idSchema,
-            cantidad: z.number().int().min(1).max(CANTIDAD_MAXIMA),
-          })
-          .strict(),
-      )
-      .min(1)
-      .max(MAX_LINEAS_DEVOLUCION)
-      .refine(
-        (lineas) => new Set(lineas.map((l) => l.idDetallePedido)).size === lineas.length,
-        'Una línea aparece más de una vez en la devolución.',
-      ),
-  })
-  .strict()
-  .openapi('RegistrarDevolucion');
+// FE-03: la devolución vive en @shopcart/shared, la misma que valida el diálogo de la gestión (N-10).
+export const registrarDevolucionSchema = registroOpenApi.register(
+  'RegistrarDevolucion',
+  registrarDevolucionCompartido,
+);
 
 export type RegistrarDevolucion = z.infer<typeof registrarDevolucionSchema>;

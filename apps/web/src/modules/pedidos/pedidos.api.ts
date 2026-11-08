@@ -3,6 +3,7 @@ import type {
   CancelarPedido,
   ConsultaPedidosGestion,
   consultaPaginacionSchema,
+  RegistrarDevolucion,
 } from '@shopcart/shared';
 import type { z } from 'zod';
 import { api, ErrorApi, type Respuesta } from '../../shared/api';
@@ -16,6 +17,10 @@ export type EstadoReembolso = Cancelacion['reembolso']['estado'];
 export type ListaGestion = Respuesta<'/api/v1/admin/pedidos', 'get'>;
 export type ResumenGestion = ListaGestion['datos'][number];
 export type PedidoGestion = Respuesta<'/api/v1/admin/pedidos/{id}', 'get'>['datos'];
+export type DevolucionRegistrada = Respuesta<
+  '/api/v1/admin/pedidos/{id}/devoluciones',
+  'post'
+>['datos'];
 
 // El middleware de errores ya convirtió toda respuesta de error en ErrorApi: un 2xx sin cuerpo es inesperado.
 function cuerpoDe<D>(data: D | undefined): D {
@@ -83,6 +88,18 @@ export async function cancelarPedidoGestion(
   cuerpo: CancelarPedido,
 ): Promise<Cancelacion> {
   const { data } = await api.POST('/api/v1/admin/pedidos/{id}/cancelar', {
+    params: { path: { id: idPedido } },
+    body: cuerpo,
+  });
+  return cuerpoDe(data).datos;
+}
+
+/** N-10: la devolución por línea; responde el pedido, la devolución con su reembolso calculado y el reembolso. */
+export async function registrarDevolucion(
+  idPedido: number,
+  cuerpo: RegistrarDevolucion,
+): Promise<DevolucionRegistrada> {
+  const { data } = await api.POST('/api/v1/admin/pedidos/{id}/devoluciones', {
     params: { path: { id: idPedido } },
     body: cuerpo,
   });

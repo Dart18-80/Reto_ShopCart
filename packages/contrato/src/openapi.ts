@@ -7605,13 +7605,47 @@ export interface components {
             };
             total: string;
         };
-        PedidoGestion: components["schemas"]["Pedido"] & {
+        PedidoGestion: {
+            baseImponible: string;
             cliente: {
                 correo: string;
                 idUsuario: number;
                 nombre: string;
             };
-            lineas?: {
+            codigoCupon: string | null;
+            costoEnvio: string;
+            descuento: string;
+            direccion: {
+                departamento: string;
+                direccionLinea: string;
+                municipio: string;
+                nombreRecibe: string;
+                referencia: string | null;
+                telefonoRecibe: string;
+            };
+            envio: {
+                /** Format: date */
+                fechaEstimadaEntrega: string;
+                nombre: string;
+            };
+            estado: string;
+            /** @enum {string} */
+            estadoPago: "Confirmado" | "EnVerificacion";
+            /** Format: date-time */
+            fechaPago: string;
+            /** Format: date */
+            fechaPagoLocal: string;
+            historial: {
+                estadoAnterior: string | null;
+                estadoNuevo: string;
+                /** Format: date-time */
+                fecha: string;
+                motivo: string | null;
+                rol: string;
+            }[];
+            idPedido: number;
+            iva: string;
+            lineas: {
                 cantidad: number;
                 cantidadDevuelta: number;
                 categoria: string;
@@ -7626,8 +7660,18 @@ export interface components {
                 sku: string;
                 totalLinea: string;
             }[];
+            montoReembolsado: string;
+            numeroPedido: string;
+            /** @description M5-H01: si quien pide puede cancelarlo ahora (TransicionEstadoPedido para su rol y el pago no está en verificación) */
+            puedeCancelar: boolean;
             /** @description N-10: Entregado o DevueltoParcial y dentro del plazo de devolución */
             puedeDevolver: boolean;
+            subtotal: string;
+            tarjeta: {
+                marca: string;
+                ultimosDigitos: string;
+            };
+            total: string;
             /** @description M8-H01: los estados a los que el rol de quien pide puede llevarlo ahora con POST /admin/pedidos/{id}/estado, en el orden del ciclo (sin Cancelado ni las devoluciones, que tienen su propia vía) */
             transicionesPermitidas: ("Pagado" | "EnPreparacion" | "Despachado" | "Entregado" | "Cancelado" | "DevueltoParcial" | "Devuelto")[];
         };

@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import { LARGO_MAXIMO_TEXTO_BUSQUEDA } from './catalogo.js';
-import { consultaPaginacionSchema, idEnRutaSchema, rangoDeFechasSchema } from './consultas.js';
+import {
+  consultaPaginacionSchema,
+  idEnRutaSchema,
+  idSchema,
+  rangoDeFechasSchema,
+} from './consultas.js';
 import { ordenConsultaSchema } from './orden.js';
 import { textoNvarchar } from './texto.js';
 
@@ -54,3 +59,30 @@ export const consultaPedidosGestionSchema = rangoDeFechasSchema.safeExtend({
 
 export type ConsultaPedidosGestion = z.infer<typeof consultaPedidosGestionSchema>;
 export type OrdenPedidosGestion = z.infer<typeof ordenPedidosGestionSchema>;
+
+// N-10: el SP valida contra lo vendido bajo bloqueo; aquí solo la forma (líneas únicas, cantidades > 0).
+const MAX_LINEAS_DEVOLUCION = 50;
+const CANTIDAD_MAXIMA_DEVOLUCION = 1_000_000;
+
+export const registrarDevolucionSchema = z
+  .object({
+    motivo: textoNvarchar(250),
+    lineas: z
+      .array(
+        z
+          .object({
+            idDetallePedido: idSchema,
+            cantidad: z.number().int().min(1).max(CANTIDAD_MAXIMA_DEVOLUCION),
+          })
+          .strict(),
+      )
+      .min(1, 'Elige al menos una unidad para devolver.')
+      .max(MAX_LINEAS_DEVOLUCION)
+      .refine(
+        (lineas) => new Set(lineas.map((l) => l.idDetallePedido)).size === lineas.length,
+        'Una línea aparece más de una vez en la devolución.',
+      ),
+  })
+  .strict();
+
+export type RegistrarDevolucion = z.infer<typeof registrarDevolucionSchema>;

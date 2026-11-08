@@ -120,8 +120,10 @@ const clienteSchema = z.object({
   correo: z.string(),
 });
 
-export const pedidoGestionSchema = pedidoSchema
-  .extend({
+// M8-H01: un objeto propio (sin allOf de Pedido) para que las líneas del contrato tengan un solo tipo, con devolvible.
+export const pedidoGestionSchema = z
+  .object({
+    ...pedidoSchema.shape,
     cliente: clienteSchema,
     transicionesPermitidas: z.array(z.enum(ESTADOS_PEDIDO)).openapi({
       description:

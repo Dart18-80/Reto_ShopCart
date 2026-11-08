@@ -2453,122 +2453,299 @@
         "type": "object"
       },
       "PedidoGestion": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/Pedido"
+        "properties": {
+          "baseImponible": {
+            "pattern": "^\\d{1,10}(\\.\\d{1,2})?$",
+            "type": "string"
           },
-          {
+          "cliente": {
             "properties": {
-              "cliente": {
-                "properties": {
-                  "correo": {
-                    "type": "string"
-                  },
-                  "idUsuario": {
-                    "type": "integer"
-                  },
-                  "nombre": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "idUsuario",
-                  "nombre",
-                  "correo"
-                ],
-                "type": "object"
+              "correo": {
+                "type": "string"
               },
-              "lineas": {
-                "items": {
-                  "properties": {
-                    "cantidad": {
-                      "type": "integer"
-                    },
-                    "cantidadDevuelta": {
-                      "type": "integer"
-                    },
-                    "categoria": {
-                      "type": "string"
-                    },
-                    "descripcionVariante": {
-                      "type": "string"
-                    },
-                    "descuentoLinea": {
-                      "pattern": "^\\d{1,10}(\\.\\d{1,2})?$",
-                      "type": "string"
-                    },
-                    "devolvible": {
-                      "description": "N-10: lo vendido menos lo devuelto",
-                      "type": "integer"
-                    },
-                    "idDetallePedido": {
-                      "type": "integer"
-                    },
-                    "idVariante": {
-                      "type": "integer"
-                    },
-                    "precioUnitario": {
-                      "pattern": "^\\d{1,10}(\\.\\d{1,2})?$",
-                      "type": "string"
-                    },
-                    "producto": {
-                      "type": "string"
-                    },
-                    "sku": {
-                      "type": "string"
-                    },
-                    "totalLinea": {
-                      "pattern": "^\\d{1,10}(\\.\\d{1,2})?$",
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "idDetallePedido",
-                    "idVariante",
-                    "sku",
-                    "producto",
-                    "descripcionVariante",
-                    "categoria",
-                    "cantidad",
-                    "cantidadDevuelta",
-                    "precioUnitario",
-                    "descuentoLinea",
-                    "totalLinea",
-                    "devolvible"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
+              "idUsuario": {
+                "type": "integer"
               },
-              "puedeDevolver": {
-                "description": "N-10: Entregado o DevueltoParcial y dentro del plazo de devolución",
-                "type": "boolean"
-              },
-              "transicionesPermitidas": {
-                "description": "M8-H01: los estados a los que el rol de quien pide puede llevarlo ahora con POST /admin/pedidos/{id}/estado, en el orden del ciclo (sin Cancelado ni las devoluciones, que tienen su propia vía)",
-                "items": {
-                  "enum": [
-                    "Pagado",
-                    "EnPreparacion",
-                    "Despachado",
-                    "Entregado",
-                    "Cancelado",
-                    "DevueltoParcial",
-                    "Devuelto"
-                  ],
-                  "type": "string"
-                },
-                "type": "array"
+              "nombre": {
+                "type": "string"
               }
             },
             "required": [
-              "cliente",
-              "transicionesPermitidas",
-              "puedeDevolver"
+              "idUsuario",
+              "nombre",
+              "correo"
             ],
             "type": "object"
+          },
+          "codigoCupon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "costoEnvio": {
+            "pattern": "^\\d{1,10}(\\.\\d{1,2})?$",
+            "type": "string"
+          },
+          "descuento": {
+            "pattern": "^\\d{1,10}(\\.\\d{1,2})?$",
+            "type": "string"
+          },
+          "direccion": {
+            "properties": {
+              "departamento": {
+                "type": "string"
+              },
+              "direccionLinea": {
+                "type": "string"
+              },
+              "municipio": {
+                "type": "string"
+              },
+              "nombreRecibe": {
+                "type": "string"
+              },
+              "referencia": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "telefonoRecibe": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "nombreRecibe",
+              "telefonoRecibe",
+              "departamento",
+              "municipio",
+              "direccionLinea",
+              "referencia"
+            ],
+            "type": "object"
+          },
+          "envio": {
+            "properties": {
+              "fechaEstimadaEntrega": {
+                "format": "date",
+                "type": "string"
+              },
+              "nombre": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "nombre",
+              "fechaEstimadaEntrega"
+            ],
+            "type": "object"
+          },
+          "estado": {
+            "type": "string"
+          },
+          "estadoPago": {
+            "enum": [
+              "Confirmado",
+              "EnVerificacion"
+            ],
+            "type": "string"
+          },
+          "fechaPago": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "fechaPagoLocal": {
+            "format": "date",
+            "type": "string"
+          },
+          "historial": {
+            "items": {
+              "properties": {
+                "estadoAnterior": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "estadoNuevo": {
+                  "type": "string"
+                },
+                "fecha": {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                "motivo": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "rol": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "estadoAnterior",
+                "estadoNuevo",
+                "rol",
+                "motivo",
+                "fecha"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "idPedido": {
+            "type": "integer"
+          },
+          "iva": {
+            "pattern": "^\\d{1,10}(\\.\\d{1,2})?$",
+            "type": "string"
+          },
+          "lineas": {
+            "items": {
+              "properties": {
+                "cantidad": {
+                  "type": "integer"
+                },
+                "cantidadDevuelta": {
+                  "type": "integer"
+                },
+                "categoria": {
+                  "type": "string"
+                },
+                "descripcionVariante": {
+                  "type": "string"
+                },
+                "descuentoLinea": {
+                  "pattern": "^\\d{1,10}(\\.\\d{1,2})?$",
+                  "type": "string"
+                },
+                "devolvible": {
+                  "description": "N-10: lo vendido menos lo devuelto",
+                  "type": "integer"
+                },
+                "idDetallePedido": {
+                  "type": "integer"
+                },
+                "idVariante": {
+                  "type": "integer"
+                },
+                "precioUnitario": {
+                  "pattern": "^\\d{1,10}(\\.\\d{1,2})?$",
+                  "type": "string"
+                },
+                "producto": {
+                  "type": "string"
+                },
+                "sku": {
+                  "type": "string"
+                },
+                "totalLinea": {
+                  "pattern": "^\\d{1,10}(\\.\\d{1,2})?$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "idDetallePedido",
+                "idVariante",
+                "sku",
+                "producto",
+                "descripcionVariante",
+                "categoria",
+                "cantidad",
+                "cantidadDevuelta",
+                "precioUnitario",
+                "descuentoLinea",
+                "totalLinea",
+                "devolvible"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "montoReembolsado": {
+            "pattern": "^\\d{1,10}(\\.\\d{1,2})?$",
+            "type": "string"
+          },
+          "numeroPedido": {
+            "type": "string"
+          },
+          "puedeCancelar": {
+            "description": "M5-H01: si quien pide puede cancelarlo ahora (TransicionEstadoPedido para su rol y el pago no está en verificación)",
+            "type": "boolean"
+          },
+          "puedeDevolver": {
+            "description": "N-10: Entregado o DevueltoParcial y dentro del plazo de devolución",
+            "type": "boolean"
+          },
+          "subtotal": {
+            "pattern": "^\\d{1,10}(\\.\\d{1,2})?$",
+            "type": "string"
+          },
+          "tarjeta": {
+            "properties": {
+              "marca": {
+                "type": "string"
+              },
+              "ultimosDigitos": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "marca",
+              "ultimosDigitos"
+            ],
+            "type": "object"
+          },
+          "total": {
+            "pattern": "^\\d{1,10}(\\.\\d{1,2})?$",
+            "type": "string"
+          },
+          "transicionesPermitidas": {
+            "description": "M8-H01: los estados a los que el rol de quien pide puede llevarlo ahora con POST /admin/pedidos/{id}/estado, en el orden del ciclo (sin Cancelado ni las devoluciones, que tienen su propia vía)",
+            "items": {
+              "enum": [
+                "Pagado",
+                "EnPreparacion",
+                "Despachado",
+                "Entregado",
+                "Cancelado",
+                "DevueltoParcial",
+                "Devuelto"
+              ],
+              "type": "string"
+            },
+            "type": "array"
           }
-        ]
+        },
+        "required": [
+          "idPedido",
+          "numeroPedido",
+          "estado",
+          "estadoPago",
+          "puedeCancelar",
+          "subtotal",
+          "descuento",
+          "costoEnvio",
+          "total",
+          "baseImponible",
+          "iva",
+          "montoReembolsado",
+          "codigoCupon",
+          "envio",
+          "fechaPago",
+          "fechaPagoLocal",
+          "tarjeta",
+          "direccion",
+          "lineas",
+          "historial",
+          "cliente",
+          "transicionesPermitidas",
+          "puedeDevolver"
+        ],
+        "type": "object"
       },
       "ProductoAdmin": {
         "properties": {

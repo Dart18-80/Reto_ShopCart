@@ -133,6 +133,23 @@ pruebaDeCompra.describe('mis pedidos (M5)', () => {
   );
 });
 
+const CICLO_HASTA_ENTREGADO = [
+  ['Pasar a En preparación', ''],
+  ['Marcar como despachado', 'Guía 4521'],
+  ['Marcar como entregado', ''],
+] as const;
+
+/** Lleva el pedido abierto de Pagado a Entregado con los botones de la gestión (M8-H03). */
+async function entregarDesdeLaGestion(operador: Page) {
+  for (const [accion, motivo] of CICLO_HASTA_ENTREGADO) {
+    await operador.getByRole('button', { name: accion }).click();
+    const dialogo = operador.getByRole('dialog', { name: accion });
+    if (motivo !== '') await dialogo.getByLabel('Motivo (opcional)').fill(motivo);
+    await dialogo.getByRole('button', { name: accion }).click();
+    await expect(dialogo).toBeHidden();
+  }
+}
+
 pruebaDeCompra.describe('gestión de pedidos (M8)', () => {
   pruebaDeCompra(
     'un Operador lleva un pedido de Pagado a Entregado y el historial registra cada paso con su rol (M8-H03)',
@@ -153,17 +170,7 @@ pruebaDeCompra.describe('gestión de pedidos (M8)', () => {
         await operador.getByRole('link', { name: numero }).click();
         await expect(operador.getByRole('heading', { name: `Pedido ${numero}` })).toBeVisible();
 
-        for (const [accion, motivo] of [
-          ['Pasar a En preparación', ''],
-          ['Marcar como despachado', 'Guía 4521'],
-          ['Marcar como entregado', ''],
-        ] as const) {
-          await operador.getByRole('button', { name: accion }).click();
-          const dialogo = operador.getByRole('dialog', { name: accion });
-          if (motivo !== '') await dialogo.getByLabel('Motivo (opcional)').fill(motivo);
-          await dialogo.getByRole('button', { name: accion }).click();
-          await expect(dialogo).toBeHidden();
-        }
+        await entregarDesdeLaGestion(operador);
 
         await expect(operador.getByRole('heading', { level: 1 }).locator('..')).toContainText(
           'Entregado',
@@ -176,6 +183,51 @@ pruebaDeCompra.describe('gestión de pedidos (M8)', () => {
         }
         await expect(historial).toContainText('Motivo: Guía 4521');
         await expect(operador.getByRole('button', { name: /Pasar a|Marcar como/ })).toBeHidden();
+      } finally {
+        await contexto.close();
+      }
+    },
+  );
+
+  pruebaDeCompra(
+    'una devolución parcial deja el pedido en Devuelto parcial y el kardex muestra el reingreso (M8-H04)',
+    async ({ browser, apiAdmin, crearEnTienda, comprador }, informacion) => {
+      const marca = nombreUnico('devolucion');
+      const idProducto = await crearEnTienda(`Gorra ${marca}`, [
+        { valores: [], precio: '60.00', existencia: 5 },
+      ]);
+      await agregarAlCarrito(comprador.api, await varianteDe(comprador.api, idProducto), 2);
+      await direccionDe(comprador.api);
+      const idPedido = await comprarCarrito(comprador.api);
+
+      const contexto = await browser.newContext({ baseURL: informacion.project.use.baseURL });
+      const operador = await contexto.newPage();
+      try {
+        await iniciarSesionPorApi(operador, await crearOperador(apiAdmin));
+        await operador.goto(`/backoffice/pedidos/${String(idPedido)}`);
+        await entregarDesdeLaGestion(operador);
+
+        await operador.getByRole('button', { name: 'Registrar devolución' }).click();
+        const dialogo = operador.getByRole('dialog', { name: 'Registrar devolución' });
+        await dialogo.getByRole('combobox', { name: new RegExp(marca) }).selectOption('1');
+        await dialogo.getByLabel('Motivo').fill('Talla equivocada');
+        await dialogo.getByRole('button', { name: 'Registrar devolución' }).click();
+
+        await expect(operador.getByText(/^Registramos la devolución\. /)).toBeVisible();
+        await expect(operador.getByRole('heading', { level: 1 }).locator('..')).toContainText(
+          'Devuelto parcial',
+        );
+
+        await operador.goto(`/backoffice/inventario?texto=${encodeURIComponent(marca)}`);
+        const fila = operador.getByRole('table', { name: 'Existencias' }).getByRole('row').nth(1);
+        const sku = (await fila.getByRole('cell').first().innerText()).trim();
+        await expect(fila.getByRole('cell').nth(2)).toHaveText('4');
+        await operador.getByRole('button', { name: `Ver kardex de ${sku}` }).click();
+        const kardex = operador.getByRole('dialog', { name: `Kardex de ${sku}` });
+        const reingreso = kardex.getByRole('row').filter({ hasText: 'Reingreso por devolución' });
+        await expect(reingreso).toContainText('+1');
+        await expect(reingreso.getByRole('cell').nth(3)).toHaveText('3');
+        await expect(reingreso.getByRole('cell').nth(4)).toHaveText('4');
       } finally {
         await contexto.close();
       }

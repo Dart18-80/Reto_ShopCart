@@ -242,6 +242,32 @@ export function simularCambioEstado(respuesta: PedidoDePrueba | ErrorSimulado) {
   return recibidos;
 }
 
+/** `POST /admin/pedidos/{id}/devoluciones`: la devolución con su reembolso, o el error indicado. */
+export function simularDevolucion(
+  respuesta:
+    | { pedido: PedidoDePrueba; montoReembolso: string; estadoReembolso: EstadoReembolso }
+    | ErrorSimulado,
+) {
+  const recibidos: unknown[] = [];
+  servidor.use(
+    http.post('/api/v1/admin/pedidos/:id/devoluciones', async ({ request }) => {
+      recibidos.push(await request.json());
+      if ('status' in respuesta) return responderError(respuesta);
+      return HttpResponse.json(
+        {
+          datos: {
+            pedido: respuesta.pedido,
+            devolucion: { idDevolucion: 3, montoReembolso: respuesta.montoReembolso },
+            reembolso: { idReembolso: 10, estado: respuesta.estadoReembolso },
+          },
+        },
+        { status: 201 },
+      );
+    }),
+  );
+  return recibidos;
+}
+
 /** `POST /admin/pedidos/{id}/cancelar`: el pedido cancelado con su reembolso, o el error indicado. */
 export function simularCancelacionGestion(
   respuesta: { pedido: PedidoDePrueba; estadoReembolso: EstadoReembolso } | ErrorSimulado,
