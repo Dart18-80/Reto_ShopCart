@@ -12,7 +12,7 @@ Dos réplicas de la API reciben peticiones a la vez, así que ninguna regla en d
 | Orden global de bloqueo | Que dos SPs no se esperen en orden inverso (deadlock) | [R__SP_Checkout_IniciarSesion.sql:2](../../../database/programmability/R__SP_Checkout_IniciarSesion.sql#L2 "carrito → variantes por IDVariante → sesión → cupón") | 01 §6.6 |
 | Contador con `CHECK` | El límite de usos del cupón | [V006__carrito_cupones_envios.sql:35](../../../database/migrations/V006__carrito_cupones_envios.sql#L35 "CK_Cupon_UsosComprometidos CHECK (UsosComprometidos BETWEEN 0 AND LimiteUsosTotal)") | A-13 |
 | `UNIQUE` como candado | Un solo intento de pago por llave | [V007__checkout.sql:97](../../../database/migrations/V007__checkout.sql#L97 "UQ_IntentoPago_LlaveIdempotencia UNIQUE (LlaveIdempotencia)") | N-03 |
-| Concurrencia optimista | El estado del pedido | [R__SP_Pedidos_CambiarEstado.sql:57](../../../database/programmability/R__SP_Pedidos_CambiarEstado.sql#L57 "IDEstadoPedido = @IDEsperado") | N-08 |
+| Concurrencia optimista | El estado del pedido | [R__SP_Pedidos_CambiarEstado.sql:59](../../../database/programmability/R__SP_Pedidos_CambiarEstado.sql#L59 "IDEstadoPedido = @IDEsperado") | N-08 |
 | `sp_getapplock` | Una sola réplica ejecuta cada job | [R__SP_Checkout_ExpirarSesiones.sql:29](../../../database/programmability/R__SP_Checkout_ExpirarSesiones.sql#L29 "sys.sp_getapplock @Resource = N'Job_Checkout_ExpirarSesiones'") | A-04 |
 | Reintento de deadlock | Un deadlock que aun así ocurra | [ejecutar-sp.ts:67](../../../apps/api/src/shared/db/ejecutar-sp.ts#L67 "numero === DEADLOCK && intento < REINTENTOS_DEADLOCK") | 01 §7 |
 | Arrendamiento + fencing | Que una petición desplazada no cree el pedido | [R__SP_Checkout_ActualizarIntentoPago.sql:56](../../../database/programmability/R__SP_Checkout_ActualizarIntentoPago.sql#L56 "@TokenVigente <> @TokenArrendamiento") | N-03, A-24 |
@@ -62,7 +62,7 @@ El SP valida bajo bloqueo; el `CHECK` es la última defensa si un bug o una escr
 
 ## Concurrencia optimista en estados
 
-- El operador envía el estado que vio (`@EstadoEsperado`); el `UPDATE` solo procede si sigue igual ([R__SP_Pedidos_CambiarEstado.sql:57](../../../database/programmability/R__SP_Pedidos_CambiarEstado.sql#L57 "WHERE  IDPedido = @IDPedido AND IDEstadoPedido = @IDEsperado")). Si no afectó filas, otro lo cambió: `409 CONFLICTO_CONCURRENCIA` ([R__SP_Pedidos_CambiarEstado.sql:59](../../../database/programmability/R__SP_Pedidos_CambiarEstado.sql#L59 "THROW 50002")).
+- El operador envía el estado que vio (`@EstadoEsperado`); el `UPDATE` solo procede si sigue igual ([R__SP_Pedidos_CambiarEstado.sql:59](../../../database/programmability/R__SP_Pedidos_CambiarEstado.sql#L59 "WHERE  IDPedido = @IDPedido AND IDEstadoPedido = @IDEsperado")). Si no afectó filas, otro lo cambió: `409 CONFLICTO_CONCURRENCIA` ([R__SP_Pedidos_CambiarEstado.sql:61](../../../database/programmability/R__SP_Pedidos_CambiarEstado.sql#L61 "THROW 50002")).
 - Prueba: [estados.api.test.ts:180](../../../apps/api/test/integracion/pedidos/estados.api.test.ts#L180 "dos operadores a la vez sobre el mismo pedido: uno gana y el otro recibe 409").
 - Por qué optimista aquí: dos operadores sobre el mismo pedido es raro y el perdedor solo recarga; no hace falta retener un bloqueo mientras el operador decide.
 

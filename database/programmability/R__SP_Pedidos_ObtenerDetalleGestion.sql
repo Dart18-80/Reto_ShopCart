@@ -3,9 +3,9 @@
 --   1-3. Los de SP_Pedidos_ObtenerDetalle: el pedido (con PuedeCancelar para el rol del actor), sus líneas (con
 --        Devolvible = vendido − devuelto) y su historial.
 --   4.   El cliente y PuedeDevolver (N-10: Entregado o DevueltoParcial dentro de FU_Pedidos_PlazoDevolucion).
---   5.   TransicionesPermitidas: los destinos de TransicionEstadoPedido desde el estado actual para el rol del
---        actor que acepta SP_Pedidos_CambiarEstado (sin Cancelado, DevueltoParcial ni Devuelto, que tienen su
---        propia vía) y, desde Pagado, solo con el cobro Capturado (50710), en el orden del ciclo.
+--   5.   TransicionesPermitidas: los destinos desde el estado actual que SP_Pedidos_CambiarEstado acepta para el rol
+--        del actor, con la misma FU_Pedidos_TransicionesGestion (sin las vías propias ni el cobro pendiente), en el
+--        orden del ciclo.
 -- Un pedido inexistente no devuelve nada (la API responde 404).
 CREATE OR ALTER PROCEDURE dbo.SP_Pedidos_ObtenerDetalleGestion
     @IDPedido       INT,
@@ -32,18 +32,10 @@ BEGIN
     OUTER APPLY dbo.FU_Pedidos_PlazoDevolucion(p.IDPedido, SYSUTCDATETIME()) AS pl
     WHERE  p.IDPedido = @IDPedido;
 
-    SELECT d.Codigo AS Estado
+    SELECT f.Codigo AS Estado
     FROM   dbo.Pedido AS p
-    JOIN   dbo.EstadoPedido AS o ON o.IDEstadoPedido = p.IDEstadoPedido
-    JOIN   dbo.TransicionEstadoPedido AS t ON t.IDEstadoOrigen = p.IDEstadoPedido
-    JOIN   dbo.EstadoPedido AS d ON d.IDEstadoPedido = t.IDEstadoDestino
-    JOIN   dbo.Rol AS r ON r.IDRol = t.IDRol
-    WHERE  p.IDPedido = @IDPedido
-      AND  r.Codigo = @RolActor
-      AND  d.Codigo NOT IN ('Cancelado', 'DevueltoParcial', 'Devuelto')
-      AND  (o.Codigo <> 'Pagado'
-            OR EXISTS (SELECT 1 FROM dbo.IntentoPago AS i
-                       WHERE i.IDIntentoPago = p.IDIntentoPago AND i.Estado = 'Capturado'))
-    ORDER BY d.Orden;
+    CROSS APPLY dbo.FU_Pedidos_TransicionesGestion(p.IDPedido, p.IDEstadoPedido, @RolActor) AS f
+    WHERE  p.IDPedido = @IDPedido AND f.ViaGestion = 1 AND f.CobroPendiente = 0
+    ORDER BY f.Orden;
 END
 GO

@@ -1,6 +1,6 @@
 import { idSchema, registrarDevolucionSchema, type RegistrarDevolucion } from '@shopcart/shared';
 import type { UseMutationResult } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { z } from 'zod';
 import type { ErrorApi } from '../../../shared/api';
@@ -56,7 +56,14 @@ const campoCantidad = (indice: number) =>
 
 /** Las opciones van de 0 a lo devolvible que calculó el backend (N-10); el SP lo vuelve a exigir bajo bloqueo. */
 function CantidadADevolver({ linea, indice }: { linea: Linea; indice: number }) {
-  const { control } = useFormContext<FormularioDevolucion>();
+  const { control, getValues, setValue } = useFormContext<FormularioDevolucion>();
+  // Si otra devolución bajó lo devolvible con el diálogo abierto (se vuelve a consultar tras un 422), la cantidad
+  // elegida no puede quedar fuera de las opciones.
+  useEffect(() => {
+    if (getValues(campoCantidad(indice)) > linea.devolvible) {
+      setValue(campoCantidad(indice), linea.devolvible);
+    }
+  }, [getValues, setValue, indice, linea.devolvible]);
   return (
     <FormField
       control={control}

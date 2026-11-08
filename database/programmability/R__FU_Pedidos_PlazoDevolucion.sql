@@ -6,8 +6,7 @@ CREATE OR ALTER FUNCTION dbo.FU_Pedidos_PlazoDevolucion (@IDPedido INT, @Ahora D
 RETURNS TABLE
 AS
 RETURN
-    SELECT h.FechaEntrega,
-           CONVERT(BIT, IIF(DATEADD(DAY, ps.DiasPlazoDevolucion, h.FechaEntrega) >= @Ahora, 1, 0)) AS EnPlazo
+    SELECT CONVERT(BIT, IIF(DATEADD(DAY, ps.DiasPlazoDevolucion, h.FechaEntrega) >= @Ahora, 1, 0)) AS EnPlazo
     FROM  (SELECT MIN(he.Fecha) AS FechaEntrega
            FROM   dbo.HistorialEstadoPedido AS he
            JOIN   dbo.EstadoPedido AS e ON e.IDEstadoPedido = he.IDEstadoNuevo

@@ -105,6 +105,7 @@ describe('GET /admin/pedidos/{id}: el detalle para el personal (M8-H01)', () => 
     const ciclo = ['Pagado', 'EnPreparacion', 'Despachado', 'Entregado'] as const;
 
     for (const [indice, estado] of ciclo.entries()) {
+      // M8 (revisión): la misma FU_Pedidos_TransicionesGestion decide lo que se ofrece y lo que se acepta.
       const operador = await detalle(pedido.idPedido, tokenOperador);
       const admin = await detalle(pedido.idPedido, tokenAdmin);
       expect([estado, [...operador.transicionesPermitidas].sort()]).toEqual([
@@ -112,8 +113,14 @@ describe('GET /admin/pedidos/{id}: el detalle para el personal (M8-H01)', () => 
         delMapa(estado, 'Operador'),
       ]);
       expect([...admin.transicionesPermitidas].sort()).toEqual(delMapa(estado, 'Administrador'));
-      const siguiente = ciclo[indice + 1];
-      if (siguiente !== undefined) await cambiar(pedido.idPedido, estado, siguiente);
+      // Lo que se ofrece es lo que el endpoint de estado acepta: pedirlo responde 200 (ni 50701 ni 50710).
+      for (const destino of operador.transicionesPermitidas) {
+        expect([destino, (await cambiar(pedido.idPedido, estado, destino)).status]).toEqual([
+          destino,
+          200,
+        ]);
+      }
+      expect(operador.transicionesPermitidas).toHaveLength(ciclo[indice + 1] === undefined ? 0 : 1);
     }
   });
 

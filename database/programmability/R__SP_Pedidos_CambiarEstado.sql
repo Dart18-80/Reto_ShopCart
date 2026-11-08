@@ -3,7 +3,8 @@
 -- La transición debe existir en TransicionEstadoPedido para el rol del actor (50701); TR_Pedidos_ValidarTransicion
 -- lo vuelve a exigir ante cualquier UPDATE. Cancelado, DevueltoParcial y Devuelto no se alcanzan por aquí: los
 -- escriben la cancelación (con su reembolso) y el SP de devoluciones (que deriva el estado de lo devuelto).
--- Desde Pagado exige el cobro Capturado (50710); el trigger también.
+-- Desde Pagado exige el cobro Capturado (50710); el trigger también. Las dos reglas viven en
+-- FU_Pedidos_TransicionesGestion, la misma que usa el detalle de gestión para ofrecer los botones (M8-H01).
 -- Escribe el estado y su HistorialEstadoPedido (usuario, fecha y hora, anterior, nuevo y motivo) en la misma
 -- transacción y devuelve el pedido (SP_Pedidos_ObtenerDetalle).
 CREATE OR ALTER PROCEDURE dbo.SP_Pedidos_CambiarEstado
@@ -26,15 +27,17 @@ BEGIN
 
     DECLARE @IDEsperado INT = (SELECT e.IDEstadoPedido FROM dbo.EstadoPedido AS e WHERE e.Codigo = @EstadoEsperado),
             @IDNuevo    INT = (SELECT e.IDEstadoPedido FROM dbo.EstadoPedido AS e WHERE e.Codigo = @EstadoNuevo),
-            @IDActual   INT;
+            @IDActual   INT, @ViaGestion BIT;
 
     IF @IDEsperado IS NULL OR @IDNuevo IS NULL
         THROW 50003, N'El estado no es válido.', 1;
-    IF @EstadoNuevo IN ('Cancelado', 'DevueltoParcial', 'Devuelto')
+
+    SELECT @ViaGestion = f.ViaGestion
+    FROM   dbo.FU_Pedidos_TransicionesGestion(@IDPedido, @IDEsperado, @RolActor) AS f
+    WHERE  f.IDEstadoDestino = @IDNuevo;
+    IF @ViaGestion = 0
         THROW 50701, N'Ese estado se alcanza cancelando el pedido o registrando una devolución.', 1;
-    IF NOT EXISTS (SELECT 1 FROM dbo.TransicionEstadoPedido AS t
-                   JOIN dbo.Rol AS r ON r.IDRol = t.IDRol
-                   WHERE t.IDEstadoOrigen = @IDEsperado AND t.IDEstadoDestino = @IDNuevo AND r.Codigo = @RolActor)
+    IF @ViaGestion IS NULL
         THROW 50701, N'El pedido no puede pasar a ese estado.', 1;
 
     BEGIN TRY
@@ -46,9 +49,8 @@ BEGIN
         -- Decisión del PO (E9-H04): desde Pagado solo se avanza con el cobro Capturado (no con la captura
         -- pendiente ni con el pago EnRevision). Así un intento EnRevision con pedido solo existe en Pagado, donde
         -- SinCobro lo puede cancelar. Capturado es final: leerlo sin bloqueo no deja pasar nada indebido.
-        IF @EstadoEsperado = 'Pagado'
-           AND NOT EXISTS (SELECT 1 FROM dbo.Pedido AS p JOIN dbo.IntentoPago AS i ON i.IDIntentoPago = p.IDIntentoPago
-                           WHERE p.IDPedido = @IDPedido AND i.Estado = 'Capturado')
+        IF EXISTS (SELECT 1 FROM dbo.FU_Pedidos_TransicionesGestion(@IDPedido, @IDEsperado, @RolActor) AS f
+                   WHERE f.IDEstadoDestino = @IDNuevo AND f.CobroPendiente = 1)
             THROW 50710, N'El cobro de este pedido aún no se confirma.', 1;
 
         -- sqlserver-sp §9.4: concurrencia optimista sobre el estado.

@@ -90,6 +90,9 @@ describe('cambiar el estado desde la gestión (M8-H03)', () => {
     expect(lectura.lecturas.total).toBeGreaterThan(lecturasAntes);
     expect(await accion('Marcar como despachado')).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    await usuario.click(screen.getByRole('button', { name: 'Entendido' }));
+    expect(screen.queryByText(/El pedido cambió mientras lo veías/)).not.toBeInTheDocument();
   });
 
   it('otro 409 (cobro sin confirmar) muestra el mensaje del backend en el diálogo', async () => {

@@ -42,14 +42,14 @@ sequenceDiagram
 | Regla | Dónde vive | Archivo:línea | Decisión |
 | --- | --- | --- | --- |
 | No se saltan estados (primera capa, mensaje claro) | Servicio con el mapa de transiciones | [pedidos.service.ts:50](../../../apps/api/src/modules/pedidos/pedidos.service.ts#L50 "transicionPermitida"), [pedidos.transiciones.ts:23](../../../apps/api/src/modules/pedidos/pedidos.transiciones.ts#L23 "destino: 'EnPreparacion'") | N-08 |
-| La transición existe para el rol (segunda capa) | SP contra `TransicionEstadoPedido` | [R__SP_Pedidos_CambiarEstado.sql:38](../../../database/programmability/R__SP_Pedidos_CambiarEstado.sql#L38 "THROW 50701") | N-08, A-15 |
+| La transición existe para el rol (segunda capa) | SP contra `TransicionEstadoPedido` | [R__SP_Pedidos_CambiarEstado.sql:41](../../../database/programmability/R__SP_Pedidos_CambiarEstado.sql#L41 "THROW 50701") | N-08, A-15 |
 | Ningún `UPDATE` a `Pedido` escapa (tercera capa) | Trigger con el rol de `SESSION_CONTEXT` | [R__TR_Pedidos_ValidarTransicion.sql:28](../../../database/programmability/R__TR_Pedidos_ValidarTransicion.sql#L28 "THROW 50701") | N-08, A-18 |
-| El endpoint de estado nunca alcanza `Cancelado`, `DevueltoParcial` ni `Devuelto` | SP | [R__SP_Pedidos_CambiarEstado.sql:34](../../../database/programmability/R__SP_Pedidos_CambiarEstado.sql#L34 "THROW 50701") | N-08 |
-| Solo cambia si sigue en el estado esperado | SP (concurrencia optimista) | [R__SP_Pedidos_CambiarEstado.sql:57](../../../database/programmability/R__SP_Pedidos_CambiarEstado.sql#L57 "IDEstadoPedido = @IDEsperado") | N-08 |
-| El historial se escribe en la misma transacción | SP | [R__SP_Pedidos_CambiarEstado.sql:61](../../../database/programmability/R__SP_Pedidos_CambiarEstado.sql#L61 "INSERT INTO dbo.HistorialEstadoPedido") | N-08 |
+| El endpoint de estado nunca alcanza `Cancelado`, `DevueltoParcial` ni `Devuelto` | SP | [R__SP_Pedidos_CambiarEstado.sql:39](../../../database/programmability/R__SP_Pedidos_CambiarEstado.sql#L39 "THROW 50701") | N-08 |
+| Solo cambia si sigue en el estado esperado | SP (concurrencia optimista) | [R__SP_Pedidos_CambiarEstado.sql:59](../../../database/programmability/R__SP_Pedidos_CambiarEstado.sql#L59 "IDEstadoPedido = @IDEsperado") | N-08 |
+| El historial se escribe en la misma transacción | SP | [R__SP_Pedidos_CambiarEstado.sql:63](../../../database/programmability/R__SP_Pedidos_CambiarEstado.sql#L63 "INSERT INTO dbo.HistorialEstadoPedido") | N-08 |
 | El historial no se modifica ni se borra | Tabla ledger append-only | [V008__pedidos.sql:153](../../../database/migrations/V008__pedidos.sql#L153 "APPEND_ONLY = ON") | M-01 |
 | La primera fila es (ninguno) → `Pagado`, al confirmar el pago | `SP_Pedidos_CrearPedido` | [R__SP_Pedidos_CrearPedido.sql:158](../../../database/programmability/R__SP_Pedidos_CrearPedido.sql#L158 "Pago confirmado") | N-08 |
-| Un pedido solo sale de `Pagado` con el cobro `Capturado` (ni con la captura pendiente ni `EnRevision`) | SP y trigger (`50710`) | [R__SP_Pedidos_CambiarEstado.sql:52](../../../database/programmability/R__SP_Pedidos_CambiarEstado.sql#L52 "THROW 50710") · [R__TR_Pedidos_ValidarTransicion.sql:41](../../../database/programmability/R__TR_Pedidos_ValidarTransicion.sql#L41 "THROW 50710") | N-08, N-03 |
+| Un pedido solo sale de `Pagado` con el cobro `Capturado` (ni con la captura pendiente ni `EnRevision`) | SP y trigger (`50710`) | [R__SP_Pedidos_CambiarEstado.sql:54](../../../database/programmability/R__SP_Pedidos_CambiarEstado.sql#L54 "THROW 50710") · [R__TR_Pedidos_ValidarTransicion.sql:41](../../../database/programmability/R__TR_Pedidos_ValidarTransicion.sql#L41 "THROW 50710") | N-08, N-03 |
 | Un pedido con el pago `EnRevision` no se cancela: solo `SinCobro` lo hace | SP bajo el bloqueo del intento (`50706`) | [R__SP_Pedidos_AplicarCancelacion.sql:84](../../../database/programmability/R__SP_Pedidos_AplicarCancelacion.sql#L84 "THROW 50706") | N-09 |
 | Revisión manual (E9-H04): solo desde `EnRevision`, bajo bloqueo; resolver dos veces es 409 | SP (`50707`) | [R__SP_Pedidos_ResolverPagoEnRevision.sql:62](../../../database/programmability/R__SP_Pedidos_ResolverPagoEnRevision.sql#L62 "THROW 50707") | N-09 |
 | `CobroVerificado` y `Reembolsar` exigen el cobro `Capturada` en la pasarela; `SinCobro`, que no lo esté | Servicio (la pasarela se consulta fuera de la transacción) | [pedidos.revision.ts:98](../../../apps/api/src/modules/pedidos/pedidos.revision.ts#L98 "COBRO_SIN_CAPTURA") | N-03, N-09 |
@@ -96,7 +96,7 @@ sequenceDiagram
 ## Modos de falla
 
 - **Pedido ajeno o inexistente:** `404 NO_ENCONTRADO`, con el mismo cuerpo en los dos casos ([pedidos.service.ts:18](../../../apps/api/src/modules/pedidos/pedidos.service.ts#L18 "NO_ENCONTRADO"), prueba [consulta.api.test.ts:95](../../../apps/api/test/integracion/pedidos/consulta.api.test.ts#L95 "igual que uno inexistente")).
-- **Transición inválida:** `409 TRANSICION_INVALIDA` ([catalogo.ts:211](../../../apps/api/src/shared/errors/catalogo.ts#L211 "TRANSICION_INVALIDA")). **Estado que ya cambió:** `409 CONFLICTO_CONCURRENCIA` ([R__SP_Pedidos_CambiarEstado.sql:59](../../../database/programmability/R__SP_Pedidos_CambiarEstado.sql#L59 "THROW 50002")).
+- **Transición inválida:** `409 TRANSICION_INVALIDA` ([catalogo.ts:211](../../../apps/api/src/shared/errors/catalogo.ts#L211 "TRANSICION_INVALIDA")). **Estado que ya cambió:** `409 CONFLICTO_CONCURRENCIA` ([R__SP_Pedidos_CambiarEstado.sql:61](../../../database/programmability/R__SP_Pedidos_CambiarEstado.sql#L61 "THROW 50002")).
 - **No cancelable** (despachado, entregado o ya cancelado): `409 NO_CANCELABLE` ([catalogo.ts:216](../../../apps/api/src/shared/errors/catalogo.ts#L216 "NO_CANCELABLE")).
 - **Cobro sin capturar:** con la captura pendiente o el pago en revisión, el pedido no avanza, `409 PAGO_NO_CAPTURADO` ([estados.api.test.ts:283](../../../apps/api/test/integracion/pedidos/estados.api.test.ts#L283 "el Operador no puede preparar")), y un `UPDATE` directo tampoco ([estados.api.test.ts:323](../../../apps/api/test/integracion/pedidos/estados.api.test.ts#L323 "un UPDATE directo también se rechaza")). **Pago en revisión:** tampoco se cancela: el Cliente y la gestión reciben el mismo 409 y nada cambia ([cancelacion.api.test.ts:426](../../../apps/api/test/integracion/pedidos/cancelacion.api.test.ts#L426 "el cliente recibe 409 PAGO_EN_REVISION")).
 - **Devoluciones:** más de lo vendido, `422 DEVOLUCION_EXCEDE_VENDIDO` con lo que queda por línea en `detalles` ([devoluciones.api.test.ts:179](../../../apps/api/test/integracion/pedidos/devoluciones.api.test.ts#L179 "no se devuelve más de lo vendido")); fuera de plazo, `422 PLAZO_DEVOLUCION_VENCIDO`; más que el total pagado, `422 REEMBOLSO_EXCEDE_TOTAL` ([R__SP_Pedidos_RegistrarDevolucion.sql:123](../../../database/programmability/R__SP_Pedidos_RegistrarDevolucion.sql#L123 "THROW 50705")); una línea de otro pedido, `404`.
@@ -136,7 +136,7 @@ No. `HistorialEstadoPedido` es una tabla ledger append-only: el motor rechaza `U
 ### ¿Qué pasa si dos operadores cambian el mismo pedido a la vez?
 
 Concurrencia optimista: cada uno envía el estado que vio y el `UPDATE` solo aplica si el pedido sigue en ese estado. El segundo recibe `409 CONFLICTO_CONCURRENCIA`.
-**Muéstralo en:** [R__SP_Pedidos_CambiarEstado.sql:57](../../../database/programmability/R__SP_Pedidos_CambiarEstado.sql#L57 "IDEstadoPedido = @IDEsperado")
+**Muéstralo en:** [R__SP_Pedidos_CambiarEstado.sql:59](../../../database/programmability/R__SP_Pedidos_CambiarEstado.sql#L59 "IDEstadoPedido = @IDEsperado")
 
 ### ¿Por qué el reembolso no se hace dentro de la transacción de la cancelación?
 
@@ -171,7 +171,7 @@ Cada unidad se reembolsa al centavo hacia abajo (`FLOOR`) sobre `TotalLinea / Ca
 ### ¿Desde cuándo cuenta el plazo de 30 días para devolver?
 
 Desde la primera vez que el pedido pasó a `Entregado`, según su historial; el plazo es `DiasPlazoDevolucion` de `ParametroSistema` (30 por omisión). La regla vive en una sola función: el SP de devoluciones la exige bajo bloqueo y el detalle de gestión la usa para ofrecer "Registrar devolución" (`puedeDevolver`, M8-H01).
-**Muéstralo en:** [R__FU_Pedidos_PlazoDevolucion.sql:11](../../../database/programmability/R__FU_Pedidos_PlazoDevolucion.sql#L11 "MIN(he.Fecha)"), [R__SP_Pedidos_RegistrarDevolucion.sql:77](../../../database/programmability/R__SP_Pedidos_RegistrarDevolucion.sql#L77 "FU_Pedidos_PlazoDevolucion")
+**Muéstralo en:** [R__FU_Pedidos_PlazoDevolucion.sql:10](../../../database/programmability/R__FU_Pedidos_PlazoDevolucion.sql#L10 "MIN(he.Fecha)"), [R__SP_Pedidos_RegistrarDevolucion.sql:77](../../../database/programmability/R__SP_Pedidos_RegistrarDevolucion.sql#L77 "FU_Pedidos_PlazoDevolucion")
 
 ### ¿Cómo se garantiza que un cliente no vea ni cancele pedidos de otro?
 

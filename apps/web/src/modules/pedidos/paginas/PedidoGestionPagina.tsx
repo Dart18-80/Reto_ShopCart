@@ -1,5 +1,6 @@
 import { idEnRutaSchema } from '@shopcart/shared';
 import { SearchX } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { Link, useParams } from 'react-router';
 import { Aviso } from '../../../shared/componentes/Aviso';
 import { AvisoDePagina } from '../../../shared/componentes/AvisoDePagina';
@@ -46,6 +47,30 @@ function PedidoNoEncontrado() {
   );
 }
 
+/** Un aviso de lo que pasó al actuar; «Entendido» lo descarta (olvida el resultado de esa mutación). */
+function AvisoDescartable({
+  tipo,
+  alDescartar,
+  children,
+}: {
+  tipo: 'advertencia' | 'error';
+  alDescartar: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <Aviso
+      tipo={tipo}
+      acciones={
+        <Button variant="outline" size="sm" onClick={alDescartar}>
+          Entendido
+        </Button>
+      }
+    >
+      {children}
+    </Aviso>
+  );
+}
+
 function AvisosDeAcciones({
   cambiar,
   cancelar,
@@ -57,13 +82,16 @@ function AvisosDeAcciones({
 }) {
   return (
     <>
+      {/* El diálogo que falló ya se cerró (cambió el estado): el aviso queda hasta que se descarte o se actúe. */}
       {cambiar.error?.codigo === CONFLICTO && (
-        <Aviso tipo="advertencia">
+        <AvisoDescartable tipo="advertencia" alDescartar={cambiar.reset}>
           El pedido cambió mientras lo veías. Ya ves su estado actual: revisa antes de seguir.
-        </Aviso>
+        </AvisoDescartable>
       )}
       {cancelar.error?.codigo === NO_CANCELABLE && (
-        <Aviso tipo="error">{cancelar.error.mensaje}</Aviso>
+        <AvisoDescartable tipo="error" alDescartar={cancelar.reset}>
+          {cancelar.error.mensaje}
+        </AvisoDescartable>
       )}
       {cancelar.data && (
         <AvisoReembolsoGestion

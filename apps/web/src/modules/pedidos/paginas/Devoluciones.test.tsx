@@ -147,9 +147,14 @@ describe('devoluciones desde la gestión (M8-H04)', () => {
 
     const dialogo = await abrirDialogo(usuario);
     const lecturasAntes = lectura.lecturas.total;
-    await usuario.selectOptions(
-      dialogo.getByRole('combobox', { name: 'Camisa Oxford, Azul / M' }),
-      '2',
+    const oxford = dialogo.getByRole('combobox', { name: 'Camisa Oxford, Azul / M' });
+    await usuario.selectOptions(oxford, '2');
+    // Otra devolución se llevó una unidad mientras el diálogo estaba abierto.
+    lectura.reemplazar(
+      pedidoGestionDePrueba({
+        ...ENTREGADO,
+        lineas: [lineaDePrueba({ cantidadDevuelta: 1, devolvible: 1 })],
+      }),
     );
     await usuario.type(dialogo.getByLabelText('Motivo'), 'Talla equivocada');
     await usuario.click(dialogo.getByRole('button', { name: 'Registrar devolución' }));
@@ -159,6 +164,10 @@ describe('devoluciones desde la gestión (M8-H04)', () => {
     );
     await waitFor(() => {
       expect(lectura.lecturas.total).toBeGreaterThan(lecturasAntes);
+    });
+    // La cantidad elegida se recorta a lo devolvible de ahora.
+    await waitFor(() => {
+      expect(oxford).toHaveValue('1');
     });
   });
 });
