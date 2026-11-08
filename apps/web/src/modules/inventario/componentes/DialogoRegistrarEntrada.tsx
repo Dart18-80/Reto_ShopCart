@@ -23,7 +23,8 @@ import { nombreDeVariante } from '../nombreDeVariante';
 
 const TITULO = 'Registrar entrada';
 const OPCIONES_A_MOSTRAR = 10;
-const VALORES_INICIALES = { cantidad: '', motivo: '', referencia: '' };
+// La referencia es opcional: sin valor inicial queda ausente si no se escribe (textoNvarchar no admite el vacío).
+const VALORES_INICIALES = { cantidad: '', motivo: '' };
 const CAMPO_POR_CODIGO = { MOTIVO_REQUERIDO: 'motivo' } as const;
 
 /** Las variantes que coinciden con lo que se escribe, por SKU, con la búsqueda de existencias (M7-H01). */

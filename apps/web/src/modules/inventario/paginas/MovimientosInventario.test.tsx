@@ -183,6 +183,30 @@ describe('InventarioPagina, kardex (M7-H02)', () => {
 });
 
 describe('InventarioPagina, entradas (M7-H02)', () => {
+  it('una entrada sin referencia la envía sin el campo (la referencia es opcional)', async () => {
+    const { existencias } = preparar();
+    const cuerpos = simularEntrada(movimientoDePrueba());
+    const { usuario } = abrir();
+
+    await usuario.click(await screen.findByRole('button', { name: 'Registrar entrada' }));
+    const dialogo = within(await screen.findByRole('dialog', { name: 'Registrar entrada' }));
+    await usuario.type(dialogo.getByLabelText('Buscar variante'), 'oxford');
+    await waitFor(() => {
+      expect(existencias.some((c) => c.get('texto') === 'oxford')).toBe(true);
+    });
+    await usuario.selectOptions(
+      await dialogo.findByRole('combobox', { name: 'Variante' }),
+      'CAM-OXF-AZ-M · Camisa Oxford, Azul / M',
+    );
+    await usuario.type(dialogo.getByLabelText('Cantidad'), '5');
+    await usuario.type(dialogo.getByLabelText('Motivo'), 'Compra al proveedor');
+    await usuario.click(dialogo.getByRole('button', { name: 'Registrar entrada' }));
+
+    await waitFor(() => {
+      expect(cuerpos).toEqual([{ idVariante: 50, cantidad: 5, motivo: 'Compra al proveedor' }]);
+    });
+  });
+
   it('«Registrar entrada» busca la variante y envía la cantidad, el motivo y la referencia', async () => {
     const { existencias } = preparar();
     const cuerpos = simularEntrada(movimientoDePrueba());
