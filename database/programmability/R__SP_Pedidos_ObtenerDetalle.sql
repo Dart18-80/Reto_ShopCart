@@ -1,6 +1,7 @@
 -- RF-06, RF-01, N-08: un pedido con su detalle y su historial de estados. El Cliente solo ve los suyos
 -- (@IDUsuarioActor); uno ajeno no devuelve nada, igual que uno inexistente (la API responde 404).
--- Tres conjuntos: el pedido, sus líneas (con lo devuelto, N-10) y su historial (VW_Pedidos_Historial).
+-- Tres conjuntos: el pedido, sus líneas (con lo devuelto y lo que aún se puede devolver, N-10) y su historial
+-- (VW_Pedidos_Historial).
 -- PuedeCancelar (M5-H01): el rol del actor tiene la transición del estado actual a Cancelado en
 -- TransicionEstadoPedido y el pago no está en verificación (las mismas reglas que SP_Pedidos_AplicarCancelacion),
 -- así la web no repite el mapa de transiciones.
@@ -38,7 +39,8 @@ BEGIN
     WHERE  p.IDPedido = @IDPedido;
 
     SELECT d.IDDetallePedido, d.IDVariante, d.SKU, d.NombreProducto, d.DescripcionVariante, d.NombreCategoria,
-           d.Cantidad, d.CantidadDevuelta, d.PrecioUnitario, d.DescuentoLinea, d.TotalLinea
+           d.Cantidad, d.CantidadDevuelta, d.Cantidad - d.CantidadDevuelta AS Devolvible, d.PrecioUnitario,
+           d.DescuentoLinea, d.TotalLinea
     FROM   dbo.DetallePedido AS d
     WHERE  d.IDPedido = @IDPedido
     ORDER BY d.IDVariante;

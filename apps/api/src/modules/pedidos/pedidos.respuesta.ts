@@ -3,6 +3,7 @@ import { montoATexto } from '../../shared/dinero/index.js';
 import { z } from '../../shared/openapi/zod.js';
 import {
   CAUSAS_REVISION,
+  ESTADOS_PEDIDO,
   ESTADOS_PAGO,
   ESTADOS_REEMBOLSO,
   ORIGENES_REEMBOLSO,
@@ -13,6 +14,7 @@ import {
   type Cancelacion,
   type DevolucionRegistrada,
   type Pedido,
+  type PedidoGestion,
   type Reembolso,
   type ResumenPedido,
   type ResumenPedidoGestion,
@@ -36,6 +38,13 @@ export const pedidoARespuesta = (pedido: Pedido) => ({
     totalLinea: montoATexto(linea.totalLinea),
   })),
   historial: pedido.historial.map((cambio) => ({ ...cambio, fecha: cambio.fecha.toISOString() })),
+});
+
+export const pedidoGestionARespuesta = (pedido: PedidoGestion) => ({
+  ...pedidoARespuesta(pedido),
+  cliente: pedido.cliente,
+  transicionesPermitidas: pedido.transicionesPermitidas,
+  puedeDevolver: pedido.puedeDevolver,
 });
 
 export const resumenARespuesta = (resumen: ResumenPedido) => ({
@@ -106,6 +115,30 @@ export const pedidoSchema = z
   })
   .openapi('Pedido');
 
+const clienteSchema = z.object({
+  idUsuario: z.number().int(),
+  nombre: z.string(),
+  correo: z.string(),
+});
+
+export const pedidoGestionSchema = pedidoSchema
+  .extend({
+    cliente: clienteSchema,
+    transicionesPermitidas: z.array(z.enum(ESTADOS_PEDIDO)).openapi({
+      description:
+        'M8-H01: los estados a los que el rol de quien pide puede llevarlo ahora con POST /admin/pedidos/{id}/estado, en el orden del ciclo (sin Cancelado ni las devoluciones, que tienen su propia vía)',
+    }),
+    puedeDevolver: z.boolean().openapi({
+      description: 'N-10: Entregado o DevueltoParcial y dentro del plazo de devolución',
+    }),
+    lineas: z.array(
+      pedidoSchema.shape.lineas.element.extend({
+        devolvible: z.number().int().openapi({ description: 'N-10: lo vendido menos lo devuelto' }),
+      }),
+    ),
+  })
+  .openapi('PedidoGestion');
+
 export const resumenPedidoSchema = z
   .object({
     idPedido: z.number().int(),
@@ -121,7 +154,7 @@ export const resumenPedidoSchema = z
 
 export const resumenPedidoGestionSchema = resumenPedidoSchema
   .extend({
-    cliente: z.object({ idUsuario: z.number().int(), nombre: z.string(), correo: z.string() }),
+    cliente: clienteSchema,
   })
   .openapi('ResumenPedidoGestion');
 

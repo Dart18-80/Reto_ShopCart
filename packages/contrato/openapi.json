@@ -2452,6 +2452,124 @@
         ],
         "type": "object"
       },
+      "PedidoGestion": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Pedido"
+          },
+          {
+            "properties": {
+              "cliente": {
+                "properties": {
+                  "correo": {
+                    "type": "string"
+                  },
+                  "idUsuario": {
+                    "type": "integer"
+                  },
+                  "nombre": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "idUsuario",
+                  "nombre",
+                  "correo"
+                ],
+                "type": "object"
+              },
+              "lineas": {
+                "items": {
+                  "properties": {
+                    "cantidad": {
+                      "type": "integer"
+                    },
+                    "cantidadDevuelta": {
+                      "type": "integer"
+                    },
+                    "categoria": {
+                      "type": "string"
+                    },
+                    "descripcionVariante": {
+                      "type": "string"
+                    },
+                    "descuentoLinea": {
+                      "pattern": "^\\d{1,10}(\\.\\d{1,2})?$",
+                      "type": "string"
+                    },
+                    "devolvible": {
+                      "description": "N-10: lo vendido menos lo devuelto",
+                      "type": "integer"
+                    },
+                    "idDetallePedido": {
+                      "type": "integer"
+                    },
+                    "idVariante": {
+                      "type": "integer"
+                    },
+                    "precioUnitario": {
+                      "pattern": "^\\d{1,10}(\\.\\d{1,2})?$",
+                      "type": "string"
+                    },
+                    "producto": {
+                      "type": "string"
+                    },
+                    "sku": {
+                      "type": "string"
+                    },
+                    "totalLinea": {
+                      "pattern": "^\\d{1,10}(\\.\\d{1,2})?$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "idDetallePedido",
+                    "idVariante",
+                    "sku",
+                    "producto",
+                    "descripcionVariante",
+                    "categoria",
+                    "cantidad",
+                    "cantidadDevuelta",
+                    "precioUnitario",
+                    "descuentoLinea",
+                    "totalLinea",
+                    "devolvible"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "puedeDevolver": {
+                "description": "N-10: Entregado o DevueltoParcial y dentro del plazo de devolución",
+                "type": "boolean"
+              },
+              "transicionesPermitidas": {
+                "description": "M8-H01: los estados a los que el rol de quien pide puede llevarlo ahora con POST /admin/pedidos/{id}/estado, en el orden del ciclo (sin Cancelado ni las devoluciones, que tienen su propia vía)",
+                "items": {
+                  "enum": [
+                    "Pagado",
+                    "EnPreparacion",
+                    "Despachado",
+                    "Entregado",
+                    "Cancelado",
+                    "DevueltoParcial",
+                    "Devuelto"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "cliente",
+              "transicionesPermitidas",
+              "puedeDevolver"
+            ],
+            "type": "object"
+          }
+        ]
+      },
       "ProductoAdmin": {
         "properties": {
           "activo": {
@@ -5923,6 +6041,14 @@
             "schema": {
               "type": "number"
             }
+          },
+          {
+            "in": "query",
+            "name": "cliente",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -5988,6 +6114,89 @@
           }
         ],
         "summary": "Gestión de pedidos con filtros por estado, cliente y días de Guatemala (FechaPagoLocal), paginada",
+        "tags": [
+          "Pedidos"
+        ]
+      }
+    },
+    "/api/v1/admin/pedidos/{id}": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "datos": {
+                      "$ref": "#/components/schemas/PedidoGestion"
+                    }
+                  },
+                  "required": [
+                    "datos"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "El pedido"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Datos inválidos"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Sin sesión o token inválido"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "El rol no tiene permiso"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No existe o pertenece a otro cliente"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "M8-H01: un pedido para la gestión, con su cliente, las transiciones que el rol puede pedir, si se puede cancelar o devolver y lo devolvible de cada línea",
         "tags": [
           "Pedidos"
         ]

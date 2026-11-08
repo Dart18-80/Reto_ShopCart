@@ -2,12 +2,16 @@
 -- @Orden fecha | total | numero | estado y @Direccion), con filtros opcionales
 -- por estado, cliente y rango de fechas. Las fechas son días de Guatemala sobre FechaPagoLocal (A-12), igual
 -- que los reportes (N-11). Dos conjuntos (sqlserver-sp §5): la página y el total del filtro.
+-- M8-H01: @TextoCliente busca al cliente por su nombre (sin tildes ni mayúsculas, Usuario.NombreBusqueda, A-10) o
+-- por su correo; se busca literal (FU_Catalogo_PatronBusqueda escapa los comodines) y viaja como parámetro. RNF-1:
+-- el '%texto%' recorre Usuario, no Pedido.
 -- Cada filtro tiene su índice: IX_Pedido_Gestion (estado), IX_Pedido_Cliente (cliente), IX_Pedido_Reportes
 -- (FechaPagoLocal) e IX_Pedido_FechaPago (sin filtros). OPTION (RECOMPILE): con filtros opcionales, cada
 -- combinación usa el plan de su índice en lugar de uno genérico (la consulta es barata de compilar).
 CREATE OR ALTER PROCEDURE dbo.SP_Pedidos_Listar
     @Estado         VARCHAR(20)      = NULL,
     @IDClienteFiltro INT             = NULL,
+    @TextoCliente   NVARCHAR(150)    = NULL,
     @Desde          DATE             = NULL,
     @Hasta          DATE             = NULL,
     @Pagina         INT              = 1,
@@ -37,6 +41,8 @@ BEGIN
     IF @Estado IS NOT NULL AND @IDEstado IS NULL
         THROW 50003, N'El estado no es válido.', 1;
 
+    DECLARE @Contiene NVARCHAR(400) = (SELECT f.Contiene FROM dbo.FU_Catalogo_PatronBusqueda(@TextoCliente) AS f);
+
     SELECT p.IDPedido, p.NumeroPedido, e.Codigo AS Estado, p.Total, p.FechaPago, p.FechaPagoLocal,
            (SELECT SUM(d.Cantidad) FROM dbo.DetallePedido AS d WHERE d.IDPedido = p.IDPedido) AS Articulos,
            u.IDUsuario AS IDCliente, u.Nombre AS NombreCliente, u.Correo AS CorreoCliente,
@@ -47,6 +53,7 @@ BEGIN
     JOIN   dbo.Usuario AS u ON u.IDUsuario = p.IDUsuario
     WHERE  (@IDEstado IS NULL OR p.IDEstadoPedido = @IDEstado)
       AND  (@IDClienteFiltro IS NULL OR p.IDUsuario = @IDClienteFiltro)
+      AND  (@TextoCliente IS NULL OR u.NombreBusqueda LIKE @Contiene ESCAPE N'\' OR u.Correo LIKE @Contiene ESCAPE N'\')
       AND  (@Desde IS NULL OR p.FechaPagoLocal >= @Desde)
       AND  (@Hasta IS NULL OR p.FechaPagoLocal <= @Hasta)
     ORDER BY
@@ -66,8 +73,10 @@ BEGIN
 
     SELECT COUNT(*) AS Total
     FROM   dbo.Pedido AS p
+    JOIN   dbo.Usuario AS u ON u.IDUsuario = p.IDUsuario
     WHERE  (@IDEstado IS NULL OR p.IDEstadoPedido = @IDEstado)
       AND  (@IDClienteFiltro IS NULL OR p.IDUsuario = @IDClienteFiltro)
+      AND  (@TextoCliente IS NULL OR u.NombreBusqueda LIKE @Contiene ESCAPE N'\' OR u.Correo LIKE @Contiene ESCAPE N'\')
       AND  (@Desde IS NULL OR p.FechaPagoLocal >= @Desde)
       AND  (@Hasta IS NULL OR p.FechaPagoLocal <= @Hasta)
     OPTION (RECOMPILE);

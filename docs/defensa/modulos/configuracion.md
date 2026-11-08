@@ -55,7 +55,7 @@ Dónde se usan los parámetros (los SPs los leen en cada operación, sin caché)
 | Parámetro | Lo lee | Archivo:línea |
 | --- | --- | --- |
 | `MinutosReserva` | Inicio del checkout | [R__SP_Checkout_IniciarSesion.sql:136](../../../database/programmability/R__SP_Checkout_IniciarSesion.sql#L136 "@MinutosReserva = ps.MinutosReserva") |
-| `DiasPlazoDevolucion` | Registro de devoluciones | [R__SP_Pedidos_RegistrarDevolucion.sql:62](../../../database/programmability/R__SP_Pedidos_RegistrarDevolucion.sql#L62 "@Dias = ps.DiasPlazoDevolucion") |
+| `DiasPlazoDevolucion` | Registro de devoluciones y detalle de gestión (`puedeDevolver`) | [R__FU_Pedidos_PlazoDevolucion.sql:15](../../../database/programmability/R__FU_Pedidos_PlazoDevolucion.sql#L15 "p.DiasPlazoDevolucion") |
 | `MontoEnvioGratis` | Función de envío gratis | [R__FU_Envios_EnvioGratis.sql:12](../../../database/programmability/R__FU_Envios_EnvioGratis.sql#L12 "p.MontoEnvioGratis FROM dbo.ParametroSistema") |
 | `MaxLineasCarrito` | Fusión del carrito | [R__SP_Carrito_Fusionar.sql:102](../../../database/programmability/R__SP_Carrito_Fusionar.sql#L102 "@MaxLineas = ps.MaxLineasCarrito") |
 | `MaxIntentosPagoRechazados` | Registro de intentos de pago | [R__SP_Checkout_ActualizarIntentoPago.sql:43](../../../database/programmability/R__SP_Checkout_ActualizarIntentoPago.sql#L43 "@MaxRechazos = ps.MaxIntentosPagoRechazados") |

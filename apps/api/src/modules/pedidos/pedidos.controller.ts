@@ -6,6 +6,7 @@ import {
   devolucionARespuesta,
   pagoEnRevisionARespuesta,
   pedidoARespuesta,
+  pedidoGestionARespuesta,
   reembolsoARespuesta,
   resolucionPagoARespuesta,
   resumenARespuesta,
@@ -34,6 +35,7 @@ export interface PedidosController {
   listarPropios: RequestHandler;
   obtenerPropio: RequestHandler;
   listarGestion: RequestHandler;
+  obtenerGestion: RequestHandler;
   cambiarEstado: RequestHandler;
   cancelar: RequestHandler;
   registrarDevolucion: RequestHandler;
@@ -70,6 +72,10 @@ export function crearPedidosController(
     listarGestion: manejar({ query: listarPedidosGestionSchema }, async ({ query }, res) => {
       const { filas, total } = await servicio.listarGestion(query);
       res.json(paginar(filas.map(resumenGestionARespuesta), total, query));
+    }),
+
+    obtenerGestion: manejar({ params: paramsIdPedidoSchema }, async ({ params }, res) => {
+      res.json({ datos: pedidoGestionARespuesta(await servicio.obtenerGestion(params.id)) });
     }),
 
     cambiarEstado: manejar(

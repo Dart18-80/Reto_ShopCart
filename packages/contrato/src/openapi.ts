@@ -1695,6 +1695,7 @@ export interface paths {
                     direccion?: "asc" | "desc";
                     estado?: "Pagado" | "EnPreparacion" | "Despachado" | "Entregado" | "Cancelado" | "DevueltoParcial" | "Devuelto";
                     idCliente?: number;
+                    cliente?: string;
                 };
                 header?: never;
                 path?: never;
@@ -1734,6 +1735,82 @@ export interface paths {
                 };
                 /** @description El rol no tiene permiso */
                 403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/pedidos/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** M8-H01: un pedido para la gestión, con su cliente, las transiciones que el rol puede pedir, si se puede cancelar o devolver y lo devolvible de cada línea */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description El pedido */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            datos: components["schemas"]["PedidoGestion"];
+                        };
+                    };
+                };
+                /** @description Datos inválidos */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Sin sesión o token inválido */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description El rol no tiene permiso */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description No existe o pertenece a otro cliente */
+                404: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -7527,6 +7604,32 @@ export interface components {
                 ultimosDigitos: string;
             };
             total: string;
+        };
+        PedidoGestion: components["schemas"]["Pedido"] & {
+            cliente: {
+                correo: string;
+                idUsuario: number;
+                nombre: string;
+            };
+            lineas?: {
+                cantidad: number;
+                cantidadDevuelta: number;
+                categoria: string;
+                descripcionVariante: string;
+                descuentoLinea: string;
+                /** @description N-10: lo vendido menos lo devuelto */
+                devolvible: number;
+                idDetallePedido: number;
+                idVariante: number;
+                precioUnitario: string;
+                producto: string;
+                sku: string;
+                totalLinea: string;
+            }[];
+            /** @description N-10: Entregado o DevueltoParcial y dentro del plazo de devolución */
+            puedeDevolver: boolean;
+            /** @description M8-H01: los estados a los que el rol de quien pide puede llevarlo ahora con POST /admin/pedidos/{id}/estado, en el orden del ciclo (sin Cancelado ni las devoluciones, que tienen su propia vía) */
+            transicionesPermitidas: ("Pagado" | "EnPreparacion" | "Despachado" | "Entregado" | "Cancelado" | "DevueltoParcial" | "Devuelto")[];
         };
         ProductoAdmin: {
             activo: boolean;

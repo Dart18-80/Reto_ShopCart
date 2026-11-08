@@ -794,7 +794,7 @@ El orden de construcción, por módulos (F1, módulos 1 a 11 y F6), está en [`0
 | M6-H05 | Precios versionados | Must | 0.5 | Hecha |
 | M7-H01 | Existencias con búsqueda y conciliación | Must | 0.75 | Hecha |
 | M7-H02 | Entradas, ajustes y kardex | Must | 0.75 | Hecha |
-| M8-H01 | Detalle para el personal y filtro por cliente (backend) | Must | 0.5 | Lista |
+| M8-H01 | Detalle para el personal y filtro por cliente (backend) | Must | 0.5 | Hecha |
 | M8-H02 | Lista y detalle de gestión | Must | 0.75 | Lista |
 | M8-H03 | Cambiar estado y cancelar | Must | 0.5 | Lista |
 | M8-H04 | Devoluciones | Must | 0.5 | Lista |

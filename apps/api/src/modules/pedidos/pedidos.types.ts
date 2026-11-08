@@ -75,6 +75,22 @@ export interface CambioDeEstado {
   fecha: Date;
 }
 
+/** M8-H01: una línea vista desde la gestión, con lo que aún se puede devolver (N-10, lo calcula el SP). */
+export interface LineaPedidoGestion extends LineaPedido {
+  devolvible: number;
+}
+
+/**
+ * M8-H01: el pedido para el Operador o el Admin, con su cliente y lo que la gestión puede hacer con él ahora
+ * (N-08, N-09, N-10). Todo lo calcula SP_Pedidos_ObtenerDetalleGestion: la web no repite reglas.
+ */
+export interface PedidoGestion extends Omit<Pedido, 'lineas'> {
+  cliente: { idUsuario: number; nombre: string; correo: string };
+  transicionesPermitidas: EstadoPedido[];
+  puedeDevolver: boolean;
+  lineas: LineaPedidoGestion[];
+}
+
 /** RF-07: un pedido en un listado. */
 export interface ResumenPedido {
   idPedido: number;

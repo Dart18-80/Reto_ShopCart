@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { crearPedidosService } from '../../../../src/modules/pedidos/pedidos.service.js';
-import type { Pedido } from '../../../../src/modules/pedidos/pedidos.types.js';
+import type { Pedido, PedidoGestion } from '../../../../src/modules/pedidos/pedidos.types.js';
 import type { CambiarEstado } from '../../../../src/modules/pedidos/pedidos.schemas.js';
 
 function preparar() {
@@ -8,6 +8,7 @@ function preparar() {
     listarPropios: vi.fn(() => Promise.resolve({ filas: [], total: 0 })),
     listarGestion: vi.fn(() => Promise.resolve({ filas: [], total: 0 })),
     obtener: vi.fn((): Promise<Pedido | null> => Promise.resolve(null)),
+    obtenerGestion: vi.fn((): Promise<PedidoGestion | null> => Promise.resolve(null)),
     cambiarEstado: vi.fn((_id: number, _cambio: CambiarEstado) =>
       Promise.reject(new Error('no se usa')),
     ),
@@ -20,6 +21,15 @@ describe('pedidos.service (E6-H01, E6-H02)', () => {
     const { servicio } = preparar();
 
     await expect(servicio.obtenerPropio(5)).rejects.toMatchObject({
+      codigo: 'NO_ENCONTRADO',
+      status: 404,
+    });
+  });
+
+  it('un pedido que no existe tampoco existe para la gestión: NO_ENCONTRADO (M8-H01)', async () => {
+    const { servicio } = preparar();
+
+    await expect(servicio.obtenerGestion(5)).rejects.toMatchObject({
       codigo: 'NO_ENCONTRADO',
       status: 404,
     });

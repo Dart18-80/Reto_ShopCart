@@ -11,6 +11,7 @@ import {
   cancelacionSchema,
   devolucionRegistradaSchema,
   pagoEnRevisionSchema,
+  pedidoGestionSchema,
   pedidoSchema,
   errorResolucionReembolsoSchema,
   reembolsoSchema,
@@ -73,6 +74,19 @@ registroOpenApi.registerPath({
   responses: {
     200: { description: 'Página de pedidos', ...pagina(resumenPedidoGestionSchema) },
     ...respuestasError(400, 401, 403),
+  },
+});
+registroOpenApi.registerPath({
+  method: 'get',
+  path: '/api/v1/admin/pedidos/{id}',
+  tags: ['Pedidos'],
+  summary:
+    'M8-H01: un pedido para la gestión, con su cliente, las transiciones que el rol puede pedir, si se puede cancelar o devolver y lo devolvible de cada línea',
+  security: seguridad,
+  request: { params: paramsIdPedidoSchema },
+  responses: {
+    200: { description: 'El pedido', ...json(z.object({ datos: pedidoGestionSchema })) },
+    ...respuestasError(400, 401, 403, 404),
   },
 });
 
@@ -230,6 +244,7 @@ export function crearPedidosRouter(
   router.get('/pedidos', ...soloCliente, controller.listarPropios);
   router.get('/pedidos/:id', ...soloCliente, controller.obtenerPropio);
   router.get('/admin/pedidos', ...gestion, controller.listarGestion);
+  router.get('/admin/pedidos/:id', ...gestion, controller.obtenerGestion);
   router.post('/admin/pedidos/:id/estado', ...gestion, controller.cambiarEstado);
   router.post('/pedidos/:id/cancelar', ...soloCliente, controller.cancelar);
   router.post('/admin/pedidos/:id/cancelar', ...gestion, controller.cancelar);

@@ -7,6 +7,7 @@ import {
 } from '../../shared/http/index.js';
 import {
   cancelarPedidoSchema as cancelarCompartido,
+  LARGO_MAXIMO_TEXTO_BUSQUEDA,
   ordenConsultaSchema,
   textoNvarchar,
 } from '@shopcart/shared';
@@ -25,6 +26,8 @@ export const listarPedidosGestionSchema = rangoDeFechasSchema.safeExtend({
   ...ordenConsultaSchema(['fecha', 'total', 'numero', 'estado'], 'fecha', 'desc').shape,
   estado: z.enum(ESTADOS_PEDIDO).optional(),
   idCliente: z.coerce.number().pipe(idSchema).optional(),
+  // M8-H01: nombre o correo, sin tildes ni mayúsculas; se busca literal.
+  cliente: textoNvarchar(LARGO_MAXIMO_TEXTO_BUSQUEDA).optional(),
 });
 
 export type ListarPedidosPropios = z.infer<typeof listarPedidosPropiosSchema>;

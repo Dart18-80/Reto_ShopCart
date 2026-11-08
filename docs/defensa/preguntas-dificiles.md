@@ -72,7 +72,7 @@ El repositorio solo llama a `ejecutarSP` con el nombre del SP y parámetros tipa
 
 Solo se concatenan fragmentos constantes; los valores viajan como parámetros de `sp_executesql` y el orden sale de una lista blanca resuelta con `CASE`. Un texto como `' OR 1=1 --` se busca como texto.
 
-Los listados del backoffice (M6-H01) ni siquiera usan SQL dinámico: `orden` es un enum de Zod por endpoint, el SP lo vuelve a validar contra la misma lista blanca y ordena con un `CASE` por columna y dirección, con el desempate por la PK. Un `orden` fuera de la lista responde 400 antes de llegar a la base ([R__SP_Pedidos_Listar.sql:31](../../database/programmability/R__SP_Pedidos_Listar.sql#L31 "@Orden NOT IN ('fecha', 'total', 'numero', 'estado')")).
+Los listados del backoffice (M6-H01) ni siquiera usan SQL dinámico: `orden` es un enum de Zod por endpoint, el SP lo vuelve a validar contra la misma lista blanca y ordena con un `CASE` por columna y dirección, con el desempate por la PK. Un `orden` fuera de la lista responde 400 antes de llegar a la base ([R__SP_Pedidos_Listar.sql:35](../../database/programmability/R__SP_Pedidos_Listar.sql#L35 "@Orden NOT IN ('fecha', 'total', 'numero', 'estado')")).
 
 **Muéstralo en:** [R__SP_Catalogo_BuscarProductos.sql:69](../../database/programmability/R__SP_Catalogo_BuscarProductos.sql#L69 "EXEC sys.sp_executesql @Sql,"). Detalle: [catálogo](modulos/catalogo.md).
 
@@ -106,7 +106,7 @@ El migrador guarda el checksum de cada script aplicado: si un `V###` cambió, fa
 
 El cliente nunca envía su ID: sale del token, y los SPs filtran con `@IDUsuarioActor`. Un pedido ajeno responde 404, igual que uno inexistente. Una prueba recorre el router real y exige un caso de aislamiento por cada ruta de cliente que recibe un ID.
 
-**Muéstralo en:** [R__SP_Pedidos_ObtenerDetalle.sql:17](../../database/programmability/R__SP_Pedidos_ObtenerDetalle.sql#L17 "p.IDUsuario = @IDUsuarioActor") y [aislamiento.api.test.ts:233](../../apps/api/test/integracion/seguridad/aislamiento.api.test.ts#L233 "el recurso de otro cliente responde 404, igual que uno inexistente"). Detalle: [seguridad](transversal/seguridad.md).
+**Muéstralo en:** [R__SP_Pedidos_ObtenerDetalle.sql:18](../../database/programmability/R__SP_Pedidos_ObtenerDetalle.sql#L18 "p.IDUsuario = @IDUsuarioActor") y [aislamiento.api.test.ts:233](../../apps/api/test/integracion/seguridad/aislamiento.api.test.ts#L233 "el recurso de otro cliente responde 404, igual que uno inexistente"). Detalle: [seguridad](transversal/seguridad.md).
 
 ### 17. ¿Por qué 404 y no 403 para un recurso ajeno?
 

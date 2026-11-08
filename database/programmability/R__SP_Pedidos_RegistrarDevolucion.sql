@@ -52,14 +52,12 @@ BEGIN
         THROW 50003, N'Cada línea necesita su ID y una cantidad mayor que cero.', 1;
 
     DECLARE @IDEstado INT, @Total DECIMAL(12,2), @Reembolsado DECIMAL(12,2), @Numero VARCHAR(20),
-            @Entregado DATETIME2(3), @Dias SMALLINT, @ID INT, @Bloqueada INT, @Error NVARCHAR(2048),
+            @ID INT, @Bloqueada INT, @Error NVARCHAR(2048),
             @MontoDevolucion DECIMAL(12,2), @IDDevolucion INT, @IDReembolso INT, @IDNuevo INT, @Cantidad INT,
             @Ahora DATETIME2(3) = SYSUTCDATETIME(),
             @IDEntregado INT       = (SELECT e.IDEstadoPedido FROM dbo.EstadoPedido AS e WHERE e.Codigo = 'Entregado'),
             @IDDevueltoParcial INT = (SELECT e.IDEstadoPedido FROM dbo.EstadoPedido AS e WHERE e.Codigo = 'DevueltoParcial'),
             @IDDevuelto INT        = (SELECT e.IDEstadoPedido FROM dbo.EstadoPedido AS e WHERE e.Codigo = 'Devuelto');
-
-    SELECT TOP (1) @Dias = ps.DiasPlazoDevolucion FROM dbo.ParametroSistema AS ps ORDER BY ps.IDParametroSistema;
 
     BEGIN TRY
         BEGIN TRAN;
@@ -74,10 +72,9 @@ BEGIN
         IF @IDEstado NOT IN (@IDEntregado, @IDDevueltoParcial)
             THROW 50701, N'Solo se registran devoluciones de pedidos entregados.', 1;
 
-        -- N-10: el plazo cuenta desde que el pedido pasó a Entregado (IX_HistorialEstadoPedido_Pedido).
-        SET @Entregado = (SELECT MIN(h.Fecha) FROM dbo.HistorialEstadoPedido AS h
-                          WHERE h.IDPedido = @IDPedido AND h.IDEstadoNuevo = @IDEntregado);
-        IF @Entregado IS NULL OR DATEADD(DAY, @Dias, @Entregado) < @Ahora
+        -- N-10: el plazo cuenta desde que el pedido pasó a Entregado; la regla vive en FU_Pedidos_PlazoDevolucion,
+        -- la misma con que el detalle de gestión ofrece la devolución.
+        IF NOT EXISTS (SELECT 1 FROM dbo.FU_Pedidos_PlazoDevolucion(@IDPedido, @Ahora) AS pl WHERE pl.EnPlazo = 1)
             THROW 50704, N'El plazo de devolución de este pedido ya venció.', 1;
 
         -- Las líneas del pedido en orden de IDDetallePedido (las pedidas y las demás: el estado derivado las lee).

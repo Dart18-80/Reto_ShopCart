@@ -20,11 +20,14 @@ import type {
 import type {
   CambioDeEstado,
   EstadoPago,
+  EstadoPedido,
   EstadoReembolso,
+  LineaPedido,
   PagoEnRevision,
   PagoParaResolver,
   PagoResuelto,
   Pedido,
+  PedidoGestion,
   Reembolso,
   ReembolsoParaProcesar,
   ReembolsoParaResolver,
@@ -72,6 +75,7 @@ interface FilaLineaPedido {
   NombreCategoria: string;
   Cantidad: number;
   CantidadDevuelta: number;
+  Devolvible: number;
   PrecioUnitario: number;
   DescuentoLinea: number;
   TotalLinea: number;
@@ -94,6 +98,17 @@ interface FilaResumen {
   Articulos: number;
   FechaPago: Date;
   FechaPagoLocal: Date;
+}
+
+interface FilaGestion {
+  IDCliente: number;
+  NombreCliente: string;
+  CorreoCliente: string;
+  PuedeDevolver: boolean;
+}
+
+interface FilaTransicion {
+  Estado: EstadoPedido;
 }
 
 interface FilaResumenGestion extends FilaResumen {
@@ -220,6 +235,20 @@ const aResumenGestion = (fila: FilaResumenGestion): ResumenPedidoGestion => ({
   cliente: { idUsuario: fila.IDCliente, nombre: fila.NombreCliente, correo: fila.CorreoCliente },
 });
 
+const aLinea = (linea: FilaLineaPedido): LineaPedido => ({
+  idDetallePedido: linea.IDDetallePedido,
+  idVariante: linea.IDVariante,
+  sku: linea.SKU,
+  producto: linea.NombreProducto,
+  descripcionVariante: linea.DescripcionVariante,
+  categoria: linea.NombreCategoria,
+  cantidad: linea.Cantidad,
+  cantidadDevuelta: linea.CantidadDevuelta,
+  precioUnitario: aMonto(linea.PrecioUnitario),
+  descuentoLinea: aMonto(linea.DescuentoLinea),
+  totalLinea: aMonto(linea.TotalLinea),
+});
+
 const aPedido = (
   fila: FilaPedido,
   lineas: FilaLineaPedido[],
@@ -253,19 +282,7 @@ const aPedido = (
     direccionLinea: fila.DireccionLinea,
     referencia: fila.Referencia,
   },
-  lineas: lineas.map((linea) => ({
-    idDetallePedido: linea.IDDetallePedido,
-    idVariante: linea.IDVariante,
-    sku: linea.SKU,
-    producto: linea.NombreProducto,
-    descripcionVariante: linea.DescripcionVariante,
-    categoria: linea.NombreCategoria,
-    cantidad: linea.Cantidad,
-    cantidadDevuelta: linea.CantidadDevuelta,
-    precioUnitario: aMonto(linea.PrecioUnitario),
-    descuentoLinea: aMonto(linea.DescuentoLinea),
-    totalLinea: aMonto(linea.TotalLinea),
-  })),
+  lineas: lineas.map(aLinea),
   historial: historial.map(aCambio),
 });
 
@@ -279,6 +296,31 @@ async function pedidoDe(nombre: NombreSP, parametros: ParametrosSP): Promise<Ped
     throw new Error(`${nombre} devolvió un pedido sin detalle o sin historial`);
   }
   return aPedido(pedido, lineas, historial);
+}
+
+/** M8-H01: los cinco conjuntos de SP_Pedidos_ObtenerDetalleGestion (los tres del pedido, la gestión y las transiciones). */
+async function pedidoGestionDe(idPedido: number): Promise<PedidoGestion | null> {
+  const nombre = 'SP_Pedidos_ObtenerDetalleGestion';
+  const [pedidos, lineas, historial, gestiones, transiciones] = await ejecutarSPConjuntos<
+    [FilaPedido[], FilaLineaPedido[], FilaHistorial[], FilaGestion[], FilaTransicion[]]
+  >(nombre, { IDPedido: { tipo: sql.Int, valor: idPedido } });
+  const fila = pedidos?.[0];
+  if (fila === undefined) return null;
+  const gestion = gestiones?.[0];
+  if (lineas === undefined || historial === undefined || gestion === undefined) {
+    throw new Error(`${nombre} devolvió un pedido sin detalle, historial o datos de gestión`);
+  }
+  return {
+    ...aPedido(fila, lineas, historial),
+    lineas: lineas.map((linea) => ({ ...aLinea(linea), devolvible: linea.Devolvible })),
+    cliente: {
+      idUsuario: gestion.IDCliente,
+      nombre: gestion.NombreCliente,
+      correo: gestion.CorreoCliente,
+    },
+    puedeDevolver: gestion.PuedeDevolver,
+    transicionesPermitidas: (transiciones ?? []).map((t) => t.Estado),
+  };
 }
 
 export const pedidosRepository = {
@@ -312,6 +354,7 @@ export const pedidosRepository = {
     const { filas, total } = await ejecutarSPPaginado<FilaResumenGestion>('SP_Pedidos_Listar', {
       Estado: { tipo: sql.VarChar(20), valor: filtros.estado ?? null },
       IDClienteFiltro: { tipo: sql.Int, valor: filtros.idCliente ?? null },
+      TextoCliente: { tipo: sql.NVarChar(150), valor: filtros.cliente ?? null },
       Desde: { tipo: sql.Date, valor: filtros.desde ?? null },
       Hasta: { tipo: sql.Date, valor: filtros.hasta ?? null },
       Pagina: { tipo: sql.Int, valor: filtros.pagina },
@@ -575,6 +618,11 @@ export const pedidosRepository = {
       IDReembolso: { tipo: sql.Int, valor: idReembolso },
     });
     return fila?.Estado ?? null;
+  },
+
+  /** M8-H01: el pedido para la gestión; null si no existe. */
+  obtenerGestion(idPedido: number): Promise<PedidoGestion | null> {
+    return pedidoGestionDe(idPedido);
   },
 
   /** RF-01: null si no existe o si es de otro cliente. */
