@@ -240,7 +240,7 @@ export function GestionPedidosPagina() {
 - **Nunca guardes el token** fuera de `shared/api/sesion`: ni `localStorage`, ni `sessionStorage`, ni estado de React, ni la URL.
 - **Ningún módulo maneja 401 ni renueva el token:** lo hace el cliente `api`. Si necesitas saber quién está conectado, usa `useSesion()`.
 - No toques el single-flight, el lock (`navigator.locks`) ni el `BroadcastChannel` de la sesión sin una historia que lo pida: es la parte más delicada del frontend y tiene sus pruebas.
-- **Tiempo real:** solo `reportes` abre el stream (`useTiempoRealReportes`). Un aviso invalida las llaves de su dominio según el mapa de `reportes.keys.ts`; nunca recarga la página ni muestra datos que vengan en el evento.
+- **Tiempo real:** solo `reportes` abre el stream (`useTiempoRealReportes`). Un aviso invalida las llaves de su dominio (`reportesDelDominio`, que sale de `DEPENDENCIAS_REPORTES` de `@shopcart/shared`, la misma tabla de la caché de la API) y cada apertura del stream invalida una vez todo `reportes`; nunca recarga la página ni muestra datos que vengan en el evento.
 
 ## 10. Montos y fechas (FE-10)
 

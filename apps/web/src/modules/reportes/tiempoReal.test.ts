@@ -126,7 +126,7 @@ afterEach(() => {
 });
 
 describe('crearTiempoReal (FE-11, M11-H02)', () => {
-  it('al recibir las versiones queda «En vivo», sin invalidar nada si no hay que recargar', async () => {
+  it('al abrir el stream queda «En vivo» e invalida una vez todo el dashboard', async () => {
     const p = preparar();
     p.tiempoReal.reanudar();
     await procesar();
@@ -136,8 +136,9 @@ describe('crearTiempoReal (FE-11, M11-H02)', () => {
     await procesar();
 
     expect(p.estado()).toBe('en-vivo');
+    // Lo que cambió entre la primera lectura de los reportes y la apertura no espera al siguiente aviso.
+    expect(p.recargas()).toBe(1);
     expect(p.cambios).toEqual([]);
-    expect(p.recargas()).toBe(0);
     expect(p.ultimosIds).toEqual([null]);
   });
 
@@ -156,7 +157,7 @@ describe('crearTiempoReal (FE-11, M11-H02)', () => {
     expect(p.cambios).toEqual(['ventas', 'carritos']);
   });
 
-  it('«recargar» en las versiones invalida todo el dashboard', async () => {
+  it('con «recargar» también se invalida una sola vez', async () => {
     const p = preparar();
     p.tiempoReal.reanudar();
     await procesar();
@@ -165,6 +166,23 @@ describe('crearTiempoReal (FE-11, M11-H02)', () => {
     await procesar();
 
     expect(p.recargas()).toBe(1);
+  });
+
+  it('un cambio durante la desconexión aparece al reconectar: cada apertura invalida una vez', async () => {
+    const p = preparar();
+    p.tiempoReal.reanudar();
+    await procesar();
+    p.ultimo().enviar(versiones('ventas3.carritos7', 3, 7));
+    await procesar();
+
+    p.ultimo().cerrar();
+    await procesar();
+    await vi.advanceTimersByTimeAsync(ESPERA_MINIMA_MS);
+    // El backend no siempre sabe que el cliente se perdió algo (recargar: false): la apertura invalida igual.
+    p.ultimo().enviar(versiones('ventas3.carritos7', 3, 7));
+    await procesar();
+
+    expect(p.recargas()).toBe(2);
   });
 
   it('el cierre por token vencido es normal: reconecta en 1 s con Last-Event-ID', async () => {

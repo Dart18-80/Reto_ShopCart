@@ -32,6 +32,7 @@ interface Dependencias {
   /** Abre el stream con el `Last-Event-ID` conocido; lanza ErrorApi si el backend lo rechaza. */
   abrir: (ultimoEventoId: string | null, senal: AbortSignal) => Promise<ReadableStream<Uint8Array>>;
   alCambio: (dominio: Dominio) => void;
+  /** Al abrir el stream: todo el dashboard se vuelve a pedir una vez. */
   alRecargar: () => void;
   alEstado: (estado: EstadoTiempoReal) => void;
   /** Entre 0 y 1; las pruebas lo fijan. */
@@ -102,11 +103,13 @@ export function crearTiempoReal({
 
   function alEvento({ event, id, data }: EventSourceMessage): void {
     if (event === 'versiones') {
-      const { versiones, recargar } = versionesSchema.parse(JSON.parse(data));
+      const { versiones } = versionesSchema.parse(JSON.parse(data));
       Object.assign(conocidas, versiones);
       intentos = 0;
       avisar('en-vivo');
-      if (recargar) alRecargar();
+      // Cada apertura (la primera y cada reconexión) invalida una vez todo el dashboard, aunque el backend diga
+      // recargar: false: lo que cambió antes de abrir o mientras estuvo desconectado no espera al siguiente aviso.
+      alRecargar();
     } else if (event === 'cambio') {
       const { dominio, version } = cambioSchema.parse(JSON.parse(data));
       if (version <= conocidas[dominio]) return;

@@ -7,8 +7,8 @@ import { crearTiempoReal, type EstadoTiempoReal } from '../tiempoReal';
 
 /**
  * M11-H02 (FE-11): mientras el dashboard está abierto, escucha los avisos del backend y vuelve a pedir solo los
- * reportes del dominio que cambió; los datos anteriores siguen a la vista mientras llegan los nuevos. Con la
- * pestaña oculta la conexión se cierra y al volver se reabre con `Last-Event-ID`.
+ * reportes del dominio que cambió, y todos una vez cada vez que el stream abre; los datos anteriores siguen a la vista
+ * mientras llegan los nuevos. Con la pestaña oculta la conexión se cierra y al volver se reabre con `Last-Event-ID`.
  */
 export function useTiempoRealReportes(): EstadoTiempoReal {
   const queryClient = useQueryClient();

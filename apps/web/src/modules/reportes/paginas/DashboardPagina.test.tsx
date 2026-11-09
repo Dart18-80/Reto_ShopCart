@@ -24,6 +24,20 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+type Consultas = ReturnType<typeof simularDashboard>;
+const REPORTES = ['resumen', 'ventas', 'categorias', 'top', 'carritos'] as const;
+
+/** Cada reporte se pidió al cargar y una vez más al abrir el stream (M11-H02): desde aquí se puede contar. */
+const esperarAperturaDelStream = async (consultas: Consultas) => {
+  await screen.findByText('En vivo');
+  await waitFor(() => {
+    for (const reporte of REPORTES) expect(consultas[reporte].length).toBe(2);
+  });
+};
+
+const conteos = (consultas: Consultas) =>
+  Object.fromEntries(REPORTES.map((reporte) => [reporte, consultas[reporte].length]));
+
 const barras = (grafica: HTMLElement, tono: 'valor' | 'negativo') =>
   grafica.querySelectorAll(`.recharts-rectangle[fill="var(--color-${tono})"]`);
 
@@ -149,56 +163,53 @@ describe('DashboardPagina (M11-H01)', () => {
     expect(router.state.location.search).toContain('orden=inactividad');
   });
 
-  it('tiempo real (M11-H02): conectado dice «En vivo»; un cambio de ventas vuelve a pedir solo sus reportes', async () => {
+  it('tiempo real (M11-H02): al abrir el stream, cada reporte se vuelve a pedir una vez', async () => {
     const consultas = simularDashboard();
     abrir();
 
-    expect(await screen.findByText('En vivo')).toBeInTheDocument();
-    await screen.findByText('Carla Cliente');
-    const antes = {
-      resumen: consultas.resumen.length,
-      ventas: consultas.ventas.length,
-      categorias: consultas.categorias.length,
-      top: consultas.top.length,
-      carritos: consultas.carritos.length,
-    };
+    await esperarAperturaDelStream(consultas);
+  });
+
+  it('tiempo real (M11-H02): un cambio de ventas vuelve a pedir solo sus reportes', async () => {
+    const consultas = simularDashboard();
+    abrir();
+    await esperarAperturaDelStream(consultas);
 
     consultas.eventos.cambio('ventas', 2);
 
     await waitFor(() => {
-      expect(consultas.resumen.length).toBe(antes.resumen + 1);
+      expect(conteos(consultas)).toEqual({
+        resumen: 3,
+        ventas: 3,
+        categorias: 3,
+        top: 3,
+        carritos: 2,
+      });
     });
-    await waitFor(() => {
-      expect(consultas.top.length).toBe(antes.top + 1);
-    });
-    expect(consultas.ventas.length).toBe(antes.ventas + 1);
-    expect(consultas.categorias.length).toBe(antes.categorias + 1);
-    expect(consultas.carritos.length).toBe(antes.carritos);
   });
 
   it('tiempo real (M11-H02): un cambio de carritos vuelve a pedir los carritos y el resumen, no las ventas', async () => {
     const consultas = simularDashboard();
     abrir();
-
-    await screen.findByText('En vivo');
-    await screen.findByText('Carla Cliente');
-    const ventasAntes = consultas.ventas.length;
-    const carritosAntes = consultas.carritos.length;
-    const resumenAntes = consultas.resumen.length;
+    await esperarAperturaDelStream(consultas);
 
     consultas.eventos.cambio('carritos', 2);
 
     await waitFor(() => {
-      expect(consultas.carritos.length).toBe(carritosAntes + 1);
+      expect(conteos(consultas)).toEqual({
+        resumen: 3,
+        ventas: 2,
+        categorias: 2,
+        top: 2,
+        carritos: 3,
+      });
     });
-    expect(consultas.resumen.length).toBe(resumenAntes + 1);
-    expect(consultas.ventas.length).toBe(ventasAntes);
   });
 
-  it('tiempo real (M11-H02): con la pestaña oculta queda «En pausa»; al volver reconecta con Last-Event-ID', async () => {
+  it('tiempo real (M11-H02): con la pestaña oculta queda «En pausa»; al volver reconecta con Last-Event-ID y pide de nuevo lo que pudo cambiar', async () => {
     const consultas = simularDashboard();
     abrir();
-    await screen.findByText('En vivo');
+    await esperarAperturaDelStream(consultas);
     let oculta = true;
     vi.spyOn(document, 'hidden', 'get').mockImplementation(() => oculta);
 
@@ -214,6 +225,9 @@ describe('DashboardPagina (M11-H01)', () => {
 
     expect(await screen.findByText('En vivo')).toBeInTheDocument();
     expect(consultas.eventos.ultimosIds).toEqual([null, 'ventas1.carritos1']);
+    await waitFor(() => {
+      expect(consultas.resumen.length).toBe(3);
+    });
   });
 
   it('exportar (M11-H03): manda los filtros de la pantalla y sigue la exportación hasta que se puede descargar', async () => {
