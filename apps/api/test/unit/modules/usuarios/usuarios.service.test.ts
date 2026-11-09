@@ -17,6 +17,7 @@ const USUARIO: Usuario = {
   telefono: '55554444',
   rol: 'Cliente',
   activo: true,
+  fechaCreacion: new Date('2026-11-01T12:00:00.000Z'),
 };
 
 async function preparar() {

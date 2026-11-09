@@ -10,6 +10,7 @@ export const perfilDePrueba = (rol: Rol = 'Cliente', cambios: Partial<Perfil> = 
   ...usuarioDePrueba(rol),
   telefono: '55551234',
   activo: true,
+  fechaCreacion: '2026-10-01T15:00:00.000Z',
   ...cambios,
 });
 
@@ -77,4 +78,83 @@ export function simularContrasenaActualIncorrecta() {
       }),
     ),
   );
+}
+
+// --- Usuarios del Admin (M10-H01).
+
+type ListaUsuarios = Respuesta<'/api/v1/usuarios', 'get'>;
+export type UsuarioAdminDePrueba = ListaUsuarios['datos'][number];
+
+export const usuarioAdminDePrueba = (
+  cambios: Partial<UsuarioAdminDePrueba> = {},
+): UsuarioAdminDePrueba => ({
+  idUsuario: 20,
+  correo: 'operador@shopcart.gt',
+  nombre: 'Olga Operadora',
+  telefono: null,
+  rol: 'Operador',
+  activo: true,
+  fechaCreacion: '2026-10-01T15:00:00.000Z',
+  ...cambios,
+});
+
+interface ErrorDeUsuarios {
+  status: number;
+  codigo: string;
+  mensaje: string;
+}
+
+/**
+ * `GET /usuarios` con lo que haya en cada momento, el alta, la edición y los cambios de estado. Un error por
+ * `"METODO ruta"` (`POST crear`, `PATCH editar`, `POST desactivar`) reemplaza la respuesta. Guarda las consultas y
+ * lo recibido.
+ */
+export function simularUsuariosAdmin(
+  iniciales: UsuarioAdminDePrueba[],
+  errores: Partial<Record<string, ErrorDeUsuarios>> = {},
+) {
+  let usuarios = [...iniciales];
+  const consultas: URLSearchParams[] = [];
+  const recibidos: { metodo: string; ruta: string; cuerpo?: unknown }[] = [];
+  const anotar = (metodo: string, ruta: string, cuerpo?: unknown) => {
+    recibidos.push(cuerpo === undefined ? { metodo, ruta } : { metodo, ruta, cuerpo });
+    const error = errores[`${metodo} ${ruta}`];
+    return error && errorDelBackend(error.status, { codigo: error.codigo, mensaje: error.mensaje });
+  };
+  const cambiar = (id: number, cambios: Partial<UsuarioAdminDePrueba>) => {
+    usuarios = usuarios.map((u) => (u.idUsuario === id ? { ...u, ...cambios } : u));
+    return usuarios.find((u) => u.idUsuario === id);
+  };
+  servidor.use(
+    http.get('/api/v1/usuarios', ({ request }) => {
+      consultas.push(new URL(request.url).searchParams);
+      return HttpResponse.json({
+        datos: usuarios,
+        paginacion: { pagina: 1, tamano: 20, total: usuarios.length, totalPaginas: 1 },
+      });
+    }),
+    http.post('/api/v1/usuarios', async ({ request }) => {
+      const cuerpo = (await request.json()) as Partial<UsuarioAdminDePrueba>;
+      const error = anotar('POST', 'crear', cuerpo);
+      if (error) return error;
+      const nuevo = usuarioAdminDePrueba({ ...cuerpo, idUsuario: 99 });
+      usuarios = [nuevo, ...usuarios];
+      return HttpResponse.json({ datos: nuevo }, { status: 201 });
+    }),
+    http.patch('/api/v1/usuarios/:id', async ({ request, params }) => {
+      const cuerpo = (await request.json()) as Partial<UsuarioAdminDePrueba>;
+      const error = anotar('PATCH', 'editar', cuerpo);
+      if (error) return error;
+      return HttpResponse.json({ datos: cambiar(Number(params.id), cuerpo) });
+    }),
+    http.post('/api/v1/usuarios/:id/:accion', ({ params }) => {
+      const accion = String(params.accion);
+      const error = anotar('POST', accion);
+      if (error) return error;
+      return HttpResponse.json({
+        datos: cambiar(Number(params.id), { activo: accion === 'activar' }),
+      });
+    }),
+  );
+  return { consultas, recibidos };
 }

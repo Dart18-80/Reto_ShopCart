@@ -25,7 +25,7 @@ BEGIN
 
     -- sqlserver-sp §5: dos conjuntos, la página y el total del filtro. El total sale de su propia consulta,
     -- así es real aunque la página pedida esté vacía.
-    SELECT u.IDUsuario, u.Correo, u.Nombre, u.Telefono, r.Codigo AS Rol, u.Activo
+    SELECT u.IDUsuario, u.Correo, u.Nombre, u.Telefono, r.Codigo AS Rol, u.Activo, u.FechaCreacion
     FROM   dbo.Usuario AS u
     JOIN   dbo.Rol     AS r ON r.IDRol = u.IDRol
     WHERE  (@Rol IS NULL OR r.Codigo = @Rol)

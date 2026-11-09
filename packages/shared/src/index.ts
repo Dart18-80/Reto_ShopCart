@@ -134,8 +134,17 @@ export { telefonoSchema } from './telefono.js';
 export { textoNvarchar } from './texto.js';
 export {
   actualizarPerfilSchema,
+  actualizarUsuarioSchema,
   alMenosUnCampo,
   cambiarContrasenaSchema,
+  consultaUsuariosSchema,
+  crearUsuarioInternoSchema,
+  ordenUsuariosSchema,
+  ROLES_INTERNOS,
   type ActualizarPerfil,
+  type ActualizarUsuario,
   type CambiarContrasena,
+  type ConsultaUsuarios,
+  type CrearUsuarioInterno,
+  type OrdenUsuarios,
 } from './usuarios.js';

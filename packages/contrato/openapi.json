@@ -3960,6 +3960,11 @@
           "correo": {
             "type": "string"
           },
+          "fechaCreacion": {
+            "description": "M10-H01: cuándo se creó (UTC)",
+            "format": "date-time",
+            "type": "string"
+          },
           "idUsuario": {
             "type": "integer"
           },
@@ -3987,7 +3992,8 @@
           "nombre",
           "telefono",
           "rol",
-          "activo"
+          "activo",
+          "fechaCreacion"
         ],
         "type": "object"
       },

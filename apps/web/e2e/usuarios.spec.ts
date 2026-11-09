@@ -1,4 +1,4 @@
-import { crearOperador, expect, iniciarSesionPorApi, test } from './fixtures';
+import { crearAdministrador, crearOperador, expect, iniciarSesionPorApi, test } from './fixtures';
 
 test.describe('cuenta: perfil y contraseña (M1-H02)', () => {
   test('guardar el perfil muestra el nombre nuevo sin recargar y lo conserva al volver', async ({
@@ -57,5 +57,37 @@ test.describe('cuenta: perfil y contraseña (M1-H02)', () => {
     await expect(page.getByLabel('Contraseña actual')).toHaveAccessibleDescription(
       'La contraseña actual no es correcta.',
     );
+  });
+});
+
+test.describe('backoffice: usuarios (M10-H01)', () => {
+  test('desactivar a un Operador hace que su sesión deje de funcionar de inmediato (A-07)', async ({
+    page,
+    browser,
+    apiAdmin,
+  }, informacion) => {
+    const operador = await crearOperador(apiAdmin);
+    await iniciarSesionPorApi(page, operador);
+    await page.goto('/backoffice/inventario');
+    await expect(page.getByRole('heading', { name: 'Inventario', level: 1 })).toBeVisible();
+
+    const contexto = await browser.newContext({ baseURL: informacion.project.use.baseURL });
+    const admin = await contexto.newPage();
+    try {
+      await iniciarSesionPorApi(admin, await crearAdministrador(apiAdmin));
+      await admin.goto('/backoffice/usuarios?rol=Operador&activo=true');
+      const fila = admin.getByRole('row').filter({ hasText: operador.correo });
+      await fila.getByRole('button', { name: /^Desactivar a / }).click();
+      await admin.getByRole('alertdialog').getByRole('button', { name: 'Desactivar' }).click();
+      await expect(fila).toBeHidden();
+    } finally {
+      await contexto.close();
+    }
+
+    // La próxima petición del Operador responde 401 y su renovación también: la SPA lo lleva a ingresar.
+    const siguiente = page.waitForResponse('**/api/v1/inventario/existencias?**');
+    await page.getByLabel('Ordenar por').selectOption({ label: 'SKU' });
+    expect((await siguiente).status()).toBe(401);
+    await expect(page).toHaveURL(/\/ingresar/);
   });
 });

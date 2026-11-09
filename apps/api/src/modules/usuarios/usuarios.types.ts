@@ -8,6 +8,8 @@ export interface Usuario {
   telefono: string | null;
   rol: RolDeUsuario;
   activo: boolean;
+  /** M10-H01: cuándo se registró o lo creó el Admin (UTC). */
+  fechaCreacion: Date;
 }
 
 /** Resultado de un cambio que puede subir la versión de sesión (A-07): la API la publica en Redis. */

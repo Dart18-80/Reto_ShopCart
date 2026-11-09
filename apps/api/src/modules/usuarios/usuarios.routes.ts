@@ -1,10 +1,8 @@
 import { Router, type RequestHandler } from 'express';
 import {
   autorizar,
-  consultaPaginacionSchema,
   limitarIntentos,
   obtenerContexto,
-  ROLES_DE_USUARIO,
   type LimitadorIntentos,
 } from '../../shared/http/index.js';
 import {
@@ -20,7 +18,7 @@ import {
   actualizarUsuarioSchema,
   cambiarContrasenaSchema,
   crearInternoSchema,
-  ordenUsuariosSchema,
+  listarUsuariosSchema,
   paramsIdUsuarioSchema,
   usuarioSchema,
 } from './usuarios.schemas.js';
@@ -72,13 +70,7 @@ registroOpenApi.registerPath({
   tags: ['Usuarios'],
   summary: 'Listado paginado de usuarios (Admin), con filtro por rol y estado',
   security: seguridad,
-  request: {
-    query: consultaPaginacionSchema.extend({
-      ...ordenUsuariosSchema.shape,
-      rol: z.enum(ROLES_DE_USUARIO).optional(),
-      activo: z.enum(['true', 'false']).optional(),
-    }),
-  },
+  request: { query: listarUsuariosSchema },
   responses: {
     200: {
       description: 'Página de usuarios',

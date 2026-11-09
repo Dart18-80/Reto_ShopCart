@@ -8008,6 +8008,11 @@ export interface components {
         Usuario: {
             activo: boolean;
             correo: string;
+            /**
+             * Format: date-time
+             * @description M10-H01: cuándo se creó (UTC)
+             */
+            fechaCreacion: string;
             idUsuario: number;
             nombre: string;
             /** @enum {string} */

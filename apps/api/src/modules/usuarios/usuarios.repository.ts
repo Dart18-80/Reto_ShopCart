@@ -16,6 +16,7 @@ interface FilaUsuario {
   Telefono: string | null;
   Rol: string;
   Activo: boolean;
+  FechaCreacion: Date;
 }
 
 interface FilaPerfil extends FilaUsuario {
@@ -41,6 +42,7 @@ const aUsuario = (fila: FilaUsuario): Usuario => ({
   telefono: fila.Telefono,
   rol: aRolDeUsuario(fila.Rol),
   activo: fila.Activo,
+  fechaCreacion: fila.FechaCreacion,
 });
 
 function unico(filas: FilaUsuario[], sp: string): Usuario {

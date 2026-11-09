@@ -305,6 +305,37 @@ describe('administración de usuarios (E2-H04, N-15)', () => {
     expect(cuerpo.paginacion).toMatchObject({ pagina: 1, tamano: 5 });
   });
 
+  it('M10-H01: cada usuario trae su fecha de creación (UTC, ISO 8601)', async () => {
+    const token = await tokenDeAdmin();
+    const antes = Date.now();
+
+    const creado = leerDatos(
+      await request(app).post('/api/v1/usuarios').set(conToken(token)).send({
+        correo: correoUnico(),
+        contrasena: CONTRASENA,
+        nombre: 'Con fecha',
+        rol: 'Operador',
+      }),
+      z.object({ idUsuario: z.number(), fechaCreacion: z.iso.datetime() }),
+    );
+    const lista = z
+      .object({
+        datos: z.array(z.object({ idUsuario: z.number(), fechaCreacion: z.iso.datetime() })),
+      })
+      .parse(
+        (
+          await request(app)
+            .get('/api/v1/usuarios?rol=Operador&orden=recientes&direccion=desc&tamano=100')
+            .set(conToken(token))
+        ).body,
+      );
+
+    // Tolerancia por la diferencia de reloj entre la API y la base.
+    expect(Date.parse(creado.fechaCreacion)).toBeGreaterThan(antes - 60_000);
+    // Otras pruebas crean usuarios en paralelo: se busca el propio entre los más recientes.
+    expect(lista.datos.find((u) => u.idUsuario === creado.idUsuario)).toEqual(creado);
+  });
+
   it('el Admin crea un Operador; no puede crear un Cliente por esta vía', async () => {
     const token = await tokenDeAdmin();
     const crear = (rol: string) =>

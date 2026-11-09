@@ -8,7 +8,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    SELECT u.IDUsuario, u.Correo, u.Nombre, u.Telefono, r.Codigo AS Rol, u.Activo, u.HashContrasena
+    SELECT u.IDUsuario, u.Correo, u.Nombre, u.Telefono, r.Codigo AS Rol, u.Activo, u.FechaCreacion, u.HashContrasena
     FROM   dbo.Usuario AS u
     JOIN   dbo.Rol     AS r ON r.IDRol = u.IDRol
     WHERE  u.IDUsuario = @IDUsuarioActor;

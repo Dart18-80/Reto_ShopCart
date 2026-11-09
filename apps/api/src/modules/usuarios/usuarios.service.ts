@@ -40,8 +40,9 @@ export function crearUsuariosService({ repositorio, sesiones, versiones, reporte
 
   return {
     async obtenerPerfil(): Promise<Usuario> {
-      const { idUsuario, correo, nombre, telefono, rol, activo } = await perfilConHash();
-      return { idUsuario, correo, nombre, telefono, rol, activo };
+      const { idUsuario, correo, nombre, telefono, rol, activo, fechaCreacion } =
+        await perfilConHash();
+      return { idUsuario, correo, nombre, telefono, rol, activo, fechaCreacion };
     },
 
     // PATCH: el SP mezcla los cambios con lo guardado bajo bloqueo; telefono en null lo quita.
