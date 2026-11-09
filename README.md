@@ -38,7 +38,7 @@ memory=10GB
 Bash (Linux, macOS, Git Bash):
 
 ```bash
-git clone <url-del-repositorio> shopcart && cd shopcart
+git clone https://github.com/Dart18-80/Reto_ShopCart.git shopcart && cd shopcart
 cp .env.example .env              # los valores de ejemplo funcionan en local; cámbialos fuera de tu máquina
 docker compose up -d              # SQL Server, Redis, migrador, api-1, api-2 y nginx
 docker compose ps                 # todo "healthy"; db-migrator "Exited (0)"
@@ -47,7 +47,7 @@ docker compose ps                 # todo "healthy"; db-migrator "Exited (0)"
 PowerShell (Windows):
 
 ```powershell
-git clone <url-del-repositorio> shopcart; cd shopcart
+git clone https://github.com/Dart18-80/Reto_ShopCart.git shopcart; cd shopcart
 Copy-Item .env.example .env       # los valores de ejemplo funcionan en local; cámbialos fuera de tu máquina
 docker compose up -d              # SQL Server, Redis, migrador, api-1, api-2 y nginx
 docker compose ps                 # todo "healthy"; db-migrator "Exited (0)"
@@ -78,6 +78,7 @@ Redis corre con el usuario `redis`, no como root. Un entorno levantado antes de 
 - **Después de reiniciar Docker Desktop o la computadora:** todos los servicios tienen `restart: unless-stopped`, así que vuelven solos. Si alguno quedó detenido, `docker compose up -d` lo levanta con los mismos datos; `docker compose ps` debe mostrar todo `healthy`.
 - **Una réplica de la API reinicia en bucle (`Restarting`):** casi siempre es porque SQL Server o Redis todavía no aceptan conexiones; `docker compose up -d` y esperar a que queden `healthy`. Los logs dicen la causa: `docker compose logs --tail=20 api-1`.
 - **Después de cambiar la API, la web o el migrador:** `docker compose up -d --build`.
+- **Otra copia del repositorio ya levantada en la misma máquina:** el proyecto de Compose se llama `shopcart` en todas, así que comparten contenedores, volúmenes e imágenes y `docker compose up -d` usaría las imágenes de la otra copia. Antes de levantar una copia nueva, en la otra: `docker compose down -v --rmi local`.
 
 ### Variables de entorno
 
@@ -183,7 +184,7 @@ Abre <http://localhost:8080/api/docs>. En cada paso: **Try it out** → completa
    ```json
    { "correo": "ana@ejemplo.gt", "contrasena": "Ensayo2026!", "nombre": "Ana Pérez" }
    ```
-   Responde `201` con `datos.accessToken`. Cópialo, pulsa **Authorize** (arriba a la derecha), pégalo en `bearer` y pulsa **Authorize**. (Con una cuenta existente, `POST /api/v1/auth/login` con `correo` y `contrasena`).
+   Responde `201` con `datos.accessToken` (si el correo ya existe, `409`: usa otro). Cópialo, pulsa **Authorize** (arriba a la derecha), pégalo en `bearer` y pulsa **Authorize**. (Con una cuenta existente, `POST /api/v1/auth/login` con `correo` y `contrasena`).
 2. **Elegir un producto.** `GET /api/v1/productos` → toma un `idProducto`. `GET /api/v1/productos/{id}` → toma el `idVariante` de una variante con `estadoExistencia` distinto de `Agotado`.
 3. **Agregarlo al carrito.** `POST /api/v1/carrito/lineas` con `{ "idVariante": 14, "cantidad": 1 }`. Opcional: `PUT /api/v1/carrito/cupon` con `{ "codigo": "DEMO10" }`, o con `DEMOVENCIDO` para ver un rechazo.
 4. **Método de envío.** `GET /api/v1/envios/metodos` → `datos.metodos[].idMetodoEnvio` (1 Estándar, 2 Express) y cuánto falta para el envío gratis.
@@ -561,3 +562,4 @@ Lo que queda fuera de la entrega, a propósito y con su porqué. Las exclusiones
 - **Recuperación de contraseña y correos** (como el aviso de exportación terminada): requieren SMTP; con sesión iniciada, el usuario cambia la suya.
 - **Carga pesada (F5):** el script `database/load/L001` con el generador de datos demo a 50,000 pedidos. Ya se midió en una base desechable: ningún listado ni reporte pasa de 1 s ([docs/revision/estado-backend.md](docs/revision/estado-backend.md) §7).
 - **Producción:** SQL Server Standard o Enterprise en lugar de Developer, HTTPS en nginx y secretos fuera de `.env`.
+- **Las estadísticas con un usuario dedicado:** el migrador corre `sp_updatestats` como `sa` ([A-27](docs/01-arquitectura.md)), porque exige ser el dueño de la base o `sysadmin` y el login del migrador solo es `db_owner`. En producción correría con un usuario dedicado dueño de la base, sin usar `sa`.
