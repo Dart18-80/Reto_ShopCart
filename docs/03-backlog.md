@@ -838,7 +838,7 @@ El orden de construcción, por módulos (F1, módulos 1 a 11 y F6), está en [`0
 | **M5 Mis pedidos** | Listado, detalle con historial y cancelación | 1.0 | Hecha |
 | **M6 Backoffice de catálogo** | Orden del servidor en los listados, categorías, atributos, productos, variantes, imágenes y precios | 4.75 | Hecha |
 | **M7 Inventario** | Entradas, ajustes, kardex, existencias y conciliación | 1.5 | Hecha |
-| **M8 Gestión de pedidos** | Detalle y filtros del personal, estados, cancelación, devoluciones, reembolsos y pagos en revisión | 3.0 | Lista |
+| **M8 Gestión de pedidos** | Detalle y filtros del personal, estados, cancelación, devoluciones, reembolsos y pagos en revisión | 3.0 | Hecha |
 | **M9 Cupones, envíos y configuración** | Cupones, métodos de envío y parámetros del sistema | 1.25 | Lista |
 | **M10 Usuarios y bitácora** | Usuarios del personal y bitácora con sus cambios | 1.25 | Lista |
 | **M11 Dashboard** | Gráficas, tiempo real y exportaciones | 2.25 | Lista |
