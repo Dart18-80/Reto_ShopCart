@@ -2,16 +2,17 @@
 
 Tienda en línea de una cadena guatemalteca de ropa, calzado y accesorios: catálogo con variantes, carrito de invitado y de cliente, cupones, checkout con pasarela de pago simulada, pedidos con ciclo de vida, inventario con kardex, devoluciones, bitácora y dashboard.
 
-**Fase 1 (esta entrega):** backend completo (Express 5 + TypeScript + SQL Server 2022) con dos réplicas detrás de nginx. El frontend es la Fase 2.
+**Fase 2 (esta entrega):** la SPA (React 19 + Vite + TypeScript) con la tienda, la cuenta, el checkout, el backoffice por rol y el dashboard en tiempo real, sobre el backend de la Fase 1 (Express 5 + TypeScript + SQL Server 2022) con dos réplicas detrás de nginx. Todo se sirve desde <http://localhost:8080>.
 
-| Documento                                                        | Contenido                                                                            |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| [docs/enunciado-shopcart.md](docs/enunciado-shopcart.md)         | El enunciado oficial del reto                                                        |
-| [docs/00-vision-y-contexto.md](docs/00-vision-y-contexto.md)     | Decisiones de negocio (`N-xx`), no funcionales (`RNF-xx`) y generales (`D-xx`)       |
-| [docs/01-arquitectura.md](docs/01-arquitectura.md)               | Arquitectura (`A-xx`), flujos críticos, errores y API                                |
-| [docs/02-modelo-datos.md](docs/02-modelo-datos.md)               | Tablas, constraints, índices, SPs, vistas, funciones y códigos de error (`M-xx`)     |
-| [docs/03-backlog.md](docs/03-backlog.md)                         | Historias, criterios de aceptación y tablero                                         |
-| [docs/04-verificacion-fase-1.md](docs/04-verificacion-fase-1.md) | Checklist de penalizaciones y la prueba que demuestra cada criterio de RF-01 a RF-09 |
+| Documento                                                            | Contenido                                                                                 |
+| -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| [docs/enunciado-shopcart.md](docs/enunciado-shopcart.md)             | El enunciado oficial del reto                                                             |
+| [docs/00-vision-y-contexto.md](docs/00-vision-y-contexto.md)         | Decisiones de negocio (`N-xx`), no funcionales (`RNF-xx`) y generales (`D-xx`)            |
+| [docs/01-arquitectura.md](docs/01-arquitectura.md)                   | Arquitectura (`A-xx`), flujos críticos, errores y API                                     |
+| [docs/02-modelo-datos.md](docs/02-modelo-datos.md)                   | Tablas, constraints, índices, SPs, vistas, funciones y códigos de error (`M-xx`)          |
+| [docs/03-backlog.md](docs/03-backlog.md)                             | Historias, criterios de aceptación y tablero                                              |
+| [docs/04-verificacion-fase-1.md](docs/04-verificacion-fase-1.md)     | Checklist de penalizaciones y la prueba que demuestra cada criterio de RF-01 a RF-09      |
+| [docs/05-arquitectura-frontend.md](docs/05-arquitectura-frontend.md) | Decisiones del frontend (`FE-xx`): estructura, sesión, estado, contrato, pruebas y diseño |
 
 ---
 
@@ -59,6 +60,7 @@ El primer arranque descarga las imágenes y construye la API y la web. El migrad
 
 | URL                                           | Qué es                                                |
 | --------------------------------------------- | ----------------------------------------------------- |
+| <http://localhost:8080>                       | La tienda (SPA); el backoffice está en `/backoffice`  |
 | <http://localhost:8080/api/docs>              | Swagger (OpenAPI 3.1 generado desde los esquemas Zod) |
 | <http://localhost:8080/api/v1/health>         | Estado de la réplica, de SQL Server y de Redis        |
 | <http://localhost:8080/api/docs/openapi.json> | El documento OpenAPI                                  |
@@ -136,6 +138,15 @@ Para pasar a otra versión:
 | `demo001@shopcart.gt` … `demo200@shopcart.gt`               | `Demo2026!`         | Clientes de los datos demo, con pedidos                         |
 | `concurrencia01@shopcart.gt` … `concurrencia20@shopcart.gt` | `Concurrencia2026!` | Clientes de `pnpm test:concurrencia`                            |
 
+**Qué ve cada rol en la SPA.** El menú y las rutas salen de una sola definición con los roles del backend (FE-04); el backend vuelve a validar cada permiso.
+
+| Rol           | Qué puede hacer                                                                                                                                                     |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Invitado      | Catálogo, detalle y carrito; para pagar inicia sesión y su carrito se fusiona con el de su cuenta                                                                   |
+| Cliente       | Lo anterior más el checkout, sus pedidos (cancelar mientras se pueda), su perfil, su contraseña y sus direcciones                                                   |
+| Operador      | Backoffice: pedidos (cambiar estado, cancelar, devoluciones) e inventario (existencias, entradas, ajustes y kardex)                                                 |
+| Administrador | Todo el backoffice: dashboard en tiempo real, exportaciones, catálogo y precios, cupones, envíos, configuración, usuarios, bitácora, pagos en revisión y reembolsos |
+
 **Tarjetas de la pasarela simulada** (cualquier CVV de 3 dígitos y una fecha de vencimiento futura):
 
 | Número                | Resultado                                                                                                                                                          |
@@ -152,7 +163,19 @@ Para pasar a otra versión:
 
 ---
 
-## 3. Flujo de compra en Swagger, paso a paso
+## 3. Flujo de compra, paso a paso
+
+### En la tienda (navegador)
+
+1. Abre <http://localhost:8080> y elige un producto del catálogo (la búsqueda no distingue tildes).
+2. En el detalle, elige la talla y el color si los tiene y pulsa **Agregar al carrito** → **Ver carrito**. Opcional: en «¿Tienes un cupón?» escribe `DEMO10` y pulsa **Aplicar**.
+3. Pulsa **Continuar al pago**. Como invitado te pide ingresar: usa `cliente@shopcart.gt` / `Cliente2026!` (tu carrito se fusiona con el de la cuenta).
+4. En **Pagar**, elige la dirección y el método de envío (con el total de cada uno) y pulsa **Continuar al pago**: las unidades quedan apartadas por los minutos que dice la pantalla.
+5. Escribe la tarjeta `4242424242424242`, un mes y un año futuros y el CVV `123`, y pulsa **Pagar Q…**. Llegas a tu pedido (`SC-…`, estado Pagado) con el desglose de IVA; queda en **Mis pedidos**.
+6. Para ver las fallas: con `4000000000000002` el pago se rechaza con los intentos restantes; con `4000000000000119` la respuesta «se pierde» y **Reintentar** confirma el mismo pago sin cobrar dos veces.
+7. Cierra sesión e ingresa como `operador@shopcart.gt` / `Operador2026!`: en **Pedidos** lleva tu pedido a En preparación, Despachado y Entregado. Como `admin@shopcart.gt` / `Admin2026!`, el **Dashboard** muestra la venta, y se actualiza solo si lo dejas abierto mientras compras en otra ventana.
+
+### En Swagger
 
 Abre <http://localhost:8080/api/docs>. En cada paso: **Try it out** → completa → **Execute**.
 
@@ -215,7 +238,7 @@ event: versiones
 data: {"versiones":{"ventas":3,"carritos":152},"recargar":false}
 ```
 
-Deja esa terminal abierta y, en otra, agrega algo al carrito o haz una compra (pasos 3 a 8 de §3): llega un evento `cambio` con el dominio y su versión nueva (`{"dominio":"carritos","version":153}`), aunque la petición la atienda la otra réplica. Cada 15 s llega un latido (`: latido`). Con `docker compose stop redis` el stream sigue abierto con sus latidos; con `docker compose start redis` llega otra vez `versiones`, ahora con `"recargar":true`. Con `docker compose stop` de la réplica que atiende el stream (encabezado `X-Instancia` con `curl -i`), el stream se cierra de inmediato (curl termina) y un cliente que reconecta, como el dashboard, cae en la otra réplica. Sin token responde `401`; con el token del Operador, `403`; un cuarto stream del mismo Admin en la misma réplica, `429 CONEXIONES_MAXIMAS`.
+Deja esa terminal abierta y, en otra, agrega algo al carrito o haz una compra (pasos 3 a 8 de §3, en Swagger): llega un evento `cambio` con el dominio y su versión nueva (`{"dominio":"carritos","version":153}`), aunque la petición la atienda la otra réplica. Cada 15 s llega un latido (`: latido`). Con `docker compose stop redis` el stream sigue abierto con sus latidos; con `docker compose start redis` llega otra vez `versiones`, ahora con `"recargar":true`. Con `docker compose stop` de la réplica que atiende el stream (encabezado `X-Instancia` con `curl -i`), el stream se cierra de inmediato (curl termina) y un cliente que reconecta, como el dashboard, cae en la otra réplica. Sin token responde `401`; con el token del Operador, `403`; un cuarto stream del mismo Admin en la misma réplica, `429 CONEXIONES_MAXIMAS`.
 
 ---
 
@@ -237,6 +260,29 @@ Deja esa terminal abierta y, en otra, agrega algo al carrito o haz una compra (p
 | **Caché de reportes con invalidación por versión** (Redis, en el servicio): dos versiones, ventas y carritos; cada escritura incrementa, después de su commit, solo la de los dominios que cambia, y cada reporte depende solo de los suyos | Sin borrar claves ni coordinar réplicas; con Redis caído se lee la base                                                     | [A-11 y 01 §9](docs/01-arquitectura.md)                                                                 |
 | **Exportación asíncrona a Excel y PDF** con la cola en SQL Server, consumida por las dos réplicas en competencia, y archivos en un volumen compartido                                                                                       | Un reporte grande no bloquea la réplica; la cola no se pierde (RNF-2) y el archivo de una réplica se descarga desde la otra | [A-24](docs/01-arquitectura.md)                                                                         |
 | **Dashboard en tiempo real con SSE** y avisos entre réplicas por Redis pub/sub; el token en `Authorization`, nunca en la URL                                                                                                                | El dashboard se entera de un pedido en cualquier réplica sin polling; los eventos solo avisan y el reporte sale de la caché | [A-25](docs/01-arquitectura.md)                                                                         |
+
+### Decisiones del frontend
+
+Cada una con sus alternativas y su porqué en [docs/05-arquitectura-frontend.md](docs/05-arquitectura-frontend.md) §14.
+
+| Decisión                                  | Qué se eligió                                                                                                                                                                                 |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [FE-01](docs/05-arquitectura-frontend.md) | Tailwind CSS + shadcn/ui (código propio en `shared/ui`) y componentes reutilizables en `shared/componentes` (`TablaServidor`, `EstadoVista`, `CampoFormulario`, `Monto`…)                     |
+| [FE-02](docs/05-arquitectura-frontend.md) | TanStack Query es el dueño del estado del servidor: llaves por módulo, sin optimismo en nada con reglas de negocio; cada mutación cancela lo que está en vuelo y vuelve a pedir (`refrescar`) |
+| [FE-03](docs/05-arquitectura-frontend.md) | React Hook Form con los mismos esquemas Zod de la API (`@shopcart/shared`); los errores 400 del backend caen en su campo                                                                      |
+| [FE-04](docs/05-arquitectura-frontend.md) | React Router 8 con una sola definición de rutas y roles, de la que salen el guardián y los menús; tres áreas con carga diferida                                                               |
+| [FE-05](docs/05-arquitectura-frontend.md) | Token solo en memoria; renovación reactiva ante un 401 con single-flight por pestaña y Web Locks + BroadcastChannel entre pestañas                                                            |
+| [FE-06](docs/05-arquitectura-frontend.md) | Tablas con paginación, orden y filtros en el servidor y su estado en la URL; tarjetas en móvil                                                                                                |
+| [FE-07](docs/05-arquitectura-frontend.md) | Gráficas con Recharts: una forma por reporte, sin doble eje, negativos con su tono y su texto, «Ver como tabla» y estados por gráfica                                                         |
+| [FE-08](docs/05-arquitectura-frontend.md) | Sin librería de estado global: cada estado tiene un dueño (el servidor, la URL, el formulario o la sesión)                                                                                    |
+| [FE-09](docs/05-arquitectura-frontend.md) | Código por módulo del backend; `paginas → componentes → hooks → <modulo>.api.ts → shared/api`, verificado con ESLint                                                                          |
+| [FE-10](docs/05-arquitectura-frontend.md) | Montos como texto formateados sin pasar por `number` (solo la geometría de una gráfica los convierte); fechas en la hora de Guatemala                                                         |
+| [FE-11](docs/05-arquitectura-frontend.md) | Tiempo real con `fetch` + `eventsource-parser` por el cliente `api`: invalidación por dominio, vigilante del latido, reconexión aleatoria, pausa con la pestaña oculta e indicador visible    |
+| [FE-12](docs/05-arquitectura-frontend.md) | Vitest, Testing Library + MSW y Playwright contra el backend real; cada módulo se cierra con su E2E                                                                                           |
+| [FE-13](docs/05-arquitectura-frontend.md) | Contrato: foto `openapi.json` verificada en el lint, tipos generados y cliente `openapi-fetch`; `pnpm contrato:cobertura` dice qué ruta no tiene pantalla                                     |
+| [FE-14](docs/05-arquitectura-frontend.md) | Solo las librerías aprobadas (tabla de abajo)                                                                                                                                                 |
+| [FE-15](docs/05-arquitectura-frontend.md) | Dirección visual propia con la paleta de Don Arturo, fuentes autoalojadas e ilustración por tipo de prenda con el color de la variante; diseño de referencia en Figma                         |
+| [FE-16](docs/05-arquitectura-frontend.md) | El atributo `Color` es el color de la prenda y se muestra como muestra de color                                                                                                               |
 
 ### Decisiones abiertas del enunciado
 
@@ -342,7 +388,7 @@ No se usa `@opentelemetry/sdk-node`: trae los exportadores gRPC, Zipkin, Jaeger 
 
 ### Librerías del frontend
 
-Cada una con su porqué ([FE-14](docs/05-arquitectura-frontend.md)); ninguna fuera de esta lista sin aprobación del PO. Se agregan a medida que una historia las usa.
+Cada una con su porqué ([FE-14](docs/05-arquitectura-frontend.md)); ninguna fuera de esta lista sin aprobación del PO.
 
 | Librería                                                                                                                        | Para qué                                                                                                                                                                                 |
 | ------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -363,6 +409,9 @@ Cada una con su porqué ([FE-14](docs/05-arquitectura-frontend.md)); ninguna fue
 | `sonner`                                                                                                                        | Avisos (_toasts_) con los colores del tema                                                                                                                                               |
 | `react-hook-form`, `@hookform/resolvers`                                                                                        | Formularios validados con los esquemas Zod de `@shopcart/shared` (FE-03)                                                                                                                 |
 | `@playwright/test`                                                                                                              | E2E contra el entorno real a través de nginx: `pnpm test:e2e` (solo desarrollo, FE-12)                                                                                                   |
+| `recharts`                                                                                                                      | Las gráficas del dashboard, a través del `Chart` de shadcn: colores del tema y modo oscuro (FE-07)                                                                                       |
+| `eventsource-parser`                                                                                                            | Parsea el protocolo SSE del stream del dashboard; el bucle de conexión es propio para pasar por la sesión (FE-11)                                                                        |
+| `zod`                                                                                                                           | Los esquemas compartidos con la API y la validación de lo que llega de la URL y del stream                                                                                               |
 
 `eslint-plugin-jsx-a11y` 6.10.2 (la última) declara compatibilidad hasta ESLint 9; con ESLint 10 funciona igual, porque sus reglas solo usan `context.options`, `context.report` y `context.settings`, que ESLint 10 conserva.
 
@@ -473,10 +522,15 @@ pnpm test:entorno        # seguridad HTTP, contenedores sin root, RNF-2, apagado
 pnpm test:cobertura      # unitarias e integración en una sola corrida, un solo reporte (apps/api/coverage/combinada)
 pnpm --filter @shopcart/web test   # unitarias y de componentes de la web (Vitest, MSW)
 pnpm test:e2e            # Playwright contra http://localhost:8080 (la primera vez: pnpm --filter @shopcart/web exec playwright install chromium)
+pnpm contrato:cobertura --estricto  # cada ruta del contrato tiene pantalla o una exclusión con su motivo
 ```
 
+**La web en desarrollo.** Con el entorno levantado, `pnpm --filter @shopcart/web dev` sirve la SPA en <http://localhost:5173> con recarga en caliente; Vite pasa `/api` a <http://localhost:8080>, así la SPA y la API comparten origen igual que con nginx y las cookies se comportan igual. Tras cambiar un esquema de la API, `pnpm openapi:exportar` regenera `packages/contrato/openapi.json` y sus tipos (`pnpm lint` falla si la foto no coincide).
+
+- **Web:** pruebas unitarias de las funciones puras (formato de montos y fechas, la sesión, el bucle del tiempo real con un stream simulado) y de componentes con MSW, que simula la API con los tipos del contrato.
+
 - **Integración:** `pnpm test:integracion` recrea `shopcart_test` desde cero (las tablas ledger no admiten `DELETE`), aplica todos los scripts y, solo en esa base, los SPs de `database/test/`. Las pruebas no escriben SQL: preparan sus datos con esos `SP_Pruebas_*` y cada una crea datos únicos. Nunca tocan la base `ShopCart` del entorno.
-- **E2E de la web:** cada corrida registra un cliente nuevo (`e2e-<corrida>-…@prueba.gt`) por la API pública, así que no depende de la semilla demo ni de otra corrida. El registro admite 3 por minuto por IP (A-07): no conviene repetirla más de unas 3 veces por minuto. Otra URL con `SHOPCART_URL`; el _fixture_ `apiAdmin` usa `SHOPCART_ADMIN_CORREO` y `SHOPCART_ADMIN_CONTRASENA` (por defecto, el Administrador de la tabla de usuarios).
+- **E2E de la web:** 43 escenarios contra el backend real (la compra, el checkout con sus fallas, la gestión de pedidos, el inventario, los cupones, la bitácora, el dashboard en tiempo real y las exportaciones, entre otros). Cada corrida registra un cliente nuevo (`e2e-<corrida>-…@prueba.gt`) por la API pública, así que no depende de la semilla demo ni de otra corrida. El registro admite 3 por minuto por IP (A-07): no conviene repetirla más de unas 3 veces por minuto. Otra URL con `SHOPCART_URL`; el _fixture_ `apiAdmin` usa `SHOPCART_ADMIN_CORREO` y `SHOPCART_ADMIN_CONTRASENA` (por defecto, el Administrador de la tabla de usuarios).
 - **Concurrencia:** escenario 1, la última unidad de una variante: 1 pedido y 19 × `409 STOCK_INSUFICIENTE`. Escenario 2, el último uso de un cupón: 1 pedido y 19 × `422 CUPON_AGOTADO`. Verifica además la existencia final, la conciliación de inventario vacía, el contador del cupón y que respondieron las dos réplicas. Crea sus propios datos con la API, así que se puede repetir sin reiniciar nada; como cada corrida inicia sesión una vez por cliente y el login admite 5 intentos por minuto por IP y correo (A-07), no conviene repetirla más de unas 4 veces por minuto. Otra URL con `SHOPCART_URL`.
 
 **Balanceo y tolerancia a fallas (demo):**
@@ -498,9 +552,10 @@ docker compose start api-1        # nginx la reincorpora sola
 
 ## 8. Mejoras documentadas
 
-Lo que queda fuera de la Fase 1, a propósito y con su lugar en el plan ([docs/03-backlog.md](docs/03-backlog.md) §4). Las exclusiones del alcance y las mejoras de producto están en §4, «Fuera de alcance y mejoras».
+Lo que queda fuera de la entrega, a propósito y con su porqué. Las exclusiones del alcance y las mejoras de producto están en §4, «Fuera de alcance y mejoras».
 
-- **Fase 2 · Frontend:** SPA con Vite + React + TypeScript (tienda, backoffice y dashboard con gráficas), renovación transparente del token y estados de carga, vacío y error.
-- **Revisión manual de pagos:** la API ya la resuelve (E9-H04, solo Admin): `GET /api/v1/admin/pagos/en-revision` y `POST /api/v1/admin/pagos/{id}/resolver` (`CobroVerificado`, `SinCobro` o `Reembolsar`, con la evidencia de la pasarela), y `POST /api/v1/admin/reembolsos/{id}/resolver` para un reembolso `Fallido` (`ResueltoManual`). La Fase 2 les dará pantalla.
+- **Pantalla de existencias por bodega:** `GET /api/v1/inventario/bodega` (E3) existe, pero ninguna historia de la Fase 2 tiene esa pantalla; `/backoffice/inventario` muestra física, reservado y disponible. Las cuatro rutas sin pantalla, cada una con su motivo, están en `packages/contrato/exclusiones.json`.
+- **Precalentar los planes de SQL Server tras un despliegue:** justo después de `docker compose up --build`, la primera ejecución de cada SP compila su plan (una búsqueda medida tardó 5 s; en caliente, 0.25 s). Una tarea que ejecute los SPs de lectura al arrancar quitaría esa primera espera.
+- **Recuperación de contraseña y correos** (como el aviso de exportación terminada): requieren SMTP; con sesión iniciada, el usuario cambia la suya.
 - **Carga pesada (F5):** el script `database/load/L001` con el generador de datos demo a 50,000 pedidos. Ya se midió en una base desechable: ningún listado ni reporte pasa de 1 s ([docs/revision/estado-backend.md](docs/revision/estado-backend.md) §7).
 - **Producción:** SQL Server Standard o Enterprise en lugar de Developer, HTTPS en nginx y secretos fuera de `.env`.
