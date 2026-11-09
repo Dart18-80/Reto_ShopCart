@@ -53,3 +53,21 @@ export async function listarCarritosAbandonados(
   if (!data) throw ErrorApi.inesperado();
   return data;
 }
+
+/**
+ * E9-H02 (A-25): el stream del dashboard. Sale por el cliente `api`, así lleva el token en `Authorization` y, ante
+ * un 401 (token vencido), renueva una vez y reintenta; si la renovación falla, la sesión se cierra (05 §5).
+ */
+export async function abrirEventosReportes(
+  ultimoEventoId: string | null,
+  senal: AbortSignal,
+): Promise<ReadableStream<Uint8Array>> {
+  const { data } = await api.GET('/api/v1/admin/reportes/eventos', {
+    params: { header: ultimoEventoId === null ? {} : { 'last-event-id': ultimoEventoId } },
+    headers: { Accept: 'text/event-stream' },
+    parseAs: 'stream',
+    signal: senal,
+  });
+  if (!data) throw ErrorApi.inesperado();
+  return data;
+}

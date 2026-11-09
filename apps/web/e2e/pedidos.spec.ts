@@ -321,4 +321,33 @@ pruebaDeCompra.describe('dashboard (M11)', () => {
       }
     },
   );
+
+  pruebaDeCompra(
+    'tiempo real (M11-H02): con el dashboard abierto, un pedido nuevo actualiza el resumen sin recargar',
+    async ({ browser, apiAdmin, crearEnTienda, comprador }, informacion) => {
+      const idProducto = await crearEnTienda(`Gorra ${nombreUnico('en-vivo')}`, [
+        { valores: [], precio: '60.00', existencia: 5 },
+      ]);
+      const hoy = hoyEnGuatemala();
+      const contexto = await browser.newContext({ baseURL: informacion.project.use.baseURL });
+      const admin = await contexto.newPage();
+      try {
+        await iniciarSesionPorApi(admin, await crearAdministrador(apiAdmin));
+        await admin.goto(`/backoffice/dashboard?desde=${hoy}&hasta=${hoy}`);
+        await expect(admin.getByRole('status').filter({ hasText: 'En vivo' })).toBeVisible();
+        const pedidos = cifraDelResumen(admin, 'Pedidos');
+        await expect(pedidos).toHaveText(/^\d[\d,]*$/);
+        const pedidosAntes = Number((await pedidos.innerText()).replace(/,/g, ''));
+
+        await agregarAlCarrito(comprador.api, await varianteDe(comprador.api, idProducto));
+        await direccionDe(comprador.api);
+        await comprarCarrito(comprador.api);
+
+        // Sin admin.reload(): el aviso del stream hace que el dashboard vuelva a pedir el resumen.
+        await expect(pedidos).toHaveText(String(pedidosAntes + 1));
+      } finally {
+        await contexto.close();
+      }
+    },
+  );
 });

@@ -226,14 +226,14 @@ Convención de la API (`01-arquitectura.md` §5.1): `?pagina=1&tamano=20&orden=f
 - **Vigilante del latido:** más de 35 s sin recibir nada (dos latidos de 15 s más margen) → la conexión se da por muerta y se reabre.
 - **Pausa con la pestaña oculta** (`visibilitychange`); al volver, reconecta con `Last-Event-ID`.
 - **`429 CONEXIONES_MAXIMAS`:** "Tiempo real en pausa" y reintento con espera larga; el dashboard sigue funcionando con consultas normales.
-- **Indicador visible:** "En vivo", "Reconectando…" o "En pausa".
+- **Indicador visible** (`IndicadorTiempoReal`): "En vivo", "Reconectando…" o "En pausa", y "Conectando…" mientras se abre la primera conexión.
 
 ---
 
 ## 12. Interfaz (FE-01)
 
 - **Tailwind CSS + shadcn/ui.** Los componentes de shadcn se copian al repositorio (`shared/ui`), son accesibles (Radix) y se pueden explicar y modificar en vivo en la defensa.
-- **Componentes reutilizables propios** en `shared/componentes`, que son la evidencia del criterio "componentes reutilizables": `TablaServidor`, `EstadoVista` (carga, vacío, error), `CampoFormulario`, `Paginacion`, `Monto`, `FechaHora`, `IndicadorTiempoReal`, entre otros.
+- **Componentes reutilizables propios** en `shared/componentes`, que son la evidencia del criterio "componentes reutilizables": `TablaServidor`, `EstadoVista` (carga, vacío, error), `CampoFormulario`, `Paginacion`, `Monto`, `FechaHora`, entre otros. Lo que usa un solo módulo vive en sus `componentes` (por ejemplo, `IndicadorTiempoReal` en `reportes`).
 - Diseño *mobile first*; todas las vistas se revisan en anchos de teléfono y de escritorio.
 
 ---

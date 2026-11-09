@@ -145,6 +145,52 @@ describe('DashboardPagina (M11-H01)', () => {
     expect(router.state.location.search).toContain('orden=inactividad');
   });
 
+  it('tiempo real (M11-H02): conectado dice «En vivo»; un cambio de ventas vuelve a pedir solo sus reportes', async () => {
+    const consultas = simularDashboard();
+    abrir();
+
+    expect(await screen.findByText('En vivo')).toBeInTheDocument();
+    await screen.findByText('Carla Cliente');
+    const antes = {
+      resumen: consultas.resumen.length,
+      ventas: consultas.ventas.length,
+      categorias: consultas.categorias.length,
+      top: consultas.top.length,
+      carritos: consultas.carritos.length,
+    };
+
+    consultas.eventos.cambio('ventas', 2);
+
+    await waitFor(() => {
+      expect(consultas.resumen.length).toBe(antes.resumen + 1);
+    });
+    await waitFor(() => {
+      expect(consultas.top.length).toBe(antes.top + 1);
+    });
+    expect(consultas.ventas.length).toBe(antes.ventas + 1);
+    expect(consultas.categorias.length).toBe(antes.categorias + 1);
+    expect(consultas.carritos.length).toBe(antes.carritos);
+  });
+
+  it('tiempo real (M11-H02): un cambio de carritos vuelve a pedir los carritos y el resumen, no las ventas', async () => {
+    const consultas = simularDashboard();
+    abrir();
+
+    await screen.findByText('En vivo');
+    await screen.findByText('Carla Cliente');
+    const ventasAntes = consultas.ventas.length;
+    const carritosAntes = consultas.carritos.length;
+    const resumenAntes = consultas.resumen.length;
+
+    consultas.eventos.cambio('carritos', 2);
+
+    await waitFor(() => {
+      expect(consultas.carritos.length).toBe(carritosAntes + 1);
+    });
+    expect(consultas.resumen.length).toBe(resumenAntes + 1);
+    expect(consultas.ventas.length).toBe(ventasAntes);
+  });
+
   it('un Operador ve «Sin permiso»', async () => {
     abrir('/backoffice/dashboard', 'Operador');
 

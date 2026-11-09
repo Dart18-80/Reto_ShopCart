@@ -80,6 +80,7 @@ export function simularDashboard({
   ventas = VENTAS_DE_PRUEBA,
   carritos = [carritoDePrueba()],
 }: OpcionesDashboard = {}) {
+  const eventos = simularEventos();
   const consultas: Record<ReporteDelDashboard, URLSearchParams[]> = {
     resumen: [],
     ventas: [],
@@ -116,5 +117,41 @@ export function simularDashboard({
       paginacion: { pagina: 1, tamano: 20, total: TOTAL_CARRITOS, totalPaginas: 3 },
     })),
   );
-  return consultas;
+  return { ...consultas, eventos };
+}
+
+/**
+ * El stream del dashboard (E9-H02): cada conexión recibe de inmediato las versiones 1 y 1, y la prueba envía después
+ * lo que quiera a la última conexión abierta. Guarda el `Last-Event-ID` de cada conexión.
+ */
+export function simularEventos() {
+  const codificador = new TextEncoder();
+  const ultimosIds: (string | null)[] = [];
+  let actual: ReadableStreamDefaultController<Uint8Array> | undefined;
+  servidor.use(
+    http.get('/api/v1/admin/reportes/eventos', ({ request }) => {
+      ultimosIds.push(request.headers.get('last-event-id'));
+      const cuerpo = new ReadableStream<Uint8Array>({
+        start(controlador) {
+          actual = controlador;
+          controlador.enqueue(
+            codificador.encode(
+              'id: ventas1.carritos1\nevent: versiones\ndata: {"versiones":{"ventas":1,"carritos":1},"recargar":false}\n\n',
+            ),
+          );
+        },
+      });
+      return new HttpResponse(cuerpo, { headers: { 'Content-Type': 'text/event-stream' } });
+    }),
+  );
+  return {
+    ultimosIds,
+    cambio: (dominio: 'ventas' | 'carritos', version: number) => {
+      actual?.enqueue(
+        codificador.encode(
+          `id: ventas${String(version)}.carritos1\nevent: cambio\ndata: ${JSON.stringify({ dominio, version })}\n\n`,
+        ),
+      );
+    },
+  };
 }
