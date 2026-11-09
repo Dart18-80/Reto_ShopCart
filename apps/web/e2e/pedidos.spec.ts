@@ -290,6 +290,82 @@ const cifraDelResumen = (admin: Page, etiqueta: string) =>
 // «Q12,500.50» → 1250050 centavos: la prueba compara cifras de la pantalla sin pasar por decimales binarios.
 const centavos = (texto: string) => Number(texto.replace(/[^\d-]/g, ''));
 
+interface MetodoEnvioAdmin {
+  idMetodoEnvio: number;
+  codigo: string;
+  nombre: string;
+  costo: string;
+  diasMin: number;
+  diasMax: number;
+  activo: boolean;
+}
+
+pruebaDeCompra.describe('envíos (M9-H02)', () => {
+  pruebaDeCompra(
+    'editar el costo de un método se ve en el checkout; desactivarlo lo deja inactivo y se reactiva',
+    async ({ browser, apiAdmin, crearEnTienda, comprador }, informacion) => {
+      const { datos: metodos } = (await (
+        await apiAdmin.get('/api/v1/admin/envios/metodos')
+      ).json()) as { datos: MetodoEnvioAdmin[] };
+      // Express: el checkout elige Estándar por omisión, así las demás pruebas no dependen de este método.
+      const original = metodos.find((m) => m.codigo === 'Express');
+      if (!original) throw new Error('La semilla no tiene el método Express');
+      const costoNuevo = original.costo === '76.50' ? '77.50' : '76.50';
+      const montoNuevo = `Q${costoNuevo}`;
+      // Un producto barato: el carrito queda debajo del envío gratis y el checkout muestra el costo del método.
+      const idProducto = await crearEnTienda(`Gorra ${nombreUnico('envio')}`, [
+        { valores: [], precio: '60.00', existencia: 5 },
+      ]);
+      await agregarAlCarrito(comprador.api, await varianteDe(comprador.api, idProducto));
+      await direccionDe(comprador.api);
+
+      const contexto = await browser.newContext({ baseURL: informacion.project.use.baseURL });
+      const admin = await contexto.newPage();
+      const fila = admin.getByRole('row').filter({ hasText: original.nombre });
+      const editar = async (cambio: (dialogo: ReturnType<Page['getByRole']>) => Promise<void>) => {
+        await fila.getByRole('button', { name: `Editar ${original.nombre}` }).click();
+        const dialogo = admin.getByRole('dialog', { name: `Editar ${original.nombre}` });
+        await cambio(dialogo);
+        await dialogo.getByRole('button', { name: 'Guardar cambios' }).click();
+        await expect(dialogo).toBeHidden();
+      };
+      const opcionExpress = pagina.getByRole('radio', {
+        name: new RegExp(`^${original.nombre}\\b`),
+      });
+      try {
+        await iniciarSesionPorApi(admin, await crearAdministrador(apiAdmin));
+        await admin.goto('/backoffice/envios');
+
+        await editar((dialogo) => dialogo.getByLabel('Costo').fill(costoNuevo));
+        await expect(fila).toContainText(montoNuevo);
+        await pagina.goto('/checkout');
+        await expect(opcionExpress).toHaveAccessibleName(
+          new RegExp(`${montoNuevo.replace('.', '\\.')}$`),
+        );
+
+        await editar((dialogo) => dialogo.getByLabel('Disponible en el checkout').uncheck());
+        await expect(fila).toContainText('Inactivo');
+        await pagina.reload();
+        await expect(pagina.getByRole('radiogroup', { name: 'Método de envío' })).toBeVisible();
+        await expect(opcionExpress).toHaveCount(0);
+
+        await editar((dialogo) => dialogo.getByLabel('Disponible en el checkout').check());
+        await expect(fila).toContainText('Activo');
+        await pagina.reload();
+        await expect(opcionExpress).toBeVisible();
+      } finally {
+        await contexto.close();
+        const { idMetodoEnvio, nombre, costo, diasMin, diasMax, activo } = original;
+        const restaurado = await apiAdmin.put(
+          `/api/v1/admin/envios/metodos/${String(idMetodoEnvio)}`,
+          { data: { nombre, costo, diasMin, diasMax, activo } },
+        );
+        expect(restaurado.status(), 'restaurar el método de envío').toBe(200);
+      }
+    },
+  );
+});
+
 pruebaDeCompra.describe('dashboard (M11)', () => {
   pruebaDeCompra(
     'después de un pedido de prueba, el resumen del día lo incluye',
