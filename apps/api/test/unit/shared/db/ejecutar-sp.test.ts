@@ -159,6 +159,37 @@ describe('ejecutarSP', () => {
     expect(ejecutar).toHaveBeenCalledTimes(1);
   });
 
+  it('no poder obtener una conexión es 503 BASE_NO_DISPONIBLE con Retry-After, sin reintentar', async () => {
+    const sinConexion = new sql.ConnectionError(
+      'Failed to connect to sqlserver:1433 in 2000ms',
+      'ETIMEOUT',
+    );
+    const { conexion, ejecutar } = conexionFalsa(() => Promise.reject(sinConexion));
+    const { ejecutarSP } = crearEjecutorSP({ conexion, logger, esperar: sinEspera });
+
+    const error = await ejecutarSP('SP_Pruebas_Leer').catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(AppError);
+    expect(error).toMatchObject({
+      codigo: 'BASE_NO_DISPONIBLE',
+      status: 503,
+      segundosParaReintentar: 5,
+      cause: sinConexion,
+    });
+    expect(ejecutar).toHaveBeenCalledTimes(1);
+  });
+
+  it('un timeout de la consulta no es 503: el SP pudo haber corrido y sigue siendo un 500', async () => {
+    const lenta = new sql.RequestError(
+      'Timeout: Request failed to complete in 15000ms',
+      'ETIMEOUT',
+    );
+    const { conexion } = conexionFalsa(() => Promise.reject(lenta));
+    const { ejecutarSP } = crearEjecutorSP({ conexion, logger, esperar: sinEspera });
+
+    await expect(ejecutarSP('SP_Pruebas_Leer')).rejects.toBe(lenta);
+  });
+
   it('entre reintentos por deadlock espera 50, 100 y 200 ms (backoff exponencial)', async () => {
     const esperas: number[] = [];
     const { conexion } = conexionFalsa(() => Promise.reject(errorSql(1205)));

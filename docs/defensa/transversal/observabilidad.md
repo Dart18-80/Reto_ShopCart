@@ -51,7 +51,7 @@ El decorador de la pasarela es un ejemplo de abierto/cerrado: se agrega trazabil
 | El span HTTP raíz empieza antes del middleware: lo toma del encabezado de la respuesta | [telemetria.ts:120](../../../apps/api/src/shared/observability/telemetria.ts#L120 "respuesta.getHeader(ENCABEZADO_REQUEST_ID)") |
 | El `requestId` se genera (o se acepta si es UUID) y se devuelve en `X-Request-Id` | [request-id.ts:16](../../../apps/api/src/shared/http/request-id.ts#L16 "res.setHeader(ENCABEZADO_REQUEST_ID, id)") |
 | pino agrega `requestId` e `idUsuario` a cada línea | [logger.ts:41](../../../apps/api/src/shared/observability/logger.ts#L41 "requestId: contexto.requestId") |
-| `ejecutarSP` envía `@RequestId` a cada SP (A-18) | [ejecutar-sp.ts:111](../../../apps/api/src/shared/db/ejecutar-sp.ts#L111 "RequestId: { tipo: sql.UniqueIdentifier") |
+| `ejecutarSP` envía `@RequestId` a cada SP (A-18) | [ejecutar-sp.ts:122](../../../apps/api/src/shared/db/ejecutar-sp.ts#L122 "RequestId: { tipo: sql.UniqueIdentifier") |
 | El SP lo fija en `SESSION_CONTEXT` para triggers y bitácora | [R__SP_Sistema_EstablecerContexto.sql:15](../../../database/programmability/R__SP_Sistema_EstablecerContexto.sql#L15 "N'RequestId'") |
 
 Así, desde un `requestId` se llega a la traza en Tempo, a sus logs en Loki y a las filas de `Bitacora` que escribió esa petición.
@@ -77,7 +77,7 @@ Los servicios no importan OpenTelemetry: las métricas de negocio pasan por `sha
 
 ## Exportador con registro de estado (sin el perfil)
 
-- Las réplicas siempre exportan a `http://otel-lgtm:4318` [docker-compose.yml:30](../../../docker-compose.yml#L30 "http://otel-lgtm:4318"), un nombre que `extra_hosts` resuelve a la IP fija `.40` de la subred [docker-compose.yml:51](../../../docker-compose.yml#L51 "otel-lgtm:${RED_PREFIJO:-172.28.10}.40"): sin el perfil, el envío nunca sale de la subred ni consulta DNS.
+- Las réplicas siempre exportan a `http://otel-lgtm:4318` [docker-compose.yml:30](../../../docker-compose.yml#L30 "http://otel-lgtm:4318"), un nombre que `extra_hosts` resuelve a la IP fija `.40` de la subred [docker-compose.yml:55](../../../docker-compose.yml#L55 "otel-lgtm:${RED_PREFIJO:-172.28.10}.40"): sin el perfil, el envío nunca sale de la subred ni consulta DNS.
 - Cada exportador se envuelve en `conRegistroDeEstado` [telemetria.ts:170](../../../apps/api/src/shared/observability/telemetria.ts#L170 "conRegistroDeEstado(new OTLPTraceExporter"): solo registra al **cambiar** de estado [exportador-con-estado.ts:23](../../../apps/api/src/shared/observability/exportador-con-estado.ts#L23 "if (exitoso !== disponible)"), una advertencia al caer [exportador-con-estado.ts:30](../../../apps/api/src/shared/observability/exportador-con-estado.ts#L30 "no está disponible") y una línea al volver [exportador-con-estado.ts:26](../../../apps/api/src/shared/observability/exportador-con-estado.ts#L26 "disponible otra vez").
 - Activarlo es un comando, sin reiniciar la API: `docker compose --profile observabilidad up -d`.
 - Pruebas: [exportador-con-estado.test.ts:29](../../../apps/api/test/unit/shared/observability/exportador-con-estado.test.ts#L29 "registra una sola advertencia mientras el colector no responde") y, en el entorno, [observabilidad.test.ts:62](../../../apps/api/test/entorno/observabilidad.test.ts#L62 "cada señal registra una sola advertencia").
@@ -88,7 +88,7 @@ El apagado ordenado tiene 10 s. Sin colector, vaciar los lotes esperaría el tim
 
 ## Dashboard aprovisionado
 
-- `otel-lgtm:0.36.0` fijada con digest, solo en el perfil [docker-compose.yml:193](../../../docker-compose.yml#L193 "grafana/otel-lgtm:0.36.0@sha256"); el aprovisionamiento y el dashboard se montan de solo lectura [docker-compose.yml:204](../../../docker-compose.yml#L204 "provisioning/dashboards/shopcart.yaml") desde [infra/grafana](../../../infra/grafana).
+- `otel-lgtm:0.36.0` fijada con digest, solo en el perfil [docker-compose.yml:197](../../../docker-compose.yml#L197 "grafana/otel-lgtm:0.36.0@sha256"); el aprovisionamiento y el dashboard se montan de solo lectura [docker-compose.yml:208](../../../docker-compose.yml#L208 "provisioning/dashboards/shopcart.yaml") desde [infra/grafana](../../../infra/grafana).
 - El proveedor no permite borrar ni editar desde la interfaz: [shopcart.yaml:8](../../../infra/grafana/provisioning/dashboards/shopcart.yaml#L8 "disableDeletion: true").
 - Paneles de [shopcart.json](../../../infra/grafana/dashboards/shopcart.json): latencia p95 por endpoint [shopcart.json:48](../../../infra/grafana/dashboards/shopcart.json#L48 "histogram_quantile(0.95"), peticiones y errores 4xx/5xx por endpoint, pedidos creados, exportaciones pendientes, pagos por resultado, tareas por resultado, peticiones por réplica [shopcart.json:329](../../../infra/grafana/dashboards/shopcart.json#L329 "sum by (instance)") y los logs [shopcart.json:358](../../../infra/grafana/dashboards/shopcart.json#L358 "Logs de las réplicas (con su trace_id)").
 - Prueba de entorno con el perfil: [observabilidad.test.ts:84](../../../apps/api/test/entorno/observabilidad.test.ts#L84 "el dashboard ShopCart está aprovisionado") y la compra completa en Tempo y Loki [observabilidad.test.ts:95](../../../apps/api/test/entorno/observabilidad.test.ts#L95 "una compra es una traza en Tempo").

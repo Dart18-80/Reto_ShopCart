@@ -72,8 +72,8 @@ sequenceDiagram
 - **Sin token o token de versión anterior:** 401 `NO_AUTENTICADO`.
 - **Cliente u Operador en una ruta de Admin:** 403 `SIN_PERMISO` ([usuarios.api.test.ts:260](../../../apps/api/test/integracion/usuarios/usuarios.api.test.ts#L260 "recibe 403 en cada ruta Admin que escribe")).
 - **Usuario inexistente en `PATCH /:id` o desactivar:** 404 `NO_ENCONTRADO` (THROW 50001).
-- **Desactivarse o cambiarse el rol a sí mismo:** 409 `ACCION_SOBRE_SI_MISMO` (50105) ([catalogo.ts:55](../../../apps/api/src/shared/errors/catalogo.ts#L55 "ACCION_SOBRE_SI_MISMO")).
-- **Dejar el sistema sin Admins:** 409 `ULTIMO_ADMIN` (50104) ([catalogo.ts:60](../../../apps/api/src/shared/errors/catalogo.ts#L60 "ULTIMO_ADMIN")).
+- **Desactivarse o cambiarse el rol a sí mismo:** 409 `ACCION_SOBRE_SI_MISMO` (50105) ([catalogo.ts:60](../../../apps/api/src/shared/errors/catalogo.ts#L60 "ACCION_SOBRE_SI_MISMO")).
+- **Dejar el sistema sin Admins:** 409 `ULTIMO_ADMIN` (50104) ([catalogo.ts:65](../../../apps/api/src/shared/errors/catalogo.ts#L65 "ULTIMO_ADMIN")).
 - **Contraseña actual incorrecta:** 400 `PARAMETRO_INVALIDO` y no cambia nada ([usuarios.service.ts:61](../../../apps/api/src/modules/usuarios/usuarios.service.ts#L61 "throw new AppError('PARAMETRO_INVALIDO'")).
 - **Usuario inactivo con token todavía vivo que cambia su contraseña:** 401 `USUARIO_INACTIVO` (50103).
 - **Correo repetido al crear un interno:** 409 `CORREO_EN_USO` (50101).

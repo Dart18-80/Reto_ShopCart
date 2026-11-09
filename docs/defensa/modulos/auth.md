@@ -44,8 +44,8 @@ sequenceDiagram
 | Correo único sin distinguir mayúsculas | Columna calculada `CorreoNormalizado` + `UQ_Usuario_CorreoNormalizado` | [V002__seguridad.sql:17](../../../database/migrations/V002__seguridad.sql#L17 "AS LOWER(Correo) PERSISTED"), [V002__seguridad.sql:27](../../../database/migrations/V002__seguridad.sql#L27 "UQ_Usuario_CorreoNormalizado") | N-15 |
 | Correo repetido: 409, también si dos registros llegan a la vez | SP bajo `UPDLOCK, HOLDLOCK` + el UNIQUE traducido a 50101 | [R__SP_Auth_RegistrarCliente.sql:24](../../../database/programmability/R__SP_Auth_RegistrarCliente.sql#L24 "WITH (UPDLOCK, HOLDLOCK)"), [R__SP_Auth_RegistrarCliente.sql:38](../../../database/programmability/R__SP_Auth_RegistrarCliente.sql#L38 "IF ERROR_NUMBER() IN (2601, 2627)") | A-02, A-06 |
 | Contraseña: 8 a 128 caracteres, con letra y número | Zod | [shared/auth.ts:9](../../../packages/shared/src/auth.ts#L9 ".min(8, 'Mínimo 8 caracteres.')"), [shared/auth.ts:10](../../../packages/shared/src/auth.ts#L10 ".max(128, 'Máximo 128 caracteres.')") | N-15 |
-| Contraseña con argon2id (19 MiB, 2 iteraciones) | Servicio (`auth.contrasenas.ts`) | [auth.contrasenas.ts:5](../../../apps/api/src/modules/auth/auth.contrasenas.ts#L5 "type: argon2.argon2id"), [auth.contrasenas.ts:6](../../../apps/api/src/modules/auth/auth.contrasenas.ts#L6 "memoryCost: 19 * 1024") | §10 |
-| Login con mensaje genérico, mismo tiempo con correo inexistente | Servicio: verifica contra un hash de relleno | [auth.contrasenas.ts:25](../../../apps/api/src/modules/auth/auth.contrasenas.ts#L25 "argon2.verify(hash ?? HASH_DE_RELLENO, contrasena)"), [auth.service.ts:151](../../../apps/api/src/modules/auth/auth.service.ts#L151 "throw new AppError('CREDENCIALES_INVALIDAS')") | N-15 |
+| Contraseña con argon2id (19 MiB, 2 iteraciones) | Servicio (`auth.contrasenas.ts`) | [auth.contrasenas.ts:6](../../../apps/api/src/modules/auth/auth.contrasenas.ts#L6 "type: argon2.argon2id"), [auth.contrasenas.ts:7](../../../apps/api/src/modules/auth/auth.contrasenas.ts#L7 "memoryCost: 19 * 1024") | §10 |
+| Login con mensaje genérico, mismo tiempo con correo inexistente | Servicio: verifica contra un hash de relleno | [auth.contrasenas.ts:32](../../../apps/api/src/modules/auth/auth.contrasenas.ts#L32 "argon2.verify(hash ?? HASH_DE_RELLENO, contrasena)"), [auth.service.ts:151](../../../apps/api/src/modules/auth/auth.service.ts#L151 "throw new AppError('CREDENCIALES_INVALIDAS')") | N-15 |
 | Inactivo solo se revela a quien conoce la contraseña | Servicio | [auth.service.ts:153](../../../apps/api/src/modules/auth/auth.service.ts#L153 "throw new AppError('USUARIO_INACTIVO')") | N-15 |
 | Login: 5 intentos por minuto por IP + correo; registro: 3 por IP | Middleware `limitarIntentos` con contador en Redis | [server.ts:39](../../../apps/api/src/server.ts#L39 "LIMITE_LOGIN = { intentos: 5, ventanaSeg: 60 }"), [auth.routes.ts:78](../../../apps/api/src/modules/auth/auth.routes.ts#L78 "limitarIntentos(limitadores.login, porIpYCorreo)") | A-07 |
 | Access token de 15 min, HS256, con `versionSesion` | `token-acceso.ts` | [token-acceso.ts:8](../../../apps/api/src/shared/http/token-acceso.ts#L8 "VIGENCIA_ACCESO_SEG = 15 * 60"), [token-acceso.ts:77](../../../apps/api/src/shared/http/token-acceso.ts#L77 "algorithms: [ALGORITMO]") | A-07 |
@@ -71,7 +71,7 @@ sequenceDiagram
 
 - **Credenciales incorrectas o correo inexistente:** 401 `CREDENCIALES_INVALIDAS`, mismo mensaje y mismo trabajo de argon2 ([registro-login.api.test.ts:112](../../../apps/api/test/integracion/auth/registro-login.api.test.ts#L112 "credenciales incorrectas y usuario inexistente responden el mismo 401 genérico")).
 - **Usuario desactivado:** 401 `USUARIO_INACTIVO` en el login; en el refresh, sin filas y 401 `NO_AUTENTICADO`.
-- **Refresh reutilizado:** 401 `REFRESH_REUTILIZADO` (50102) ([catalogo.ts:53](../../../apps/api/src/shared/errors/catalogo.ts#L53 "REFRESH_REUTILIZADO")).
+- **Refresh reutilizado:** 401 `REFRESH_REUTILIZADO` (50102) ([catalogo.ts:58](../../../apps/api/src/shared/errors/catalogo.ts#L58 "REFRESH_REUTILIZADO")).
 - **Cookie ausente, basura o de más de 100 caracteres:** cuenta como ausente: refresh 401 `NO_AUTENTICADO`, logout 204 ([auth.schemas.ts:47](../../../apps/api/src/modules/auth/auth.schemas.ts#L47 "valor.length <= LARGO_MAXIMO_REFRESH")).
 - **Demasiados intentos:** 429 `DEMASIADAS_PETICIONES` con `Retry-After` ([limitar-intentos.ts:17](../../../apps/api/src/shared/http/limitar-intentos.ts#L17 "new AppError('DEMASIADAS_PETICIONES', { segundosParaReintentar })"), [middleware.ts:44](../../../apps/api/src/shared/errors/middleware.ts#L44 "Retry-After")).
 - **Redis caído:** el limitador cae a un contador en memoria por réplica y la API no se bloquea ([limitador-redis.ts:60](../../../apps/api/src/shared/adapters/limitador-redis.ts#L60 "return consumirEn(enMemoria, clave);")); la versión de sesión devuelve `null` y rige la ventana de 15 min del access token ([versiones-sesion-redis.ts:40](../../../apps/api/src/shared/adapters/versiones-sesion-redis.ts#L40 "sin Redis el riesgo queda acotado")).
@@ -92,7 +92,7 @@ sequenceDiagram
 ### ¿Dónde se guarda la contraseña y con qué algoritmo?
 
 En `Usuario.HashContrasena`, como hash argon2id con 19 MiB y 2 iteraciones; la contraseña en claro nunca llega a la base ni al log.
-**Muéstralo en:** [auth.contrasenas.ts:5](../../../apps/api/src/modules/auth/auth.contrasenas.ts#L5 "type: argon2.argon2id")
+**Muéstralo en:** [auth.contrasenas.ts:6](../../../apps/api/src/modules/auth/auth.contrasenas.ts#L6 "type: argon2.argon2id")
 
 ### ¿Cómo evitas revelar qué correos existen?
 

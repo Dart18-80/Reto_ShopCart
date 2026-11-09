@@ -86,7 +86,7 @@ Todo SP que escribe usa `SET XACT_ABORT ON` y `BEGIN TRY … BEGIN TRAN … COMM
 
 Todo proceso bloquea el carrito, después las variantes en orden de `IDVariante` y después la sesión y el cupón: un orden global evita los ciclos. Si aun así SQL Server elige una víctima (error 1205), `ejecutarSP` reintenta con una espera breve y creciente.
 
-**Muéstralo en:** [ejecutar-sp.ts:31](../../apps/api/src/shared/db/ejecutar-sp.ts#L31 "const DEADLOCK = 1205;") y [ejecutar-sp.test.ts:124](../../apps/api/test/unit/shared/db/ejecutar-sp.test.ts#L124 "reintenta ante un deadlock (1205)"). Detalle: [concurrencia](transversal/concurrencia.md).
+**Muéstralo en:** [ejecutar-sp.ts:32](../../apps/api/src/shared/db/ejecutar-sp.ts#L32 "const DEADLOCK = 1205;") y [ejecutar-sp.test.ts:124](../../apps/api/test/unit/shared/db/ejecutar-sp.test.ts#L124 "reintenta ante un deadlock (1205)"). Detalle: [concurrencia](transversal/concurrencia.md).
 
 ### 14. ¿Quién modificó este precio, y puede alguien borrar ese rastro?
 

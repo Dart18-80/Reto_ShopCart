@@ -29,6 +29,10 @@ x-api-entorno: &api-entorno
   # envío se intenta contra su IP de la subred (extra_hosts), nunca sale de ella, y se registra una sola vez.
   OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-lgtm:4318
   OTEL_SEMCONV_STABILITY_OPT_IN: http
+  # A-26: 8 hilos en el threadpool de libuv (4 por omisión). argon2 usa como mucho 4 (auth.contrasenas.ts) y los
+  # otros 4 quedan para dns.lookup, fs y zlib: una ráfaga de logins no retrasa la conexión nueva a SQL Server.
+  # Tiene que estar en el entorno antes de que arranque Node: por eso va aquí y no en el código.
+  UV_THREADPOOL_SIZE: '8'
 
 # A-03, RNF-2: dos réplicas idénticas de la API; solo cambia el nombre de la réplica.
 x-api: &api

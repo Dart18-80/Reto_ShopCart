@@ -5,7 +5,7 @@ export interface OpcionesAppError {
   mensaje?: string;
   detalles?: unknown;
   cause?: unknown;
-  /** 429: segundos para el encabezado Retry-After. */
+  /** 429 y 503: segundos para el encabezado Retry-After. */
   segundosParaReintentar?: number;
 }
 

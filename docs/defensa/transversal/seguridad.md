@@ -31,8 +31,8 @@ La identidad viaja en un **access JWT corto** (15 min, en el encabezado `Authori
 
 ## Contraseñas: argon2id
 
-- argon2id con 19 MiB de memoria, 2 iteraciones y paralelismo 1, la recomendación de OWASP ([auth.contrasenas.ts:5](../../../apps/api/src/modules/auth/auth.contrasenas.ts#L5 "type: argon2.argon2id")).
-- Con un correo inexistente se verifica igual contra un hash de relleno: la respuesta tarda lo mismo y no revela qué correos existen ([auth.contrasenas.ts:25](../../../apps/api/src/modules/auth/auth.contrasenas.ts#L25 "argon2.verify(hash ?? HASH_DE_RELLENO, contrasena)")); el mensaje también es el mismo ([catalogo.ts:20](../../../apps/api/src/shared/errors/catalogo.ts#L20 "CREDENCIALES_INVALIDAS: { http: 401, mensaje: 'Correo o contraseña incorrectos.' }")).
+- argon2id con 19 MiB de memoria, 2 iteraciones y paralelismo 1, la recomendación de OWASP ([auth.contrasenas.ts:6](../../../apps/api/src/modules/auth/auth.contrasenas.ts#L6 "type: argon2.argon2id")).
+- Con un correo inexistente se verifica igual contra un hash de relleno: la respuesta tarda lo mismo y no revela qué correos existen ([auth.contrasenas.ts:32](../../../apps/api/src/modules/auth/auth.contrasenas.ts#L32 "argon2.verify(hash ?? HASH_DE_RELLENO, contrasena)")); el mensaje también es el mismo ([catalogo.ts:20](../../../apps/api/src/shared/errors/catalogo.ts#L20 "CREDENCIALES_INVALIDAS: { http: 401, mensaje: 'Correo o contraseña incorrectos.' }")).
 - La bitácora nunca guarda el hash: [bitacora.test.ts:107](../../../apps/api/test/integracion/esquema/bitacora.test.ts#L107 "la creación de un usuario nunca registra su HashContrasena").
 
 ## Rate limiting
@@ -48,7 +48,7 @@ La identidad viaja en un **access JWT corto** (15 min, en el encabezado `Authori
 | Capa | Qué garantiza | Dónde |
 | --- | --- | --- |
 | Entrada | Ninguna ruta de cliente acepta `idUsuario`, y los cuerpos son `.strict()` | [aislamiento.api.test.ts:262](../../../apps/api/test/integracion/seguridad/aislamiento.api.test.ts#L262 "ninguna ruta de cliente acepta idUsuario en su entrada") |
-| `ejecutarSP` | El actor sale siempre del contexto, nunca del llamador | [ejecutar-sp.ts:98](../../../apps/api/src/shared/db/ejecutar-sp.ts#L98 "A-18: el actor sale siempre del contexto de la petición, nunca del llamador (RF-01)") |
+| `ejecutarSP` | El actor sale siempre del contexto, nunca del llamador | [ejecutar-sp.ts:109](../../../apps/api/src/shared/db/ejecutar-sp.ts#L109 "A-18: el actor sale siempre del contexto de la petición, nunca del llamador (RF-01)") |
 | Repositorio | No recibe el ID del cliente | [direcciones.repository.ts:70](../../../apps/api/src/modules/direcciones/direcciones.repository.ts#L70 "RF-01: el dueño sale siempre de @IDUsuarioActor") |
 | SP | Filtra por `@IDUsuarioActor`; uno ajeno no devuelve filas | [R__SP_Pedidos_ObtenerDetalle.sql:18](../../../database/programmability/R__SP_Pedidos_ObtenerDetalle.sql#L18 "p.IDUsuario = @IDUsuarioActor") |
 | Servicio | Sin filas → `404`, igual que inexistente | [direcciones.service.ts:13](../../../apps/api/src/modules/direcciones/direcciones.service.ts#L13 "RF-01: una dirección ajena responde igual que una inexistente") |
@@ -79,12 +79,12 @@ La identidad viaja en un **access JWT corto** (15 min, en el encabezado `Authori
 
 - Solo en `.env`, que está en `.gitignore` ([.gitignore:12](../../../.gitignore#L12 ".env")); `.env.example` lleva valores marcados como `EJEMPLO`.
 - La configuración exige un `JWT_SECRETO` de al menos 32 caracteres ([index.ts:54](../../../apps/api/src/shared/config/index.ts#L54 "JWT_SECRETO: z.string().min(LARGO_MINIMO_SECRETO_JWT)")) y en `production` rechaza arrancar con los secretos de ejemplo ([index.ts:110](../../../apps/api/src/shared/config/index.ts#L110 "rechazarSecretosDeEjemplo(variables)")).
-- La contraseña de Redis no va en la línea de comandos de Compose, que se ve en `docker inspect` ([docker-compose.yml:133](../../../docker-compose.yml#L133 "La contraseña va en una variable y no en la línea de comandos de Compose")).
+- La contraseña de Redis no va en la línea de comandos de Compose, que se ve en `docker inspect` ([docker-compose.yml:137](../../../docker-compose.yml#L137 "La contraseña va en una variable y no en la línea de comandos de Compose")).
 - **La prueba de secretos:** todo secreto de `.env.example` está marcado como ejemplo y `.env` está ignorado ([secretos.test.ts:15](../../../apps/api/test/unit/secretos.test.ts#L15 "todo secreto de .env.example está marcado como ejemplo") y [secretos.test.ts:27](../../../apps/api/test/unit/secretos.test.ts#L27 ".env (con las credenciales reales) está en .gitignore")).
 
 ## Contenedores sin root
 
-- API y migrador: `USER node` ([Dockerfile:31](../../../apps/api/Dockerfile#L31 "USER node") y [Dockerfile:22](../../../database/migrator/Dockerfile#L22 "USER node")). Redis: `user: redis` ([docker-compose.yml:126](../../../docker-compose.yml#L126 "user: redis")). SQL Server: la imagen oficial 2022 corre como el usuario `mssql`.
+- API y migrador: `USER node` ([Dockerfile:31](../../../apps/api/Dockerfile#L31 "USER node") y [Dockerfile:22](../../../database/migrator/Dockerfile#L22 "USER node")). Redis: `user: redis` ([docker-compose.yml:130](../../../docker-compose.yml#L130 "user: redis")). SQL Server: la imagen oficial 2022 corre como el usuario `mssql`.
 - Prueba en el entorno real, leyendo el UID del proceso principal de cada contenedor: [contenedores.test.ts:15](../../../apps/api/test/entorno/contenedores.test.ts#L15 "el proceso principal de %s no corre como root").
 - La base y Redis solo se publican en `127.0.0.1`.
 

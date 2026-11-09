@@ -7,6 +7,7 @@ import {
   traducirErrorSql,
 } from '../errors/traducir-sql.js';
 import { montoParaSql } from '../dinero/index.js';
+import { AppError } from '../errors/app-error.js';
 import { obtenerContexto } from '../http/contexto.js';
 
 /** Solo nombres con la nomenclatura del enunciado: la firma no admite texto SQL. */
@@ -31,6 +32,8 @@ const ROL_SISTEMA = 'Sistema';
 const DEADLOCK = 1205;
 const REINTENTOS_DEADLOCK = 3;
 const ESPERA_BASE_DEADLOCK_MS = 50;
+// A-26: lo que tarda el pool en volver a intentar abrir conexiones; el cliente espera eso antes de reintentar.
+const SEGUNDOS_PARA_REINTENTAR_SIN_BASE = 5;
 
 interface Dependencias {
   conexion: ConexionSP;
@@ -68,6 +71,14 @@ export function crearEjecutorSP({ conexion, logger, esperar = dormir }: Dependen
           logger.warn({ sp: nombre, intento: intento + 1 }, 'Deadlock: se reintenta el SP');
           await esperar(ESPERA_BASE_DEADLOCK_MS * 2 ** intento);
           continue;
+        }
+        // A-26: no se pudo ni obtener una conexión, así que el SP no corrió: 503 con Retry-After, no un 500. Una
+        // conexión que se cae a mitad de la consulta (o un timeout de la consulta) sigue siendo 500: pudo haber corrido.
+        if (error instanceof sql.ConnectionError) {
+          throw new AppError('BASE_NO_DISPONIBLE', {
+            cause: error,
+            segundosParaReintentar: SEGUNDOS_PARA_REINTENTAR_SIN_BASE,
+          });
         }
         if (tieneMensajeEstructuradoInvalido(error)) {
           logger.error({ err: error, sp: nombre }, 'A-19: el SP lanzó un mensaje JSON inválido');

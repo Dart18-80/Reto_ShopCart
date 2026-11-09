@@ -14,7 +14,7 @@ Dos réplicas de la API reciben peticiones a la vez, así que ninguna regla en d
 | `UNIQUE` como candado | Un solo intento de pago por llave | [V007__checkout.sql:97](../../../database/migrations/V007__checkout.sql#L97 "UQ_IntentoPago_LlaveIdempotencia UNIQUE (LlaveIdempotencia)") | N-03 |
 | Concurrencia optimista | El estado del pedido | [R__SP_Pedidos_CambiarEstado.sql:59](../../../database/programmability/R__SP_Pedidos_CambiarEstado.sql#L59 "IDEstadoPedido = @IDEsperado") | N-08 |
 | `sp_getapplock` | Una sola réplica ejecuta cada job | [R__SP_Checkout_ExpirarSesiones.sql:29](../../../database/programmability/R__SP_Checkout_ExpirarSesiones.sql#L29 "sys.sp_getapplock @Resource = N'Job_Checkout_ExpirarSesiones'") | A-04 |
-| Reintento de deadlock | Un deadlock que aun así ocurra | [ejecutar-sp.ts:67](../../../apps/api/src/shared/db/ejecutar-sp.ts#L67 "numero === DEADLOCK && intento < REINTENTOS_DEADLOCK") | 01 §7 |
+| Reintento de deadlock | Un deadlock que aun así ocurra | [ejecutar-sp.ts:70](../../../apps/api/src/shared/db/ejecutar-sp.ts#L70 "numero === DEADLOCK && intento < REINTENTOS_DEADLOCK") | 01 §7 |
 | Arrendamiento + fencing | Que una petición desplazada no cree el pedido | [R__SP_Checkout_ActualizarIntentoPago.sql:56](../../../database/programmability/R__SP_Checkout_ActualizarIntentoPago.sql#L56 "@TokenVigente <> @TokenArrendamiento") | N-03, A-24 |
 | `READ_COMMITTED_SNAPSHOT` | Que las lecturas no esperen a las escrituras | [preparar-servidor.sql:21](../../../database/migrator/sql/preparar-servidor.sql#L21 "SET READ_COMMITTED_SNAPSHOT ON WITH ROLLBACK IMMEDIATE") | A-05 |
 
@@ -75,9 +75,9 @@ El SP valida bajo bloqueo; el `CHECK` es la última defensa si un bug o una escr
 
 ## Reintento de deadlocks en `ejecutarSP`
 
-- Error 1205, hasta 3 reintentos con espera de 50, 100 y 200 ms ([ejecutar-sp.ts:31](../../../apps/api/src/shared/db/ejecutar-sp.ts#L31 "const DEADLOCK = 1205;") y [ejecutar-sp.ts:69](../../../apps/api/src/shared/db/ejecutar-sp.ts#L69 "ESPERA_BASE_DEADLOCK_MS * 2 ** intento")).
-- Es seguro porque con `XACT_ABORT` el SP ya revirtió todo antes de que llegue el error ([ejecutar-sp.ts:66](../../../apps/api/src/shared/db/ejecutar-sp.ts#L66 "Con XACT_ABORT el SP ya revirtió todo")).
-- Pruebas: [ejecutar-sp.test.ts:124](../../../apps/api/test/unit/shared/db/ejecutar-sp.test.ts#L124 "reintenta ante un deadlock (1205)") y [ejecutar-sp.test.ts:192](../../../apps/api/test/unit/shared/db/ejecutar-sp.test.ts#L192 "los reintentos envían el mismo actor que la primera ejecución").
+- Error 1205, hasta 3 reintentos con espera de 50, 100 y 200 ms ([ejecutar-sp.ts:32](../../../apps/api/src/shared/db/ejecutar-sp.ts#L32 "const DEADLOCK = 1205;") y [ejecutar-sp.ts:72](../../../apps/api/src/shared/db/ejecutar-sp.ts#L72 "ESPERA_BASE_DEADLOCK_MS * 2 ** intento")).
+- Es seguro porque con `XACT_ABORT` el SP ya revirtió todo antes de que llegue el error ([ejecutar-sp.ts:69](../../../apps/api/src/shared/db/ejecutar-sp.ts#L69 "Con XACT_ABORT el SP ya revirtió todo")).
+- Pruebas: [ejecutar-sp.test.ts:124](../../../apps/api/test/unit/shared/db/ejecutar-sp.test.ts#L124 "reintenta ante un deadlock (1205)") y [ejecutar-sp.test.ts:223](../../../apps/api/test/unit/shared/db/ejecutar-sp.test.ts#L223 "los reintentos envían el mismo actor que la primera ejecución").
 
 ## `READ_COMMITTED_SNAPSHOT`
 

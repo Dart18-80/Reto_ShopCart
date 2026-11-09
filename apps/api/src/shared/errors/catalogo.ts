@@ -25,6 +25,11 @@ export const CATALOGO = {
     mensaje: 'Demasiados intentos. Espera un momento e intenta de nuevo.',
   },
   ERROR_INTERNO: { http: 500, mensaje: 'Ocurrió un error inesperado. Intenta de nuevo más tarde.' },
+  // A-26: el pool no pudo abrir una conexión a SQL Server (caída o saturada). El SP nunca corrió: reintentar es seguro.
+  BASE_NO_DISPONIBLE: {
+    http: 503,
+    mensaje: 'La tienda no está disponible en este momento. Intenta de nuevo en unos segundos.',
+  },
 
   // 50001–50099 General
   NO_ENCONTRADO: { http: 404, numeroSql: 50001, mensaje: 'El recurso no existe.' },

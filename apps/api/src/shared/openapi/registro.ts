@@ -58,7 +58,9 @@ export function generarDocumentoOpenApi(): DocumentoOpenApi {
     info: {
       title: 'ShopCart API',
       version: '1.0.0',
-      description: 'API REST de ShopCart. Todos los errores usan el formato `Error`.',
+      description:
+        'API REST de ShopCart. Todos los errores usan el formato `Error`. Cualquier ruta puede responder `500 ' +
+        'ERROR_INTERNO` o `503 BASE_NO_DISPONIBLE` (no se pudo abrir una conexión a la base; trae `Retry-After`).',
     },
     servers: [{ url: '/' }],
   });
