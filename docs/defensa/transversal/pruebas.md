@@ -70,10 +70,10 @@ Los SPs de prueba son 88 `R__SP_Pruebas_*` y 3 triggers `R__TR_Pruebas_*` en [da
 
 | Qué demuestra | Prueba |
 |---|---|
-| Helmet a través de nginx | [seguridad-http.test.ts:48](../../../apps/api/test/entorno/seguridad-http.test.ts#L48 "lleva los encabezados de helmet") |
-| nginx sin versión, sin `X-Powered-By` | [seguridad-http.test.ts:61](../../../apps/api/test/entorno/seguridad-http.test.ts#L61 "no revela la tecnología") |
-| CORS con lista explícita, nunca `*` | [seguridad-http.test.ts:82](../../../apps/api/test/entorno/seguridad-http.test.ts#L82 "nunca con *") |
-| Un 500 real (SQL Server en pausa) no filtra stack | [seguridad-http.test.ts:113](../../../apps/api/test/entorno/seguridad-http.test.ts#L113 "un 500 real no trae stack ni detalles internos") |
+| Helmet a través de nginx | [seguridad-http.test.ts:49](../../../apps/api/test/entorno/seguridad-http.test.ts#L49 "lleva los encabezados de helmet") |
+| nginx sin versión, sin `X-Powered-By` | [seguridad-http.test.ts:62](../../../apps/api/test/entorno/seguridad-http.test.ts#L62 "no revela la tecnología") |
+| CORS con lista explícita, nunca `*` | [seguridad-http.test.ts:83](../../../apps/api/test/entorno/seguridad-http.test.ts#L83 "nunca con *") |
+| SQL Server en pausa: 503 `BASE_NO_DISPONIBLE` que no filtra stack (A-26) | [seguridad-http.test.ts:114](../../../apps/api/test/entorno/seguridad-http.test.ts#L114 "la base en pausa responde 503 sin stack ni detalles internos") |
 | Contenedores sin root | [contenedores.test.ts:15](../../../apps/api/test/entorno/contenedores.test.ts#L15 "no corre como root") |
 | RNF-2: con api-1 detenida todo lo atiende api-2 | [rnf2.test.ts:40](../../../apps/api/test/entorno/rnf2.test.ts#L40 "peticiones seguidas a través de nginx responden 200 desde api-2") |
 | RNF-2: sin Redis se vende una sola vez y se cobra una sola vez | [rnf2.test.ts:68](../../../apps/api/test/entorno/rnf2.test.ts#L68 "con Redis detenido, un checkout completo vende la última unidad una sola vez") |

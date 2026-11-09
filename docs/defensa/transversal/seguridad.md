@@ -66,7 +66,7 @@ La identidad viaja en un **access JWT corto** (15 min, en el encabezado `Authori
 - CORS con lista explícita desde `CORS_ORIGINS` y credenciales, nunca `*` ([app.ts:119](../../../apps/api/src/app.ts#L119 "cors({ origin: origenesCors, credentials: true })")).
 - Cuerpo JSON limitado a 100 kB ([app.ts:120](../../../apps/api/src/app.ts#L120 "express.json({ limit: LIMITE_CUERPO_JSON })")).
 - El `X-Request-Id` que llega solo se acepta si es un UUID ([request-id.ts:15](../../../apps/api/src/shared/http/request-id.ts#L15 "UUID.test(recibido)")).
-- Pruebas a través de nginx: [seguridad-http.test.ts:48](../../../apps/api/test/entorno/seguridad-http.test.ts#L48 "lleva los encabezados de helmet"), [seguridad-http.test.ts:82](../../../apps/api/test/entorno/seguridad-http.test.ts#L82 "CORS responde con el origen permitido de la configuración y con credenciales, nunca con *") y [seguridad-http.test.ts:113](../../../apps/api/test/entorno/seguridad-http.test.ts#L113 "un 500 real no trae stack ni detalles internos").
+- Pruebas a través de nginx: [seguridad-http.test.ts:49](../../../apps/api/test/entorno/seguridad-http.test.ts#L49 "lleva los encabezados de helmet"), [seguridad-http.test.ts:83](../../../apps/api/test/entorno/seguridad-http.test.ts#L83 "CORS responde con el origen permitido de la configuración y con credenciales, nunca con *") y [seguridad-http.test.ts:114](../../../apps/api/test/entorno/seguridad-http.test.ts#L114 "la base en pausa responde 503 sin stack ni detalles internos").
 
 ## Tarjeta y CVV: nunca en logs, respuestas ni base
 
@@ -172,5 +172,5 @@ Se escribe con un apóstrofo delante, así Excel lo muestra como texto y no ejec
 
 ### Un error interno, ¿le muestra el stack al cliente?
 
-No, ni en `development`: responde `500 ERROR_INTERNO` con un mensaje genérico y el `requestId`; el detalle va solo al log.
-**Muéstralo en:** [seguridad-http.test.ts:113](../../../apps/api/test/entorno/seguridad-http.test.ts#L113 "un 500 real no trae stack ni detalles internos")
+No, ni en `development`: un error interno responde `500 ERROR_INTERNO` y la base que no deja conectarse `503 BASE_NO_DISPONIBLE`, los dos con un mensaje genérico y el `requestId`; el detalle va solo al log. El 500 lo prueba [middleware.test.ts:95](../../../apps/api/test/unit/shared/errors/middleware.test.ts#L95 "un error inesperado responde 500 ERROR_INTERNO sin detalles internos").
+**Muéstralo en:** [seguridad-http.test.ts:114](../../../apps/api/test/entorno/seguridad-http.test.ts#L114 "la base en pausa responde 503 sin stack ni detalles internos")

@@ -151,7 +151,7 @@ Lo prueba [rnf2.test.ts:40](../../../apps/api/test/entorno/rnf2.test.ts#L40 "pet
 
 ### Se pausa SQL Server
 
-- Las consultas se cancelan al vencer `DB_TIMEOUT_CONSULTA_MS` (15 s por defecto, [docker-compose.yml:21](../../../docker-compose.yml#L21 "DB_TIMEOUT_CONSULTA_MS")) y la API responde `500 ERROR_INTERNO` sin stack ni detalles del driver: [seguridad-http.test.ts:118](../../../apps/api/test/entorno/seguridad-http.test.ts#L118 "compose('pause', 'sqlserver')") y [seguridad-http.test.ts:128](../../../apps/api/test/entorno/seguridad-http.test.ts#L128 "toBe(500)").
+- El pool no logra obtener una conexión y la API responde `503 BASE_NO_DISPONIBLE` con `Retry-After: 5` (A-26), sin stack ni detalles del driver: [seguridad-http.test.ts:119](../../../apps/api/test/entorno/seguridad-http.test.ts#L119 "compose('pause', 'sqlserver')") y [seguridad-http.test.ts:129](../../../apps/api/test/entorno/seguridad-http.test.ts#L129 "toBe(503)"). Una consulta que ya corría y vence `DB_TIMEOUT_CONSULTA_MS` (15 s por defecto, [docker-compose.yml:21](../../../docker-compose.yml#L21 "DB_TIMEOUT_CONSULTA_MS")) sigue siendo `500 ERROR_INTERNO`: el SP pudo haber corrido.
 - `/health` responde 503 cuando el SP de salud falla ([sistema.service.ts:65](../../../apps/api/src/modules/sistema/sistema.service.ts#L65 "return 'caido'")); el healthcheck de Docker, con 3 s de límite, marca la réplica como no saludable. nginx no consulta `/health` y no reintenta un 503, así que no la saca de la rotación por eso (con la base caída las dos réplicas fallan igual).
 - Las tareas periódicas fallan, se registran y se reintentan en su siguiente turno; nada queda a medias porque cada SP es una transacción con `XACT_ABORT`.
 
