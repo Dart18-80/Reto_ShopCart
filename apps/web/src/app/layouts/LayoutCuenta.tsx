@@ -1,4 +1,5 @@
-import { Outlet } from 'react-router';
+import { Outlet, useLocation } from 'react-router';
+import { useAnimarEntrada } from '../../shared/hooks/useMovimiento';
 import { useSesion } from '../../shared/hooks/useSesion';
 import { menuDe } from '../rutas';
 import { BotonCerrarSesion } from './BotonCerrarSesion';
@@ -11,6 +12,8 @@ import { NavegacionArea } from './NavegacionArea';
  */
 export function LayoutCuenta() {
   const { estado, usuario } = useSesion();
+  // D2: cada cambio de página entra con un fundido; la clave es el pathname, no la búsqueda.
+  const entrada = useAnimarEntrada<HTMLElement>(useLocation().pathname);
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -28,7 +31,7 @@ export function LayoutCuenta() {
             <BotonCerrarSesion variante="texto" />
           </div>
         </aside>
-        <main className="flex min-w-0 flex-1 flex-col gap-6">
+        <main ref={entrada} className="flex min-w-0 flex-1 flex-col gap-6">
           <Outlet />
         </main>
       </div>

@@ -20,10 +20,9 @@ export function PasosDelCheckout({ actual }: { actual: 1 | 2 }) {
             className="flex items-center gap-3"
           >
             {indice > 0 && (
-              <span
-                aria-hidden
-                className={cn('h-0.5 w-12', alcanzado ? 'bg-primary' : 'bg-border')}
-              />
+              <span aria-hidden className="bg-border h-0.5 w-12 overflow-hidden">
+                {alcanzado && <span className="animar-llenado bg-primary block h-full" />}
+              </span>
             )}
             <span className="flex items-center gap-2">
               <span

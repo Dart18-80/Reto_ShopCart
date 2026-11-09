@@ -1,0 +1,115 @@
+/*
+ * D2 (03-backlog, pase de diseño): movimiento. Tokens de duración y curva, las animaciones con nombre y lo que
+ * queda con `prefers-reduced-motion: reduce`: solo fundidos de 100 ms o menos, sin desplazamientos ni escalas.
+ */
+html {
+  --dur-rapida: 120ms;
+  --dur-base: 200ms;
+  --dur-lenta: 320ms;
+  --curva-salida: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --curva: cubic-bezier(0.4, 0, 0.2, 1);
+  /* Lo que se desplaza al entrar; con movimiento reducido, nada. */
+  --desplazamiento-entrada: 8px;
+}
+
+@theme inline {
+  --ease-salida: var(--curva-salida);
+  --ease-estandar: var(--curva);
+}
+
+@keyframes aparecer {
+  from {
+    opacity: 0;
+    translate: 0 var(--desplazamiento-entrada);
+  }
+}
+
+@keyframes llenar {
+  from {
+    scale: 0 1;
+  }
+}
+
+@keyframes trazar {
+  from {
+    stroke-dashoffset: 100;
+  }
+}
+
+/* La rejilla en su primera carga: cada tarjeta aparece 30 ms después de la anterior, hasta la octava. */
+@utility rejilla-escalonada {
+  & > * {
+    animation: aparecer var(--dur-base) var(--curva-salida) both;
+  }
+  & > :nth-child(2) {
+    animation-delay: 30ms;
+  }
+  & > :nth-child(3) {
+    animation-delay: 60ms;
+  }
+  & > :nth-child(4) {
+    animation-delay: 90ms;
+  }
+  & > :nth-child(5) {
+    animation-delay: 120ms;
+  }
+  & > :nth-child(6) {
+    animation-delay: 150ms;
+  }
+  & > :nth-child(7) {
+    animation-delay: 180ms;
+  }
+  & > :nth-child(n + 8) {
+    animation-delay: 210ms;
+  }
+}
+
+/* El conector de los pasos del checkout se llena de izquierda a derecha. */
+@utility animar-llenado {
+  transform-origin: left;
+  animation: llenar var(--dur-lenta) var(--curva-salida) both;
+}
+
+/* Un ícono de lucide (viewBox 24) que se dibuja una vez: ningún trazo suyo mide más de 100. */
+@utility animar-trazo {
+  & :is(path, circle, line, polyline) {
+    stroke-dasharray: 100;
+    animation: trazar 500ms var(--curva-salida) both;
+  }
+}
+
+/* Avisos (sonner): entran bajando 8 px con fundido, en lugar de recorrer todo su alto. */
+:root [data-sonner-toast][data-y-position='top'][data-mounted='false'] {
+  --y: translateY(calc(-1 * var(--desplazamiento-entrada)));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    --desplazamiento-entrada: 0px;
+  }
+  /* Las animaciones de tw-animate (diálogos, menú lateral) quedan en un fundido: sin desplazarse ni escalar. */
+  *,
+  ::before,
+  ::after {
+    --tw-enter-translate-x: 0 !important;
+    --tw-enter-translate-y: 0 !important;
+    --tw-enter-scale: 1 !important;
+    --tw-enter-rotate: 0 !important;
+    --tw-exit-translate-x: 0 !important;
+    --tw-exit-translate-y: 0 !important;
+    --tw-exit-scale: 1 !important;
+    --tw-exit-rotate: 0 !important;
+  }
+  /* Todo fundido dura 100 ms o menos; el spinner sigue girando porque es la única señal de que algo espera. */
+  *:not(.animate-spin),
+  ::before,
+  ::after {
+    animation-duration: 100ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 100ms !important;
+  }
+  .animar-llenado,
+  .animar-trazo :is(path, circle, line, polyline) {
+    animation: none !important;
+  }
+}

@@ -4,6 +4,7 @@
  */
 @import 'tailwindcss';
 @import 'tw-animate-css';
+@import './movimiento.css';
 
 @custom-variant dark (&:is(.dark *));
 

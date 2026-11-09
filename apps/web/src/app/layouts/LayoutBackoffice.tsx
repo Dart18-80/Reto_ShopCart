@@ -1,6 +1,7 @@
 import { Menu } from 'lucide-react';
 import { useState } from 'react';
-import { Link, Outlet } from 'react-router';
+import { Link, Outlet, useLocation } from 'react-router';
+import { useAnimarEntrada } from '../../shared/hooks/useMovimiento';
 import { Button } from '../../shared/ui/button';
 import {
   Sheet,
@@ -17,6 +18,8 @@ import { BarraLateralBackoffice, NOMBRE_MENU_BACKOFFICE } from './BarraLateralBa
  */
 export function LayoutBackoffice() {
   const [menuAbierto, setMenuAbierto] = useState(false);
+  // D2: cada cambio de página entra con un fundido; la clave es el pathname, no la búsqueda.
+  const entrada = useAnimarEntrada<HTMLElement>(useLocation().pathname);
 
   return (
     <div className="flex min-h-dvh">
@@ -45,7 +48,7 @@ export function LayoutBackoffice() {
             ShopCart
           </Link>
         </header>
-        <main className="flex flex-1 flex-col gap-6 p-4 md:p-8">
+        <main ref={entrada} className="flex flex-1 flex-col gap-6 p-4 md:p-8">
           <Outlet />
         </main>
       </div>

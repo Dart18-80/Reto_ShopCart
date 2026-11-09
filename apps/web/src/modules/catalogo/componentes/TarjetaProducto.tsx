@@ -16,10 +16,14 @@ export function TarjetaProducto({ producto }: { producto: ProductoBusqueda }) {
   return (
     <Link
       to={conId(RUTAS.producto, producto.idProducto)}
-      className="bg-card hover:border-primary focus-visible:ring-ring flex w-full flex-col overflow-hidden rounded-tarjeta border transition-colors focus-visible:ring-2 focus-visible:outline-none"
+      className="group bg-card hover:border-primary focus-visible:ring-ring ease-salida flex w-full flex-col overflow-hidden rounded-tarjeta border shadow-sm transition-[translate,box-shadow,border-color] duration-200 hover:shadow-md focus-visible:ring-2 focus-visible:outline-none motion-safe:hover:-translate-y-1"
     >
       <div className="bg-muted flex aspect-square items-center justify-center">
-        <Prenda tipo={producto.ilustracion} color={primerColor} className="h-2/3 w-2/3" />
+        <Prenda
+          tipo={producto.ilustracion}
+          color={primerColor}
+          className="ease-salida h-2/3 w-2/3 transition-[scale] duration-200 motion-safe:group-hover:scale-[1.04]"
+        />
       </div>
       <div className="flex flex-col gap-2 p-3 md:p-4">
         {producto.colores.length > 0 && (
