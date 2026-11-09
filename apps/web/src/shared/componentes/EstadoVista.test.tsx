@@ -32,6 +32,19 @@ function ListaProductos() {
   );
 }
 
+// Un recurso que siempre existe (un resumen, el estado de una exportación): sin vacío, la respuesta se muestra tal cual.
+function TotalProductos() {
+  const consulta = useQuery({
+    queryKey: ['productos', 'estado-vista-sin-vacio'],
+    queryFn: () => buscarProductosDePrueba(),
+  });
+  return (
+    <EstadoVista consulta={consulta}>
+      {({ paginacion }) => <p>{`Total: ${String(paginacion.total)}`}</p>}
+    </EstadoVista>
+  );
+}
+
 describe('EstadoVista', () => {
   it('mientras carga muestra el esqueleto con un estado accesible', async () => {
     simularBusquedaProductos({ total: 1 });
@@ -50,6 +63,14 @@ describe('EstadoVista', () => {
 
     expect(await screen.findByText('Todavía no hay productos')).toBeInTheDocument();
     expect(screen.getByText('Vuelve pronto.')).toBeInTheDocument();
+  });
+
+  it('sin `vacio`, una respuesta sin elementos se muestra igual: no hay estado vacío', async () => {
+    simularBusquedaProductos({ total: 0 });
+
+    renderizar(<TotalProductos />);
+
+    expect(await screen.findByText('Total: 0')).toBeInTheDocument();
   });
 
   it('con error muestra el mensaje del backend, el requestId y Reintentar', async () => {

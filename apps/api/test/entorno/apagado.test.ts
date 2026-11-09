@@ -1,12 +1,9 @@
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import { describe, expect, it } from 'vitest';
-import { compose, esperarSaludable, levantar } from './apoyo-entorno.js';
+import { compose, docker, esperarSaludable, levantar } from './apoyo-entorno.js';
 
 // Decisión del PO (E9): Docker espera 15 s antes del SIGKILL a todo servicio con apagado ordenado, más que la
 // espera máxima de la API (10 s): el apagado de la API nunca compite con el SIGKILL.
 
-const docker = promisify(execFile);
 const SERVICIOS_CON_APAGADO_ORDENADO = ['api-1', 'api-2', 'redis', 'sqlserver'];
 const GRACIA_SEGUNDOS = '15';
 // Lo que tarda la petición en llegar a la API (y quedar esperando a la base) y lo que se retiene después.
@@ -17,7 +14,7 @@ const dormir = (ms: number) => new Promise((resolver) => setTimeout(resolver, ms
 
 async function inspeccionar(servicio: string, formato: string): Promise<string> {
   const { stdout: id } = await compose('ps', '-a', '-q', servicio);
-  const { stdout } = await docker('docker', ['inspect', '--format', formato, id.trim()]);
+  const { stdout } = await docker('inspect', '--format', formato, id.trim());
   return stdout.trim();
 }
 

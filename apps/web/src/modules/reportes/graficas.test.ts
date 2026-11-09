@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  esMontoNegativo,
   formatearEscala,
   puntosDeCategorias,
   puntosDeTop,
@@ -106,6 +107,23 @@ describe('formatearEscala', () => {
   it('un conteo se escribe entero, con separador de miles', () => {
     expect(formatearEscala(12, 'conteo')).toBe('12');
     expect(formatearEscala(1500, 'conteo')).toBe('1,500');
+  });
+});
+
+describe('esMontoNegativo (N-11)', () => {
+  it('lee el signo del texto del backend; «-0.00» es cero, no negativo', () => {
+    expect(esMontoNegativo('-120.00')).toBe(true);
+    expect(esMontoNegativo('-0.05')).toBe(true);
+    expect(esMontoNegativo('-0.00')).toBe(false);
+    expect(esMontoNegativo('0.00')).toBe(false);
+    expect(esMontoNegativo('35.00')).toBe(false);
+  });
+
+  it('coincide con la barra: un monto «-0.00» no se marca como negativo en la gráfica', () => {
+    const [punto] = puntosDeCategorias([
+      { idCategoria: 1, categoria: 'Gorras', unidades: 0, ventas: '-0.00' },
+    ]);
+    expect(punto?.negativo).toBe(false);
   });
 });
 

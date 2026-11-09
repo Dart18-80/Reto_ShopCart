@@ -1,10 +1,10 @@
+import { DOMINIOS_REPORTES, type DominioReportes } from '@shopcart/shared';
 import { createParser, type EventSourceMessage } from 'eventsource-parser';
 import { z } from 'zod';
 import { ErrorApi } from '../../shared/api';
 
 /** E9-H02 (A-11): los dominios de datos del dashboard; cada uno tiene su versión. */
-export const DOMINIOS = ['ventas', 'carritos'] as const;
-export type Dominio = (typeof DOMINIOS)[number];
+export type Dominio = DominioReportes;
 
 /** En qué está la conexión; el indicador del dashboard lo muestra con texto (05 §11). */
 export type EstadoTiempoReal = 'conectando' | 'en-vivo' | 'reconectando' | 'en-pausa';
@@ -17,14 +17,16 @@ export const SILENCIO_MAXIMO_MS = 35_000;
 export const ESPERA_CONEXIONES_MAXIMAS_MS = 60_000;
 
 const CODIGO_CONEXIONES_MAXIMAS = 'CONEXIONES_MAXIMAS';
-const STATUS_NO_AUTENTICADO = 401;
+// El cliente `api` ya intentó renovar ante un 401; un 403 es un rol que ya no es Administrador. En los dos casos la
+// sesión cambió y reintentar no sirve: el guardián lleva al login o a «Sin permiso».
+const STATUS_SIN_SESION = new Set([401, 403]);
 
 // Lo que manda el backend (reportes.eventos.ts). Un evento que no cumple el contrato rompe la conexión.
 const versionesSchema = z.object({
   versiones: z.object({ ventas: z.number().int(), carritos: z.number().int() }),
   recargar: z.boolean(),
 });
-const cambioSchema = z.object({ dominio: z.enum(DOMINIOS), version: z.number().int() });
+const cambioSchema = z.object({ dominio: z.enum(DOMINIOS_REPORTES), version: z.number().int() });
 
 interface Dependencias {
   /** Abre el stream con el `Last-Event-ID` conocido; lanza ErrorApi si el backend lo rechaza. */
@@ -85,9 +87,10 @@ export function crearTiempoReal({
     }, espera);
   }
 
-  // Entre 1 s y un tope que se duplica con cada intento fallido, hasta 30 s.
+  // Entre 1 s y un tope que se duplica con cada intento (2 s, 4 s…, hasta 30 s). También el primero es aleatorio:
+  // cuando una réplica se apaga o los tokens vencen a la vez, las pestañas no reconectan todas en el mismo instante.
   function reconectar(): void {
-    const tope = Math.min(ESPERA_MAXIMA_MS, ESPERA_MINIMA_MS * 2 ** intentos);
+    const tope = Math.min(ESPERA_MAXIMA_MS, ESPERA_MINIMA_MS * 2 ** (intentos + 1));
     intentos++;
     programar(ESPERA_MINIMA_MS + aleatorio() * (tope - ESPERA_MINIMA_MS), 'reconectando');
   }
@@ -130,9 +133,10 @@ export function crearTiempoReal({
     cortar();
     const actual = new AbortController();
     conexion = actual;
+    // Desde que se pide: una petición que nunca responde (un proxy o una red a medias) también se da por muerta.
+    vigilar();
     try {
       const cuerpo = await abrir(ultimoEventoId, actual.signal);
-      vigilar();
       await leer(cuerpo);
     } catch (error) {
       // Cortada a propósito (pausa, vigilante, otra conexión): quien la cortó decide qué sigue.
@@ -149,8 +153,7 @@ export function crearTiempoReal({
       programar(ESPERA_CONEXIONES_MAXIMAS_MS, 'en-pausa');
       return;
     }
-    // El cliente `api` ya intentó renovar: un 401 aquí es una sesión que se cerró, y el guardián lleva al login.
-    if (error instanceof ErrorApi && error.status === STATUS_NO_AUTENTICADO) {
+    if (error instanceof ErrorApi && STATUS_SIN_SESION.has(error.status)) {
       cortar();
       avisar('en-pausa');
       return;

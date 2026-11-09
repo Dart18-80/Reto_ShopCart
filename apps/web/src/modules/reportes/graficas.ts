@@ -26,6 +26,12 @@ export interface PuntoGrafica {
 
 export type Escala = 'quetzales' | 'conteo';
 
+// Un signo menos seguido de al menos un dígito distinto de cero: «-0.00» es cero.
+const PATRON_NEGATIVO = /^-[\d.]*[1-9]/;
+
+/** N-11: si unas ventas netas del backend son negativas, leído del texto (sin pasar por `number`). */
+export const esMontoNegativo = (monto: string): boolean => PATRON_NEGATIVO.test(monto);
+
 // FE-10: un monto pasa a número solo para dibujar la barra; todo lo que se lee sale del texto con formatearMonto.
 // Un DECIMAL(15,2) del backend cabe sin error en un double.
 const aNumeroDeGeometria = (monto: string): number => Number(monto);

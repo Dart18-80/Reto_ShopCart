@@ -221,9 +221,9 @@ Convención de la API (`01-arquitectura.md` §5.1): `?pagina=1&tamano=20&orden=f
 **Tiempo real** (contrato A-25: `GET /admin/reportes/eventos`, token en `Authorization`, por eso `fetch` con streaming y no `EventSource`):
 - `eventsource-parser` parsea el protocolo; el bucle de conexión es propio para integrarse con la sesión (§5).
 - **Un aviso invalida solo su dominio** (`ventas` → resumen, ventas, categorías y top 10; `carritos` → abandonados y el conteo del resumen), con el mapa en `reportes.keys.ts`. Se conservan los datos anteriores mientras llegan los nuevos. Una versión menor o igual a la conocida se ignora; `recargar: true` invalida todo `reportes`.
-- **El cierre por token vencido es normal:** se reconecta por el camino de §5. Un 401 al conectar renueva una vez; si la renovación falla, se cierra la sesión.
-- Reconexión con espera creciente y aleatoria (1 s a 30 s), que vuelve a 1 s tras una conexión exitosa; siempre con `Last-Event-ID`.
-- **Vigilante del latido:** más de 35 s sin recibir nada (dos latidos de 15 s más margen) → la conexión se da por muerta y se reabre.
+- **El cierre por token vencido es normal:** se reconecta por el camino de §5. Un 401 al conectar renueva una vez; si la renovación falla, se cierra la sesión. Ni ese 401 ni un 403 (el rol cambió) se reintentan: el indicador queda «En pausa» y el guardián decide.
+- Reconexión con espera creciente y aleatoria: entre 1 s y un tope que se duplica con cada intento (2 s, 4 s… hasta 30 s), también en el primero, para que las pestañas no reconecten todas a la vez; vuelve al primer tope tras una conexión exitosa y siempre lleva `Last-Event-ID`.
+- **Vigilante del latido:** más de 35 s sin recibir nada (dos latidos de 15 s más margen), contados desde que se pide la conexión → se da por muerta y se reabre; así también se reintenta una petición que nunca responde.
 - **Pausa con la pestaña oculta** (`visibilitychange`); al volver, reconecta con `Last-Event-ID`.
 - **`429 CONEXIONES_MAXIMAS`:** "Tiempo real en pausa" y reintento con espera larga; el dashboard sigue funcionando con consultas normales.
 - **Indicador visible** (`IndicadorTiempoReal`): "En vivo", "Reconectando…" o "En pausa", y "Conectando…" mientras se abre la primera conexión.

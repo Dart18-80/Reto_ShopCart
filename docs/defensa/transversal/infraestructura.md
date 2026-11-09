@@ -88,7 +88,7 @@ El archivo que genera una réplica se descarga desde la otra: las dos montan el 
 | Si tarda más de 10 s, salida forzada con 1 | [server.ts:36](../../../apps/api/src/server.ts#L36 "ESPERA_APAGADO_MS = 10_000") y [apagado.ts:56](../../../apps/api/src/apagado.ts#L56 "forzarSalida = setTimeout") |
 | Docker espera 15 s antes del SIGKILL (réplicas, Redis y SQL Server): el SIGKILL nunca compite con la salida de la API | [docker-compose.yml:59](../../../docker-compose.yml#L59 "stop_grace_period: 15s") |
 
-Pruebas: [apagado.test.ts:123](../../../apps/api/test/unit/apagado.test.ts#L123 "con SIGTERM termina las peticiones en curso") y, en el entorno, [apagado.test.ts:32](../../../apps/api/test/entorno/apagado.test.ts#L32 "docker stop durante una petición en curso") (un `docker stop` con una petición retenida por SQL Server pausado: la petición termina con 200 y la réplica sale con 0) y [tiempo-real.test.ts:120](../../../apps/api/test/entorno/tiempo-real.test.ts#L120 "al detener la réplica (SIGTERM) su stream se cierra enseguida").
+Pruebas: [apagado.test.ts:123](../../../apps/api/test/unit/apagado.test.ts#L123 "con SIGTERM termina las peticiones en curso") y, en el entorno, [apagado.test.ts:29](../../../apps/api/test/entorno/apagado.test.ts#L29 "docker stop durante una petición en curso") (un `docker stop` con una petición retenida por SQL Server pausado: la petición termina con 200 y la réplica sale con 0) y [tiempo-real.test.ts:120](../../../apps/api/test/entorno/tiempo-real.test.ts#L120 "al detener la réplica (SIGTERM) su stream se cierra enseguida").
 
 ## `.env` y `.env.example`
 

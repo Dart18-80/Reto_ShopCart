@@ -38,7 +38,7 @@ function SeguimientoExportacion({ idExportacion }: { idExportacion: number }) {
   const seguimiento = useExportacion(idExportacion);
   return (
     <div role="status" className="bg-muted flex flex-col gap-3 rounded-md p-4">
-      <EstadoVista consulta={seguimiento} vacio={{ titulo: '' }} esVacio={() => false}>
+      <EstadoVista consulta={seguimiento}>
         {({ exportacion }) => (
           <div className="texto-pequeno flex flex-wrap items-center justify-between gap-3">
             <TextoEstadoExportacion exportacion={exportacion} />

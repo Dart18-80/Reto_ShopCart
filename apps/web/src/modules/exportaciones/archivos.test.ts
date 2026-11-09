@@ -22,6 +22,11 @@ describe('nombreDelArchivo (M11-H03)', () => {
     expect(nombreDelArchivo('attachment', 'exportacion-7.xlsx')).toBe('exportacion-7.xlsx');
   });
 
+  it('«.» o «..» no son nombres de archivo: se usa el de respaldo', () => {
+    expect(nombreDelArchivo('attachment; filename=".."', 'x.pdf')).toBe('x.pdf');
+    expect(nombreDelArchivo('attachment; filename="carpeta/."', 'x.pdf')).toBe('x.pdf');
+  });
+
   it('un nombre con rutas se reduce al último segmento', () => {
     expect(nombreDelArchivo('attachment; filename="../../etc/clave.pdf"', 'x.pdf')).toBe(
       'clave.pdf',

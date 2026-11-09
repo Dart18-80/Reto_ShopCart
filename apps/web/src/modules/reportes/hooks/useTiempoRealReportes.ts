@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { refrescar } from '../../../shared/api';
 import { abrirEventosReportes } from '../reportes.api';
-import { reportesKeys, SECCIONES_POR_DOMINIO } from '../reportes.keys';
+import { reportesDelDominio, reportesKeys } from '../reportes.keys';
 import { crearTiempoReal, type EstadoTiempoReal } from '../tiempoReal';
 
 /**
@@ -18,8 +18,8 @@ export function useTiempoRealReportes(): EstadoTiempoReal {
     const tiempoReal = crearTiempoReal({
       abrir: abrirEventosReportes,
       alCambio: (dominio) => {
-        for (const seccion of SECCIONES_POR_DOMINIO[dominio]) {
-          void refrescar(queryClient, { queryKey: reportesKeys.seccion(seccion) });
+        for (const reporte of reportesDelDominio(dominio)) {
+          void refrescar(queryClient, { queryKey: reportesKeys.seccion(reporte) });
         }
       },
       alRecargar: () => {

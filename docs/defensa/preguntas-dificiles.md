@@ -186,7 +186,7 @@ Cada escritura que cambia los reportes incrementa, después del commit, la versi
 
 Sí, acotados. Quien escribe ve su cambio en la siguiente consulta porque la versión sube antes de responderle; los demás lo ven al leer la versión nueva. Entre el commit y el `INCR` (milisegundos) otra réplica puede servir la versión anterior, y si el `INCR` falla, el TTL de 60 s lo acota.
 
-**Muéstralo en:** [reportes.cache.ts:32](../../apps/api/src/modules/reportes/reportes.cache.ts#L32 "SEGUNDOS_CACHE_REPORTES = 60") y [reportes.service.ts:57](../../apps/api/src/modules/reportes/reportes.service.ts#L57 "cache.contador(claveDeVersion(d))"). Detalle: [reportes](modulos/reportes.md).
+**Muéstralo en:** [reportes.cache.ts:28](../../apps/api/src/modules/reportes/reportes.cache.ts#L28 "SEGUNDOS_CACHE_REPORTES = 60") y [reportes.service.ts:57](../../apps/api/src/modules/reportes/reportes.service.ts#L57 "cache.contador(claveDeVersion(d))"). Detalle: [reportes](modulos/reportes.md).
 
 ## Lo que no está
 

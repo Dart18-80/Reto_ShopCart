@@ -45,8 +45,18 @@ function preparar({ aleatorio = () => 0 }: { aleatorio?: () => number } = {}) {
   const streams: Stream[] = [];
   const ultimosIds: (string | null)[] = [];
   const fallas: Error[] = [];
+  let colgadas = 0;
   const abrir = vi.fn((ultimoEventoId: string | null, senal: AbortSignal) => {
     ultimosIds.push(ultimoEventoId);
+    if (colgadas > 0) {
+      colgadas--;
+      // Sin respuesta ni error (un proxy o una red a medias): solo termina si se aborta.
+      return new Promise<ReadableStream<Uint8Array>>((_, rechazar) => {
+        senal.addEventListener('abort', () => {
+          rechazar(new DOMException('La petición se canceló.', 'AbortError'));
+        });
+      });
+    }
     const falla = fallas.shift();
     if (falla !== undefined) return Promise.reject(falla);
     const stream = streamSimulado(senal);
@@ -75,6 +85,10 @@ function preparar({ aleatorio = () => 0 }: { aleatorio?: () => number } = {}) {
     recargas: () => recargas,
     /** La próxima conexión falla con este error. */
     fallar: (error: Error) => fallas.push(error),
+    /** La próxima conexión nunca responde. */
+    colgar: () => {
+      colgadas++;
+    },
     ultimo: () => {
       const stream = streams.at(-1);
       if (!stream) throw new Error('No se abrió ningún stream');
@@ -172,7 +186,7 @@ describe('crearTiempoReal (FE-11, M11-H02)', () => {
     expect(p.ultimosIds).toEqual([null, 'ventas4.carritos7']);
   });
 
-  it('la espera crece hasta 30 s mientras falla y vuelve a 1 s tras conectar', async () => {
+  it('la espera crece hasta 30 s mientras falla y vuelve a la del primer intento tras conectar', async () => {
     // aleatorio = 1: la espera es el tope de cada intento.
     const p = preparar({ aleatorio: () => 1 });
     const errorDeRed = ErrorApi.deRed();
@@ -191,30 +205,56 @@ describe('crearTiempoReal (FE-11, M11-H02)', () => {
       esperas.push(espera);
       llamadas = p.abrir.mock.calls.length;
     }
-    expect(esperas).toEqual([1000, 2000, 4000, 8000, 16000, ESPERA_MAXIMA_MS, ESPERA_MAXIMA_MS]);
+    expect(esperas).toEqual([
+      2000,
+      4000,
+      8000,
+      16000,
+      ESPERA_MAXIMA_MS,
+      ESPERA_MAXIMA_MS,
+      ESPERA_MAXIMA_MS,
+    ]);
 
     p.ultimo().enviar(versiones('ventas1.carritos1', 1, 1));
     await procesar();
     p.ultimo().cerrar();
     await procesar();
-    await vi.advanceTimersByTimeAsync(ESPERA_MINIMA_MS);
+    await vi.advanceTimersByTimeAsync(2 * ESPERA_MINIMA_MS - 1);
+    expect(p.abrir).toHaveBeenCalledTimes(8);
+    await vi.advanceTimersByTimeAsync(1);
     expect(p.abrir).toHaveBeenCalledTimes(9);
   });
 
-  it('la espera es aleatoria entre 1 s y su tope, para que las pestañas no reconecten juntas', async () => {
+  it('la espera es aleatoria entre 1 s y su tope, también la primera: las pestañas no reconectan juntas', async () => {
     const p = preparar({ aleatorio: () => 0.5 });
     p.fallar(ErrorApi.deRed());
     p.fallar(ErrorApi.deRed());
     p.tiempoReal.reanudar();
     await procesar();
-    await vi.advanceTimersByTimeAsync(ESPERA_MINIMA_MS);
+
+    // Primer intento: tope de 2 s, la mitad del camino entre 1 s y 2 s.
+    await vi.advanceTimersByTimeAsync(1499);
+    expect(p.abrir).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
     expect(p.abrir).toHaveBeenCalledTimes(2);
 
-    // Segundo intento: tope de 2 s, la mitad del camino entre 1 s y 2 s.
-    await vi.advanceTimersByTimeAsync(1499);
+    // Segundo intento: tope de 4 s, la mitad del camino entre 1 s y 4 s.
+    await vi.advanceTimersByTimeAsync(2499);
     expect(p.abrir).toHaveBeenCalledTimes(2);
     await vi.advanceTimersByTimeAsync(1);
     expect(p.abrir).toHaveBeenCalledTimes(3);
+  });
+
+  it('una conexión que nunca responde también la corta el vigilante y se reintenta', async () => {
+    const p = preparar();
+    p.colgar();
+    p.tiempoReal.reanudar();
+    await procesar();
+
+    await vi.advanceTimersByTimeAsync(SILENCIO_MAXIMO_MS);
+    expect(p.estado()).toBe('reconectando');
+    await vi.advanceTimersByTimeAsync(ESPERA_MINIMA_MS);
+    expect(p.abrir).toHaveBeenCalledTimes(2);
   });
 
   it('el vigilante: más de 35 s sin recibir nada da la conexión por muerta y la reabre', async () => {
@@ -252,6 +292,25 @@ describe('crearTiempoReal (FE-11, M11-H02)', () => {
   it('un 401 que la renovación no pudo resolver deja de intentar: la sesión se cerró', async () => {
     const p = preparar();
     p.fallar(sinSesion());
+    p.tiempoReal.reanudar();
+    await procesar();
+
+    expect(p.estado()).toBe('en-pausa');
+    await vi.advanceTimersByTimeAsync(ESPERA_CONEXIONES_MAXIMAS_MS * 2);
+    expect(p.abrir).toHaveBeenCalledTimes(1);
+  });
+
+  it('un 403 (el rol ya no es Administrador) tampoco se reintenta: queda en pausa', async () => {
+    const p = preparar();
+    p.fallar(
+      new ErrorApi({
+        status: 403,
+        codigo: 'SIN_PERMISO',
+        mensaje: 'No tienes permiso.',
+        detalles: undefined,
+        requestId: 'req-3',
+      }),
+    );
     p.tiempoReal.reanudar();
     await procesar();
 

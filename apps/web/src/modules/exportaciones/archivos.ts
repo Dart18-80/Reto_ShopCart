@@ -2,6 +2,8 @@
 const PATRON_NOMBRE_UTF8 = /filename\*\s*=\s*UTF-8''([^;]+)/i;
 const PATRON_NOMBRE = /filename\s*=\s*"?([^";]+)"?/i;
 
+const NOMBRES_DE_CARPETA = new Set(['.', '..']);
+
 /** El último segmento: un nombre nunca elige la carpeta donde se guarda. */
 const soloElNombre = (nombre: string) => nombre.split(/[/\\]/).at(-1) ?? '';
 
@@ -22,7 +24,7 @@ export function nombreDelArchivo(encabezado: string | null, respaldo: string): s
   const nombre = soloElNombre(
     (utf8 === undefined ? null : decodificar(utf8)) ?? ascii?.trim() ?? '',
   );
-  return nombre === '' ? respaldo : nombre;
+  return nombre === '' || NOMBRES_DE_CARPETA.has(nombre) ? respaldo : nombre;
 }
 
 /** `Retry-After` en segundos, como lo manda el backend mientras la exportación no termina. */

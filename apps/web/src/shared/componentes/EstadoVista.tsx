@@ -14,7 +14,8 @@ export interface ContenidoVacio {
 
 interface PropsEstadoVista<D> {
   consulta: UseQueryResult<D>;
-  vacio: ContenidoVacio;
+  /** Sin él no hay estado vacío: para un recurso que siempre existe (un resumen, el estado de una exportación). */
+  vacio?: ContenidoVacio;
   /** Por defecto, la respuesta está vacía si su arreglo `datos` no tiene elementos. */
   esVacio?: (datos: D) => boolean;
   /** Lo que se ve mientras carga por primera vez; por defecto, tres líneas de esqueleto. */
@@ -129,7 +130,11 @@ export function EstadoVista<D>({
   return (
     <>
       {consulta.isRefetchError && <AvisoDeError error={consulta.error} onReintentar={reintentar} />}
-      {esVacio(consulta.data) ? <Vacio {...vacio} /> : children(consulta.data)}
+      {vacio !== undefined && esVacio(consulta.data) ? (
+        <Vacio {...vacio} />
+      ) : (
+        children(consulta.data)
+      )}
     </>
   );
 }

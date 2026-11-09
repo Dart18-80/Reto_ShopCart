@@ -12,6 +12,23 @@ export const REPORTES_DASHBOARD = [
 ] as const;
 export type ReporteDashboard = (typeof REPORTES_DASHBOARD)[number];
 
+/** A-11: una versión por dominio de datos; cada escritura incrementa la de los dominios que cambia (01 §9). */
+export const DOMINIOS_REPORTES = ['ventas', 'carritos'] as const;
+export type DominioReportes = (typeof DOMINIOS_REPORTES)[number];
+
+/**
+ * De qué dominios depende cada reporte. La API la usa para su caché y la web para saber qué volver a pedir con cada
+ * aviso del tiempo real (FE-11): una sola tabla para las dos. El resumen depende de los dos porque también cuenta
+ * los carritos abandonados y su monto potencial.
+ */
+export const DEPENDENCIAS_REPORTES: Record<ReporteDashboard, readonly DominioReportes[]> = {
+  resumen: ['ventas', 'carritos'],
+  ventas: ['ventas'],
+  'ventas-por-categoria': ['ventas'],
+  'top-productos': ['ventas'],
+  'carritos-abandonados': ['carritos'],
+};
+
 /** RF-08: cómo se agrupan las ventas por periodo (el día, la semana desde el lunes o el mes). */
 export const AGRUPACIONES = ['dia', 'semana', 'mes'] as const;
 export type Agrupacion = (typeof AGRUPACIONES)[number];

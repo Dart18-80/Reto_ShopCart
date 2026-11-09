@@ -35,7 +35,8 @@ const TARJETAS: readonly Tarjeta[] = [
   },
 ];
 
-const CLASE_REJILLA = 'grid grid-cols-2 gap-3 lg:grid-cols-4';
+// Una columna en teléfonos: un monto de millones no cabe en media pantalla con la cifra del tamaño de las tarjetas.
+const CLASE_REJILLA = 'grid gap-3 sm:grid-cols-2 lg:grid-cols-4';
 
 const ESQUELETO = (
   <div className={CLASE_REJILLA}>
@@ -50,12 +51,7 @@ export function TarjetasResumen({ rango }: { rango: RangoDeFechas }) {
   const resumen = useResumen(rango);
   return (
     <section aria-label="Resumen del periodo" className="flex flex-col gap-3">
-      <EstadoVista
-        consulta={resumen}
-        vacio={{ titulo: 'Sin resumen' }}
-        esVacio={() => false}
-        esqueleto={ESQUELETO}
-      >
+      <EstadoVista consulta={resumen} esqueleto={ESQUELETO}>
         {(datos) => (
           <>
             <div className="flex flex-wrap items-center justify-between gap-3">

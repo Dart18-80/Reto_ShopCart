@@ -1,5 +1,5 @@
-import { screen, waitFor, within } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, screen, waitFor, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { crearRutas } from '../../../app/router';
 import { exportacionDePrueba, simularExportaciones } from '../../../test/handlers/exportaciones';
 import { simularDashboard } from '../../../test/handlers/reportes';
@@ -19,6 +19,9 @@ beforeEach(() => {
   vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(
     DOMRect.fromRect({ width: 800, height: 300 }),
   );
+});
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 const barras = (grafica: HTMLElement, tono: 'valor' | 'negativo') =>
@@ -190,6 +193,27 @@ describe('DashboardPagina (M11-H01)', () => {
     });
     expect(consultas.resumen.length).toBe(resumenAntes + 1);
     expect(consultas.ventas.length).toBe(ventasAntes);
+  });
+
+  it('tiempo real (M11-H02): con la pestaña oculta queda «En pausa»; al volver reconecta con Last-Event-ID', async () => {
+    const consultas = simularDashboard();
+    abrir();
+    await screen.findByText('En vivo');
+    let oculta = true;
+    vi.spyOn(document, 'hidden', 'get').mockImplementation(() => oculta);
+
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    expect(await screen.findByText('En pausa')).toBeInTheDocument();
+
+    oculta = false;
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    expect(await screen.findByText('En vivo')).toBeInTheDocument();
+    expect(consultas.eventos.ultimosIds).toEqual([null, 'ventas1.carritos1']);
   });
 
   it('exportar (M11-H03): manda los filtros de la pantalla y sigue la exportación hasta que se puede descargar', async () => {
