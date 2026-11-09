@@ -1,7 +1,8 @@
 import { screen, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { crearRutas } from '../../../app/router';
 import { simularRegistro, simularRegistroFallido } from '../../../test/handlers/auth';
+import { PLAZO_DE_PRECARGA_MS, precargarDashboard } from '../../../test/precargar';
 import { renderizarRutas } from '../../../test/renderizar';
 import { estadoDeLaSesion } from '../../../test/sesion';
 
@@ -12,6 +13,9 @@ async function llenar(usuario: Usuario, datos: { contrasena: string; correo?: st
   await usuario.type(screen.getByLabelText('Correo electrónico'), datos.correo ?? 'ana@prueba.gt');
   await usuario.type(screen.getByLabelText('Contraseña'), datos.contrasena);
 }
+
+// Un Administrador que ya tenía sesión termina en el dashboard.
+beforeAll(precargarDashboard, PLAZO_DE_PRECARGA_MS);
 
 describe('RegistroPagina (M1-H01)', () => {
   it('una contraseña sin números se rechaza en el navegador con el mismo mensaje del backend', async () => {

@@ -1,8 +1,9 @@
 import { act, screen, waitFor, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { sesion, type Respuesta } from '../shared/api';
 import { ANCHO_TELEFONO, simularPantalla } from '../test/pantalla';
+import { PLAZO_DE_PRECARGA_MS, precargarDashboard } from '../test/precargar';
 import { renderizarRutas } from '../test/renderizar';
 import { sesionDePrueba } from '../test/sesion';
 import { servidor } from '../test/servidor';
@@ -13,6 +14,9 @@ import { simularDashboard } from '../test/handlers/reportes';
 
 // La primera página del Operador (/backoffice/pedidos) pide la lista de la gestión; la del Administrador
 // (/backoffice/dashboard), sus reportes.
+// La primera página del Administrador es el dashboard.
+beforeAll(precargarDashboard, PLAZO_DE_PRECARGA_MS);
+
 beforeEach(() => {
   simularPedidosGestion([]);
   simularDashboard();

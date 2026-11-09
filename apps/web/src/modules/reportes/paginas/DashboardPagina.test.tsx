@@ -3,6 +3,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { crearRutas } from '../../../app/router';
 import { exportacionDePrueba, simularExportaciones } from '../../../test/handlers/exportaciones';
 import { simularDashboard } from '../../../test/handlers/reportes';
+import { PLAZO_DE_PRECARGA_MS, precargarDashboard } from '../../../test/precargar';
 import { renderizarRutas } from '../../../test/renderizar';
 
 const abrir = (
@@ -14,12 +15,7 @@ const panel = async (titulo: string) => within(await screen.findByRole('region',
 
 const ultima = (consultas: URLSearchParams[]) => Object.fromEntries(consultas.at(-1) ?? []);
 
-// La página se carga con lazy() y trae Recharts: su primera transformación, bajo la carga de `pnpm test`, puede pasar
-// de los 5 s de findBy. Se carga una vez aquí, fuera del plazo de cada prueba.
-const PLAZO_DE_CARGA_MS = 30_000;
-beforeAll(async () => {
-  await import('./DashboardPagina');
-}, PLAZO_DE_CARGA_MS);
+beforeAll(precargarDashboard, PLAZO_DE_PRECARGA_MS);
 
 // jsdom no calcula tamaños: sin esto, ResponsiveContainer mide 0 × 0 y Recharts no dibuja ninguna barra.
 beforeEach(() => {
