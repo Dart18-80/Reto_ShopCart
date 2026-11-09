@@ -18,7 +18,7 @@ export function LayoutCuenta() {
   return (
     <div className="flex min-h-dvh flex-col">
       <EncabezadoTienda />
-      <div className="flex w-full flex-1 flex-col gap-6 p-4 md:flex-row md:gap-8 md:p-8">
+      <div className="max-w-contenido mx-auto flex w-full flex-1 flex-col gap-6 p-4 md:flex-row md:gap-8 md:p-8">
         <aside aria-label="Tu cuenta" className="flex flex-col gap-4 md:w-56 md:shrink-0">
           {usuario && (
             <div className="flex min-w-0 flex-col">

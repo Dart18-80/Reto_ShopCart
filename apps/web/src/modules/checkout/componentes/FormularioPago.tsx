@@ -7,6 +7,8 @@ import { CampoSeleccion, type OpcionNumerica } from '../../../shared/componentes
 import { Monto } from '../../../shared/componentes/Monto';
 import { formatearMonto } from '../../../shared/formato/monto';
 import { Button } from '../../../shared/ui/button';
+import { CLASE_BARRA_FIJA } from '../../../shared/ui/barra-fija';
+import { cn } from '../../../shared/ui/cn';
 import { Form } from '../../../shared/ui/form';
 
 const MESES: OpcionNumerica[] = Array.from({ length: 12 }, (_, indice) => ({
@@ -73,7 +75,7 @@ export function FormularioPago({ form, enviar, deshabilitado, total }: PropsForm
             Pasarela de prueba: 4242 4242 4242 4242 aprueba; 4000 0000 0000 0002 se rechaza por
             fondos insuficientes.
           </Aviso>
-          <div className="bg-card fixed inset-x-0 bottom-0 z-10 flex flex-col gap-2 border-t p-4 md:static md:z-auto md:border-0 md:bg-transparent md:p-0">
+          <div className={cn(CLASE_BARRA_FIJA, 'flex flex-col gap-2')}>
             <div className="flex items-baseline justify-between md:hidden">
               <span className="texto-base-fuerte">Total</span>
               <Monto valor={total} className="display-precio" />

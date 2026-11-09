@@ -5,6 +5,8 @@ import { AvisoFormulario } from '../../../shared/componentes/AvisoFormulario';
 import { Monto } from '../../../shared/componentes/Monto';
 import { useFormularioApi } from '../../../shared/hooks/useFormularioApi';
 import { Button } from '../../../shared/ui/button';
+import { RESERVA_BARRA_TOTAL } from '../../../shared/ui/barra-fija';
+import { cn } from '../../../shared/ui/cn';
 import type { SesionPago } from '../checkout.api';
 import { useCancelarSesionPago } from '../hooks/useCancelarSesionPago';
 import { useCuentaRegresiva } from '../hooks/useCuentaRegresiva';
@@ -64,7 +66,12 @@ export function PasoPago({ sesion }: { sesion: SesionPago }) {
   const porReintentar = desenlace?.tipo === 'reintentar';
 
   return (
-    <div className="flex flex-col gap-8 pb-36 md:flex-row md:items-start md:gap-12 md:pb-0">
+    <div
+      className={cn(
+        'flex flex-col gap-8 md:flex-row md:items-start md:gap-12',
+        RESERVA_BARRA_TOTAL,
+      )}
+    >
       <section aria-labelledby="titulo-tarjeta" className="flex min-w-0 flex-1 flex-col gap-5">
         <h2 id="titulo-tarjeta" className="titulo-2">
           Datos de la tarjeta

@@ -1,6 +1,8 @@
 import { Link } from 'react-router';
 import { Aviso } from '../../../shared/componentes/Aviso';
 import { Monto } from '../../../shared/componentes/Monto';
+import { RESERVA_BARRA_BOTON } from '../../../shared/ui/barra-fija';
+import { cn } from '../../../shared/ui/cn';
 import { useSesion } from '../../../shared/hooks/useSesion';
 import type { ProductoTienda } from '../catalogo.api';
 import { useSeleccionVariante } from '../hooks/useSeleccionVariante';
@@ -33,7 +35,7 @@ export function FichaProducto({ producto, idVarianteEnUrl, alResolver }: PropsFi
   const precio = variante?.precio ?? precioMenor(producto.variantes);
 
   return (
-    <div className="flex flex-col gap-6 pb-24 md:pb-0">
+    <div className={cn('flex flex-col gap-6', RESERVA_BARRA_BOTON)}>
       <p className="texto-pequeno text-muted-foreground hidden md:block">
         <Link to="/" className="hover:text-primary">
           Catálogo

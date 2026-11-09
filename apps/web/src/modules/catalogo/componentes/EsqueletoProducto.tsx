@@ -13,7 +13,7 @@ export const ESQUELETO_PRODUCTO = (
     <Skeleton className="h-5 w-64 max-w-full" />
     <div className="grid gap-6 md:grid-cols-2 md:gap-12">
       <div className="-mx-4 -mt-4 flex flex-col gap-3 md:mx-0 md:mt-0">
-        <Skeleton className="aspect-square w-full rounded-none md:rounded-tarjeta" />
+        <Skeleton className="aspect-square w-full rounded-none max-md:aspect-auto max-md:h-[min(100vw,45vh)] md:rounded-tarjeta" />
         <div className="flex gap-2 px-4 md:px-0">
           {Array.from({ length: MINIATURAS }, (_, indice) => (
             <Skeleton key={indice} className="size-16" />

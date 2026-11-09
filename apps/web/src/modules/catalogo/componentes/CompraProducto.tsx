@@ -4,6 +4,8 @@ import { toast } from 'sonner';
 import { Aviso } from '../../../shared/componentes/Aviso';
 import { Cantidad } from '../../../shared/componentes/Cantidad';
 import { Button } from '../../../shared/ui/button';
+import { CLASE_BARRA_FIJA } from '../../../shared/ui/barra-fija';
+import { cn } from '../../../shared/ui/cn';
 import { useAgregarAlCarrito } from '../../carrito';
 import { RUTAS } from '../../../shared/rutas';
 
@@ -35,7 +37,7 @@ export function CompraProducto({ idVariante, faltan, agotada }: PropsCompraProdu
   return (
     <div className="flex flex-col gap-3">
       {agregar.error && <Aviso tipo="error">{agregar.error.mensaje}</Aviso>}
-      <div className="bg-card fixed inset-x-0 bottom-0 z-10 flex gap-3 border-t p-4 md:static md:z-auto md:border-0 md:bg-transparent md:p-0">
+      <div className={cn(CLASE_BARRA_FIJA, 'flex gap-3')}>
         <Cantidad valor={cantidad} onCambiar={setCantidad} deshabilitada={agregar.isPending} />
         <Button
           type="button"
@@ -59,7 +61,7 @@ export function CompraProducto({ idVariante, faltan, agotada }: PropsCompraProdu
               },
             );
           }}
-          className="control-boton h-auto flex-1 px-6 py-3"
+          className="flex-1 px-6"
         >
           {textoDelBoton({ faltan, agotada })}
         </Button>

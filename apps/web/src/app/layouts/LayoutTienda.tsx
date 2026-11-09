@@ -8,7 +8,10 @@ export function LayoutTienda() {
   return (
     <div className="flex min-h-dvh flex-col">
       <EncabezadoTienda />
-      <main ref={entrada} className="flex w-full flex-1 flex-col gap-6 p-4 md:p-8">
+      <main
+        ref={entrada}
+        className="max-w-contenido mx-auto flex w-full flex-1 flex-col gap-6 p-4 md:p-8"
+      >
         <Outlet />
       </main>
     </div>

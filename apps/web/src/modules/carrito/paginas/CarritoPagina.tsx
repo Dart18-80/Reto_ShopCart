@@ -3,6 +3,8 @@ import { EstadoVista } from '../../../shared/componentes/EstadoVista';
 import { formatearConteo } from '../../../shared/formato/conteo';
 import { useTituloPagina } from '../../../shared/hooks/useTituloPagina';
 import { Button } from '../../../shared/ui/button';
+import { RESERVA_BARRA_TOTAL } from '../../../shared/ui/barra-fija';
+import { cn } from '../../../shared/ui/cn';
 import type { Carrito } from '../carrito.api';
 import { ContinuarAlPago } from '../componentes/ContinuarAlPago';
 import { CuponCarrito } from '../componentes/CuponCarrito';
@@ -46,7 +48,12 @@ export function CarritoPagina() {
         esqueleto={ESQUELETO_CARRITO}
       >
         {({ lineas, resumen: delCarrito }) => (
-          <div className="flex flex-col gap-6 pb-36 md:flex-row md:items-start md:gap-12 md:pb-0">
+          <div
+            className={cn(
+              'flex flex-col gap-6 md:flex-row md:items-start md:gap-12',
+              RESERVA_BARRA_TOTAL,
+            )}
+          >
             <ul aria-label="Productos del carrito" className="min-w-0 flex-1">
               {lineas.map((linea) => (
                 <FilaCarrito key={linea.idLinea} linea={linea} />

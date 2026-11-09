@@ -24,7 +24,8 @@ export function GaleriaProducto({ ilustracion, color, imagenes }: PropsGaleria) 
   const [elegida, setElegida] = useState<Imagen | null>(null);
   return (
     <section aria-label="Galería" className="flex flex-col gap-3">
-      <div className="bg-muted flex aspect-square items-center justify-center overflow-hidden md:rounded-tarjeta">
+      {/* D4: en móvil la galería mide como mucho 45vh, así el nombre y el precio se ven sin bajar. */}
+      <div className="bg-muted flex aspect-square items-center justify-center overflow-hidden max-md:aspect-auto max-md:h-[min(100vw,45vh)] md:rounded-tarjeta">
         {elegida ? (
           <img
             src={elegida.url}

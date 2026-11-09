@@ -29,9 +29,10 @@ export function MisPedidosPagina() {
   usePaginaEnRango(pedidos, parametros);
 
   return (
-    <div className="flex flex-col gap-6">
+    // D4: el título y la lista en el mismo contenedor, alineados.
+    <div className="flex w-full max-w-3xl flex-col gap-6">
       <h1 className="titulo-1">Mis pedidos</h1>
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-3">
+      <div className="flex flex-col gap-3">
         <EstadoVista consulta={pedidos} vacio={SIN_PEDIDOS} esqueleto={ESQUELETO_MIS_PEDIDOS}>
           {({ datos, paginacion }) => (
             <>

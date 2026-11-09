@@ -23,8 +23,11 @@ export function LayoutBackoffice() {
 
   return (
     <div className="flex min-h-dvh">
-      <aside className="bg-card sticky top-0 hidden h-dvh w-62 shrink-0 border-r px-4 py-6 md:block">
-        <BarraLateralBackoffice />
+      {/* D4: la barra ocupa todo el alto de la página (su fondo no se corta al bajar) y su contenido se queda fijo. */}
+      <aside className="bg-card hidden w-62 shrink-0 border-r md:block">
+        <div className="sticky top-0 h-dvh px-4 py-6">
+          <BarraLateralBackoffice />
+        </div>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="bg-card flex items-center gap-4 border-b px-4 py-3 md:hidden">

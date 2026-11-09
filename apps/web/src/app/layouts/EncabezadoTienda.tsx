@@ -2,6 +2,7 @@ import { LayoutGrid, Menu, ShoppingBag, User } from 'lucide-react';
 import { useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router';
 import { ContadorCarrito } from '../../modules/carrito';
+import { useDesplazado } from '../../shared/hooks/useDesplazado';
 import { useSesion } from '../../shared/hooks/useSesion';
 import { Button } from '../../shared/ui/button';
 import {
@@ -20,7 +21,9 @@ import { NavegacionArea } from './NavegacionArea';
 import { RUTAS } from '../../shared/rutas';
 
 const NOMBRE_MENU = 'Tienda';
-const ACCION = 'texto-pequeno-fuerte text-foreground flex items-center gap-2';
+// D4: cada acción del encabezado es un área táctil de 44 px.
+const ACCION =
+  'texto-pequeno-fuerte text-foreground hover:text-primary flex min-h-11 min-w-11 items-center justify-center gap-2';
 
 function MenuEscritorio({ entradas }: { entradas: readonly PaginaDeMenu[] }) {
   return (
@@ -28,7 +31,12 @@ function MenuEscritorio({ entradas }: { entradas: readonly PaginaDeMenu[] }) {
       <ul className="flex gap-6">
         {entradas.map(({ ruta, menu: { etiqueta } }) => (
           <li key={ruta}>
-            <NavLink to={ruta} end className="texto-base-fuerte text-foreground hover:text-primary">
+            {/* D4: la opción activa lleva un subrayado rojo de 2 px al borde del encabezado. */}
+            <NavLink
+              to={ruta}
+              end
+              className="texto-base-fuerte text-foreground hover:text-primary aria-[current=page]:border-b-marca-rojo flex h-16 items-center border-y-2 border-transparent"
+            >
               {etiqueta}
             </NavLink>
           </li>
@@ -91,17 +99,26 @@ export function EncabezadoTienda() {
   const { estado } = useSesion();
   const entradas = menuDe('tienda', estado);
   const veBackoffice = permisoPara(ACCESO_DE_AREA.backoffice, estado) === 'permitido';
+  const desplazado = useDesplazado();
 
+  // D4: fijo arriba, translúcido con desenfoque y con sombra solo después de desplazarse. Su alto (64 px; en móvil,
+  // 56 px más el buscador) es --alto-encabezado de tema.css.
   return (
-    <header className="bg-card border-b">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3 md:flex-nowrap md:gap-8 md:px-8 md:py-4">
+    <header
+      data-desplazado={desplazado}
+      className="bg-card/80 sticky top-0 z-40 border-b backdrop-blur-md transition-shadow duration-200 data-[desplazado=true]:shadow-xs"
+    >
+      <div className="max-w-contenido mx-auto flex flex-wrap items-center gap-x-3 px-4 md:h-16 md:flex-nowrap md:gap-8 md:px-8">
         <MenuMovil entradas={entradas} />
-        <Link to={RAIZ_DE_AREA.tienda} className="titulo-2 text-primary flex-1 md:flex-none">
+        <Link
+          to={RAIZ_DE_AREA.tienda}
+          className="titulo-2 text-primary flex h-14 flex-1 items-center md:h-auto md:flex-none"
+        >
           ShopCart
         </Link>
         <MenuEscritorio entradas={entradas} />
-        <Buscador className="order-last w-full md:order-none md:w-auto md:flex-1" />
-        <div className="flex items-center gap-4 md:gap-5">
+        <Buscador className="order-last mb-3 w-full md:order-none md:mb-0 md:w-auto md:flex-1" />
+        <div className="flex items-center gap-1 md:gap-3">
           {veBackoffice && (
             <Link to={RAIZ_DE_AREA.backoffice} aria-label="Backoffice" className={ACCION}>
               <LayoutGrid aria-hidden className="size-5" />

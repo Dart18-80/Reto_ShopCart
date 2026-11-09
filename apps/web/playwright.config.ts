@@ -27,7 +27,7 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-      testIgnore: /(checkout|pedidos)\.spec\.ts/,
+      testIgnore: /(checkout|pedidos|diseno)\.spec\.ts/,
     },
     // El checkout y los pedidos usan los carritos de los dos clientes de la corrida, que otras pruebas también
     // usan: corren después, cada archivo en su proyecto para que no corran a la vez entre ellos.
@@ -43,6 +43,13 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
       testMatch: /pedidos\.spec\.ts/,
       dependencies: ['checkout'],
+    },
+    // Pase de diseño (D4): las pruebas del diseño, al final, cuando los demás ya no ingresan con los clientes.
+    {
+      name: 'diseno',
+      use: { ...devices['Desktop Chrome'] },
+      testMatch: /diseno\.spec\.ts/,
+      dependencies: ['pedidos'],
     },
   ],
 });

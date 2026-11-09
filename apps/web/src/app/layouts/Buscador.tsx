@@ -25,7 +25,12 @@ export function Buscador({ className }: { className?: string }) {
   }
 
   return (
-    <form role="search" onSubmit={buscar} className={cn(CLASE_GRUPO_CONTROL, className)}>
+    <form
+      role="search"
+      onSubmit={buscar}
+      // D4: el buscador de la tienda va en píldora.
+      className={cn(CLASE_GRUPO_CONTROL, 'rounded-full px-4', className)}
+    >
       <Search aria-hidden className="text-muted-foreground size-4.5 shrink-0" />
       <input
         type="search"
