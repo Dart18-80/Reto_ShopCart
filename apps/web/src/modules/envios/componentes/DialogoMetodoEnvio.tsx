@@ -82,7 +82,7 @@ export function DialogoMetodoEnvio({ metodo }: { metodo: MetodoEnvioAdmin }) {
     },
   });
   const cambiarAbierto = (siguiente: boolean) => {
-    if (siguiente) formulario.form.reset(camposDe(metodo));
+    if (siguiente) formulario.reiniciar(camposDe(metodo));
     setAbierto(siguiente);
   };
 

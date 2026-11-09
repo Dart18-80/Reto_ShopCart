@@ -87,9 +87,13 @@ export function DialogoNuevoUsuario() {
     campoPorCodigo: { CORREO_EN_USO: 'correo' },
     alTerminar: () => {
       setAbierto(false);
-      formulario.form.reset(NUEVO);
     },
   });
+  // Cada vez que se abre empieza vacío: una contraseña escrita y cancelada no queda en el formulario.
+  const cambiarAbierto = (siguiente: boolean) => {
+    if (siguiente) formulario.reiniciar(NUEVO);
+    setAbierto(siguiente);
+  };
 
   return (
     <DialogoDeUsuario
@@ -97,7 +101,7 @@ export function DialogoNuevoUsuario() {
       descripcion="Un Operador o un Administrador. Comparte la contraseña inicial por un canal seguro."
       disparador={<Button>Nuevo usuario</Button>}
       abierto={abierto}
-      alCambiarAbierto={setAbierto}
+      alCambiarAbierto={cambiarAbierto}
     >
       <Form {...formulario.form}>
         <form onSubmit={formulario.enviar} noValidate className="flex flex-col gap-5">
@@ -145,7 +149,7 @@ export function DialogoEditarUsuario({ usuario }: { usuario: UsuarioAdmin }) {
     },
   });
   const cambiarAbierto = (siguiente: boolean) => {
-    if (siguiente) formulario.form.reset(iniciales);
+    if (siguiente) formulario.reiniciar(iniciales);
     setAbierto(siguiente);
   };
 

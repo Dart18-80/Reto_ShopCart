@@ -188,7 +188,18 @@ export function UsuariosPagina() {
         </div>
         <DialogoNuevoUsuario />
       </div>
-      {estado.error && <Aviso tipo="error">{estado.error.mensaje}</Aviso>}
+      {estado.error && (
+        <Aviso
+          tipo="error"
+          acciones={
+            <Button variant="outline" size="sm" onClick={estado.reset}>
+              Entendido
+            </Button>
+          }
+        >
+          {estado.error.mensaje}
+        </Aviso>
+      )}
       <TablaServidor
         titulo="Usuarios"
         columnas={columnas((idUsuario, accion) => {

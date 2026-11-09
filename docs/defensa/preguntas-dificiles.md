@@ -92,7 +92,7 @@ Todo proceso bloquea el carrito, después las variantes en orden de `IDVariante`
 
 Los triggers de bitácora escriben una fila por fila afectada con el valor anterior y el nuevo, el usuario y el `requestId` que cada SP fija en `SESSION_CONTEXT`; sin contexto, el trigger falla. La bitácora es una tabla ledger append-only: el motor rechaza `UPDATE` y `DELETE`.
 
-**Muéstralo en:** [R__TR_Usuarios_Bitacora.sql:12](../../database/programmability/R__TR_Usuarios_Bitacora.sql#L12 "IF SESSION_CONTEXT(N'Rol') IS NULL") y [V009__bitacora.sql:24](../../database/migrations/V009__bitacora.sql#L24 "WITH (LEDGER = ON (APPEND_ONLY = ON))"). Detalle: [bitácora](modulos/bitacora.md).
+**Muéstralo en:** [R__TR_Usuarios_Bitacora.sql:13](../../database/programmability/R__TR_Usuarios_Bitacora.sql#L13 "IF SESSION_CONTEXT(N'Rol') IS NULL") y [V009__bitacora.sql:24](../../database/migrations/V009__bitacora.sql#L24 "WITH (LEDGER = ON (APPEND_ONLY = ON))"). Detalle: [bitácora](modulos/bitacora.md).
 
 ### 15. ¿Qué impide que alguien edite una migración ya aplicada?
 

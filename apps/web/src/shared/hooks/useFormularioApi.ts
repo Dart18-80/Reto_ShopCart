@@ -113,5 +113,13 @@ export function useFormularioApi<Entrada extends FieldValues, Salida, Respuesta>
     errorGeneral,
     /** Mientras la mutación está en curso el botón de enviar se deshabilita (FE-02). */
     enviando: mutacion.isPending,
+    /**
+     * Vuelve a los valores dados y olvida el error del intento anterior: un diálogo que se vuelve a abrir empieza
+     * limpio (sin una contraseña escrita ni un 409 viejo).
+     */
+    reiniciar: (valores: DefaultValues<Entrada>) => {
+      form.reset(valores);
+      setErrorGeneral(null);
+    },
   };
 }

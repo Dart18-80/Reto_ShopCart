@@ -410,6 +410,30 @@ describe('administración de usuarios (E2-H04, N-15)', () => {
     expect(`${fila?.ValorAnterior ?? ''}${fila?.ValorNuevo ?? ''}`).not.toMatch(/hash|argon2/i);
   });
 
+  it('M10 (decisión del PO): la bitácora registra el código del rol, no su ID', async () => {
+    const token = await tokenDeAdmin();
+    const creado = leerDatos(
+      await request(app).post('/api/v1/usuarios').set(conToken(token)).send({
+        correo: correoUnico(),
+        contrasena: CONTRASENA,
+        nombre: 'Con rol',
+        rol: 'Operador',
+      }),
+      z.object({ idUsuario: z.number() }),
+    );
+
+    await request(app)
+      .patch(`/api/v1/usuarios/${String(creado.idUsuario)}`)
+      .set(conToken(token))
+      .send({ rol: 'Administrador' });
+
+    const filas = await leerBitacora('Usuario', creado.idUsuario);
+    const cambio = filas.find((f) => f.Accion === 'Modificar');
+    expect(JSON.parse(cambio?.ValorAnterior ?? '{}')).toMatchObject({ Rol: 'Operador' });
+    expect(JSON.parse(cambio?.ValorNuevo ?? '{}')).toMatchObject({ Rol: 'Administrador' });
+    expect(`${cambio?.ValorAnterior ?? ''}${cambio?.ValorNuevo ?? ''}`).not.toContain('IDRol');
+  });
+
   it('A-07: activar devuelve el acceso con un login nuevo, pero no revive el token anterior', async () => {
     const correo = correoUnico();
     const anterior = leerSesion(await registrar(app, correo));

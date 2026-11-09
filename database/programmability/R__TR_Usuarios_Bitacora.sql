@@ -1,5 +1,6 @@
 -- RF-09: creación de usuarios y cambios de rol o activación. Nunca se registra HashContrasena: las
--- columnas se listan explícitamente.
+-- columnas se listan explícitamente. M10 (decisión del PO): el rol se registra por su código ("Operador"), que es
+-- lo que lee el Admin en la bitácora; las filas anteriores conservan IDRol (la bitácora es append-only, M-01).
 CREATE OR ALTER TRIGGER dbo.TR_Usuarios_Bitacora
 ON dbo.Usuario
 AFTER INSERT, UPDATE, DELETE
@@ -25,12 +26,14 @@ BEGIN
                 ELSE 'Modificar'
             END,
             CASE WHEN d.IDUsuario IS NULL THEN NULL ELSE
-                (SELECT d.Correo, d.Nombre, d.IDRol, d.Activo FOR JSON PATH, WITHOUT_ARRAY_WRAPPER) END,
+                (SELECT d.Correo, d.Nombre, rd.Codigo AS Rol, d.Activo FOR JSON PATH, WITHOUT_ARRAY_WRAPPER) END,
             CASE WHEN i.IDUsuario IS NULL THEN NULL ELSE
-                (SELECT i.Correo, i.Nombre, i.IDRol, i.Activo FOR JSON PATH, WITHOUT_ARRAY_WRAPPER) END,
+                (SELECT i.Correo, i.Nombre, ri.Codigo AS Rol, i.Activo FOR JSON PATH, WITHOUT_ARRAY_WRAPPER) END,
             @IDUsuario, @RequestId
     FROM    inserted AS i
     FULL OUTER JOIN deleted AS d ON d.IDUsuario = i.IDUsuario
+    LEFT JOIN dbo.Rol AS rd ON rd.IDRol = d.IDRol
+    LEFT JOIN dbo.Rol AS ri ON ri.IDRol = i.IDRol
     -- Solo rol y activación: los cambios de perfil, de contraseña o de VersionSesion (A-07) no se
     -- registran aquí.
     WHERE   i.IDUsuario IS NULL OR d.IDUsuario IS NULL

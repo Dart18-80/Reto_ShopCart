@@ -14,8 +14,14 @@ import type { Usuario } from './usuarios.types.js';
 
 const HTTP_CREADO = 201;
 
+// Campo por campo: si el tipo Usuario creciera, nada sale a la respuesta sin decidirlo aquí.
 const usuarioARespuesta = (usuario: Usuario) => ({
-  ...usuario,
+  idUsuario: usuario.idUsuario,
+  correo: usuario.correo,
+  nombre: usuario.nombre,
+  telefono: usuario.telefono,
+  rol: usuario.rol,
+  activo: usuario.activo,
   fechaCreacion: usuario.fechaCreacion.toISOString(),
 });
 

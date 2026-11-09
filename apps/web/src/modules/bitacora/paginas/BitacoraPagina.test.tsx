@@ -53,7 +53,8 @@ describe('BitacoraPagina (M10-H02)', () => {
     const { usuario, router } = abrir();
 
     await usuario.selectOptions(await screen.findByLabelText('Módulo'), 'Catálogo');
-    await usuario.type(screen.getByLabelText('Entidad'), 'PrecioVariante');
+    await usuario.click(screen.getByLabelText('Entidad'));
+    await usuario.paste('PrecioVariante');
     await usuario.type(screen.getByLabelText('Desde'), '2026-11-01');
 
     await waitFor(() => {

@@ -58,13 +58,13 @@ sequenceDiagram
 | La versión se publica en Redis después del commit | Servicio | [usuarios.service.ts:97](../../../apps/api/src/modules/usuarios/usuarios.service.ts#L97 "if (cambios.rol !== undefined) await versiones.publicar"), [usuarios.service.ts:105](../../../apps/api/src/modules/usuarios/usuarios.service.ts#L105 "await versiones.publicar(idUsuario, versionSesion);") | A-07 |
 | Reactivar no baja la versión | SP solo suma al desactivar; el servicio no publica | [usuarios.service.ts:112](../../../apps/api/src/modules/usuarios/usuarios.service.ts#L112 "repositorio.cambiarEstado(idUsuario, true)") | N-15 |
 | Activo y fecha de desactivación coherentes | Constraint `CK_Usuario_Desactivacion` | [V002__seguridad.sql:30](../../../database/migrations/V002__seguridad.sql#L30 "CK_Usuario_Desactivacion") | N-15 |
-| Bitácora de alta, rol y activación, nunca el hash | Trigger con columnas explícitas | [R__TR_Usuarios_Bitacora.sql:28](../../../database/programmability/R__TR_Usuarios_Bitacora.sql#L28 "SELECT d.Correo, d.Nombre, d.IDRol, d.Activo FOR JSON PATH") | RF-09, A-18 |
+| Bitácora de alta, rol y activación, nunca el hash | Trigger con columnas explícitas | [R__TR_Usuarios_Bitacora.sql:29](../../../database/programmability/R__TR_Usuarios_Bitacora.sql#L29 "SELECT d.Correo, d.Nombre, rd.Codigo AS Rol, d.Activo FOR JSON PATH") | RF-09, A-18 |
 
 ## Concurrencia y réplicas
 
 - **Dos Admins que se desactivan entre sí a la vez:** sin bloqueo, cada uno contaría 2 Admins activos y ambos pasarían, dejando 0. `SP_Usuarios_CambiarEstado` y `SP_Usuarios_Actualizar` toman primero el `UPDLOCK` de la fila del rol Administrador ([R__SP_Usuarios_CambiarEstado.sql:31](../../../database/programmability/R__SP_Usuarios_CambiarEstado.sql#L31 "dbo.Rol AS r WITH (UPDLOCK, ROWLOCK)"), [R__SP_Usuarios_Actualizar.sql:31](../../../database/programmability/R__SP_Usuarios_Actualizar.sql#L31 "dbo.Rol AS r WITH (UPDLOCK, ROWLOCK)")) y después la fila objetivo ([R__SP_Usuarios_Actualizar.sql:41](../../../database/programmability/R__SP_Usuarios_Actualizar.sql#L41 "dbo.Usuario AS u WITH (UPDLOCK, ROWLOCK)")): se serializan, uno gana y el otro recibe `ULTIMO_ADMIN` ([ultimo-admin.test.ts:91](../../../apps/api/test/integracion/secuencial/ultimo-admin.test.ts#L91 "A desactiva a B mientras B hace")). Al tomar los bloqueos siempre en el mismo orden, los pares cruzados no se cruzan en un deadlock ([ultimo-admin.test.ts:112](../../../apps/api/test/integracion/secuencial/ultimo-admin.test.ts#L112 "pares cruzados a la vez terminan bien")).
 - **Dos PATCH del perfil a la vez** (uno el nombre, otro el teléfono): la mezcla es un `COALESCE` dentro del mismo UPDATE, con la fila bloqueada; ninguno pisa al otro ([usuarios.api.test.ts:137](../../../apps/api/test/integracion/usuarios/usuarios.api.test.ts#L137 "dos PATCH simultáneos, uno del nombre y otro del teléfono")).
-- **Entre réplicas:** el corte del token no depende de qué réplica atendió el cambio: la versión vive en Redis y `autenticar` la consulta en cada petición ([usuarios.api.test.ts:478](../../../apps/api/test/integracion/usuarios/usuarios.api.test.ts#L478 "dos réplicas ven la misma versión")). El script de Redis solo sube la versión, así que dos publicaciones desordenadas no la hacen retroceder ([versiones-sesion.test.ts:49](../../../apps/api/test/integracion/adaptadores/versiones-sesion.test.ts#L49 "una publicación con una versión menor no la hace retroceder")).
+- **Entre réplicas:** el corte del token no depende de qué réplica atendió el cambio: la versión vive en Redis y `autenticar` la consulta en cada petición ([usuarios.api.test.ts:502](../../../apps/api/test/integracion/usuarios/usuarios.api.test.ts#L502 "dos réplicas ven la misma versión")). El script de Redis solo sube la versión, así que dos publicaciones desordenadas no la hacen retroceder ([versiones-sesion.test.ts:49](../../../apps/api/test/integracion/adaptadores/versiones-sesion.test.ts#L49 "una publicación con una versión menor no la hace retroceder")).
 - **Una réplica muere a mitad:** si muere antes del COMMIT, no cambia nada. Si muere entre el COMMIT y la publicación en Redis, la base ya está bien (refresh revocados, `VersionSesion` subida) y solo queda el access token vivo hasta su vencimiento: como mucho 15 min, el mismo riesgo acotado que con Redis caído (N-15). Nadie lo "recupera": el siguiente login o refresh lee la versión de la base.
 
 ## Modos de falla
@@ -86,7 +86,7 @@ sequenceDiagram
 - **Contar Admins solo en el servicio** → dos peticiones simultáneas pasan las dos la validación; la regla vive en el SP bajo bloqueo (A-02).
 - **Bloquear solo la fila del usuario objetivo** → dos Admins que se desactivan entre sí bloquean filas distintas y ambos ven 2 Admins activos; por eso se bloquea la fila del rol Administrador primero (comentario en [R__SP_Usuarios_CambiarEstado.sql:23](../../../database/programmability/R__SP_Usuarios_CambiarEstado.sql#L23 "Toda operación que puede reducir los Admins activos")).
 - **Borrar usuarios** → RF-01 pide desactivar sin borrar, y las filas ledger que los referencian nunca se borran (M-01).
-- **Registrar en la bitácora cada cambio del usuario** → el trigger registra solo alta, rol y activación, para no exponer el hash ni llenar la bitácora con cambios de `VersionSesion` ([R__TR_Usuarios_Bitacora.sql:37](../../../database/programmability/R__TR_Usuarios_Bitacora.sql#L37 "EXCEPT SELECT d.IDRol, d.Activo")).
+- **Registrar en la bitácora cada cambio del usuario** → el trigger registra solo alta, rol y activación, para no exponer el hash ni llenar la bitácora con cambios de `VersionSesion` ([R__TR_Usuarios_Bitacora.sql:40](../../../database/programmability/R__TR_Usuarios_Bitacora.sql#L40 "EXCEPT SELECT d.IDRol, d.Activo")).
 
 ## Preguntas probables
 
@@ -118,12 +118,12 @@ De inmediato: su refresh queda revocado en la misma transacción y su access tok
 ### ¿Y si le quito el rol de Admin a alguien que tiene la sesión abierta?
 
 Su versión sube y su token anterior deja de servir; no se revoca su refresh, así que el siguiente refresh le emite un token con el rol nuevo leído de la base.
-**Muéstralo en:** [usuarios.api.test.ts:447](../../../apps/api/test/integracion/usuarios/usuarios.api.test.ts#L447 "un Admin al que le quitan el rol pierde los permisos de inmediato") y [usuarios.api.test.ts:461](../../../apps/api/test/integracion/usuarios/usuarios.api.test.ts#L461 "cambiar el rol rechaza al instante el access token anterior, pero no revoca el refresh")
+**Muéstralo en:** [usuarios.api.test.ts:471](../../../apps/api/test/integracion/usuarios/usuarios.api.test.ts#L471 "un Admin al que le quitan el rol pierde los permisos de inmediato") y [usuarios.api.test.ts:485](../../../apps/api/test/integracion/usuarios/usuarios.api.test.ts#L485 "cambiar el rol rechaza al instante el access token anterior, pero no revoca el refresh")
 
 ### Si reactivo al usuario, ¿su token viejo vuelve a servir?
 
 No. Reactivar no baja `VersionSesion`; el usuario debe iniciar sesión de nuevo.
-**Muéstralo en:** [usuarios.api.test.ts:413](../../../apps/api/test/integracion/usuarios/usuarios.api.test.ts#L413 "activar devuelve el acceso con un login nuevo")
+**Muéstralo en:** [usuarios.api.test.ts:437](../../../apps/api/test/integracion/usuarios/usuarios.api.test.ts#L437 "activar devuelve el acceso con un login nuevo")
 
 ### ¿Qué pasa con las otras sesiones al cambiar la contraseña?
 
@@ -143,7 +143,7 @@ No: el alta interna solo acepta Operador o Administrador (Zod y SP) y `Sistema` 
 ### ¿Qué impide adivinar la contraseña actual con un token robado?
 
 El cambio exige la contraseña actual y está limitado a 5 intentos por minuto por usuario (contador en Redis, compartido entre réplicas).
-**Muéstralo en:** [usuarios.api.test.ts:535](../../../apps/api/test/integracion/usuarios/usuarios.api.test.ts#L535 "el sexto intento en un minuto responde 429")
+**Muéstralo en:** [usuarios.api.test.ts:559](../../../apps/api/test/integracion/usuarios/usuarios.api.test.ts#L559 "el sexto intento en un minuto responde 429")
 
 ### ¿La bitácora guarda el hash de la contraseña?
 

@@ -8,6 +8,10 @@ export default defineConfig({
   globalSetup: './e2e/preparacion-global.ts',
   // Sin reintentos: una prueba que falla a veces es un error que hay que ver, no esconder.
   retries: 0,
+  // Contra el entorno real recién levantado, la primera ejecución de cada SP compila su plan (el migrador reaplica
+  // los R__ y la caché de planes se vacía): con cuatro navegadores en la misma máquina, una búsqueda puede tardar
+  // más de los 5 s por omisión aunque en caliente responda en 0.25 s. Medido con sys.dm_exec_procedure_stats.
+  expect: { timeout: 10_000 },
   reporter: [['list']],
   use: {
     baseURL: URL_TIENDA,

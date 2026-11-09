@@ -121,7 +121,7 @@ export function DialogoDevolucion({ pedido, mutacion }: PropsDialogoDevolucion) 
   });
   // Cada vez que se abre, parte de lo devolvible de ahora (otra devolución pudo cambiarlo).
   const cambiarAbierto = (siguiente: boolean) => {
-    if (siguiente) formulario.form.reset(valoresDe(pedido));
+    if (siguiente) formulario.reiniciar(valoresDe(pedido));
     setAbierto(siguiente);
   };
   const errorLineas = formulario.form.formState.errors.lineas;

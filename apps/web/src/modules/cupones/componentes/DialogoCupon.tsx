@@ -251,7 +251,7 @@ export function DialogoEditarCupon({ cupon }: { cupon: Cupon }) {
   });
   // Cada vez que se abre parte del cupón guardado (la lista pudo traer una versión más nueva).
   const cambiarAbierto = (siguiente: boolean) => {
-    if (siguiente) formulario.form.reset(camposDe(cupon));
+    if (siguiente) formulario.reiniciar(camposDe(cupon));
     setAbierto(siguiente);
   };
 

@@ -840,7 +840,7 @@ El orden de construcción, por módulos (F1, módulos 1 a 11 y F6), está en [`0
 | **M7 Inventario** | Entradas, ajustes, kardex, existencias y conciliación | 1.5 | Hecha |
 | **M8 Gestión de pedidos** | Detalle y filtros del personal, estados, cancelación, devoluciones, reembolsos y pagos en revisión | 3.0 | Hecha |
 | **M9 Cupones, envíos y configuración** | Cupones, métodos de envío y parámetros del sistema | 1.25 | Hecha |
-| **M10 Usuarios y bitácora** | Usuarios del personal y bitácora con sus cambios | 1.25 | Lista |
+| **M10 Usuarios y bitácora** | Usuarios del personal y bitácora con sus cambios | 1.25 | Hecha |
 | **M11 Dashboard** | Gráficas, tiempo real y exportaciones | 2.25 | Lista |
 | **F6 Cierre** | README final, matriz completa (`contrato:cobertura --estricto`) y verificación desde cero | 1.0 | Lista |
 
