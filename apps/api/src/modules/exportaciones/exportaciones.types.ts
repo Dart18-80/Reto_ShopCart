@@ -1,3 +1,4 @@
+import { FORMATOS_EXPORTACION, type FormatoExportacion } from '@shopcart/shared';
 import type { Decimal } from 'decimal.js';
 import { REPORTES, type NombreReporte } from '../reportes/index.js';
 
@@ -6,8 +7,8 @@ import { REPORTES, type NombreReporte } from '../reportes/index.js';
 export const REPORTES_EXPORTABLES = REPORTES;
 export type ReporteExportable = NombreReporte;
 
-export const FORMATOS = ['xlsx', 'pdf'] as const;
-export type Formato = (typeof FORMATOS)[number];
+export const FORMATOS = FORMATOS_EXPORTACION;
+export type Formato = FormatoExportacion;
 
 export const ESTADOS_EXPORTACION = [
   'Pendiente',

@@ -2,6 +2,7 @@ import { AGRUPACIONES, type Agrupacion, type RangoDeFechas } from '@shopcart/sha
 import { useId } from 'react';
 import { CLASE_SELECT } from '../../../shared/componentes/CampoSeleccion';
 import { formatearCantidad } from '../../../shared/formato/conteo';
+import { DialogoExportar } from '../../exportaciones';
 import type { ParametrosUrl } from '../../../shared/hooks/useParametrosUrl';
 import {
   consultaVentasDe,
@@ -76,7 +77,8 @@ export function ReporteVentasPorPeriodo({
   parametros: ParametrosUrl<ConsultaDashboard>;
 }) {
   const { valores, cambiar } = parametros;
-  const ventas = useVentas(consultaVentasDe(valores));
+  const consulta = consultaVentasDe(valores);
+  const ventas = useVentas(consulta);
   const { agrupacion, metrica } = valores;
   const columnas: readonly ColumnaDeGrafica<VentasDelPeriodo>[] = [
     { etiqueta: 'Periodo', celda: (fila) => tituloDelPeriodo(fila.periodo, agrupacion) },
@@ -90,6 +92,7 @@ export function ReporteVentasPorPeriodo({
       descripcion="Productos con IVA, sin envío y menos las devoluciones de cada periodo."
       consulta={ventas}
       vacio={SIN_VENTAS}
+      exportar={<DialogoExportar reporte="ventas" filtros={consulta} />}
       controles={
         <div className="grid gap-4 sm:grid-cols-2 md:max-w-md">
           <Selector
@@ -146,6 +149,7 @@ export function ReporteVentasPorCategoria({ rango }: { rango: RangoDeFechas }) {
       titulo="Ventas por categoría"
       consulta={categorias}
       vacio={SIN_VENTAS}
+      exportar={<DialogoExportar reporte="ventas-por-categoria" filtros={rango} />}
       grafica={(filas) => (
         <GraficaBarras
           puntos={puntosDeCategorias(filas)}
@@ -181,6 +185,7 @@ export function ReporteTopProductos({ rango }: { rango: RangoDeFechas }) {
       descripcion="Por unidades vendidas."
       consulta={top}
       vacio={SIN_VENTAS}
+      exportar={<DialogoExportar reporte="top-productos" filtros={rango} />}
       grafica={(filas) => (
         <GraficaBarras
           puntos={puntosDeTop(filas)}

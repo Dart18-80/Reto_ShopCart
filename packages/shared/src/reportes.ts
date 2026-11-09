@@ -2,6 +2,16 @@ import { z } from 'zod';
 import { consultaPaginacionSchema, rangoDeFechasSchema } from './consultas.js';
 import { ordenConsultaSchema } from './orden.js';
 
+/** RF-08: los reportes del dashboard; también son los que se exportan (CK_SolicitudExportacion_Reporte). */
+export const REPORTES_DASHBOARD = [
+  'resumen',
+  'ventas',
+  'ventas-por-categoria',
+  'top-productos',
+  'carritos-abandonados',
+] as const;
+export type ReporteDashboard = (typeof REPORTES_DASHBOARD)[number];
+
 /** RF-08: cómo se agrupan las ventas por periodo (el día, la semana desde el lunes o el mes). */
 export const AGRUPACIONES = ['dia', 'semana', 'mes'] as const;
 export type Agrupacion = (typeof AGRUPACIONES)[number];

@@ -5,7 +5,8 @@ import { Monto } from '../../../shared/componentes/Monto';
 import { TablaServidor, type ColumnaTabla } from '../../../shared/componentes/TablaServidor';
 import { formatearCantidad } from '../../../shared/formato/conteo';
 import type { ParametrosUrl } from '../../../shared/hooks/useParametrosUrl';
-import { consultaCarritosDe, type ConsultaDashboard } from '../consultaDashboard';
+import { DialogoExportar } from '../../exportaciones';
+import { consultaCarritosDe, rangoDe, type ConsultaDashboard } from '../consultaDashboard';
 import { useCarritosAbandonados } from '../hooks/useReportes';
 import type { CarritoAbandonado } from '../reportes.api';
 
@@ -64,13 +65,17 @@ export function TablaCarritos({ parametros }: { parametros: ParametrosUrl<Consul
 
   return (
     <section aria-labelledby={idTitulo} className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <h2 id={idTitulo} className="display-titulo-3">
-          Carritos abandonados
-        </h2>
-        <p className="texto-pequeno text-muted-foreground">
-          Carritos sin actividad reciente, con lo que habrían sumado.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <h2 id={idTitulo} className="display-titulo-3">
+            Carritos abandonados
+          </h2>
+          <p className="texto-pequeno text-muted-foreground">
+            Carritos sin actividad reciente, con lo que habrían sumado.
+          </p>
+        </div>
+        {/* Se exportan todos los del rango, del mayor monto potencial al menor; la página y el orden son de la vista. */}
+        <DialogoExportar reporte="carritos-abandonados" filtros={rangoDe(valores)} />
       </div>
       <TablaServidor
         titulo="Carritos abandonados"

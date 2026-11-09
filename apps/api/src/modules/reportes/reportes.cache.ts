@@ -3,20 +3,16 @@ import { Decimal } from 'decimal.js';
 import type { AvisosDeVersion } from '../../shared/avisos/index.js';
 import type { Cache } from '../../shared/cache/index.js';
 import { z } from '../../shared/openapi/zod.js';
+import { REPORTES_DASHBOARD, type ReporteDashboard } from '@shopcart/shared';
 
 // A-11 (decisión del PO al cierre de la Fase 1): una versión por dominio de datos. Cada escritura incrementa,
 // después de su commit, la de los dominios que cambia (la lista está en 01-arquitectura.md §9).
 export const DOMINIOS_REPORTES = ['ventas', 'carritos'] as const;
 export type DominioReportes = (typeof DOMINIOS_REPORTES)[number];
 
-export const REPORTES = [
-  'resumen',
-  'ventas',
-  'ventas-por-categoria',
-  'top-productos',
-  'carritos-abandonados',
-] as const;
-export type NombreReporte = (typeof REPORTES)[number];
+// La lista vive en @shopcart/shared: el dashboard la usa para exportar cada reporte.
+export const REPORTES = REPORTES_DASHBOARD;
+export type NombreReporte = ReporteDashboard;
 
 /**
  * De qué dominios depende cada reporte: un cambio en un carrito ya no invalida los reportes de ventas. El resumen

@@ -5,6 +5,7 @@ import { Monto } from '../../../shared/componentes/Monto';
 import { formatearCantidad } from '../../../shared/formato/conteo';
 import { formatearFechaCalendario } from '../../../shared/formato/fecha';
 import { Skeleton } from '../../../shared/ui/skeleton';
+import { DialogoExportar } from '../../exportaciones';
 import { useResumen } from '../hooks/useReportes';
 import type { Resumen } from '../reportes.api';
 import { MontoNeto } from './MontoNeto';
@@ -57,9 +58,13 @@ export function TarjetasResumen({ rango }: { rango: RangoDeFechas }) {
       >
         {(datos) => (
           <>
-            <p className="texto-pequeno text-muted-foreground" aria-live="polite">
-              Del {formatearFechaCalendario(datos.desde)} al {formatearFechaCalendario(datos.hasta)}
-            </p>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="texto-pequeno text-muted-foreground" aria-live="polite">
+                Del {formatearFechaCalendario(datos.desde)} al{' '}
+                {formatearFechaCalendario(datos.hasta)}
+              </p>
+              <DialogoExportar reporte="resumen" filtros={rango} />
+            </div>
             <dl className={CLASE_REJILLA}>
               {TARJETAS.map(({ etiqueta, cifra, nota }) => (
                 <div key={etiqueta} className="bg-card flex flex-col gap-1 rounded-lg border p-4">

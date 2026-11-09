@@ -11,6 +11,8 @@ interface PropsPanelReporte<T> {
   vacio: ContenidoVacio;
   /** Los selectores propios del reporte (la agrupación y la métrica de las ventas). */
   controles?: ReactNode;
+  /** «Exportar» con los filtros de la pantalla (M11-H03). */
+  exportar: ReactNode;
   grafica: (filas: T[]) => ReactNode;
   tabla: (filas: T[]) => ReactNode;
 }
@@ -26,6 +28,7 @@ export function PanelReporte<T>({
   consulta,
   vacio,
   controles,
+  exportar,
   grafica,
   tabla,
 }: PropsPanelReporte<T>) {
@@ -44,15 +47,18 @@ export function PanelReporte<T>({
           </h2>
           {descripcion && <p className="texto-pequeno text-muted-foreground">{descripcion}</p>}
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            setComoTabla((actual) => !actual);
-          }}
-        >
-          {comoTabla ? 'Ver como gráfica' : 'Ver como tabla'}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setComoTabla((actual) => !actual);
+            }}
+          >
+            {comoTabla ? 'Ver como gráfica' : 'Ver como tabla'}
+          </Button>
+          {exportar}
+        </div>
       </div>
       {controles}
       <Actualizando activo={consulta.isPlaceholderData} />

@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { crearRutas } from '../../../app/router';
+import { exportacionDePrueba, simularExportaciones } from '../../../test/handlers/exportaciones';
 import { simularDashboard } from '../../../test/handlers/reportes';
 import { renderizarRutas } from '../../../test/renderizar';
 
@@ -189,6 +190,59 @@ describe('DashboardPagina (M11-H01)', () => {
     });
     expect(consultas.resumen.length).toBe(resumenAntes + 1);
     expect(consultas.ventas.length).toBe(ventasAntes);
+  });
+
+  it('exportar (M11-H03): manda los filtros de la pantalla y sigue la exportación hasta que se puede descargar', async () => {
+    simularDashboard();
+    const registro = simularExportaciones({
+      seguimiento: [
+        exportacionDePrueba({ estado: 'Pendiente', archivo: null }),
+        exportacionDePrueba(),
+      ],
+    });
+    const { usuario } = abrir('/backoffice/dashboard?desde=2026-11-01&agrupacion=semana&pagina=2');
+
+    const ventas = await panel('Ventas por periodo');
+    await usuario.click(await ventas.findByRole('button', { name: 'Exportar Ventas por periodo' }));
+    const dialogo = within(await screen.findByRole('dialog'));
+    await usuario.selectOptions(dialogo.getByLabelText('Formato'), 'PDF');
+    await usuario.click(dialogo.getByRole('button', { name: 'Exportar' }));
+
+    expect(await dialogo.findByText('En cola')).toBeInTheDocument();
+    expect(registro.solicitudes).toEqual([
+      {
+        reporte: 'ventas',
+        cuerpo: { formato: 'pdf', filtros: { desde: '2026-11-01', agrupacion: 'semana' } },
+      },
+    ]);
+    // El backend pide volver a consultar en 2 s (Retry-After).
+    expect(
+      await dialogo.findByText('Lista para descargar', {}, { timeout: 4000 }),
+    ).toBeInTheDocument();
+    expect(dialogo.getByRole('button', { name: 'Descargar' })).toBeInTheDocument();
+    expect(dialogo.getByRole('link', { name: 'Ver mis exportaciones' })).toHaveAttribute(
+      'href',
+      '/backoffice/exportaciones',
+    );
+  });
+
+  it('exportar (M11-H03): los carritos se exportan con el rango, sin la página ni el orden de la tabla', async () => {
+    simularDashboard();
+    const registro = simularExportaciones();
+    const { usuario } = abrir('/backoffice/dashboard?hasta=2026-11-08&pagina=2&orden=inactividad');
+
+    const carritos = await panel('Carritos abandonados');
+    await usuario.click(carritos.getByRole('button', { name: 'Exportar Carritos abandonados' }));
+    const dialogo = within(await screen.findByRole('dialog'));
+    await usuario.click(dialogo.getByRole('button', { name: 'Exportar' }));
+
+    await dialogo.findByText('En cola');
+    expect(registro.solicitudes).toEqual([
+      {
+        reporte: 'carritos-abandonados',
+        cuerpo: { formato: 'xlsx', filtros: { hasta: '2026-11-08' } },
+      },
+    ]);
   });
 
   it('un Operador ve «Sin permiso»', async () => {

@@ -1,19 +1,19 @@
 import { consultaPaginacionSchema, idEnRutaSchema } from '../../shared/http/index.js';
+import { registroOpenApi } from '../../shared/openapi/index.js';
 import { z } from '../../shared/openapi/zod.js';
+import { solicitarExportacionSchema as solicitarCompartido } from '@shopcart/shared';
 import { ESTADOS_EXPORTACION, FORMATOS, REPORTES_EXPORTABLES } from './exportaciones.types.js';
 
 export const paramsReporteSchema = z.object({ reporte: z.enum(REPORTES_EXPORTABLES) });
 export const paramsIdExportacionSchema = z.object({ id: idEnRutaSchema });
 export const listarExportacionesSchema = consultaPaginacionSchema;
 
-// Los filtros se validan con el esquema del propio reporte (el mismo del dashboard) en el servicio.
-export const solicitarExportacionSchema = z
-  .object({
-    formato: z.enum(FORMATOS),
-    filtros: z.record(z.string(), z.unknown()).default({}),
-  })
-  .strict()
-  .openapi('SolicitarExportacion');
+// M11-H03 (FE-03): el cuerpo vive en @shopcart/shared. Los filtros se validan con el esquema del propio reporte
+// (el mismo del dashboard) en el servicio.
+export const solicitarExportacionSchema = registroOpenApi.register(
+  'SolicitarExportacion',
+  solicitarCompartido,
+);
 
 export const exportacionSchema = z
   .object({

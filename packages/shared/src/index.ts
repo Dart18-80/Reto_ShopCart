@@ -100,6 +100,12 @@ export {
 } from './direcciones.js';
 export { actualizarMetodoEnvioSchema, type ActualizarMetodoEnvio } from './envios.js';
 export {
+  FORMATOS_EXPORTACION,
+  solicitarExportacionSchema,
+  type FormatoExportacion,
+  type SolicitarExportacion,
+} from './exportaciones.js';
+export {
   CANTIDAD_MAXIMA_MOVIMIENTO,
   consultaExistenciasSchema,
   ordenExistenciasSchema,
@@ -141,10 +147,12 @@ export {
   consultaCarritosSchema,
   consultaVentasSchema,
   ordenCarritosSchema,
+  REPORTES_DASHBOARD,
   type Agrupacion,
   type ConsultaCarritos,
   type ConsultaVentas,
   type OrdenCarritos,
+  type ReporteDashboard,
 } from './reportes.js';
 export { ROLES_DE_USUARIO, type RolDeUsuario } from './roles.js';
 export { telefonoSchema } from './telefono.js';
