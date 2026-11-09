@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { guardarRespuesta } from '../../../shared/api';
 import { cancelarSesion } from '../checkout.api';
 import { checkoutKeys } from '../checkout.keys';
 
@@ -10,8 +11,6 @@ export function useCancelarSesionPago() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: cancelarSesion,
-    onSuccess: () => {
-      queryClient.setQueryData(checkoutKeys.sesion(), null);
-    },
+    onSuccess: () => guardarRespuesta(queryClient, checkoutKeys.sesion(), null),
   });
 }

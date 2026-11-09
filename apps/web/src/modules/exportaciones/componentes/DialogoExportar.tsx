@@ -24,8 +24,7 @@ import { Form } from '../../../shared/ui/form';
 import { NOMBRE_DEL_REPORTE } from '../descripciones';
 import { useExportacion, useSolicitarExportacion } from '../hooks/useExportaciones';
 import { DescargarExportacion, TextoEstadoExportacion } from './EstadoExportacion';
-
-export const RUTA_MIS_EXPORTACIONES = '/backoffice/exportaciones';
+import { RUTAS } from '../../../shared/rutas';
 
 const NOMBRE_DEL_FORMATO: Record<FormatoExportacion, string> = { xlsx: 'Excel', pdf: 'PDF' };
 const OPCIONES_DE_FORMATO = FORMATOS_EXPORTACION.map((formato) => ({
@@ -46,7 +45,7 @@ function SeguimientoExportacion({ idExportacion }: { idExportacion: number }) {
           </div>
         )}
       </EstadoVista>
-      <Link to={RUTA_MIS_EXPORTACIONES} className="texto-pequeno text-primary underline">
+      <Link to={RUTAS.exportaciones} className="texto-pequeno text-primary underline">
         Ver mis exportaciones
       </Link>
     </div>

@@ -1,10 +1,26 @@
 import { matchRoutes } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import type { Rol } from '../shared/api';
+import { conId, RUTAS } from '../shared/rutas';
 import { ACCESO_DE_AREA, PAGINAS, RAIZ_DE_AREA } from './rutas';
 import { crearRutas } from './router';
 
 const ROLES: readonly Rol[] = ['Cliente', 'Operador', 'Administrador'];
+
+describe('las rutas compartidas (revisión de la Fase 2)', () => {
+  it('cada ruta de shared/rutas es una página o la raíz de un área: un enlace no puede apuntar a la nada', () => {
+    const existentes = new Set([...PAGINAS.map((p) => p.ruta), ...Object.values(RAIZ_DE_AREA)]);
+
+    for (const [nombre, ruta] of Object.entries(RUTAS)) {
+      expect(existentes.has(ruta), `${nombre}: ${ruta}`).toBe(true);
+    }
+  });
+
+  it('conId pone el número en lugar de :id', () => {
+    expect(conId(RUTAS.pedido, 7)).toBe('/pedidos/7');
+    expect(conId(RUTAS.productoAdmin, 31)).toBe('/backoffice/catalogo/productos/31');
+  });
+});
 
 describe('definición de rutas (una sola fuente para el guardián y los menús)', () => {
   it('cada entrada de menú apunta a una ruta del router con los mismos roles', () => {

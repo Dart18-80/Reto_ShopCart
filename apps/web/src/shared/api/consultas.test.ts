@@ -1,6 +1,12 @@
 import { QueryObserver } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
-import { crearQueryClient, debeReintentar, refrescar, REINTENTOS_MAXIMOS } from './consultas';
+import {
+  crearQueryClient,
+  debeReintentar,
+  guardarRespuesta,
+  refrescar,
+  REINTENTOS_MAXIMOS,
+} from './consultas';
 import { ErrorApi } from './ErrorApi';
 
 const errorConStatus = (status: number) =>
@@ -68,6 +74,32 @@ describe('refrescar (revisión de M10)', () => {
     await refresco;
 
     expect(queryClient.getQueryData(['categorias'])).toEqual(['Camisas', 'Gorras']);
+    dejarDeObservar();
+  });
+});
+
+describe('guardarRespuesta (revisión de la Fase 2)', () => {
+  it('la respuesta de la mutación no la pisa una lectura que empezó antes', async () => {
+    const queryClient = crearQueryClient();
+    const respuestas: ((datos: string) => void)[] = [];
+    const vista = new QueryObserver(queryClient, {
+      queryKey: ['carrito'],
+      queryFn: () =>
+        new Promise<string>((resolver) => {
+          respuestas.push(resolver);
+        }),
+    });
+    const dejarDeObservar = vista.subscribe(() => undefined);
+    await vi.waitFor(() => {
+      expect(respuestas).toHaveLength(1);
+    });
+
+    await guardarRespuesta(queryClient, ['carrito'], 'carrito con la línea nueva');
+    // La lectura vieja termina después: ya no cuenta.
+    respuestas[0]?.('carrito viejo');
+    await new Promise((resolver) => setTimeout(resolver, 20));
+
+    expect(queryClient.getQueryData(['carrito'])).toBe('carrito con la línea nueva');
     dejarDeObservar();
   });
 });

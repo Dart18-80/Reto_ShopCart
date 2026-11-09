@@ -3,10 +3,10 @@ import { Monto } from '../../../shared/componentes/Monto';
 import { useSesion } from '../../../shared/hooks/useSesion';
 import { Button } from '../../../shared/ui/button';
 import type { Carrito } from '../carrito.api';
+import { RUTAS } from '../../../shared/rutas';
 
-const RUTA_CHECKOUT = '/checkout';
 // Un invitado ingresa primero y vuelve al checkout; al ingresar, su carrito se fusiona con el del Cliente (N-05).
-const RUTA_INGRESO_AL_CHECKOUT = `/ingresar?volver=${encodeURIComponent(RUTA_CHECKOUT)}`;
+const RUTA_INGRESO_AL_CHECKOUT = `${RUTAS.ingresar}?volver=${encodeURIComponent(RUTAS.checkout)}`;
 
 /**
  * M3-H04 (Figma 38:627; en móvil, la barra fija de 38:807): «Continuar al pago». Con `puedePagar: false` el
@@ -28,7 +28,7 @@ export function ContinuarAlPago({ resumen }: { resumen: Carrito['resumen'] }) {
         disabled={!resumen.puedePagar}
         aria-describedby={resumen.puedePagar ? undefined : idMotivo}
         onClick={() => {
-          void navigate(tieneRol('Cliente') ? RUTA_CHECKOUT : RUTA_INGRESO_AL_CHECKOUT);
+          void navigate(tieneRol('Cliente') ? RUTAS.checkout : RUTA_INGRESO_AL_CHECKOUT);
         }}
         className="control-boton h-auto w-full px-6 py-3"
       >

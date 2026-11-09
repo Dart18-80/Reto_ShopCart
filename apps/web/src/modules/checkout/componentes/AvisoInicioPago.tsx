@@ -4,8 +4,7 @@ import { Aviso } from '../../../shared/componentes/Aviso';
 import { AvisoFormulario } from '../../../shared/componentes/AvisoFormulario';
 import { Button } from '../../../shared/ui/button';
 import { lineasSinExistencia } from '../existenciaInsuficiente';
-
-const RUTA_CARRITO = '/carrito';
+import { RUTAS } from '../../../shared/rutas';
 
 /**
  * M4-H02: por qué no se pudo iniciar el pago. Sin existencia suficiente (N-06, todo o nada) lista cada línea con
@@ -26,7 +25,7 @@ export function AvisoInicioPago({ error }: { error: ErrorApi | null }) {
         ))}
       </ul>
       <Button asChild variant="outline" size="sm" className="mt-3">
-        <Link to={RUTA_CARRITO}>Volver al carrito</Link>
+        <Link to={RUTAS.carrito}>Volver al carrito</Link>
       </Button>
     </Aviso>
   );

@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { guardarRespuesta } from '../../../shared/api';
 import { iniciarSesion } from '../checkout.api';
 import { checkoutKeys } from '../checkout.keys';
 
@@ -7,8 +8,6 @@ export function useIniciarSesionPago() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: iniciarSesion,
-    onSuccess: (sesion) => {
-      queryClient.setQueryData(checkoutKeys.sesion(), sesion);
-    },
+    onSuccess: (sesion) => guardarRespuesta(queryClient, checkoutKeys.sesion(), sesion),
   });
 }

@@ -9,8 +9,9 @@ import { useTituloPagina } from '../../../shared/hooks/useTituloPagina';
 import { FiltrosPedidosGestion } from '../componentes/FiltrosPedidosGestion';
 import { usePedidosGestion } from '../hooks/usePedidosGestion';
 import type { ResumenGestion } from '../pedidos.api';
+import { conId, RUTAS } from '../../../shared/rutas';
 
-const rutaPedidoGestion = (idPedido: number) => `/backoffice/pedidos/${String(idPedido)}`;
+const rutaPedidoGestion = (idPedido: number) => conId(RUTAS.pedidoGestion, idPedido);
 
 const columnas: ColumnaTabla<ResumenGestion, OrdenPedidosGestion['orden']>[] = [
   {

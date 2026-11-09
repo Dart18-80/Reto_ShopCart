@@ -16,11 +16,10 @@ import { AvisoPago } from './AvisoPago';
 import { AvisoReserva } from './AvisoReserva';
 import { FormularioPago } from './FormularioPago';
 import { ResumenPedido } from './ResumenPedido';
+import { conId, RUTAS } from '../../../shared/rutas';
 
-const RUTA_CHECKOUT = '/checkout';
-const RUTA_CARRITO = '/carrito';
 const SIN_COSTO = '0.00';
-const rutaDelPedido = (idPedido: number) => `/pedidos/${String(idPedido)}?nuevo=1`;
+const rutaDelPedido = (idPedido: number) => `${conId(RUTAS.pedido, idPedido)}?nuevo=1`;
 
 /** El envío congelado en la sesión: «Gratis» si su costo es cero (N-04), comparado como texto (FE-10). */
 function EnvioDeLaSesion({ costo }: { costo: string }) {
@@ -38,7 +37,7 @@ export function PasoPago({ sesion }: { sesion: SesionPago }) {
   const restante = useCuentaRegresiva(sesion.expiraEn);
 
   const volverAlCheckout = () => {
-    cancelar.mutate(undefined, { onSuccess: () => void navigate(RUTA_CHECKOUT) });
+    cancelar.mutate(undefined, { onSuccess: () => void navigate(RUTAS.checkout) });
   };
 
   const pagar = usePagar({
@@ -52,7 +51,7 @@ export function PasoPago({ sesion }: { sesion: SesionPago }) {
     alPerderSesion: (desenlace, mensaje) => {
       toast.error(mensaje);
       if (desenlace.tipo === 'volverAlCheckout') volverAlCheckout();
-      else void navigate(RUTA_CARRITO);
+      else void navigate(RUTAS.carrito);
     },
   });
   const formulario = useFormularioApi({

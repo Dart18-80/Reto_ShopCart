@@ -3,6 +3,7 @@ import { useTituloPagina } from '../../../shared/hooks/useTituloPagina';
 import { FormularioIngresar } from '../componentes/FormularioIngresar';
 import { TarjetaCuenta } from '../componentes/TarjetaCuenta';
 import { useBusquedaConVolver, useDestinoAlIngresar } from '../hooks/useDestinoAlIngresar';
+import { RUTAS } from '../../../shared/rutas';
 
 export function IngresarPagina() {
   useTituloPagina('Ingresar');
@@ -18,7 +19,7 @@ export function IngresarPagina() {
       pie={
         <>
           ¿No tienes cuenta?
-          <Link to={`/registro${conVolver}`} className="texto-pequeno-fuerte text-primary">
+          <Link to={`${RUTAS.registro}${conVolver}`} className="texto-pequeno-fuerte text-primary">
             Crea una
           </Link>
         </>

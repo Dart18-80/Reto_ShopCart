@@ -1,6 +1,6 @@
 import type { ReporteDashboard, SolicitarExportacion } from '@shopcart/shared';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { refrescar } from '../../../shared/api';
+import { guardarRespuesta, refrescar } from '../../../shared/api';
 import { guardarArchivo } from '../archivos';
 import {
   descargarExportacion,
@@ -42,7 +42,8 @@ export function useSolicitarExportacion(reporte: ReporteDashboard) {
   return useMutation({
     mutationFn: (solicitud: SolicitarExportacion) => solicitarExportacion(reporte, solicitud),
     onSuccess: async (seguimiento) => {
-      queryClient.setQueryData(
+      await guardarRespuesta(
+        queryClient,
         exportacionesKeys.detalle(seguimiento.exportacion.idExportacion),
         seguimiento,
       );

@@ -1,9 +1,10 @@
 import type { Rol } from '../../shared/api';
+import { RUTAS } from '../../shared/rutas';
 
 const DESTINO_DEL_CLIENTE = '/';
-const DESTINO_DEL_PERSONAL = '/backoffice';
+const DESTINO_DEL_PERSONAL = RUTAS.backoffice;
 // Volver a una de estas con sesión ya abierta solo devolvería al mismo formulario.
-const RUTAS_DE_ACCESO = ['/ingresar', '/registro'];
+const RUTAS_DE_ACCESO: readonly string[] = [RUTAS.ingresar, RUTAS.registro];
 // Una ruta interna: empieza con una sola barra y sigue con algo que no es otra barra ni una barra invertida
 // (`//sitio` y `/\sitio` son URLs de otro sitio para el navegador). Sin espacios ni caracteres de control.
 const PATRON_RUTA_INTERNA = /^\/(?![/\\])[^\s\\]*$/;

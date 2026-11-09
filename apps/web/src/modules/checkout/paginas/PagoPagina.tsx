@@ -4,8 +4,8 @@ import { useTituloPagina } from '../../../shared/hooks/useTituloPagina';
 import { PasoPago } from '../componentes/PasoPago';
 import { PasosDelCheckout } from '../componentes/PasosDelCheckout';
 import { useSesionPago } from '../hooks/useSesionPago';
+import { RUTAS } from '../../../shared/rutas';
 
-const RUTA_CHECKOUT = '/checkout';
 // La sesión es una sola o null (404): nunca es una lista vacía.
 const SIN_USO = { titulo: '' };
 
@@ -20,7 +20,7 @@ export function PagoPagina() {
       <PasosDelCheckout actual={2} />
       <EstadoVista consulta={sesion} vacio={SIN_USO}>
         {(activa) =>
-          activa ? <PasoPago sesion={activa} /> : <Navigate to={RUTA_CHECKOUT} replace />
+          activa ? <PasoPago sesion={activa} /> : <Navigate to={RUTAS.checkout} replace />
         }
       </EstadoVista>
     </div>

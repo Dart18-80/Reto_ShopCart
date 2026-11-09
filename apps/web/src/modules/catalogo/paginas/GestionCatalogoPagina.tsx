@@ -10,6 +10,7 @@ import { DialogoNuevoProducto } from '../componentes/DialogoNuevoProducto';
 import { FiltrosProductosAdmin } from '../componentes/FiltrosProductosAdmin';
 import { useCategoriasAdmin } from '../hooks/useCategoriasAdmin';
 import { useProductosAdmin } from '../hooks/useProductosAdmin';
+import { conId, RUTAS } from '../../../shared/rutas';
 
 const columnas: ColumnaTabla<ProductoResumenAdmin, OrdenProductosAdmin['orden']>[] = [
   {
@@ -51,7 +52,7 @@ const columnas: ColumnaTabla<ProductoResumenAdmin, OrdenProductosAdmin['orden']>
     alineacion: 'fin',
     celda: (p) => (
       <Link
-        to={`/backoffice/catalogo/productos/${String(p.idProducto)}`}
+        to={conId(RUTAS.productoAdmin, p.idProducto)}
         aria-label={`Editar ${p.nombre}`}
         className="texto-pequeno-fuerte text-primary hover:underline"
       >
@@ -83,7 +84,7 @@ export function GestionCatalogoPagina() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline">
-            <Link to="/backoffice/catalogo/categorias">Categorías y atributos</Link>
+            <Link to={RUTAS.categorias}>Categorías y atributos</Link>
           </Button>
           <DialogoNuevoProducto categorias={lista} />
         </div>

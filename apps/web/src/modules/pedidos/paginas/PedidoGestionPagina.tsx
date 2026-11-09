@@ -22,11 +22,12 @@ import {
 } from '../hooks/useAccionesGestion';
 import { usePedidoGestion } from '../hooks/usePedidosGestion';
 import type { PedidoGestion } from '../pedidos.api';
+import { RUTAS } from '../../../shared/rutas';
 
 const STATUS_NO_ENCONTRADO = 404;
 const CONFLICTO = 'CONFLICTO_CONCURRENCIA';
 const NO_CANCELABLE = 'NO_CANCELABLE';
-const RUTA_LISTA = '/backoffice/pedidos';
+const RUTA_LISTA = RUTAS.gestionPedidos;
 // El pedido existe si la consulta respondió: nunca es «vacío».
 const NUNCA_VACIO = () => false;
 const SIN_USO = { titulo: '' };

@@ -3,6 +3,7 @@ import { useTituloPagina } from '../../../shared/hooks/useTituloPagina';
 import { FormularioRegistro } from '../componentes/FormularioRegistro';
 import { TarjetaCuenta } from '../componentes/TarjetaCuenta';
 import { useBusquedaConVolver, useDestinoAlIngresar } from '../hooks/useDestinoAlIngresar';
+import { RUTAS } from '../../../shared/rutas';
 
 /** El registro no tiene frame propio: usa la tarjeta de Ingresar con sus campos (M1). */
 export function RegistroPagina() {
@@ -18,7 +19,7 @@ export function RegistroPagina() {
       pie={
         <>
           ¿Ya tienes cuenta?
-          <Link to={`/ingresar${conVolver}`} className="texto-pequeno-fuerte text-primary">
+          <Link to={`${RUTAS.ingresar}${conVolver}`} className="texto-pequeno-fuerte text-primary">
             Ingresa
           </Link>
         </>

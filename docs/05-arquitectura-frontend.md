@@ -75,7 +75,7 @@ packages/
 
 **React Router 8 en modo *data*** (`createBrowserRouter`; `RouterProvider` desde `react-router/dom`).
 
-- **Una sola definición de rutas con sus roles**, de la que salen el guardián y los menús. Es imposible que el menú muestre un enlace que el guardián bloquea, o al revés.
+- **Una sola definición de rutas con sus roles**, de la que salen el guardián y los menús. Es imposible que el menú muestre un enlace que el guardián bloquea, o al revés. Las rutas mismas viven en `shared/rutas.ts` (`RUTAS` y `conId`): `app/rutas.ts` define las páginas con ellas y los módulos enlazan con ellas, así un cambio de ruta no deja enlaces rotos; una prueba verifica que cada una sea una página o la raíz de un área (revisión de la Fase 2).
 - **Cada ruta declara quién entra:** los roles con sesión y si un invitado también, copiados del `autorizar(...)` de su ruta del backend. El carrito admite invitados y Clientes, no al personal (`autorizarSiHaySesion('Cliente')`).
 - **Tres áreas con carga diferida y su propio `errorElement`:**
 
@@ -143,7 +143,7 @@ Contrato del backend (A-07, `01-arquitectura.md` §5.3): access JWT de 15 minuto
 2. **Sin actualizaciones optimistas** en nada que tenga reglas de negocio (carrito, cupones, checkout, estados de pedido, inventario). El SP es la autoridad (A-02): se espera la respuesta y se muestra el estado de carga.
 3. **Sin reintentos automáticos en 4xx**, que son errores de negocio; solo en errores de red y 5xx. **Las mutaciones nunca se reintentan solas**: el pago tiene su propia idempotencia (RF-06) y el resto no la necesita repetida.
 4. **`networkMode: 'always'` en consultas y mutaciones** (FE-02 ✏️): sin red, la petición sale igual y falla con el `ErrorApi` de red, que la vista muestra con «Sin conexión. Revisa tu internet e intenta de nuevo.» y *Reintentar*. Con el modo por defecto de TanStack (`online`), la consulta o la mutación se pausarían en silencio: un esqueleto o un botón deshabilitado sin fin, y una mutación pausada que se envía sola al volver la red, quizá cuando el usuario ya se fue de la pantalla.
-5. **Después de una mutación se refresca con `refrescar` (`shared/api`), nunca con `invalidateQueries` directo** (FE-02 ✏️, revisión de M10): primero cancela la lectura en vuelo y después invalida. Las peticiones no se abortan, así que TanStack reutilizaría una lectura que empezó antes de que el backend confirmara el cambio, y la vista quedaría con los datos viejos (se vio en la E2E: una categoría recién creada no aparecía en la lista).
+5. **Después de una mutación se refresca con `refrescar` (`shared/api`), nunca con `invalidateQueries` directo** (FE-02 ✏️, revisión de M10): primero cancela la lectura en vuelo y después invalida. Las peticiones no se abortan, así que TanStack reutilizaría una lectura que empezó antes de que el backend confirmara el cambio, y la vista quedaría con los datos viejos (se vio en la E2E: una categoría recién creada no aparecía en la lista). Cuando la respuesta trae el dato completo (el carrito, la sesión de pago, el pedido cancelado), se guarda con `guardarRespuesta`, que también cancela antes la lectura en vuelo de esa llave; nunca `setQueryData` directo (revisión de la Fase 2). Las mutaciones del carrito van en fila (`scope`): dos filas que cambian a la vez no se pisan las respuestas.
 
 ---
 
@@ -193,7 +193,7 @@ Convención de la API (`01-arquitectura.md` §5.1): `?pagina=1&tamano=20&orden=f
 - **El frontend nunca calcula un monto que se muestra.**
 - `formatearMonto()` usa `Intl.NumberFormat('es-GT', { style: 'currency', currency: 'GTQ' })`, que acepta el texto y lo trata como decimal exacto: el monto nunca pasa por `number`.
 - Los campos de monto son `type="text"` con `inputMode="decimal"`, validados con `montoSchema` de `shared`, y viajan como texto. Nunca `type="number"` (cambia con la rueda del ratón, acepta `1e5`, depende del idioma del navegador).
-- **Única excepción:** la geometría de las gráficas (§11), que convierte a número para dibujar y nunca muestra ese número.
+- **Única excepción:** la geometría (las gráficas de §11 y la barra de avance del envío gratis en el carrito), que convierte a número para dibujar y nunca muestra ese número.
 
 **Fechas** (UTC en la base; reportes agrupados por día de Guatemala, A-12):
 - **Toda fecha con hora se muestra en `America/Guatemala`, fija**, no en la zona del navegador: la hora de un pedido y "ventas de hoy" coinciden con la base desde cualquier computadora.
@@ -263,7 +263,7 @@ Estado: 🟡 Propuesta · 🔍 En análisis · ✅ Confirmada · ✏️ Modifica
 | ID | Decisión | Alternativas descartadas y por qué | Estado |
 |---|---|---|---|
 | FE-01 | Tailwind CSS + shadcn/ui; componentes reutilizables propios en `shared/componentes` (§12) | MUI: aspecto genérico salvo mucho trabajo de tema, CSS-in-JS pesado, se defiende la configuración y no el código. Mantine: su manejo de formularios choca con FE-03. Ant Design: estética de backoffice poco natural para la tienda | ✅ |
-| FE-02 | TanStack Query como dueño del estado del servidor; fábrica de llaves por módulo, sin optimismo en nada con reglas de negocio, sin reintentos en 4xx ni en mutaciones, `networkMode: 'always'` para que sin red se vea el error y no una pausa silenciosa, y `refrescar` tras cada mutación (§6) | RTK Query: obliga a Redux. SWR: mutaciones débiles. `fetch` + `useEffect`: carreras y estados repetidos en cada vista | ✏️ |
+| FE-02 | TanStack Query como dueño del estado del servidor; fábrica de llaves por módulo, sin optimismo en nada con reglas de negocio, sin reintentos en 4xx ni en mutaciones, `networkMode: 'always'` para que sin red se vea el error y no una pausa silenciosa, `refrescar` o `guardarRespuesta` tras cada mutación (§6) | RTK Query: obliga a Redux. SWR: mutaciones débiles. `fetch` + `useEffect`: carreras y estados repetidos en cada vista | ✏️ |
 | FE-03 | React Hook Form + `zodResolver`; esquemas de entrada movidos a `packages/shared` módulo por módulo, con el OpenAPI idéntico como criterio; `useFormularioApi` para los errores del backend (§7) | TanStack Form: joven. Acciones de React 19: pensadas para Server Actions. Esquemas propios del frontend: reglas duplicadas que se desalinean. Generarlos del OpenAPI: se pierden los `refine` y los mensajes | ✅ |
 | FE-04 | React Router 8 en modo *data*; se fijó 7 al analizar y para un proyecto nuevo se usa la versión mayor vigente. Una definición de rutas con roles para el guardián y los menús; página "Sin permiso"; tres áreas con carga diferida y `errorElement`; `loader` sin datos; `useParametrosUrl` (§4) | TanStack Router: su ventaja (búsqueda tipada) se cubre con un hook propio; más magia que explicar | ✏️ |
 | FE-05 | Token en memoria; single-flight por pestaña; Web Locks + BroadcastChannel entre pestañas; rehidratación antes de montar React; renovación reactiva; `queryClient.clear()` al cambiar de sesión; proxy de Vite (§5) | Ventana de gracia en el backend: debilita una regla de seguridad ya probada. Aceptar el riesgo: sesiones que se cierran solas, visible en la demo | ✅ |

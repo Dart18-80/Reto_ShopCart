@@ -2,7 +2,7 @@ import type { CancelarPedido } from '@shopcart/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { cancelarPedido } from '../pedidos.api';
 import { pedidosKeys } from '../pedidos.keys';
-import { refrescar } from '../../../shared/api';
+import { guardarRespuesta, refrescar } from '../../../shared/api';
 
 /**
  * M5-H02: sin optimismo, el detalle queda con el pedido que responde el backend y la lista se vuelve a pedir. Un
@@ -12,8 +12,8 @@ export function useCancelarPedido(idPedido: number) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (cuerpo: CancelarPedido) => cancelarPedido(idPedido, cuerpo),
-    onSuccess: ({ pedido }) => {
-      queryClient.setQueryData(pedidosKeys.detalle(idPedido), pedido);
+    onSuccess: async ({ pedido }) => {
+      await guardarRespuesta(queryClient, pedidosKeys.detalle(idPedido), pedido);
       void refrescar(queryClient, { queryKey: pedidosKeys.listas() });
     },
     onError: (error) => {

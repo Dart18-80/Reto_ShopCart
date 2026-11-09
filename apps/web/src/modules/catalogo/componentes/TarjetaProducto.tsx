@@ -4,6 +4,7 @@ import { MuestraColor } from '../../../shared/componentes/prenda/MuestraColor';
 import { Prenda } from '../../../shared/componentes/prenda/Prenda';
 import type { ProductoBusqueda } from '../catalogo.api';
 import { EtiquetaExistencia } from './EtiquetaExistencia';
+import { conId, RUTAS } from '../../../shared/rutas';
 
 /**
  * Figma: Tarjeta de producto (23:511; Normal en escritorio, Compacta en la cuadrícula móvil). La prenda de la
@@ -14,7 +15,7 @@ export function TarjetaProducto({ producto }: { producto: ProductoBusqueda }) {
   const [primerColor] = producto.colores;
   return (
     <Link
-      to={`/productos/${String(producto.idProducto)}`}
+      to={conId(RUTAS.producto, producto.idProducto)}
       className="bg-card hover:border-primary focus-visible:ring-ring flex w-full flex-col overflow-hidden rounded-lg border transition-colors focus-visible:ring-2 focus-visible:outline-none"
     >
       <div className="bg-muted flex aspect-square items-center justify-center">

@@ -1,7 +1,7 @@
 import { crearConexion } from './conexion';
 import { crearBloqueoDelNavegador, crearCanalDelNavegador } from './sesion/navegador';
 
-export { crearQueryClient, refrescar } from './consultas';
+export { crearQueryClient, guardarRespuesta, refrescar } from './consultas';
 export { ErrorApi } from './ErrorApi';
 export type { Cuerpo, Respuesta } from './tipos';
 export type {

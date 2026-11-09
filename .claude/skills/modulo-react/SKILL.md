@@ -91,6 +91,7 @@ export function useCancelarPedido(id: number) {
     mutationFn: (cuerpo: CancelarPedido) => cancelarPedido(id, cuerpo),
     // 05 §6 regla 5: refrescar cancela la lectura en vuelo antes de invalidar.
     onSuccess: () => refrescar(queryClient, { queryKey: pedidosKeys.todo }),
+    // Si la respuesta trae el dato completo: guardarRespuesta(queryClient, llave, respuesta), nunca setQueryData.
   });
 }
 ```
@@ -293,7 +294,8 @@ Cada criterio de aceptación se convierte en una prueba **antes** de escribir el
 - [ ] Toda consulta pasa por `EstadoVista` o `TablaServidor`: carga, vacío y error visibles.
 - [ ] Los formularios usan `useFormularioApi`; el botón de enviar se deshabilita mientras envía.
 - [ ] Las rutas nuevas están en la definición con sus roles; los menús salen de ahí.
-- [ ] Ningún monto se convierte a `number` (salvo la geometría de una gráfica) ni se calcula; ninguna fecha sin hora pasa por `new Date()`.
+- [ ] Ningún monto se convierte a `number` (salvo la geometría: una gráfica o una barra de avance) ni se calcula; ninguna fecha sin hora pasa por `new Date()`.
+- [ ] Los enlaces usan `RUTAS` y `conId` de `shared/rutas.ts`, nunca una ruta escrita a mano.
 - [ ] El token no aparece fuera de `shared/api/sesion`.
 - [ ] La pantalla se revisó en 375 px y en 1280 px, en modo claro y oscuro.
 - [ ] Hay pruebas para cada criterio de aceptación; el E2E del módulo pasa contra el backend real.

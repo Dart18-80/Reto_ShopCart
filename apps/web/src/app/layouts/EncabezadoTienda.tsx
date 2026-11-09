@@ -13,17 +13,11 @@ import {
 } from '../../shared/ui/sheet';
 import { permisoPara } from '../acceso';
 import { rutaDeIngreso } from '../Guardian';
-import {
-  ACCESO_DE_AREA,
-  menuDe,
-  puedeAbrir,
-  RAIZ_DE_AREA,
-  RUTA_CARRITO,
-  type PaginaDeMenu,
-} from '../rutas';
+import { ACCESO_DE_AREA, menuDe, puedeAbrir, RAIZ_DE_AREA, type PaginaDeMenu } from '../rutas';
 import { SelectorTema } from '../tema/SelectorTema';
 import { Buscador } from './Buscador';
 import { NavegacionArea } from './NavegacionArea';
+import { RUTAS } from '../../shared/rutas';
 
 const NOMBRE_MENU = 'Tienda';
 const ACCION = 'texto-pequeno-fuerte text-foreground flex items-center gap-2';
@@ -118,8 +112,8 @@ export function EncabezadoTienda() {
             </Link>
           )}
           <EnlaceCuenta />
-          {puedeAbrir(RUTA_CARRITO, estado) && (
-            <Link to={RUTA_CARRITO} aria-label="Carrito" className={ACCION}>
+          {puedeAbrir(RUTAS.carrito, estado) && (
+            <Link to={RUTAS.carrito} aria-label="Carrito" className={ACCION}>
               <ShoppingBag aria-hidden className="size-5" />
               <ContadorCarrito />
             </Link>

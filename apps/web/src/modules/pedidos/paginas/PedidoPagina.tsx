@@ -18,6 +18,7 @@ import { SeguimientoPedido } from '../componentes/SeguimientoPedido';
 import type { Pedido } from '../pedidos.api';
 import { useCancelarPedido } from '../hooks/useCancelarPedido';
 import { usePedido } from '../hooks/usePedido';
+import { RUTAS } from '../../../shared/rutas';
 
 const STATUS_NO_ENCONTRADO = 404;
 // M4-H03: el pago lleva aquí con ?nuevo=1.
@@ -40,7 +41,7 @@ function PedidoNoEncontrado() {
       titulo="No encontramos este pedido"
       acciones={
         <Button asChild>
-          <Link to="/pedidos">Ver mis pedidos</Link>
+          <Link to={RUTAS.misPedidos}>Ver mis pedidos</Link>
         </Button>
       }
     >
@@ -61,7 +62,7 @@ function FichaPedido({ pedido, nuevo, cancelar }: PropsFichaPedido) {
       {nuevo && !cancelar.data && <Aviso tipo="exito">{AGRADECIMIENTO[pedido.estadoPago]}</Aviso>}
       {cancelar.data && <AvisoCancelacion cancelacion={cancelar.data} />}
       <nav aria-label="Ruta" className="texto-pequeno text-muted-foreground">
-        <Link to="/pedidos" className="hover:underline">
+        <Link to={RUTAS.misPedidos} className="hover:underline">
           Mis pedidos
         </Link>
         {` / Pedido ${pedido.numeroPedido}`}

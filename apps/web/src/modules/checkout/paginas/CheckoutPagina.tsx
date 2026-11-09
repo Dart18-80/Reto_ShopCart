@@ -1,9 +1,10 @@
 import { Navigate } from 'react-router';
 import { EstadoVista } from '../../../shared/componentes/EstadoVista';
 import { useTituloPagina } from '../../../shared/hooks/useTituloPagina';
-import { PasoDireccionYEnvio, RUTA_PAGO } from '../componentes/PasoDireccionYEnvio';
+import { PasoDireccionYEnvio } from '../componentes/PasoDireccionYEnvio';
 import { PasosDelCheckout } from '../componentes/PasosDelCheckout';
 import { useSesionPago } from '../hooks/useSesionPago';
+import { RUTAS } from '../../../shared/rutas';
 
 // La sesión es una sola o null (404): nunca es una lista vacía.
 const SIN_USO = { titulo: '' };
@@ -18,7 +19,7 @@ export function CheckoutPagina() {
       <h1 className="display-titulo-1">Pagar</h1>
       <PasosDelCheckout actual={1} />
       <EstadoVista consulta={sesion} vacio={SIN_USO}>
-        {(activa) => (activa ? <Navigate to={RUTA_PAGO} replace /> : <PasoDireccionYEnvio />)}
+        {(activa) => (activa ? <Navigate to={RUTAS.pago} replace /> : <PasoDireccionYEnvio />)}
       </EstadoVista>
     </div>
   );

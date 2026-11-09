@@ -16,6 +16,7 @@ import {
 import { Form } from '../../../shared/ui/form';
 import type { CategoriaAdmin } from '../catalogo.api';
 import { useCrearProducto } from '../hooks/useProductosAdmin';
+import { conId, RUTAS } from '../../../shared/rutas';
 
 /**
  * M6-H03: un producto nuevo con nombre, categoría y descripción (el esquema de `@shopcart/shared`); al crearse va
@@ -29,7 +30,7 @@ export function DialogoNuevoProducto({ categorias }: { categorias: CategoriaAdmi
     mutacion: useCrearProducto(),
     valoresIniciales: { nombre: '', activo: true },
     alTerminar: (producto) => {
-      void navigate(`/backoffice/catalogo/productos/${String(producto.idProducto)}`);
+      void navigate(conId(RUTAS.productoAdmin, producto.idProducto));
     },
   });
   const opciones = categorias

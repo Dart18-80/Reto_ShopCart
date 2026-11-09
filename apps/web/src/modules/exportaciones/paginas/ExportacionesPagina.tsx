@@ -8,6 +8,7 @@ import { DescargarExportacion, TextoEstadoExportacion } from '../componentes/Est
 import { describirFiltros, NOMBRE_DEL_REPORTE } from '../descripciones';
 import type { Exportacion } from '../exportaciones.api';
 import { useExportaciones } from '../hooks/useExportaciones';
+import { RUTAS } from '../../../shared/rutas';
 
 const NOMBRE_DEL_FORMATO: Record<Exportacion['formato'], string> = { xlsx: 'Excel', pdf: 'PDF' };
 
@@ -63,7 +64,7 @@ export function ExportacionesPagina() {
         <h1 className="display-titulo-1">Mis exportaciones</h1>
         <p className="texto-base text-muted-foreground">
           Los reportes que pediste en Excel o PDF. Se piden desde el{' '}
-          <Link to="/backoffice/dashboard" className="text-primary underline">
+          <Link to={RUTAS.dashboard} className="text-primary underline">
             dashboard
           </Link>
           .

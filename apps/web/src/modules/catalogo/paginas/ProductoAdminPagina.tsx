@@ -15,9 +15,10 @@ import { VariantesProducto } from '../componentes/VariantesProducto';
 import { useAtributos } from '../hooks/useAtributos';
 import { useCategoriasAdmin } from '../hooks/useCategoriasAdmin';
 import { useCambiarProducto, useProductoAdmin } from '../hooks/useProductoAdmin';
+import { RUTAS } from '../../../shared/rutas';
 
 const STATUS_NO_ENCONTRADO = 404;
-const RUTA_LISTA = '/backoffice/catalogo';
+const RUTA_LISTA = RUTAS.gestionCatalogo;
 const NUNCA_VACIO = () => false;
 const SIN_USO = { titulo: '' };
 

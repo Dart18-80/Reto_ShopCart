@@ -10,6 +10,7 @@ import {
   SOLO_CLIENTE,
   type Acceso,
 } from './acceso';
+import { RUTAS } from '../shared/rutas';
 
 export type Area = 'tienda' | 'cuenta' | 'backoffice';
 
@@ -36,12 +37,10 @@ export const ACCESO_DE_AREA: Record<Area, Acceso> = {
 };
 
 export const RAIZ_DE_AREA: Record<Area, string> = {
-  tienda: '/',
-  cuenta: '/cuenta',
-  backoffice: '/backoffice',
+  tienda: RUTAS.catalogo,
+  cuenta: RUTAS.cuenta,
+  backoffice: RUTAS.backoffice,
 };
-
-export const RUTA_CARRITO = '/carrito';
 
 /** Carga diferida de una página exportada con nombre: el paquete de cada página se descarga al visitarla. */
 const diferida = <M>(cargar: () => Promise<M>, elegir: (modulo: M) => ComponentType) =>
@@ -53,7 +52,7 @@ const diferida = <M>(cargar: () => Promise<M>, elegir: (modulo: M) => ComponentT
  */
 export const PAGINAS: readonly DefinicionPagina[] = [
   {
-    ruta: '/',
+    ruta: RUTAS.catalogo,
     area: 'tienda',
     acceso: PUBLICO,
     menu: { etiqueta: 'Catálogo' },
@@ -63,7 +62,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ),
   },
   {
-    ruta: '/productos/:id',
+    ruta: RUTAS.producto,
     area: 'tienda',
     acceso: PUBLICO,
     pagina: diferida(
@@ -72,7 +71,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ),
   },
   {
-    ruta: RUTA_CARRITO,
+    ruta: RUTAS.carrito,
     area: 'tienda',
     acceso: INVITADO_O_CLIENTE,
     pagina: diferida(
@@ -81,7 +80,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ),
   },
   {
-    ruta: '/checkout',
+    ruta: RUTAS.checkout,
     area: 'tienda',
     acceso: SOLO_CLIENTE,
     pagina: diferida(
@@ -90,7 +89,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ),
   },
   {
-    ruta: '/checkout/pago',
+    ruta: RUTAS.pago,
     area: 'tienda',
     acceso: SOLO_CLIENTE,
     pagina: diferida(
@@ -99,7 +98,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ),
   },
   {
-    ruta: '/pedidos',
+    ruta: RUTAS.misPedidos,
     area: 'tienda',
     acceso: SOLO_CLIENTE,
     menu: { etiqueta: 'Mis pedidos' },
@@ -109,7 +108,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ),
   },
   {
-    ruta: '/pedidos/:id',
+    ruta: RUTAS.pedido,
     area: 'tienda',
     acceso: SOLO_CLIENTE,
     pagina: diferida(
@@ -118,7 +117,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ),
   },
   {
-    ruta: '/ingresar',
+    ruta: RUTAS.ingresar,
     area: 'tienda',
     acceso: PUBLICO,
     pagina: diferida(
@@ -127,7 +126,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ),
   },
   {
-    ruta: '/registro',
+    ruta: RUTAS.registro,
     area: 'tienda',
     acceso: PUBLICO,
     pagina: diferida(
@@ -136,7 +135,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ),
   },
   {
-    ruta: '/cuenta/perfil',
+    ruta: RUTAS.perfil,
     area: 'cuenta',
     acceso: CON_SESION,
     menu: { etiqueta: 'Perfil' },
@@ -146,7 +145,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ),
   },
   {
-    ruta: '/cuenta/direcciones',
+    ruta: RUTAS.direcciones,
     area: 'cuenta',
     acceso: SOLO_CLIENTE,
     menu: { etiqueta: 'Direcciones' },
@@ -156,7 +155,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ),
   },
   {
-    ruta: '/backoffice/dashboard',
+    ruta: RUTAS.dashboard,
     area: 'backoffice',
     acceso: SOLO_ADMINISTRADOR,
     menu: { etiqueta: 'Dashboard', grupo: 'Ventas' },
@@ -166,7 +165,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ),
   },
   {
-    ruta: '/backoffice/pedidos',
+    ruta: RUTAS.gestionPedidos,
     area: 'backoffice',
     acceso: PERSONAL,
     menu: { etiqueta: 'Pedidos', grupo: 'Ventas' },
@@ -176,7 +175,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ),
   },
   {
-    ruta: '/backoffice/pedidos/:id',
+    ruta: RUTAS.pedidoGestion,
     area: 'backoffice',
     acceso: PERSONAL,
     pagina: diferida(
@@ -185,7 +184,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ),
   },
   {
-    ruta: '/backoffice/pagos-en-revision',
+    ruta: RUTAS.pagosEnRevision,
     area: 'backoffice',
     acceso: SOLO_ADMINISTRADOR,
     menu: { etiqueta: 'Pagos en revisión', grupo: 'Ventas' },
@@ -195,7 +194,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ),
   },
   {
-    ruta: '/backoffice/reembolsos',
+    ruta: RUTAS.reembolsos,
     area: 'backoffice',
     acceso: SOLO_ADMINISTRADOR,
     menu: { etiqueta: 'Reembolsos', grupo: 'Ventas' },
@@ -205,7 +204,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ),
   },
   {
-    ruta: '/backoffice/exportaciones',
+    ruta: RUTAS.exportaciones,
     area: 'backoffice',
     acceso: SOLO_ADMINISTRADOR,
     menu: { etiqueta: 'Exportaciones', grupo: 'Ventas' },
@@ -215,7 +214,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ),
   },
   {
-    ruta: '/backoffice/catalogo',
+    ruta: RUTAS.gestionCatalogo,
     area: 'backoffice',
     acceso: SOLO_ADMINISTRADOR,
     menu: { etiqueta: 'Productos y precios', grupo: 'Catálogo' },
@@ -225,7 +224,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ),
   },
   {
-    ruta: '/backoffice/catalogo/productos/:id',
+    ruta: RUTAS.productoAdmin,
     area: 'backoffice',
     acceso: SOLO_ADMINISTRADOR,
     pagina: diferida(
@@ -235,7 +234,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
   },
   {
     // M6-H02: se llega con el botón «Categorías y atributos» de Productos y precios (Figma 48:1169), sin menú.
-    ruta: '/backoffice/catalogo/categorias',
+    ruta: RUTAS.categorias,
     area: 'backoffice',
     acceso: SOLO_ADMINISTRADOR,
     pagina: diferida(
@@ -244,7 +243,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ),
   },
   {
-    ruta: '/backoffice/inventario',
+    ruta: RUTAS.inventario,
     area: 'backoffice',
     acceso: PERSONAL,
     menu: { etiqueta: 'Inventario', grupo: 'Catálogo' },
@@ -254,7 +253,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ),
   },
   {
-    ruta: '/backoffice/cupones',
+    ruta: RUTAS.cupones,
     area: 'backoffice',
     acceso: SOLO_ADMINISTRADOR,
     menu: { etiqueta: 'Cupones', grupo: 'Catálogo' },
@@ -264,7 +263,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ),
   },
   {
-    ruta: '/backoffice/envios',
+    ruta: RUTAS.envios,
     area: 'backoffice',
     acceso: SOLO_ADMINISTRADOR,
     menu: { etiqueta: 'Envíos', grupo: 'Administración' },
@@ -274,7 +273,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ),
   },
   {
-    ruta: '/backoffice/configuracion',
+    ruta: RUTAS.configuracion,
     area: 'backoffice',
     acceso: SOLO_ADMINISTRADOR,
     menu: { etiqueta: 'Configuración', grupo: 'Administración' },
@@ -284,7 +283,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ),
   },
   {
-    ruta: '/backoffice/usuarios',
+    ruta: RUTAS.usuarios,
     area: 'backoffice',
     acceso: SOLO_ADMINISTRADOR,
     menu: { etiqueta: 'Usuarios', grupo: 'Administración' },
@@ -294,7 +293,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ),
   },
   {
-    ruta: '/backoffice/bitacora',
+    ruta: RUTAS.bitacora,
     area: 'backoffice',
     acceso: SOLO_ADMINISTRADOR,
     menu: { etiqueta: 'Bitácora', grupo: 'Administración' },

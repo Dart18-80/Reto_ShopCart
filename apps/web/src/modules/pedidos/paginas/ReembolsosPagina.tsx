@@ -21,6 +21,7 @@ import {
 } from '../componentes/EstadoReembolso';
 import { useReembolsos, useReintentarReembolso } from '../hooks/useRevisionManual';
 import type { Reembolso } from '../pedidos.api';
+import { conId, RUTAS } from '../../../shared/rutas';
 
 const ORIGEN: Record<Reembolso['origen'], string> = {
   Cancelacion: 'Cancelación',
@@ -62,7 +63,7 @@ function FiltroEstado({ parametros }: { parametros: ParametrosUrl<ConsultaReembo
 const pedidoDe = (r: Reembolso) =>
   r.idPedido !== null && r.numeroPedido !== null ? (
     <Link
-      to={`/backoffice/pedidos/${String(r.idPedido)}`}
+      to={conId(RUTAS.pedidoGestion, r.idPedido)}
       className="texto-pequeno-fuerte text-primary hover:underline"
     >
       {r.numeroPedido}

@@ -4,6 +4,7 @@ import { Monto } from '../../../shared/componentes/Monto';
 import { formatearConteo } from '../../../shared/formato/conteo';
 import { formatearFechaCalendario } from '../../../shared/formato/fecha';
 import type { ResumenPedido } from '../pedidos.api';
+import { conId, RUTAS } from '../../../shared/rutas';
 
 /** Figma 47:1063: un pedido de la lista. La fecha es el día de pago en Guatemala (A-12), tal como llega. */
 export function TarjetaPedido({ pedido }: { pedido: ResumenPedido }) {
@@ -21,7 +22,7 @@ export function TarjetaPedido({ pedido }: { pedido: ResumenPedido }) {
       <div className="flex flex-col items-end gap-1 md:flex-row md:items-center md:gap-4">
         <Monto valor={pedido.total} className="texto-base-fuerte" />
         <Link
-          to={`/pedidos/${String(pedido.idPedido)}`}
+          to={conId(RUTAS.pedido, pedido.idPedido)}
           className="texto-pequeno-fuerte text-primary hover:underline"
         >
           Ver detalle<span className="sr-only">{` de ${pedido.numeroPedido}`}</span>

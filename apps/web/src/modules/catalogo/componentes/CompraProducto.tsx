@@ -5,9 +5,9 @@ import { Aviso } from '../../../shared/componentes/Aviso';
 import { Cantidad } from '../../../shared/componentes/Cantidad';
 import { Button } from '../../../shared/ui/button';
 import { useAgregarAlCarrito } from '../../carrito';
+import { RUTAS } from '../../../shared/rutas';
 
 const CANTIDAD_INICIAL = 1;
-const RUTA_CARRITO = '/carrito';
 
 interface PropsCompraProducto {
   /** La variante elegida; sin ella, el botón dice qué falta. */
@@ -50,7 +50,7 @@ export function CompraProducto({ idVariante, faltan, agotada }: PropsCompraProdu
                     action: {
                       label: 'Ver carrito',
                       onClick: () => {
-                        void navigate(RUTA_CARRITO);
+                        void navigate(RUTAS.carrito);
                       },
                     },
                   });

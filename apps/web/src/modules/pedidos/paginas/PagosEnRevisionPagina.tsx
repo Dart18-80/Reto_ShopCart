@@ -12,6 +12,7 @@ import { nombreDelEstadoReembolso } from '../componentes/EstadoReembolso';
 import { usePagosEnRevision } from '../hooks/useRevisionManual';
 import type { PagoEnRevision, PagoResuelto } from '../pedidos.api';
 import { RESOLUCION } from '../revision';
+import { conId, RUTAS } from '../../../shared/rutas';
 
 const CAUSA: Record<PagoEnRevision['causa'], string> = {
   AutorizacionInexistente: 'La autorización ya no existía',
@@ -37,7 +38,7 @@ const columnas = (
     celda: (p) =>
       p.idPedido !== null && p.numeroPedido !== null ? (
         <Link
-          to={`/backoffice/pedidos/${String(p.idPedido)}`}
+          to={conId(RUTAS.pedidoGestion, p.idPedido)}
           className="texto-pequeno-fuerte text-primary hover:underline"
         >
           {p.numeroPedido}

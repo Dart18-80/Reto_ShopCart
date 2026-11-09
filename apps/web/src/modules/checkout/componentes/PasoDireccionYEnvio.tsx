@@ -12,9 +12,7 @@ import { CostoEnvio } from './CostoEnvio';
 import { ResumenPedido } from './ResumenPedido';
 import { SeleccionDireccion } from './SeleccionDireccion';
 import { SeleccionEnvio } from './SeleccionEnvio';
-
-export const RUTA_PAGO = '/checkout/pago';
-const RUTA_CARRITO = '/carrito';
+import { RUTAS } from '../../../shared/rutas';
 
 const CARRITO_VACIO = {
   titulo: 'Tu carrito está vacío',
@@ -73,10 +71,10 @@ function CuerpoDelPaso({ carrito, envios }: PropsCuerpo) {
     iniciar.mutate(
       { idDireccion, idMetodoEnvio: metodo.idMetodoEnvio },
       {
-        onSuccess: () => void navigate(RUTA_PAGO),
+        onSuccess: () => void navigate(RUTAS.pago),
         // N-06: con el carrito vacío no hay nada que pagar; el carrito lo explica.
         onError: (error) => {
-          if (error.codigo === 'CARRITO_VACIO') void navigate(RUTA_CARRITO);
+          if (error.codigo === 'CARRITO_VACIO') void navigate(RUTAS.carrito);
         },
       },
     );

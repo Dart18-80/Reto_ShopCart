@@ -8,6 +8,7 @@ import { DialogoNuevoAtributo, TarjetaAtributo } from '../componentes/SeccionAtr
 import { TablaCategorias } from '../componentes/TablaCategorias';
 import { useAtributos } from '../hooks/useAtributos';
 import { useCategoriasAdmin } from '../hooks/useCategoriasAdmin';
+import { RUTAS } from '../../../shared/rutas';
 
 const sinCategorias = (categorias: CategoriaAdmin[]) => categorias.length === 0;
 const sinAtributos = (atributos: Atributo[]) => atributos.length === 0;
@@ -21,7 +22,7 @@ export function CategoriasPagina() {
   return (
     <div className="flex flex-col gap-8">
       <nav aria-label="Ruta" className="texto-pequeno text-muted-foreground">
-        <Link to="/backoffice/catalogo" className="hover:underline">
+        <Link to={RUTAS.gestionCatalogo} className="hover:underline">
           Productos y precios
         </Link>
         {' / Categorías y atributos'}
