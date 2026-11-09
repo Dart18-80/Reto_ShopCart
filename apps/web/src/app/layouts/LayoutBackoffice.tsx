@@ -41,7 +41,7 @@ export function LayoutBackoffice() {
               />
             </SheetContent>
           </Sheet>
-          <Link to="/" className="display-titulo-3 text-primary">
+          <Link to="/" className="titulo-2 text-primary">
             ShopCart
           </Link>
         </header>

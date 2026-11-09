@@ -16,7 +16,7 @@ export function CheckoutPagina() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="display-titulo-1">Pagar</h1>
+      <h1 className="titulo-1">Pagar</h1>
       <PasosDelCheckout actual={1} />
       <EstadoVista consulta={sesion} vacio={SIN_USO}>
         {(activa) => (activa ? <Navigate to={RUTAS.pago} replace /> : <PasoDireccionYEnvio />)}

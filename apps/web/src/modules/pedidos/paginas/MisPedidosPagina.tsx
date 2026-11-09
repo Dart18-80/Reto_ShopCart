@@ -29,7 +29,7 @@ export function MisPedidosPagina() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="display-titulo-1">Mis pedidos</h1>
+      <h1 className="titulo-1">Mis pedidos</h1>
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-3">
         <EstadoVista consulta={pedidos} vacio={SIN_PEDIDOS}>
           {({ datos, paginacion }) => (

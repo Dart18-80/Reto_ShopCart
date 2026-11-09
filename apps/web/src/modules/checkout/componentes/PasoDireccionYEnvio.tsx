@@ -40,7 +40,7 @@ const direccionInicial = (direcciones: Direccion[] | undefined) =>
 function Seccion({ titulo, children }: { titulo: string; children: ReactNode }) {
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="display-titulo-3">{titulo}</h2>
+      <h2 className="titulo-2">{titulo}</h2>
       {children}
     </section>
   );
@@ -113,9 +113,10 @@ function CuerpoDelPaso({ carrito, envios }: PropsCuerpo) {
           <AvisoInicioPago error={iniciar.error} />
           <Button
             type="button"
+            cargando={iniciar.isPending}
             disabled={idDireccion === undefined || iniciar.isPending}
             onClick={continuar}
-            className="control-boton h-auto w-full px-6 py-3"
+            className="w-full"
           >
             Continuar al pago
           </Button>

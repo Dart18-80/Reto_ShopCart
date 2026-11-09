@@ -20,6 +20,8 @@ export default defineConfig({
   use: {
     baseURL: URL_TIENDA,
     trace: 'retain-on-failure',
+    // Pase de diseño (03-backlog D): sin animaciones, para que no vuelvan inestables las pruebas.
+    contextOptions: { reducedMotion: 'reduce' },
   },
   projects: [
     {

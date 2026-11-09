@@ -4,6 +4,7 @@ import { Controller } from 'react-hook-form';
 import { AvisoFormulario } from '../../../shared/componentes/AvisoFormulario';
 import { useFormularioApi } from '../../../shared/hooks/useFormularioApi';
 import { Button } from '../../../shared/ui/button';
+import { CLASE_CASILLA } from '../../../shared/ui/control';
 import { Form } from '../../../shared/ui/form';
 import type { Direccion } from '../direcciones.api';
 import { useActualizarDireccion, useCrearDireccion } from '../hooks/useOperacionesDeDirecciones';
@@ -11,7 +12,7 @@ import { CamposDireccion } from './CamposDireccion';
 
 function Enviar({ enviando, children }: { enviando: boolean; children: ReactNode }) {
   return (
-    <Button type="submit" disabled={enviando} className="control-boton h-auto w-full px-6 py-3">
+    <Button type="submit" cargando={enviando} disabled={enviando} className="w-full">
       {children}
     </Button>
   );
@@ -53,7 +54,7 @@ export function FormularioNuevaDireccion({
                 onChange={(evento) => {
                   field.onChange(evento.target.checked);
                 }}
-                className="accent-primary size-4"
+                className={CLASE_CASILLA}
               />
               Usar como predeterminada
             </label>

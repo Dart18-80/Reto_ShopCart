@@ -29,7 +29,7 @@ function MarcoDialogo({ titulo, disparador, abierto, alCambiar, children }: Prop
     <Dialog open={abierto} onOpenChange={alCambiar}>
       <DialogTrigger asChild>{disparador}</DialogTrigger>
       <DialogContent className="max-h-[90dvh] overflow-y-auto">
-        <DialogTitle className="display-titulo-3">{titulo}</DialogTitle>
+        <DialogTitle className="titulo-2">{titulo}</DialogTitle>
         <DialogDescription className="texto-pequeno">
           La ilustración es la prenda que la tienda tiñe con el color de cada variante.
         </DialogDescription>
@@ -77,7 +77,7 @@ export function DialogoNuevaCategoria({ disparador }: { disparador: ReactNode })
         <form onSubmit={formulario.enviar} noValidate className="flex flex-col gap-5">
           <AvisoFormulario error={formulario.errorGeneral} />
           <Campos vacioDescripcion="ausente" />
-          <Button type="submit" disabled={formulario.enviando}>
+          <Button type="submit" cargando={formulario.enviando} disabled={formulario.enviando}>
             Guardar categoría
           </Button>
         </form>
@@ -118,7 +118,7 @@ export function DialogoEditarCategoria({
         <form onSubmit={formulario.enviar} noValidate className="flex flex-col gap-5">
           <AvisoFormulario error={formulario.errorGeneral} />
           <Campos vacioDescripcion="nulo" />
-          <Button type="submit" disabled={formulario.enviando}>
+          <Button type="submit" cargando={formulario.enviando} disabled={formulario.enviando}>
             Guardar cambios
           </Button>
         </form>

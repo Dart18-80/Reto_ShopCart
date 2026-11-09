@@ -7,7 +7,7 @@ import type { Direccion } from '../direcciones.api';
 import { useDirecciones } from '../hooks/useDirecciones';
 
 const sinDirecciones = (direcciones: Direccion[]) => direcciones.length === 0;
-const BOTON_NUEVA = <Button className="control-boton h-auto px-5 py-2.5">Agregar dirección</Button>;
+const BOTON_NUEVA = <Button className="px-5">Agregar dirección</Button>;
 
 /** M4-H01: `/cuenta/direcciones`, las direcciones de entrega del Cliente (RF-01: solo las suyas). */
 export function DireccionesPagina() {
@@ -17,7 +17,7 @@ export function DireccionesPagina() {
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="display-titulo-1">Mis direcciones</h1>
+        <h1 className="titulo-1">Mis direcciones</h1>
         <DialogoNuevaDireccion disparador={BOTON_NUEVA} />
       </div>
       <EstadoVista

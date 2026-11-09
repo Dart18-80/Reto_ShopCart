@@ -1,7 +1,8 @@
 import { useId, useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { CampoFormulario } from '../../../shared/componentes/CampoFormulario';
-import { CampoSeleccion, CLASE_SELECT } from '../../../shared/componentes/CampoSeleccion';
+import { CampoSeleccion } from '../../../shared/componentes/CampoSeleccion';
+import { CLASE_SELECT } from '../../../shared/ui/control';
 import { useDepartamentos, useMunicipios } from '../hooks/useDirecciones';
 
 interface PropsCamposDireccion {

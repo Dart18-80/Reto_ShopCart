@@ -31,7 +31,7 @@ export function CarritoPagina() {
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-wrap items-baseline gap-x-3">
-        <h1 className="display-titulo-1">Tu carrito</h1>
+        <h1 className="titulo-1">Tu carrito</h1>
         {resumen && resumen.lineas > 0 && (
           <p className="texto-pequeno text-muted-foreground hidden md:block">
             {`${formatearConteo(resumen.lineas, 'producto', 'productos')}, ${formatearConteo(resumen.unidades, 'unidad', 'unidades')}`}

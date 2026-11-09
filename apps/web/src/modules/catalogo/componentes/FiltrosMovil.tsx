@@ -24,12 +24,12 @@ export function FiltrosMovil(props: PropsFiltrosMovil) {
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="outline" className="control-boton h-10.5 px-4 md:hidden">
+        <Button variant="outline" className="md:hidden">
           {`Filtros (${String(activos)})`}
         </Button>
       </SheetTrigger>
       <SheetContent side="bottom" className="gap-5 px-4 py-6">
-        <SheetTitle className="display-titulo-3">Filtros</SheetTitle>
+        <SheetTitle className="titulo-2">Filtros</SheetTitle>
         <SheetDescription className="sr-only">Precio y existencia</SheetDescription>
         <FiltrosCatalogo {...props} />
       </SheetContent>

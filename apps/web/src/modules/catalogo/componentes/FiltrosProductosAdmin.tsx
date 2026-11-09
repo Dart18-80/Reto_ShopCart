@@ -1,6 +1,6 @@
 import { LARGO_MAXIMO_TEXTO_BUSQUEDA, type ConsultaProductosAdmin } from '@shopcart/shared';
 import { useId } from 'react';
-import { CLASE_SELECT } from '../../../shared/componentes/CampoSeleccion';
+import { CLASE_SELECT } from '../../../shared/ui/control';
 import { FiltroTexto } from '../../../shared/componentes/FiltroTexto';
 import type { ParametrosUrl } from '../../../shared/hooks/useParametrosUrl';
 import type { CategoriaAdmin } from '../catalogo.api';

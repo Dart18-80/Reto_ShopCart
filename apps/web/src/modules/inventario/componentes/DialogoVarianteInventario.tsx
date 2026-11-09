@@ -33,7 +33,7 @@ function ResumenExistencia({ existencia }: { existencia: Existencia }) {
       {cifras.map(([etiqueta, valor]) => (
         <li key={etiqueta} className="flex flex-col">
           <span className="texto-nota text-muted-foreground">{etiqueta}</span>
-          <span className="display-titulo-3 tabular-nums">{String(valor)}</span>
+          <span className="titulo-2 tabular-nums">{String(valor)}</span>
         </li>
       ))}
     </ul>
@@ -60,9 +60,7 @@ export function DialogoVarianteInventario({
       }}
     >
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl">
-        <DialogTitle className="display-titulo-3">
-          {TITULO[variante.modo](variante.sku)}
-        </DialogTitle>
+        <DialogTitle className="titulo-2">{TITULO[variante.modo](variante.sku)}</DialogTitle>
         <DialogDescription className="sr-only">
           Existencia física, reservada y disponible de la variante, y sus movimientos en el kardex.
         </DialogDescription>

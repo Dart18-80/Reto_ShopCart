@@ -4,7 +4,7 @@ import {
   type ConsultaPedidosGestion,
 } from '@shopcart/shared';
 import { useId } from 'react';
-import { CLASE_SELECT } from '../../../shared/componentes/CampoSeleccion';
+import { CLASE_SELECT } from '../../../shared/ui/control';
 import { nombreDelEstado } from '../../../shared/componentes/EstadoPedido';
 import { FiltroRangoFechas } from '../../../shared/componentes/FiltroRangoFechas';
 import { FiltroTexto } from '../../../shared/componentes/FiltroTexto';

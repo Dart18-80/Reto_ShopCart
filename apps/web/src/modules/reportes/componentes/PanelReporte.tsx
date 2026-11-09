@@ -38,11 +38,11 @@ export function PanelReporte<T>({
   return (
     <section
       aria-labelledby={idTitulo}
-      className="bg-card flex min-w-0 flex-col gap-4 rounded-lg border p-4 md:p-6"
+      className="bg-card flex min-w-0 flex-col gap-4 rounded-tarjeta border p-4 md:p-6"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex flex-col gap-1">
-          <h2 id={idTitulo} className="display-titulo-3">
+          <h2 id={idTitulo} className="titulo-2">
             {titulo}
           </h2>
           {descripcion && <p className="texto-pequeno text-muted-foreground">{descripcion}</p>}

@@ -9,7 +9,7 @@ import { conId, RUTAS } from '../../../shared/rutas';
 /** Figma 47:1063: un pedido de la lista. La fecha es el día de pago en Guatemala (A-12), tal como llega. */
 export function TarjetaPedido({ pedido }: { pedido: ResumenPedido }) {
   return (
-    <li className="bg-card flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border px-6 py-4">
+    <li className="bg-card flex flex-wrap items-center gap-x-4 gap-y-2 rounded-tarjeta border px-6 py-4">
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex flex-wrap items-center gap-3">
           <h2 className="texto-base-fuerte">{`Pedido ${pedido.numeroPedido}`}</h2>

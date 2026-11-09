@@ -2,6 +2,7 @@ import { Search } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useDebounce } from '../hooks/useDebounce';
 import type { ParametrosUrl } from '../hooks/useParametrosUrl';
+import { CLASE_GRUPO_CONTROL } from '../ui/control';
 
 /** Los campos de la consulta que guardan texto libre. */
 type CampoDeTexto<C> = { [K in keyof C]-?: C[K] extends string | undefined ? K : never }[keyof C];
@@ -60,7 +61,7 @@ export function FiltroTexto<C>({
       <label htmlFor={id} className="control-etiqueta">
         {etiqueta}
       </label>
-      <div className="bg-card border-input focus-within:ring-ring/50 flex items-center gap-2 rounded-md border px-4 py-3 focus-within:ring-[3px]">
+      <div className={CLASE_GRUPO_CONTROL}>
         <Search aria-hidden className="text-muted-foreground size-4.5 shrink-0" />
         <input
           id={id}

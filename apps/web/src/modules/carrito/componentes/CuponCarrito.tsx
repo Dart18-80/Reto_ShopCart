@@ -44,8 +44,9 @@ function FormularioCupon() {
           <Button
             type="submit"
             variant="secondary"
+            cargando={formulario.enviando}
             disabled={formulario.enviando}
-            className="control-boton mt-7 h-auto px-5 py-3"
+            className="mt-7 px-5"
           >
             Aplicar
           </Button>
@@ -64,6 +65,7 @@ function CuponAplicado({ cupon }: { cupon: NonNullable<Carrito['resumen']['cupon
       <div>
         <Button
           variant="ghost"
+          cargando={quitar.isPending}
           disabled={quitar.isPending}
           onClick={() => {
             quitar.mutate(undefined);

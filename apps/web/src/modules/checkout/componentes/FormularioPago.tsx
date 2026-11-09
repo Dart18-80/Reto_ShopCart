@@ -78,7 +78,7 @@ export function FormularioPago({ form, enviar, deshabilitado, total }: PropsForm
               <span className="texto-base-fuerte">Total</span>
               <Monto valor={total} className="display-precio" />
             </div>
-            <Button type="submit" className="control-boton h-auto w-full px-6 py-3">
+            <Button type="submit" className="w-full">
               {`Pagar ${formatearMonto(total)}`}
             </Button>
           </div>

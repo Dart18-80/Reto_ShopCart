@@ -64,7 +64,7 @@ export function MetodosEnvioPagina() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h1 className="display-titulo-1">Envíos</h1>
+        <h1 className="titulo-1">Envíos</h1>
         <p className="texto-base text-muted-foreground">
           Los métodos de envío con su tarifa y su plazo de entrega.
         </p>

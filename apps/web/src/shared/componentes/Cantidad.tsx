@@ -23,7 +23,11 @@ export function Cantidad({
   etiqueta = 'Cantidad',
 }: PropsCantidad) {
   return (
-    <div role="group" aria-label={etiqueta} className="bg-card flex items-center rounded-md border">
+    <div
+      role="group"
+      aria-label={etiqueta}
+      className="bg-card flex items-center rounded-control border"
+    >
       <Button
         type="button"
         variant="ghost"

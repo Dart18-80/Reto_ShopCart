@@ -52,6 +52,7 @@ export function FilaCarrito({ linea }: { linea: LineaCarrito }) {
         <Button
           size="sm"
           variant="outline"
+          cargando={marcarVistos.isPending}
           disabled={marcarVistos.isPending}
           onClick={() => {
             marcarVistos.mutate(undefined);
@@ -66,7 +67,7 @@ export function FilaCarrito({ linea }: { linea: LineaCarrito }) {
 
   return (
     <li className="flex gap-4 border-b py-4 md:py-5">
-      <div className="bg-muted flex size-24 shrink-0 items-center justify-center rounded-md md:h-28">
+      <div className="bg-muted flex size-24 shrink-0 items-center justify-center rounded-control md:h-28">
         <Prenda tipo={linea.ilustracion} color={linea.color ?? undefined} className="size-16" />
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-2">
@@ -101,14 +102,13 @@ export function FilaCarrito({ linea }: { linea: LineaCarrito }) {
             }}
           />
           <Button
-            variant="ghost"
+            variant="ghost-destructive"
             size="sm"
             disabled={ocupada}
             aria-label={`Eliminar ${linea.producto}`}
             onClick={() => {
               quitar.mutate(undefined);
             }}
-            className="text-muted-foreground"
           >
             Eliminar
           </Button>

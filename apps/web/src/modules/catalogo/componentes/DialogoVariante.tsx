@@ -3,7 +3,7 @@ import { useId, useState, type ReactNode } from 'react';
 import { Controller, useFormContext } from 'react-hook-form';
 import { AvisoFormulario } from '../../../shared/componentes/AvisoFormulario';
 import { CampoFormulario } from '../../../shared/componentes/CampoFormulario';
-import { CLASE_SELECT } from '../../../shared/componentes/CampoSeleccion';
+import { CLASE_SELECT } from '../../../shared/ui/control';
 import { useFormularioApi } from '../../../shared/hooks/useFormularioApi';
 import { Button } from '../../../shared/ui/button';
 import {
@@ -107,7 +107,7 @@ function MarcoDialogo({ titulo, disparador, abierto, alCambiar, children }: Prop
     <Dialog open={abierto} onOpenChange={alCambiar}>
       <DialogTrigger asChild>{disparador}</DialogTrigger>
       <DialogContent className="max-h-[90dvh] overflow-y-auto">
-        <DialogTitle className="display-titulo-3">{titulo}</DialogTitle>
+        <DialogTitle className="titulo-2">{titulo}</DialogTitle>
         <DialogDescription className="texto-pequeno">
           Todas las variantes de un producto usan los mismos atributos.
         </DialogDescription>
@@ -154,7 +154,7 @@ export function DialogoNuevaVariante({
             inputMode="decimal"
             placeholder="0.00"
           />
-          <Button type="submit" disabled={formulario.enviando}>
+          <Button type="submit" cargando={formulario.enviando} disabled={formulario.enviando}>
             Guardar variante
           </Button>
         </form>
@@ -202,7 +202,7 @@ export function DialogoEditarVariante({
           <AvisoFormulario error={formulario.errorGeneral} />
           <CampoFormulario nombre="sku" etiqueta="SKU" maxLength={40} />
           <CamposValores atributos={atributos} />
-          <Button type="submit" disabled={formulario.enviando}>
+          <Button type="submit" cargando={formulario.enviando} disabled={formulario.enviando}>
             Guardar cambios
           </Button>
         </form>

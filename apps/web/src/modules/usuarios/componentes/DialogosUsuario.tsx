@@ -40,7 +40,7 @@ function Botones({ enviando, texto }: { enviando: boolean; texto: string }) {
           Cancelar
         </Button>
       </DialogClose>
-      <Button type="submit" disabled={enviando}>
+      <Button type="submit" cargando={enviando} disabled={enviando}>
         {texto}
       </Button>
     </div>
@@ -66,7 +66,7 @@ function DialogoDeUsuario({
     <Dialog open={abierto} onOpenChange={alCambiarAbierto}>
       <DialogTrigger asChild>{disparador}</DialogTrigger>
       <DialogContent className="max-h-[90dvh] overflow-y-auto">
-        <DialogTitle className="display-titulo-3">{titulo}</DialogTitle>
+        <DialogTitle className="titulo-2">{titulo}</DialogTitle>
         <DialogDescription className="texto-pequeno">{descripcion}</DialogDescription>
         {children}
       </DialogContent>

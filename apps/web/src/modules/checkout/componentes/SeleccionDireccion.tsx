@@ -25,7 +25,7 @@ export function SeleccionDireccion({ direcciones, elegida, alElegir }: PropsSele
     return (
       <section
         aria-labelledby="titulo-primera-direccion"
-        className="bg-card flex flex-col gap-4 rounded-lg border p-5"
+        className="bg-card flex flex-col gap-4 rounded-tarjeta border p-5"
       >
         <h3 id="titulo-primera-direccion" className="texto-base-fuerte">
           Tu primera dirección
@@ -57,7 +57,7 @@ export function SeleccionDireccion({ direcciones, elegida, alElegir }: PropsSele
         <DialogoNuevaDireccion
           alCrear={alCrear}
           disparador={
-            <Button variant="outline" className="control-boton h-auto px-6 py-3">
+            <Button variant="outline" className="px-6">
               Agregar dirección
             </Button>
           }

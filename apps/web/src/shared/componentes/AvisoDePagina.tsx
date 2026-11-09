@@ -15,7 +15,7 @@ export function AvisoDePagina({ icono: Icono, titulo, children, acciones }: Prop
   return (
     <section className="mx-auto flex max-w-md flex-col items-center gap-4 px-4 py-16 text-center">
       <Icono aria-hidden className="text-muted-foreground size-10" />
-      <h1 className="display-titulo-2">{titulo}</h1>
+      <h1 className="titulo-1">{titulo}</h1>
       <div className="text-muted-foreground texto-base">{children}</div>
       <div className="flex flex-wrap justify-center gap-3">{acciones}</div>
     </section>

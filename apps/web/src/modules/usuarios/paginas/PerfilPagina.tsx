@@ -14,7 +14,7 @@ export function PerfilPagina() {
 
   return (
     <>
-      <h1 className="display-titulo-1">Mi perfil</h1>
+      <h1 className="titulo-1">Mi perfil</h1>
       <SeccionPerfil titulo="Tus datos">
         <EstadoVista consulta={perfil} vacio={{ titulo: 'Sin datos' }} esVacio={NUNCA_VACIO}>
           {(datos) => <FormularioDatosPerfil perfil={datos} />}

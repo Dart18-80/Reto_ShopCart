@@ -55,12 +55,12 @@ export function FichaProducto({ producto, idVarianteEnUrl, alResolver }: PropsFi
         <div className="flex flex-col gap-5">
           <div className="flex flex-col gap-2">
             <p className="texto-pequeno text-muted-foreground">{producto.categoria}</p>
-            <h1 className="display-titulo-2 md:display-titulo-1">{producto.nombre}</h1>
+            <h1 className="titulo-1">{producto.nombre}</h1>
             <p className="flex flex-wrap items-baseline gap-x-3">
               {variante === undefined && (
                 <span className="texto-nota text-muted-foreground">Desde</span>
               )}
-              {precio !== undefined && <Monto valor={precio} className="display-titulo-2" />}
+              {precio !== undefined && <Monto valor={precio} className="titulo-2" />}
               {/* N-18: los precios del catálogo ya incluyen el IVA. */}
               <span className="texto-nota text-muted-foreground">Incluye IVA del 12 %</span>
             </p>
@@ -97,7 +97,7 @@ export function FichaProducto({ producto, idVarianteEnUrl, alResolver }: PropsFi
           </Aviso>
           {producto.descripcion && (
             <section className="flex flex-col gap-2">
-              <h2 className="display-titulo-3">Descripción</h2>
+              <h2 className="titulo-2">Descripción</h2>
               <p className="texto-base text-muted-foreground">{producto.descripcion}</p>
             </section>
           )}

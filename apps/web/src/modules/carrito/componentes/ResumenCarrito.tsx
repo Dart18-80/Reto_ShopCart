@@ -16,9 +16,9 @@ export function ResumenCarrito({ resumen, antes, despues }: PropsResumen) {
   return (
     <section
       aria-labelledby="titulo-resumen"
-      className="bg-card flex flex-col gap-4 rounded-lg border p-6"
+      className="bg-card flex flex-col gap-4 rounded-tarjeta border p-6"
     >
-      <h2 id="titulo-resumen" className="display-titulo-3">
+      <h2 id="titulo-resumen" className="titulo-2">
         Resumen
       </h2>
       {antes}

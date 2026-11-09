@@ -46,7 +46,12 @@ function Acciones({
         descripcion="Se borra la categoría, y no se puede deshacer. Si no se puede eliminar, verás el motivo."
         textoConfirmar="Eliminar categoría"
         disparador={
-          <Button variant="ghost" size="sm" disabled={ocupada} aria-label={`Eliminar ${nombre}`}>
+          <Button
+            variant="ghost-destructive"
+            size="sm"
+            disabled={ocupada}
+            aria-label={`Eliminar ${nombre}`}
+          >
             Eliminar
           </Button>
         }

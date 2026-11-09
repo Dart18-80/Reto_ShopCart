@@ -7,7 +7,7 @@ import {
   FormLabel,
   FormMessage,
 } from '../ui/form';
-import { CLASE_SELECT } from './CampoSeleccion';
+import { CLASE_SELECT } from '../ui/control';
 
 export interface OpcionDeTexto<T extends string> {
   valor: T;

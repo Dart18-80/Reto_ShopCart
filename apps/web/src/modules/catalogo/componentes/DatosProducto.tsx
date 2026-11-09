@@ -34,9 +34,9 @@ export function DatosProducto({ producto, categorias }: PropsDatosProducto) {
   return (
     <section
       aria-labelledby="titulo-datos"
-      className="bg-card flex flex-col gap-4 rounded-xl border p-6"
+      className="bg-card flex flex-col gap-4 rounded-tarjeta border p-6"
     >
-      <h2 id="titulo-datos" className="display-titulo-3">
+      <h2 id="titulo-datos" className="titulo-2">
         Datos del producto
       </h2>
       <Form {...formulario.form}>

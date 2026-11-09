@@ -1,6 +1,6 @@
 import { AGRUPACIONES, type Agrupacion, type RangoDeFechas } from '@shopcart/shared';
 import { useId } from 'react';
-import { CLASE_SELECT } from '../../../shared/componentes/CampoSeleccion';
+import { CLASE_SELECT } from '../../../shared/ui/control';
 import { formatearCantidad } from '../../../shared/formato/conteo';
 import { DialogoExportar } from '../../exportaciones';
 import type { ParametrosUrl } from '../../../shared/hooks/useParametrosUrl';

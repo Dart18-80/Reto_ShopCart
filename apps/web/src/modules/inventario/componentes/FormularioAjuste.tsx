@@ -72,7 +72,7 @@ export function FormularioAjuste({ existencia }: { existencia: Existencia }) {
               Cancelar
             </Button>
           </DialogClose>
-          <Button type="submit" disabled={formulario.enviando}>
+          <Button type="submit" cargando={formulario.enviando} disabled={formulario.enviando}>
             Registrar ajuste
           </Button>
         </div>

@@ -63,9 +63,12 @@ export function TarjetasResumen({ rango }: { rango: RangoDeFechas }) {
             </div>
             <dl className={CLASE_REJILLA}>
               {TARJETAS.map(({ etiqueta, cifra, nota }) => (
-                <div key={etiqueta} className="bg-card flex flex-col gap-1 rounded-lg border p-4">
+                <div
+                  key={etiqueta}
+                  className="bg-card flex flex-col gap-1 rounded-tarjeta border p-4"
+                >
                   <dt className="texto-pequeno text-muted-foreground">{etiqueta}</dt>
-                  <dd className="display-titulo-3 tabular-nums">{cifra(datos)}</dd>
+                  <dd className="titulo-2 tabular-nums">{cifra(datos)}</dd>
                   {nota && <dd className="texto-nota text-muted-foreground">{nota}</dd>}
                 </div>
               ))}

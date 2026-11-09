@@ -18,7 +18,7 @@ export function BarraLateralBackoffice({ onNavegar }: { onNavegar?: () => void }
     <div className="flex h-full flex-col gap-6">
       <div className="flex items-start justify-between gap-2">
         <Link to="/" onClick={onNavegar} className="flex flex-col gap-0.5">
-          <span className="display-titulo-3 text-primary">ShopCart</span>
+          <span className="titulo-2 text-primary">ShopCart</span>
           <span className="texto-nota text-muted-foreground">Backoffice</span>
         </Link>
         <SelectorTema />

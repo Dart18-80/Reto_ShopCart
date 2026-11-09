@@ -1,8 +1,6 @@
 import { useFormContext, type FieldPath, type FieldValues } from 'react-hook-form';
+import { CLASE_SELECT } from '../ui/control';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
-
-export const CLASE_SELECT =
-  'bg-card texto-base h-12 w-full rounded-md border px-3 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none aria-invalid:border-2 aria-invalid:border-destructive disabled:opacity-50';
 
 export interface OpcionNumerica {
   valor: number;

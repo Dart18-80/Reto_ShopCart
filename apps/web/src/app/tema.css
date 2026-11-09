@@ -110,6 +110,48 @@
   --font-titulo: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
 }
 
+/*
+ * D1 (03-backlog, pase de diseño): tokens propios, no vienen de Figma. Radios por tipo de pieza (controles,
+ * tarjetas y paneles grandes), sombras y el contenedor. Las sombras cambian con el tema (abajo), así que van con
+ * `inline`: la utilidad lee la variable y no un valor fijo.
+ */
+@theme {
+  --radius-control: 10px;
+  --radius-tarjeta: 16px;
+  --radius-panel: 20px;
+  --container-contenido: 80rem;
+}
+@theme inline {
+  --shadow-xs: var(--sombra-xs);
+  --shadow-sm: var(--sombra-sm);
+  --shadow-md: var(--sombra-md);
+  --shadow-lg: var(--sombra-lg);
+  --color-primario-hover: var(--primario-hover);
+}
+
+/*
+ * D1: sombras suaves teñidas de azul marino. En oscuro una sombra no se ve: en su lugar, un borde de 1 px (la
+ * superficie, `--card`, ya es un tono más clara que el fondo). Fuera de :root y .dark, que son las colecciones de
+ * Figma y tema.test.ts las compara una a una.
+ */
+html {
+  --sombra-xs: 0 1px 2px rgb(15 23 42 / 0.06);
+  --sombra-sm: 0 1px 3px rgb(15 23 42 / 0.08), 0 1px 2px rgb(15 23 42 / 0.04);
+  --sombra-md: 0 8px 24px -8px rgb(11 45 92 / 0.18);
+  --sombra-lg: 0 16px 40px -12px rgb(11 45 92 / 0.25);
+  /* D1: el primario se oscurece al pasar el cursor, en los dos temas. */
+  --primario-hover: color-mix(in oklab, var(--primary), black 18%);
+  /* El chevron de los <select> nativos: el mismo ChevronDown de lucide, en el color del texto. */
+  --chevron-select: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%230a121f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+html.dark {
+  --sombra-xs: 0 0 0 1px var(--input);
+  --sombra-sm: 0 0 0 1px var(--input);
+  --sombra-md: 0 0 0 1px var(--input);
+  --sombra-lg: 0 0 0 1px var(--input);
+  --chevron-select: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23e6ecf4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
 /* Utilidades de Tailwind (bg-primary, text-oferta, text-prenda-vino…) sobre las variables de Figma. */
 @theme inline {
   --color-background: var(--background);
@@ -160,49 +202,53 @@
 }
 
 /*
- * Estilos de texto de Figma (página Fundamentos, Tipografía). Tamaños en rem para respetar el tamaño de letra
- * que elige la persona en su navegador (16 px = 1 rem); interlineado y espaciado tal cual.
+ * D1 (03-backlog, pase de diseño): escala de títulos. Space Grotesk 700 con -0.02em; en móvil (bajo md, 48rem) el
+ * display y el H1 bajan de tamaño. Tamaños e interlineados en rem para respetar el tamaño de letra del navegador.
  */
-@utility display-heroe {
+@utility titulo-display {
   font-family: var(--font-titulo);
-  font-size: 3.0625rem;
   font-weight: 700;
-  line-height: 56px;
-  letter-spacing: -1px;
+  letter-spacing: -0.02em;
+  font-size: 2rem;
+  line-height: 2.375rem;
+  @media (width >= 48rem) {
+    font-size: 3rem;
+    line-height: 3.25rem;
+  }
 }
-@utility display-titulo-1 {
+@utility titulo-1 {
   font-family: var(--font-titulo);
-  font-size: 2.4375rem;
   font-weight: 700;
-  line-height: 46px;
-  letter-spacing: -0.8px;
+  letter-spacing: -0.02em;
+  font-size: 1.75rem;
+  line-height: 2.125rem;
+  @media (width >= 48rem) {
+    font-size: 2.25rem;
+    line-height: 2.5rem;
+  }
 }
-@utility display-titulo-2 {
+@utility titulo-2 {
   font-family: var(--font-titulo);
-  font-size: 1.9375rem;
-  font-weight: 500;
-  line-height: 38px;
-  letter-spacing: -0.5px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-size: 1.5rem;
+  line-height: 1.875rem;
 }
-@utility display-titulo-3 {
+@utility titulo-3 {
   font-family: var(--font-titulo);
-  font-size: 1.5625rem;
-  font-weight: 500;
-  line-height: 32px;
-  letter-spacing: -0.3px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-size: 1.125rem;
+  line-height: 1.625rem;
 }
+/* D1: todo monto va con cifras de ancho fijo, para que las columnas y los totales no bailen. */
 @utility display-precio {
   font-family: var(--font-titulo);
-  font-size: 1.5625rem;
+  font-size: 1.5rem;
   font-weight: 700;
-  line-height: 30px;
-  letter-spacing: -0.3px;
-}
-@utility texto-grande {
-  font-family: var(--font-sans);
-  font-size: 1.25rem;
-  font-weight: 400;
-  line-height: 30px;
+  line-height: 1.875rem;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
 }
 @utility texto-base {
   font-family: var(--font-sans);
@@ -247,6 +293,14 @@
   font-size: 0.875rem;
   font-weight: 500;
   line-height: 20px;
+}
+
+@utility chevron-select {
+  appearance: none;
+  background-image: var(--chevron-select);
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
 }
 
 @layer base {

@@ -113,7 +113,7 @@ export function InventarioPagina() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <h1 className="display-titulo-1">Inventario</h1>
+          <h1 className="titulo-1">Inventario</h1>
           <p className="texto-base text-muted-foreground">
             Existencias por variante, entradas, ajustes y kardex.
           </p>

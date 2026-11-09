@@ -14,7 +14,7 @@ interface PropsGaleria {
 }
 
 const MINIATURA =
-  'bg-muted focus-visible:ring-ring flex size-16 items-center justify-center overflow-hidden rounded-md border-2 focus-visible:ring-2 focus-visible:outline-none';
+  'bg-muted focus-visible:ring-ring flex size-16 items-center justify-center overflow-hidden rounded-control border-2 focus-visible:ring-2 focus-visible:outline-none';
 
 /**
  * Figma 24:314: la ilustración teñida primero; si el producto tiene imágenes, se eligen como miniaturas, cada una
@@ -24,7 +24,7 @@ export function GaleriaProducto({ ilustracion, color, imagenes }: PropsGaleria) 
   const [elegida, setElegida] = useState<Imagen | null>(null);
   return (
     <section aria-label="Galería" className="flex flex-col gap-3">
-      <div className="bg-muted flex aspect-square items-center justify-center overflow-hidden md:rounded-lg">
+      <div className="bg-muted flex aspect-square items-center justify-center overflow-hidden md:rounded-tarjeta">
         {elegida ? (
           <img
             src={elegida.url}

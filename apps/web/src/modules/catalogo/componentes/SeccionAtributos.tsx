@@ -29,7 +29,7 @@ export function TarjetaAtributo({ atributo }: { atributo: Atributo }) {
   return (
     <section
       aria-labelledby={idTitulo}
-      className="bg-card flex flex-col gap-3 rounded-lg border p-4"
+      className="bg-card flex flex-col gap-3 rounded-tarjeta border p-4"
     >
       <h3 id={idTitulo} className="texto-base-fuerte">
         {atributo.nombre}
@@ -48,7 +48,12 @@ export function TarjetaAtributo({ atributo }: { atributo: Atributo }) {
             <div className="flex-1">
               <CampoFormulario nombre="valor" etiqueta="Valor nuevo" maxLength={50} />
             </div>
-            <Button type="submit" variant="outline" disabled={formulario.enviando}>
+            <Button
+              type="submit"
+              variant="outline"
+              cargando={formulario.enviando}
+              disabled={formulario.enviando}
+            >
               Agregar
             </Button>
           </div>
@@ -76,7 +81,7 @@ export function DialogoNuevoAtributo() {
         <Button variant="outline">Nuevo atributo</Button>
       </DialogTrigger>
       <DialogContent>
-        <DialogTitle className="display-titulo-3">Nuevo atributo</DialogTitle>
+        <DialogTitle className="titulo-2">Nuevo atributo</DialogTitle>
         <DialogDescription className="texto-pequeno">
           Talla, Color o Material: todas las variantes de un producto usan los mismos atributos.
         </DialogDescription>
@@ -84,7 +89,7 @@ export function DialogoNuevoAtributo() {
           <form onSubmit={formulario.enviar} noValidate className="flex flex-col gap-5">
             <AvisoFormulario error={formulario.errorGeneral} />
             <CampoFormulario nombre="nombre" etiqueta="Nombre" maxLength={50} />
-            <Button type="submit" disabled={formulario.enviando}>
+            <Button type="submit" cargando={formulario.enviando} disabled={formulario.enviando}>
               Guardar atributo
             </Button>
           </form>

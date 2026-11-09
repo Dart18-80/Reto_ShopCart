@@ -127,7 +127,7 @@ function FichaPedidoGestion({ pedido }: { pedido: PedidoGestion }) {
       </nav>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="display-titulo-1">{`Pedido ${pedido.numeroPedido}`}</h1>
+          <h1 className="titulo-1">{`Pedido ${pedido.numeroPedido}`}</h1>
           <EstadoPedido estado={pedido.estado} />
         </div>
         {/* Con otro estado cambian las acciones: los diálogos del estado anterior se cierran solos. */}

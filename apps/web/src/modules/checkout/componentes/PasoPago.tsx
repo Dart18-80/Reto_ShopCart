@@ -66,7 +66,7 @@ export function PasoPago({ sesion }: { sesion: SesionPago }) {
   return (
     <div className="flex flex-col gap-8 pb-36 md:flex-row md:items-start md:gap-12 md:pb-0">
       <section aria-labelledby="titulo-tarjeta" className="flex min-w-0 flex-1 flex-col gap-5">
-        <h2 id="titulo-tarjeta" className="display-titulo-3">
+        <h2 id="titulo-tarjeta" className="titulo-2">
           Datos de la tarjeta
         </h2>
         {pagar.error && desenlace && (
@@ -109,9 +109,10 @@ export function PasoPago({ sesion }: { sesion: SesionPago }) {
           <AvisoFormulario error={cancelar.error} />
           <Button
             variant="ghost"
+            cargando={cancelar.isPending}
             disabled={cancelar.isPending || pagar.isPending || porReintentar}
             onClick={volverAlCheckout}
-            className="control-boton h-auto self-start px-6 py-3"
+            className="self-start px-6"
           >
             Cambiar dirección o envío
           </Button>

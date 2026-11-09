@@ -48,13 +48,13 @@ export function DialogoCancelarPedido({
     <Dialog open={abierto} onOpenChange={setAbierto}>
       {puedeCancelar && (
         <DialogTrigger asChild>
-          <Button variant="outline" className="control-boton h-auto px-6 py-3">
+          <Button variant="outline" className="px-6">
             Cancelar pedido
           </Button>
         </DialogTrigger>
       )}
       <DialogContent>
-        <DialogTitle className="display-titulo-3">Cancelar el pedido</DialogTitle>
+        <DialogTitle className="titulo-2">Cancelar el pedido</DialogTitle>
         <DialogDescription className="texto-pequeno">{descripcion}</DialogDescription>
         <Form {...formulario.form}>
           <form onSubmit={formulario.enviar} noValidate className="flex flex-col gap-5">
@@ -66,7 +66,12 @@ export function DialogoCancelarPedido({
                   Volver
                 </Button>
               </DialogClose>
-              <Button type="submit" variant="destructive" disabled={formulario.enviando}>
+              <Button
+                type="submit"
+                variant="destructive"
+                cargando={formulario.enviando}
+                disabled={formulario.enviando}
+              >
                 Cancelar pedido
               </Button>
             </div>

@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 
 type TipoAviso = 'info' | 'advertencia' | 'error' | 'exito';
 
-const fondo = cva('flex items-start gap-2.5 rounded-md px-4 py-3', {
+const fondo = cva('flex items-start gap-2.5 rounded-control px-4 py-3', {
   variants: {
     tipo: {
       info: 'bg-info-suave',

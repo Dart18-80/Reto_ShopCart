@@ -6,9 +6,9 @@ export function SeccionPerfil({ titulo, children }: { titulo: string; children: 
   return (
     <section
       aria-labelledby={idTitulo}
-      className="bg-card flex max-w-[560px] flex-col gap-5 rounded-lg border p-6"
+      className="bg-card flex max-w-[560px] flex-col gap-5 rounded-tarjeta border p-6"
     >
-      <h2 id={idTitulo} className="display-titulo-3">
+      <h2 id={idTitulo} className="titulo-2">
         {titulo}
       </h2>
       {children}

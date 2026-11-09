@@ -54,7 +54,7 @@ type CambiarVista = (cambios: Partial<ConsultaTabla>, historial?: ModoHistorial)
 const FILAS_ESQUELETO = 5;
 
 const ESQUELETO = (
-  <div className="bg-card flex flex-col gap-4 rounded-lg border p-4">
+  <div className="bg-card flex flex-col gap-4 rounded-tarjeta border p-4">
     {Array.from({ length: FILAS_ESQUELETO }, (_, i) => (
       <Skeleton key={i} className="h-5 w-full" />
     ))}
@@ -123,7 +123,7 @@ function Tabla<T>({
   cambiarVista: CambiarVista;
 }) {
   return (
-    <div className="bg-card overflow-x-auto rounded-lg border">
+    <div className="bg-card overflow-x-auto rounded-tarjeta border">
       <table
         aria-label={titulo}
         aria-busy={actualizando}
@@ -181,7 +181,7 @@ function Tarjetas<T>({
   return (
     <ul aria-label={titulo} aria-busy={actualizando} className="flex flex-col gap-3">
       {filas.map((fila) => (
-        <li key={claveFila(fila)} className="bg-card rounded-lg border p-4">
+        <li key={claveFila(fila)} className="bg-card rounded-tarjeta border p-4">
           <dl className="flex flex-col gap-2">
             {visibles.map((columna) => (
               <div key={columna.id} className="flex items-baseline justify-between gap-4">

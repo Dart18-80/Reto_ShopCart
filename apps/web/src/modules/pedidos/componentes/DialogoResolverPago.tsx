@@ -70,7 +70,7 @@ export function DialogoResolverPago({ pago, alResolver }: PropsDialogoResolverPa
         </Button>
       </DialogTrigger>
       <DialogContent>
-        <DialogTitle className="display-titulo-3">{titulo}</DialogTitle>
+        <DialogTitle className="titulo-2">{titulo}</DialogTitle>
         <DialogDescription className="texto-pequeno">
           {`${pago.numeroPedido ?? 'Sin pedido'} · ${pago.cliente.nombre} · ${formatearMonto(pago.monto)}`}
         </DialogDescription>
@@ -90,7 +90,7 @@ export function DialogoResolverPago({ pago, alResolver }: PropsDialogoResolverPa
                   Volver
                 </Button>
               </DialogClose>
-              <Button type="submit" disabled={formulario.enviando}>
+              <Button type="submit" cargando={formulario.enviando} disabled={formulario.enviando}>
                 Resolver
               </Button>
             </div>

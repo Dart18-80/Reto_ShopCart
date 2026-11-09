@@ -89,7 +89,7 @@ export function DialogoCambiarPrecio({
         </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[90dvh] overflow-y-auto">
-        <DialogTitle className="display-titulo-3">{titulo}</DialogTitle>
+        <DialogTitle className="titulo-2">{titulo}</DialogTitle>
         <DialogDescription className="sr-only">
           El precio nuevo rige desde ahora; el historial guarda cada versión.
         </DialogDescription>
@@ -119,7 +119,7 @@ export function DialogoCambiarPrecio({
                   Cancelar
                 </Button>
               </DialogClose>
-              <Button type="submit" disabled={formulario.enviando}>
+              <Button type="submit" cargando={formulario.enviando} disabled={formulario.enviando}>
                 Guardar precio
               </Button>
             </div>

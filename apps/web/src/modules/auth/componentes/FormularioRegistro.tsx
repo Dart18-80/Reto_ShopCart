@@ -45,8 +45,9 @@ export function FormularioRegistro() {
         />
         <Button
           type="submit"
+          cargando={formulario.enviando}
           disabled={formulario.enviando}
-          className="control-boton h-auto w-full px-6 py-3"
+          className="w-full"
         >
           Crear cuenta
         </Button>

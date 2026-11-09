@@ -35,7 +35,7 @@ export function SelectorIlustracion() {
             {ILUSTRACIONES_PRENDA.map((tipo) => (
               <label
                 key={tipo}
-                className="has-data-[state=checked]:border-ring has-data-[state=checked]:bg-secondary flex cursor-pointer flex-col items-center gap-1 rounded-md border p-2"
+                className="has-data-[state=checked]:border-ring has-data-[state=checked]:bg-secondary flex cursor-pointer flex-col items-center gap-1 rounded-control border p-2"
               >
                 <span aria-hidden>
                   <Prenda tipo={tipo} className="size-12" />

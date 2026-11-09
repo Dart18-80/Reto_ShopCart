@@ -86,7 +86,12 @@ const columnas = ({
           descripcion="Se borra la variante con su historial de precios, y no se puede deshacer. Si no se puede eliminar, verás el motivo."
           textoConfirmar="Eliminar variante"
           disparador={
-            <Button variant="ghost" size="sm" disabled={ocupada} aria-label={`Eliminar ${v.sku}`}>
+            <Button
+              variant="ghost-destructive"
+              size="sm"
+              disabled={ocupada}
+              aria-label={`Eliminar ${v.sku}`}
+            >
               Eliminar
             </Button>
           }
@@ -113,7 +118,7 @@ export function VariantesProducto({ producto, atributos }: PropsVariantesProduct
   return (
     <section aria-labelledby="titulo-variantes" className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id="titulo-variantes" className="display-titulo-2">
+        <h2 id="titulo-variantes" className="titulo-2">
           Variantes
         </h2>
         <DialogoNuevaVariante idProducto={producto.idProducto} atributos={atributos} />

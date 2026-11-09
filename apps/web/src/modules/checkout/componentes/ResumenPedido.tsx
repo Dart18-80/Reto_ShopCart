@@ -40,9 +40,9 @@ export function ResumenPedido({
   return (
     <section
       aria-labelledby="titulo-tu-pedido"
-      className="bg-card flex flex-col gap-3.5 rounded-xl border p-6"
+      className="bg-card flex flex-col gap-3.5 rounded-tarjeta border p-6"
     >
-      <h2 id="titulo-tu-pedido" className="display-titulo-3">
+      <h2 id="titulo-tu-pedido" className="titulo-2">
         Tu pedido
       </h2>
       {encabezado}

@@ -27,10 +27,10 @@ export function CategoriasPagina() {
         </Link>
         {' / Categorías y atributos'}
       </nav>
-      <h1 className="display-titulo-1">Categorías y atributos</h1>
+      <h1 className="titulo-1">Categorías y atributos</h1>
       <section aria-labelledby="titulo-categorias" className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 id="titulo-categorias" className="display-titulo-3">
+          <h2 id="titulo-categorias" className="titulo-2">
             Categorías
           </h2>
           <DialogoNuevaCategoria disparador={<Button>Nueva categoría</Button>} />
@@ -45,7 +45,7 @@ export function CategoriasPagina() {
       </section>
       <section aria-labelledby="titulo-atributos" className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 id="titulo-atributos" className="display-titulo-3">
+          <h2 id="titulo-atributos" className="titulo-2">
             Atributos
           </h2>
           <DialogoNuevoAtributo />

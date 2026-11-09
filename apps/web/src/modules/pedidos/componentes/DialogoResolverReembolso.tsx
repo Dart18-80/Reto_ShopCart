@@ -42,7 +42,7 @@ export function DialogoResolverReembolso({ reembolso }: { reembolso: Reembolso }
         </Button>
       </DialogTrigger>
       <DialogContent>
-        <DialogTitle className="display-titulo-3">{titulo}</DialogTitle>
+        <DialogTitle className="titulo-2">{titulo}</DialogTitle>
         <DialogDescription className="texto-pequeno">
           {`Registra cómo se devolvieron ${formatearMonto(reembolso.monto)} fuera de la pasarela. Cuenta como reembolsado.`}
         </DialogDescription>
@@ -62,7 +62,7 @@ export function DialogoResolverReembolso({ reembolso }: { reembolso: Reembolso }
                   Volver
                 </Button>
               </DialogClose>
-              <Button type="submit" disabled={formulario.enviando}>
+              <Button type="submit" cargando={formulario.enviando} disabled={formulario.enviando}>
                 Resolver
               </Button>
             </div>

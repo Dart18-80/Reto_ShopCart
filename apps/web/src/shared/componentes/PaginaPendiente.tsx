@@ -5,7 +5,7 @@ export function PaginaPendiente({ titulo }: { titulo: string }) {
   useTituloPagina(titulo);
   return (
     <section className="flex flex-col gap-2">
-      <h1 className="display-titulo-1">{titulo}</h1>
+      <h1 className="titulo-1">{titulo}</h1>
       <p className="text-muted-foreground texto-base">Esta pantalla llega con su módulo.</p>
     </section>
   );

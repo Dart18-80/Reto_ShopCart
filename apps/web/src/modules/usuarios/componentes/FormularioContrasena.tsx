@@ -39,8 +39,9 @@ export function FormularioContrasena() {
         <div>
           <Button
             type="submit"
+            cargando={formulario.enviando}
             disabled={formulario.enviando}
-            className="control-boton h-auto px-6 py-3"
+            className="px-6"
           >
             Cambiar contraseña
           </Button>

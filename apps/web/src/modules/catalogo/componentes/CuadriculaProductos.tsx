@@ -27,7 +27,7 @@ export const ESQUELETO_CUADRICULA = (
   <Cuadricula>
     {Array.from({ length: TARJETAS_DEL_ESQUELETO }, (_, indice) => (
       <li key={indice} className="flex flex-col gap-2">
-        <Skeleton className="aspect-square w-full rounded-lg" />
+        <Skeleton className="aspect-square w-full rounded-tarjeta" />
         <Skeleton className="h-4 w-2/3" />
         <Skeleton className="h-6 w-1/3" />
       </li>

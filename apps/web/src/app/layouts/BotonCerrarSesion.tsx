@@ -13,6 +13,7 @@ export function BotonCerrarSesion({ variante }: { variante: 'icono' | 'texto' })
       variant="ghost"
       size={soloIcono ? 'icon' : 'sm'}
       aria-label={soloIcono ? ETIQUETA : undefined}
+      cargando={cerrarSesion.isPending}
       disabled={cerrarSesion.isPending}
       onClick={() => {
         cerrarSesion.mutate();

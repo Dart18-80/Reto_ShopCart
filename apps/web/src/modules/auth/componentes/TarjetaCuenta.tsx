@@ -11,9 +11,9 @@ interface PropsTarjetaCuenta {
 /** Figma: Cuenta · Ingresar (26:414 y 26:460). La tarjeta centrada de los formularios de acceso. */
 export function TarjetaCuenta({ titulo, subtitulo, children, pie }: PropsTarjetaCuenta) {
   return (
-    <section className="bg-card mx-auto mt-2 flex w-full max-w-[420px] flex-col gap-5 rounded-lg border px-4 py-6 md:mt-16 md:mb-24 md:p-8">
+    <section className="bg-card mx-auto mt-2 flex w-full max-w-[420px] flex-col gap-5 rounded-panel border px-4 py-6 md:mt-16 md:mb-24 md:p-8">
       <div className="flex flex-col gap-1.5">
-        <h1 className="display-titulo-2">{titulo}</h1>
+        <h1 className="titulo-1">{titulo}</h1>
         <p className="texto-base text-muted-foreground">{subtitulo}</p>
       </div>
       {children}

@@ -27,7 +27,7 @@ export function DashboardPagina() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <h1 className="display-titulo-1">Dashboard</h1>
+          <h1 className="titulo-1">Dashboard</h1>
           <p className="texto-base text-muted-foreground">Ventas y carritos de la tienda.</p>
           <IndicadorTiempoReal estado={tiempoReal} />
         </div>

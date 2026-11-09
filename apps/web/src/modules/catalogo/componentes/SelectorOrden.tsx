@@ -1,5 +1,5 @@
 import type { ConsultaBusqueda } from '@shopcart/shared';
-import { ChevronDown } from 'lucide-react';
+import { CLASE_SELECT } from '../../../shared/ui/control';
 
 type Orden = Pick<ConsultaBusqueda, 'orden' | 'direccion'>;
 
@@ -36,26 +36,20 @@ interface PropsSelectorOrden {
 /** Figma: Selector (22:85). Un `select` nativo: accesible con teclado y lector de pantalla sin más. */
 export function SelectorOrden({ valor, onCambiar }: PropsSelectorOrden) {
   return (
-    <div className="relative">
-      <select
-        aria-label="Ordenar"
-        value={claveDe(valor)}
-        onChange={(evento) => {
-          const clave = evento.target.value;
-          if (esClave(clave)) onCambiar(OPCIONES[clave].orden);
-        }}
-        className="bg-card texto-base focus-visible:ring-ring h-10.5 w-full appearance-none rounded-md border py-2 pr-9 pl-3 focus-visible:ring-2 focus-visible:outline-none"
-      >
-        {Object.entries(OPCIONES).map(([clave, { etiqueta }]) => (
-          <option key={clave} value={clave}>
-            {etiqueta}
-          </option>
-        ))}
-      </select>
-      <ChevronDown
-        aria-hidden
-        className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2"
-      />
-    </div>
+    <select
+      aria-label="Ordenar"
+      value={claveDe(valor)}
+      onChange={(evento) => {
+        const clave = evento.target.value;
+        if (esClave(clave)) onCambiar(OPCIONES[clave].orden);
+      }}
+      className={CLASE_SELECT}
+    >
+      {Object.entries(OPCIONES).map(([clave, { etiqueta }]) => (
+        <option key={clave} value={clave}>
+          {etiqueta}
+        </option>
+      ))}
+    </select>
   );
 }

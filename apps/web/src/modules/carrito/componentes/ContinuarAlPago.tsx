@@ -30,7 +30,7 @@ export function ContinuarAlPago({ resumen }: { resumen: Carrito['resumen'] }) {
         onClick={() => {
           void navigate(tieneRol('Cliente') ? RUTAS.checkout : RUTA_INGRESO_AL_CHECKOUT);
         }}
-        className="control-boton h-auto w-full px-6 py-3"
+        className="w-full"
       >
         Continuar al pago
       </Button>

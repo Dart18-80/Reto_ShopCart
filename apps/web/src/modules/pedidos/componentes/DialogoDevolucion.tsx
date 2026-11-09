@@ -6,7 +6,7 @@ import { z } from 'zod';
 import type { ErrorApi } from '../../../shared/api';
 import { AvisoFormulario } from '../../../shared/componentes/AvisoFormulario';
 import { CampoFormulario } from '../../../shared/componentes/CampoFormulario';
-import { CLASE_SELECT } from '../../../shared/componentes/CampoSeleccion';
+import { CLASE_SELECT } from '../../../shared/ui/control';
 import { formatearConteo } from '../../../shared/formato/conteo';
 import { useFormularioApi } from '../../../shared/hooks/useFormularioApi';
 import { Button } from '../../../shared/ui/button';
@@ -135,7 +135,7 @@ export function DialogoDevolucion({ pedido, mutacion }: PropsDialogoDevolucion) 
         </DialogTrigger>
       )}
       <DialogContent className="max-h-[90dvh] overflow-y-auto">
-        <DialogTitle className="display-titulo-3">Registrar devolución</DialogTitle>
+        <DialogTitle className="titulo-2">Registrar devolución</DialogTitle>
         <DialogDescription className="texto-pequeno">
           Las unidades devueltas vuelven al inventario; el reembolso se calcula con lo que se pagó
           por ellas.
@@ -164,7 +164,7 @@ export function DialogoDevolucion({ pedido, mutacion }: PropsDialogoDevolucion) 
                   Volver
                 </Button>
               </DialogClose>
-              <Button type="submit" disabled={formulario.enviando}>
+              <Button type="submit" cargando={formulario.enviando} disabled={formulario.enviando}>
                 Registrar devolución
               </Button>
             </div>

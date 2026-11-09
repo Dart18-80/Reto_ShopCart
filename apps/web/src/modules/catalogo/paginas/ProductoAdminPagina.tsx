@@ -85,7 +85,7 @@ function Editor({ producto }: { producto: ProductoAdmin }) {
       </nav>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="display-titulo-1">{producto.nombre}</h1>
+          <h1 className="titulo-1">{producto.nombre}</h1>
           {!producto.activo && (
             <span className="texto-pequeno text-muted-foreground">Inactivo</span>
           )}
@@ -96,7 +96,11 @@ function Editor({ producto }: { producto: ProductoAdmin }) {
             descripcion="Se borran el producto, sus imágenes y sus variantes, y no se puede deshacer. Si no se puede eliminar, verás el motivo."
             textoConfirmar="Eliminar producto"
             disparador={
-              <Button variant="ghost" disabled={cambiar.isPending}>
+              <Button
+                variant="destructive"
+                cargando={cambiar.isPending && cambiar.variables === 'eliminar'}
+                disabled={cambiar.isPending}
+              >
                 Eliminar producto
               </Button>
             }
@@ -106,6 +110,7 @@ function Editor({ producto }: { producto: ProductoAdmin }) {
           />
           <Button
             variant="outline"
+            cargando={cambiar.isPending && cambiar.variables !== 'eliminar'}
             disabled={cambiar.isPending}
             onClick={() => {
               cambiar.mutate(producto.activo ? 'desactivar' : 'activar');

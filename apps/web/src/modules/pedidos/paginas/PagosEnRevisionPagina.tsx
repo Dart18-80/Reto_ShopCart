@@ -104,7 +104,7 @@ export function PagosEnRevisionPagina() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h1 className="display-titulo-1">Pagos en revisión</h1>
+        <h1 className="titulo-1">Pagos en revisión</h1>
         <p className="texto-base text-muted-foreground">
           Cobros que la conciliación no pudo cerrar sola: resuélvelos con lo que dice la pasarela.
         </p>

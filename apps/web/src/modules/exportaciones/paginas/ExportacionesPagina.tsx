@@ -61,7 +61,7 @@ export function ExportacionesPagina() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h1 className="display-titulo-1">Mis exportaciones</h1>
+        <h1 className="titulo-1">Mis exportaciones</h1>
         <p className="texto-base text-muted-foreground">
           Los reportes que pediste en Excel o PDF. Se piden desde el{' '}
           <Link to={RUTAS.dashboard} className="text-primary underline">

@@ -48,7 +48,7 @@ function MenuMovil({ entradas }: { entradas: readonly PaginaDeMenu[] }) {
         </Button>
       </SheetTrigger>
       <SheetContent side="left" className="w-62 gap-6 px-4 py-6">
-        <SheetTitle className="display-titulo-3 text-primary">ShopCart</SheetTitle>
+        <SheetTitle className="titulo-2 text-primary">ShopCart</SheetTitle>
         <SheetDescription className="sr-only">Secciones de la tienda</SheetDescription>
         <NavegacionArea
           nombre={NOMBRE_MENU}
@@ -96,10 +96,7 @@ export function EncabezadoTienda() {
     <header className="bg-card border-b">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3 md:flex-nowrap md:gap-8 md:px-8 md:py-4">
         <MenuMovil entradas={entradas} />
-        <Link
-          to={RAIZ_DE_AREA.tienda}
-          className="display-titulo-3 text-primary flex-1 md:flex-none"
-        >
+        <Link to={RAIZ_DE_AREA.tienda} className="titulo-2 text-primary flex-1 md:flex-none">
           ShopCart
         </Link>
         <MenuEscritorio entradas={entradas} />

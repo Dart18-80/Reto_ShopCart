@@ -37,6 +37,7 @@ export function DescargarExportacion({ exportacion }: { exportacion: Exportacion
       <Button
         variant="outline"
         size="sm"
+        cargando={descarga.isPending}
         disabled={descarga.isPending}
         onClick={() => {
           descarga.mutate(exportacion);

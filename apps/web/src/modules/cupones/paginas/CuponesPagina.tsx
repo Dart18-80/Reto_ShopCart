@@ -6,7 +6,7 @@ import {
 } from '@shopcart/shared';
 import { useId } from 'react';
 import { Aviso } from '../../../shared/componentes/Aviso';
-import { CLASE_SELECT } from '../../../shared/componentes/CampoSeleccion';
+import { CLASE_SELECT } from '../../../shared/ui/control';
 import { Monto } from '../../../shared/componentes/Monto';
 import { TablaServidor, type ColumnaTabla } from '../../../shared/componentes/TablaServidor';
 import { formatearDia } from '../../../shared/formato/fecha';
@@ -171,7 +171,7 @@ export function CuponesPagina() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <h1 className="display-titulo-1">Cupones</h1>
+          <h1 className="titulo-1">Cupones</h1>
           <p className="texto-base text-muted-foreground">
             Descuentos por código para toda la tienda o una categoría.
           </p>

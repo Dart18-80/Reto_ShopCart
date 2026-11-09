@@ -67,7 +67,7 @@ export function TablaCarritos({ parametros }: { parametros: ParametrosUrl<Consul
     <section aria-labelledby={idTitulo} className="flex flex-col gap-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex flex-col gap-1">
-          <h2 id={idTitulo} className="display-titulo-3">
+          <h2 id={idTitulo} className="titulo-2">
             Carritos abandonados
           </h2>
           <p className="texto-pequeno text-muted-foreground">

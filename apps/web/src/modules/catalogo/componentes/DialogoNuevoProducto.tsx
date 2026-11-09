@@ -43,7 +43,7 @@ export function DialogoNuevoProducto({ categorias }: { categorias: CategoriaAdmi
         <Button>Nuevo producto</Button>
       </DialogTrigger>
       <DialogContent className="max-h-[90dvh] overflow-y-auto">
-        <DialogTitle className="display-titulo-3">Nuevo producto</DialogTitle>
+        <DialogTitle className="titulo-2">Nuevo producto</DialogTitle>
         <DialogDescription className="texto-pequeno">
           Después agregas sus imágenes, sus variantes y sus precios.
         </DialogDescription>
@@ -63,7 +63,7 @@ export function DialogoNuevoProducto({ categorias }: { categorias: CategoriaAdmi
               maxLength={2000}
               vacio="ausente"
             />
-            <Button type="submit" disabled={formulario.enviando}>
+            <Button type="submit" cargando={formulario.enviando} disabled={formulario.enviando}>
               Crear producto
             </Button>
           </form>

@@ -6,6 +6,7 @@ import { AvisoFormulario } from '../../../shared/componentes/AvisoFormulario';
 import { CampoFormulario } from '../../../shared/componentes/CampoFormulario';
 import { useFormularioApi } from '../../../shared/hooks/useFormularioApi';
 import { Button } from '../../../shared/ui/button';
+import { CLASE_CASILLA } from '../../../shared/ui/control';
 import {
   Dialog,
   DialogContent,
@@ -76,7 +77,7 @@ function DialogoImagen({
         <Button variant="outline">Agregar imagen</Button>
       </DialogTrigger>
       <DialogContent>
-        <DialogTitle className="display-titulo-3">Agregar imagen</DialogTitle>
+        <DialogTitle className="titulo-2">Agregar imagen</DialogTitle>
         <DialogDescription className="texto-pequeno">
           Una URL absoluta o una ruta servida por la tienda (/static/productos/…).
         </DialogDescription>
@@ -101,13 +102,13 @@ function DialogoImagen({
                     onChange={(evento) => {
                       field.onChange(evento.target.checked);
                     }}
-                    className="accent-primary size-4"
+                    className={CLASE_CASILLA}
                   />
                   Imagen principal
                 </label>
               )}
             />
-            <Button type="submit" disabled={formulario.enviando}>
+            <Button type="submit" cargando={formulario.enviando} disabled={formulario.enviando}>
               Guardar imagen
             </Button>
           </form>
@@ -149,9 +150,9 @@ export function ImagenesProducto({ producto }: { producto: ProductoAdmin }) {
   return (
     <section
       aria-labelledby="titulo-imagenes"
-      className="bg-card flex flex-col gap-4 rounded-xl border p-6"
+      className="bg-card flex flex-col gap-4 rounded-tarjeta border p-6"
     >
-      <h2 id="titulo-imagenes" className="display-titulo-3">
+      <h2 id="titulo-imagenes" className="titulo-2">
         Imágenes
       </h2>
       {guardar.error && <Aviso tipo="error">{guardar.error.mensaje}</Aviso>}
@@ -161,7 +162,7 @@ export function ImagenesProducto({ producto }: { producto: ProductoAdmin }) {
             <img
               src={imagen.url}
               alt={imagen.textoAlternativo}
-              className="bg-muted size-12 shrink-0 rounded-md object-contain"
+              className="bg-muted size-12 shrink-0 rounded-control object-contain"
             />
             <div className="flex min-w-0 flex-1 flex-col">
               <span className="texto-pequeno-fuerte truncate">{imagen.url}</span>

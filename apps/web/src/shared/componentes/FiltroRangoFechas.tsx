@@ -1,6 +1,6 @@
 import { useId } from 'react';
 import type { ParametrosUrl } from '../hooks/useParametrosUrl';
-import { CLASE_SELECT } from './CampoSeleccion';
+import { CLASE_CONTROL } from '../ui/control';
 
 /** Lo que toda consulta con rango de días de Guatemala tiene (`rangoDeFechasSchema`, A-12). */
 interface ConRango {
@@ -36,7 +36,7 @@ function CampoDia({
         onChange={(evento) => {
           alCambiar(evento.target.value === '' ? undefined : evento.target.value);
         }}
-        className={CLASE_SELECT}
+        className={CLASE_CONTROL}
       />
     </div>
   );

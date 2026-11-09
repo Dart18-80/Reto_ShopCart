@@ -7,6 +7,7 @@ import { CampoFormulario } from '../../../shared/componentes/CampoFormulario';
 import { enteroDelCampo } from '../../../shared/formularios';
 import { useFormularioApi } from '../../../shared/hooks/useFormularioApi';
 import { Button } from '../../../shared/ui/button';
+import { CLASE_CASILLA } from '../../../shared/ui/control';
 import {
   Dialog,
   DialogClose,
@@ -57,7 +58,7 @@ function CampoActivo() {
               onChange={(evento) => {
                 field.onChange(evento.target.checked);
               }}
-              className="size-4"
+              className={CLASE_CASILLA}
             />
           </FormControl>
           <FormLabel className="texto-pequeno">Disponible en el checkout</FormLabel>
@@ -94,7 +95,7 @@ export function DialogoMetodoEnvio({ metodo }: { metodo: MetodoEnvioAdmin }) {
         </Button>
       </DialogTrigger>
       <DialogContent>
-        <DialogTitle className="display-titulo-3">{`Editar ${metodo.nombre}`}</DialogTitle>
+        <DialogTitle className="titulo-2">{`Editar ${metodo.nombre}`}</DialogTitle>
         <DialogDescription className="texto-pequeno">
           {`Código ${metodo.codigo}. El costo es la tarifa base; el envío gratis lo decide la configuración.`}
         </DialogDescription>
@@ -119,7 +120,7 @@ export function DialogoMetodoEnvio({ metodo }: { metodo: MetodoEnvioAdmin }) {
                   Cancelar
                 </Button>
               </DialogClose>
-              <Button type="submit" disabled={formulario.enviando}>
+              <Button type="submit" cargando={formulario.enviando} disabled={formulario.enviando}>
                 Guardar cambios
               </Button>
             </div>

@@ -77,7 +77,7 @@ export function GestionCatalogoPagina() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <h1 className="display-titulo-1">Productos y precios</h1>
+          <h1 className="titulo-1">Productos y precios</h1>
           <p className="texto-base text-muted-foreground">
             Catálogo de la tienda, sus variantes y precios.
           </p>

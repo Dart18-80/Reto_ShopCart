@@ -5,7 +5,7 @@ import {
   type ModuloBitacora,
 } from '@shopcart/shared';
 import { useId } from 'react';
-import { CLASE_SELECT } from '../../../shared/componentes/CampoSeleccion';
+import { CLASE_SELECT } from '../../../shared/ui/control';
 import { FiltroRangoFechas } from '../../../shared/componentes/FiltroRangoFechas';
 import { FiltroTexto } from '../../../shared/componentes/FiltroTexto';
 import { TablaServidor, type ColumnaTabla } from '../../../shared/componentes/TablaServidor';
@@ -138,7 +138,7 @@ export function BitacoraPagina() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h1 className="display-titulo-1">Bitácora</h1>
+        <h1 className="titulo-1">Bitácora</h1>
         <p className="texto-base text-muted-foreground">
           Quién cambió qué y cuándo, con el valor anterior y el nuevo.
         </p>

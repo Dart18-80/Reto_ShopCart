@@ -71,7 +71,7 @@ export function DialogoCambiarEstado({
         <Button>{accion}</Button>
       </DialogTrigger>
       <DialogContent>
-        <DialogTitle className="display-titulo-3">{accion}</DialogTitle>
+        <DialogTitle className="titulo-2">{accion}</DialogTitle>
         <DialogDescription className="texto-pequeno">
           {`El pedido ${numeroPedido} pasa de ${nombreDelEstado(estadoActual)} a ${nombreDelEstado(estadoNuevo)}.`}
         </DialogDescription>
@@ -91,7 +91,7 @@ export function DialogoCambiarEstado({
                   Volver
                 </Button>
               </DialogClose>
-              <Button type="submit" disabled={formulario.enviando}>
+              <Button type="submit" cargando={formulario.enviando} disabled={formulario.enviando}>
                 {accion}
               </Button>
             </div>

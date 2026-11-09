@@ -71,7 +71,7 @@ export function GestionPedidosPagina() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h1 className="display-titulo-1">Pedidos</h1>
+        <h1 className="titulo-1">Pedidos</h1>
         <p className="texto-base text-muted-foreground">
           Prepara, despacha y da seguimiento a los pedidos pagados.
         </p>

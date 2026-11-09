@@ -21,7 +21,7 @@ export function TablaDeGrafica<T>({
   claveFila: (fila: T) => string | number;
 }) {
   return (
-    <div className="overflow-x-auto rounded-lg border">
+    <div className="overflow-x-auto rounded-tarjeta border">
       <table aria-label={titulo} className="w-full border-collapse text-left">
         <thead className="bg-muted">
           <tr>

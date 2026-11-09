@@ -35,7 +35,7 @@ export function DialogoConfirmacion({
     <Dialog open={abierto} onOpenChange={setAbierto}>
       <DialogTrigger asChild>{disparador}</DialogTrigger>
       <DialogContent role="alertdialog">
-        <DialogTitle className="display-titulo-3">{titulo}</DialogTitle>
+        <DialogTitle className="titulo-2">{titulo}</DialogTitle>
         <DialogDescription className="texto-base text-muted-foreground">
           {descripcion}
         </DialogDescription>

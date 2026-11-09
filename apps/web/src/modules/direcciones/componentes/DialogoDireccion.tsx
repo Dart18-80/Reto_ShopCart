@@ -12,7 +12,7 @@ import { FormularioEditarDireccion, FormularioNuevaDireccion } from './Formulari
 
 // El formulario es largo: en un teléfono el diálogo se desplaza en lugar de salirse de la pantalla.
 const CONTENIDO = 'max-h-[90dvh] overflow-y-auto';
-const TITULO = 'display-titulo-3';
+const TITULO = 'titulo-2';
 const DESCRIPCION = 'texto-pequeno';
 
 interface PropsDialogo {

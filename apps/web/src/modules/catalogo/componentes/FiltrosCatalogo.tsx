@@ -4,6 +4,7 @@ import { useId, useMemo, type FocusEvent } from 'react';
 import { useForm } from 'react-hook-form';
 import { CampoFormulario } from '../../../shared/componentes/CampoFormulario';
 import { Button } from '../../../shared/ui/button';
+import { CLASE_CASILLA } from '../../../shared/ui/control';
 import { Form } from '../../../shared/ui/form';
 
 interface PropsFiltrosCatalogo {
@@ -86,7 +87,7 @@ export function FiltrosCatalogo({ valores, onCambiar, onLimpiar }: PropsFiltrosC
           onChange={(evento) => {
             onCambiar({ disponible: evento.target.checked ? true : undefined });
           }}
-          className="accent-primary size-4"
+          className={CLASE_CASILLA}
         />
         <label htmlFor={idExistencia} className="texto-base">
           Solo con existencia

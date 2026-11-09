@@ -16,7 +16,7 @@ export function TarjetaProducto({ producto }: { producto: ProductoBusqueda }) {
   return (
     <Link
       to={conId(RUTAS.producto, producto.idProducto)}
-      className="bg-card hover:border-primary focus-visible:ring-ring flex w-full flex-col overflow-hidden rounded-lg border transition-colors focus-visible:ring-2 focus-visible:outline-none"
+      className="bg-card hover:border-primary focus-visible:ring-ring flex w-full flex-col overflow-hidden rounded-tarjeta border transition-colors focus-visible:ring-2 focus-visible:outline-none"
     >
       <div className="bg-muted flex aspect-square items-center justify-center">
         <Prenda tipo={producto.ilustracion} color={primerColor} className="h-2/3 w-2/3" />

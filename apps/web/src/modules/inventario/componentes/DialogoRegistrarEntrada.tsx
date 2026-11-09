@@ -98,7 +98,7 @@ function FormularioEntrada({ alTerminar }: { alTerminar: () => void }) {
               Cancelar
             </Button>
           </DialogClose>
-          <Button type="submit" disabled={formulario.enviando}>
+          <Button type="submit" cargando={formulario.enviando} disabled={formulario.enviando}>
             {TITULO}
           </Button>
         </div>
@@ -119,7 +119,7 @@ export function DialogoRegistrarEntrada() {
         <Button>{TITULO}</Button>
       </DialogTrigger>
       <DialogContent className="max-h-[90dvh] overflow-y-auto">
-        <DialogTitle className="display-titulo-3">{TITULO}</DialogTitle>
+        <DialogTitle className="titulo-2">{TITULO}</DialogTitle>
         <DialogDescription className="sr-only">
           Unidades que entran al inventario de una variante, con su motivo y su referencia.
         </DialogDescription>

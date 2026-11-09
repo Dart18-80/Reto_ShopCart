@@ -55,3 +55,48 @@ describe('tema.css contra las variables de Figma (FE-15)', () => {
     expect(Object.keys(variablesDelBloque(':root')).sort()).toEqual(esperadas);
   });
 });
+
+// D1: el contraste AA (4.5:1 para texto normal) de cada par de texto y superficie que usa la interfaz, en los dos
+// temas. Fórmula de luminancia relativa de WCAG 2.
+function luminancia(hex: string): number {
+  const [r = 0, g = 0, b = 0] = [1, 3, 5].map((inicio) => {
+    const canal = Number.parseInt(hex.slice(inicio, inicio + 2), 16) / 255;
+    return canal <= 0.04045 ? canal / 12.92 : ((canal + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function contraste(texto: string, fondo: string): number {
+  const [clara, oscura] = [luminancia(texto), luminancia(fondo)].sort((a, b) => b - a);
+  return ((clara ?? 0) + 0.05) / ((oscura ?? 0) + 0.05);
+}
+
+const PARES_DE_TEXTO: [texto: string, fondo: string][] = [
+  ['--foreground', '--background'],
+  ['--foreground', '--card'],
+  ['--muted-foreground', '--background'],
+  ['--muted-foreground', '--card'],
+  ['--muted-foreground', '--muted'],
+  ['--primary-foreground', '--primary'],
+  ['--primary', '--card'],
+  ['--primary', '--background'],
+  ['--primary', '--accent'],
+  ['--accent-foreground', '--accent'],
+  ['--secondary-foreground', '--secondary'],
+  // Lo destructivo (botones y errores) usa el rojo de texto, también sobre su fondo suave al pasar el cursor.
+  ['--oferta', '--card'],
+  ['--oferta', '--background'],
+  ['--oferta', '--destructive-suave'],
+  ['--exito', '--exito-suave'],
+  ['--aviso', '--aviso-suave'],
+  ['--info', '--info-suave'],
+];
+
+describe('contraste AA de los textos en los dos temas (D1)', () => {
+  for (const [modo, colores] of Object.entries(figma.color)) {
+    const valores: Record<string, string> = colores;
+    it.each(PARES_DE_TEXTO)(`${modo}: %s sobre %s llega a 4.5:1`, (texto, fondo) => {
+      expect(contraste(valores[texto] ?? '', valores[fondo] ?? '')).toBeGreaterThanOrEqual(4.5);
+    });
+  }
+});

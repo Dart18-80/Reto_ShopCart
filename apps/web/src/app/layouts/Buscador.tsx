@@ -3,6 +3,7 @@ import { Search } from 'lucide-react';
 import type { SubmitEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { cn } from '../../shared/ui/cn';
+import { CLASE_GRUPO_CONTROL } from '../../shared/ui/control';
 import { RAIZ_DE_AREA } from '../rutas';
 
 // El catálogo lee el texto con el mismo nombre que la búsqueda del backend (GET /productos?texto=).
@@ -24,14 +25,7 @@ export function Buscador({ className }: { className?: string }) {
   }
 
   return (
-    <form
-      role="search"
-      onSubmit={buscar}
-      className={cn(
-        'bg-muted focus-within:ring-ring/50 flex items-center gap-2 rounded-md px-3 py-2 focus-within:ring-[3px]',
-        className,
-      )}
-    >
+    <form role="search" onSubmit={buscar} className={cn(CLASE_GRUPO_CONTROL, className)}>
       <Search aria-hidden className="text-muted-foreground size-4.5 shrink-0" />
       <input
         type="search"

@@ -30,7 +30,7 @@ const notaDe = (
 };
 
 const BOTON_TEXTO =
-  'texto-pequeno-fuerte focus-visible:ring-ring min-w-13 rounded-md border px-4 py-2.5 transition-colors focus-visible:ring-2 focus-visible:outline-none disabled:bg-muted disabled:text-muted-foreground disabled:line-through disabled:cursor-not-allowed';
+  'texto-pequeno-fuerte focus-visible:ring-ring min-w-13 rounded-control border px-4 py-2.5 transition-colors focus-visible:ring-2 focus-visible:outline-none disabled:bg-muted disabled:text-muted-foreground disabled:line-through disabled:cursor-not-allowed';
 
 /**
  * Figma 24:314: un grupo por atributo. Una opción que no forma ninguna variante disponible con lo ya elegido se

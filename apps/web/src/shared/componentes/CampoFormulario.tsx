@@ -62,7 +62,6 @@ export function CampoFormulario<V extends FieldValues>({
                 const valor = evento.target.value;
                 field.onChange(vacio !== undefined && valor === '' ? VALOR_SI_VACIO[vacio] : valor);
               }}
-              className="bg-card texto-base h-auto px-4 py-3 md:text-base aria-invalid:border-2"
             />
           </FormControl>
           {fieldState.error ? (

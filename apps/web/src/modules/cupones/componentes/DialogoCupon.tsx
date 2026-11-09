@@ -10,6 +10,7 @@ import { CampoSeleccion } from '../../../shared/componentes/CampoSeleccion';
 import { AvisoConsultaFallida } from '../../../shared/componentes/EstadoVista';
 import { useFormularioApi, type CampoDelCodigo } from '../../../shared/hooks/useFormularioApi';
 import { Button } from '../../../shared/ui/button';
+import { CLASE_CASILLA } from '../../../shared/ui/control';
 import {
   Dialog,
   DialogClose,
@@ -143,7 +144,7 @@ function CampoActivo() {
               onChange={(evento) => {
                 field.onChange(evento.target.checked);
               }}
-              className="size-4"
+              className={CLASE_CASILLA}
             />
           </FormControl>
           <FormLabel className="texto-pequeno">Activo al crearlo</FormLabel>
@@ -174,7 +175,7 @@ function DialogoDeCupon({
     <Dialog open={abierto} onOpenChange={alCambiarAbierto}>
       <DialogTrigger asChild>{disparador}</DialogTrigger>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
-        <DialogTitle className="display-titulo-3">{titulo}</DialogTitle>
+        <DialogTitle className="titulo-2">{titulo}</DialogTitle>
         <DialogDescription className="texto-pequeno">{descripcion}</DialogDescription>
         {children}
       </DialogContent>
@@ -190,7 +191,7 @@ function Botones({ enviando, texto }: { enviando: boolean; texto: string }) {
           Cancelar
         </Button>
       </DialogClose>
-      <Button type="submit" disabled={enviando}>
+      <Button type="submit" cargando={enviando} disabled={enviando}>
         {texto}
       </Button>
     </div>

@@ -119,7 +119,7 @@ function FormularioConfiguracion({ configuracion }: { configuracion: Configuraci
         {guardado && !formulario.form.formState.isDirty && (
           <Aviso tipo="exito">Guardamos la configuración.</Aviso>
         )}
-        <div className="bg-card grid gap-5 rounded-xl border p-6 md:grid-cols-2">
+        <div className="bg-card grid gap-5 rounded-tarjeta border p-6 md:grid-cols-2">
           {PARAMETROS.map(({ campo, etiqueta, para }) => (
             <CampoFormulario
               key={campo}
@@ -141,7 +141,7 @@ function FormularioConfiguracion({ configuracion }: { configuracion: Configuraci
           <p className="texto-nota text-muted-foreground">
             {`Última actualización: ${formatearFechaHora(configuracion.fechaActualizacion)}.`}
           </p>
-          <Button type="submit" disabled={formulario.enviando}>
+          <Button type="submit" cargando={formulario.enviando} disabled={formulario.enviando}>
             Guardar configuración
           </Button>
         </div>
@@ -160,7 +160,7 @@ export function ConfiguracionPagina() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h1 className="display-titulo-1">Configuración</h1>
+        <h1 className="titulo-1">Configuración</h1>
         <p className="texto-base text-muted-foreground">
           Los parámetros con que trabaja la tienda. Cada cambio queda en la bitácora.
         </p>

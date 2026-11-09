@@ -57,7 +57,7 @@ export function CatalogoPagina() {
           <p className="texto-pequeno text-muted-foreground hidden md:block">{`Catálogo / ${categoria.nombre}`}</p>
         )}
         <div className="flex items-baseline gap-3">
-          <h1 className="display-titulo-1">{titulo}</h1>
+          <h1 className="titulo-1">{titulo}</h1>
           {total !== undefined && (
             <p className="texto-pequeno text-muted-foreground hidden md:block">
               {productos(total)}
@@ -88,7 +88,7 @@ export function CatalogoPagina() {
           aria-labelledby="titulo-filtros"
           className="hidden md:flex md:w-60 md:shrink-0 md:flex-col md:gap-5"
         >
-          <h2 id="titulo-filtros" className="display-titulo-3">
+          <h2 id="titulo-filtros" className="titulo-2">
             Filtros
           </h2>
           <FiltrosCatalogo {...filtros} />

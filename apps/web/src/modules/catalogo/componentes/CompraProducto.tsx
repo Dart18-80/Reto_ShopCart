@@ -39,6 +39,7 @@ export function CompraProducto({ idVariante, faltan, agotada }: PropsCompraProdu
         <Cantidad valor={cantidad} onCambiar={setCantidad} deshabilitada={agregar.isPending} />
         <Button
           type="button"
+          cargando={agregar.isPending}
           disabled={!puedeAgregar || agregar.isPending}
           onClick={() => {
             if (idVariante === undefined) return;

@@ -36,7 +36,7 @@ const OPCIONES_DE_FORMATO = FORMATOS_EXPORTACION.map((formato) => ({
 function SeguimientoExportacion({ idExportacion }: { idExportacion: number }) {
   const seguimiento = useExportacion(idExportacion);
   return (
-    <div role="status" className="bg-muted flex flex-col gap-3 rounded-md p-4">
+    <div role="status" className="bg-muted flex flex-col gap-3 rounded-control p-4">
       <EstadoVista consulta={seguimiento}>
         {({ exportacion }) => (
           <div className="texto-pequeno flex flex-wrap items-center justify-between gap-3">
@@ -92,7 +92,7 @@ export function DialogoExportar({ reporte, filtros }: PropsDialogoExportar) {
         </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[90dvh] overflow-y-auto">
-        <DialogTitle className="display-titulo-3">Exportar {titulo.toLowerCase()}</DialogTitle>
+        <DialogTitle className="titulo-2">Exportar {titulo.toLowerCase()}</DialogTitle>
         <DialogDescription className="texto-pequeno">
           Con los mismos filtros que ves en el dashboard. El archivo se genera en segundo plano.
         </DialogDescription>
@@ -111,7 +111,7 @@ export function DialogoExportar({ reporte, filtros }: PropsDialogoExportar) {
                   Cerrar
                 </Button>
               </DialogClose>
-              <Button type="submit" disabled={formulario.enviando}>
+              <Button type="submit" cargando={formulario.enviando} disabled={formulario.enviando}>
                 Exportar
               </Button>
             </div>

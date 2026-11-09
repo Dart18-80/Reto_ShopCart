@@ -7,7 +7,7 @@ import {
 import { useId } from 'react';
 import { Link } from 'react-router';
 import { Aviso } from '../../../shared/componentes/Aviso';
-import { CLASE_SELECT } from '../../../shared/componentes/CampoSeleccion';
+import { CLASE_SELECT } from '../../../shared/ui/control';
 import { Monto } from '../../../shared/componentes/Monto';
 import { TablaServidor, type ColumnaTabla } from '../../../shared/componentes/TablaServidor';
 import { formatearFechaHora } from '../../../shared/formato/fecha';
@@ -148,7 +148,7 @@ export function ReembolsosPagina() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h1 className="display-titulo-1">Reembolsos</h1>
+        <h1 className="titulo-1">Reembolsos</h1>
         <p className="texto-base text-muted-foreground">
           Las devoluciones de dinero de cancelaciones y devoluciones; los fallidos se reintentan o
           se resuelven a mano.
