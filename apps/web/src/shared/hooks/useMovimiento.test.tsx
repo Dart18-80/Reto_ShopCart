@@ -11,7 +11,11 @@ import {
 
 const conTransformacion = (fotogramas: Keyframe[]) =>
   fotogramas.some(
-    (fotograma) => 'transform' in fotograma || 'scale' in fotograma || 'translate' in fotograma,
+    (fotograma) =>
+      'transform' in fotograma ||
+      'scale' in fotograma ||
+      'translate' in fotograma ||
+      'top' in fotograma,
   );
 
 function simularMovimiento({ reducido }: { reducido: boolean }) {
@@ -39,7 +43,7 @@ describe('animaciones con nombre (D2)', () => {
   it('la entrada de página sube 8 px con fundido en 200 ms', () => {
     const { fotogramas, opciones } = animacionDeEntrada(false);
 
-    expect(fotogramas[0]).toEqual({ opacity: 0, transform: 'translateY(8px)' });
+    expect(fotogramas[0]).toEqual({ opacity: 0, top: '8px' });
     expect(opciones.duration).toBe(200);
   });
 

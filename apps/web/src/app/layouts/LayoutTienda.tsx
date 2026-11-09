@@ -10,7 +10,7 @@ export function LayoutTienda() {
       <EncabezadoTienda />
       <main
         ref={entrada}
-        className="max-w-contenido mx-auto flex w-full flex-1 flex-col gap-6 p-4 md:p-8"
+        className="relative max-w-contenido mx-auto flex w-full flex-1 flex-col gap-6 p-4 md:p-8"
       >
         <Outlet />
       </main>

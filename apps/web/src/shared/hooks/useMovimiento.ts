@@ -32,7 +32,11 @@ export function useMovimientoReducido(): boolean {
   return useSyncExternalStore(suscribir, prefiereReducido);
 }
 
-/** La entrada de una página: sube 8 px con fundido en 200 ms; con movimiento reducido, solo el fundido. */
+/**
+ * La entrada de una página: sube 8 px con fundido en 200 ms; con movimiento reducido, solo el fundido. Desplaza con
+ * `top` sobre el <main> en posición relativa y no con `transform`: un transform haría del <main> el bloque contenedor
+ * de las barras fijas de móvil (CLASE_BARRA_FIJA) mientras dura la animación, y saltarían al terminar.
+ */
 export function animacionDeEntrada(reducido: boolean): Animacion {
   if (reducido) {
     return {
@@ -42,8 +46,8 @@ export function animacionDeEntrada(reducido: boolean): Animacion {
   }
   return {
     fotogramas: [
-      { opacity: 0, transform: 'translateY(8px)' },
-      { opacity: 1, transform: 'none' },
+      { opacity: 0, top: '8px' },
+      { opacity: 1, top: '0px' },
     ],
     opciones: { duration: DURACION_BASE_MS, easing: CURVA_SALIDA },
   };

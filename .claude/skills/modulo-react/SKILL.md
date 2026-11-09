@@ -261,6 +261,10 @@ export function GestionPedidosPagina() {
 - ***Mobile first*:** escribe primero la vista de teléfono y agrega `md:`/`lg:`. Revisa cada pantalla en 375 px y en 1280 px.
 - **Accesibilidad:** botones para acciones y enlaces para navegar; todo control con etiqueta visible o `aria-label`; foco visible; la información nunca depende solo del color (estados de pedido con texto, no solo con un punto de color).
 - Íconos de `lucide-react`. Textos de la interfaz en español, con el tono de la tienda.
+- **Sistema visual (FE-17, 05 §18):** radios `rounded-control`/`rounded-tarjeta`/`rounded-panel`, sombras `shadow-xs…lg` y títulos `titulo-display`/`titulo-1..3`; nunca `rounded-md/lg/xl` ni tamaños sueltos. Un campo, `<select>` o fecha nativo usa `CLASE_CONTROL`/`CLASE_SELECT` de `shared/ui/control.ts` (los nativos se estilizan, no se reemplazan); un checkbox, `CLASE_CASILLA`. Lo destructivo va con `variant="destructive"` o `"ghost-destructive"`. Un botón que espera la respuesta lleva `cargando` además de `disabled`.
+- **Movimiento:** solo con los tokens de `app/movimiento.css` y los hooks de `shared/hooks/useMovimiento.ts`; un desplazamiento o una escala nueva va con `motion-safe:` o se anula en la regla de `prefers-reduced-motion`. Nada de librerías de animación.
+- **Carga:** cada pantalla nueva pasa a `EstadoVista` un `esqueleto` con la forma y las medidas de su contenido (sin saltos al cargar); el retraso de 150 ms ya lo pone `EstadoVista`.
+- **Encabezado de una página del backoffice:** `EncabezadoPagina` (título, descripción y acciones). Una columna de `TablaServidor` puede ir como `enTarjeta: 'titulo' | 'esquina'` en la tarjeta de móvil.
 
 ## 12. Pruebas (FE-12)
 

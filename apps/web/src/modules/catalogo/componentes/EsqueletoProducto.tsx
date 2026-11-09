@@ -1,3 +1,5 @@
+import { RESERVA_BARRA_BOTON } from '../../../shared/ui/barra-fija';
+import { cn } from '../../../shared/ui/cn';
 import { Skeleton } from '../../../shared/ui/skeleton';
 
 const MINIATURAS = 4;
@@ -9,8 +11,8 @@ const TALLAS = 4;
  * miniaturas y, al lado, la categoría, el título, el precio, las muestras, las tallas y el botón.
  */
 export const ESQUELETO_PRODUCTO = (
-  <div className="flex flex-col gap-6">
-    <Skeleton className="h-5 w-64 max-w-full" />
+  <div className={cn('flex flex-col gap-6', RESERVA_BARRA_BOTON)}>
+    <Skeleton className="hidden h-5 w-64 max-w-full md:block" />
     <div className="grid gap-6 md:grid-cols-2 md:gap-12">
       <div className="-mx-4 -mt-4 flex flex-col gap-3 md:mx-0 md:mt-0">
         <Skeleton className="aspect-square w-full rounded-none max-md:aspect-auto max-md:h-[min(100vw,45vh)] md:rounded-tarjeta" />
@@ -24,7 +26,7 @@ export const ESQUELETO_PRODUCTO = (
         <div className="flex flex-col gap-2">
           <Skeleton className="h-5 w-28" />
           <Skeleton className="h-8.5 w-3/4 md:h-10" />
-          <Skeleton className="h-7.5 w-36" />
+          <Skeleton className="h-8.5 w-36 md:h-10" />
         </div>
         <hr />
         <div className="flex flex-col gap-2">

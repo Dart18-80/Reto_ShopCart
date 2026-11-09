@@ -349,7 +349,13 @@ html.dark {
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring;
+  }
+  /* D7: foco visible en todo lo que no trae su propio anillo (enlaces, checkbox): 2 px del color de foco, completo. */
+  :focus-visible {
+    outline-style: solid;
+    outline-width: 2px;
+    outline-offset: 2px;
   }
   body {
     @apply bg-background text-foreground texto-base;

@@ -16,6 +16,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from '../../../shared/ui/chart';
+import { usePantallaAncha } from '../../../shared/hooks/usePantallaAncha';
 import {
   formatearEscala,
   TEXTO_NETO_CON_DEVOLUCIONES,
@@ -35,6 +36,7 @@ const ALTO_POR_BARRA = 36;
 const MARGEN_DEL_EJE = 40;
 // D6: el eje de los nombres mide lo que pide el nombre más largo, hasta un máximo; cada nombre va en una línea.
 const ANCHO_MAXIMO_DE_LOS_NOMBRES = 200;
+const ANCHO_MAXIMO_EN_TELEFONO = 112;
 const PX_POR_CARACTER = 7;
 const AIRE_DEL_NOMBRE = 12;
 // D6: las barras con las esquinas del extremo redondeadas (4 px).
@@ -47,9 +49,9 @@ const dominioConCero = ([minimo, maximo]: readonly [number, number]): [number, n
   Math.max(0, maximo),
 ];
 
-const anchoDeLosNombres = (puntos: readonly PuntoGrafica[]) =>
+const anchoDeLosNombres = (puntos: readonly PuntoGrafica[], maximo: number) =>
   Math.min(
-    ANCHO_MAXIMO_DE_LOS_NOMBRES,
+    maximo,
     Math.max(0, ...puntos.map((p) => p.etiqueta.length)) * PX_POR_CARACTER + AIRE_DEL_NOMBRE,
   );
 
@@ -143,7 +145,11 @@ export function GraficaBarras({
   };
   const escalar = (valor: number) => formatearEscala(valor, escala);
   const hayNegativos = puntos.some((p) => p.negativo);
-  const anchoNombres = anchoDeLosNombres(puntos);
+  const pantallaAncha = usePantallaAncha();
+  const anchoNombres = anchoDeLosNombres(
+    puntos,
+    pantallaAncha ? ANCHO_MAXIMO_DE_LOS_NOMBRES : ANCHO_MAXIMO_EN_TELEFONO,
+  );
   const caben = Math.floor((anchoNombres - AIRE_DEL_NOMBRE) / PX_POR_CARACTER);
 
   return (

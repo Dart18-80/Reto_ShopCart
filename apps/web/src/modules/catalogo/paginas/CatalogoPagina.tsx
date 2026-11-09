@@ -65,7 +65,7 @@ export function CatalogoPagina() {
             <p className="texto-pequeno text-muted-foreground hidden md:block">{`Catálogo / ${categoria.nombre}`}</p>
           )}
           <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-            <h1 className="titulo-display">{titulo}</h1>
+            <h1 className="titulo-display min-w-0 break-words">{titulo}</h1>
             {total !== undefined && (
               <p className="texto-pequeno text-muted-foreground hidden md:block">
                 {productos(total)}

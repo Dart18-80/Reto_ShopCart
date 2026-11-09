@@ -31,7 +31,7 @@ export function LayoutCuenta() {
             <BotonCerrarSesion variante="texto" />
           </div>
         </aside>
-        <main ref={entrada} className="flex min-w-0 flex-1 flex-col gap-6">
+        <main ref={entrada} className="relative flex min-w-0 flex-1 flex-col gap-6">
           <Outlet />
         </main>
       </div>

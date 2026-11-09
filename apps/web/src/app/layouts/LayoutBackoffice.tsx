@@ -51,7 +51,7 @@ export function LayoutBackoffice() {
             ShopCart
           </Link>
         </header>
-        <main ref={entrada} className="flex flex-1 flex-col gap-6 p-4 md:p-8">
+        <main ref={entrada} className="relative flex flex-1 flex-col gap-6 p-4 md:p-8">
           <Outlet />
         </main>
       </div>

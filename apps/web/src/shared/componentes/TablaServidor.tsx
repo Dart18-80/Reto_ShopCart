@@ -100,7 +100,7 @@ function Encabezado<T>({
       <button
         type="button"
         onClick={ordenar}
-        className="focus-visible:ring-ring/50 inline-flex items-center gap-1 rounded-sm outline-none focus-visible:ring-[3px]"
+        className="focus-visible:ring-ring inline-flex items-center gap-1 rounded-sm outline-none focus-visible:ring-2"
       >
         {columna.etiqueta}
         {activa && <Flecha aria-hidden className="size-3.5" />}

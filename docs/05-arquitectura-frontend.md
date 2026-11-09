@@ -278,6 +278,7 @@ Estado: 🟡 Propuesta · 🔍 En análisis · ✅ Confirmada · ✏️ Modifica
 | FE-14 | Librerías del frontend aprobadas (§15) | Cualquier otra se pide y se justifica antes de instalarla, igual que A-16 | ✅ |
 | FE-15 | **Dirección visual** (§17): marca ShopCart con la paleta de Don Arturo (azul `#06488A` y rojo `#DE2418` del escudo; navy `#0A121F` y celeste `#38B8F8` del documento del reto para el modo oscuro); Space Grotesk + Public Sans autoalojadas (`@fontsource`); voz de tú; movimiento sutil; un solo sistema para tienda y backoffice; **ilustración por tipo de prenda que toma el color de la variante**. Diseño en Figma como referencia de trabajo; lo que se entrega y evalúa es el frontend real | Paleta propia: el PO pidió apegarse a la del cliente. Fuentes por CDN: la demo dependería de internet. Fotos generadas: derechos, peso y consistencia. Dejar el SVG por categoría: todas las camisas se verían iguales | ✅ |
 | FE-16 | **El atributo llamado `Color` es el color de la prenda.** El backend devuelve sus valores en `GET /productos` (`colores`: los distintos de las variantes activas, en el orden de `ValorAtributo.Orden`, hasta 5) y en el detalle, dentro de `variantes[].valores`. La web traduce cada nombre a su variable `--prenda-*` (colección `Prenda` de §17) con un mapa propio y, si un nombre no está en el mapa, usa un tono neutro con el nombre visible: es presentación, no una regla de negocio. La ilustración que se tiñe sale de `Categoria.Ilustracion` (M2-H01) | Un código de color (hex) por valor de atributo: otra columna que el Admin tendría que llenar para cada valor y que el enunciado no pide. Deducir el color del nombre en el backend: la presentación es del frontend | ✅ |
+| FE-17 | **Sistema visual, movimiento y carga** (§18, pase de diseño D1–D6): tokens propios sobre los de Figma (radios por pieza, sombras teñidas que en oscuro son un borde, escala de títulos, contenedor de 1280 px, colores de la marca), un solo marco para los controles nativos, movimiento con tokens de duración y curva que con `prefers-reduced-motion` deja solo fundidos de 100 ms, y carga sin destellos (esqueleto con la forma del contenido después de 150 ms) | Una librería de animación (Framer Motion): otra dependencia para lo que CSS y la Web Animations API ya hacen. Componentes propios en lugar de `<select>` y fechas nativos: las pruebas y la accesibilidad dependen de los nativos. Cambiar las variables de Figma: `tema.test.ts` las compara una a una con el archivo de diseño | ✅ |
 
 ---
 
@@ -350,3 +351,31 @@ Desde el módulo 5 se puede demostrar una compra completa de punta a punta.
 
 - **Componentes de layout** (página *Componentes*): Encabezado tienda, Barra lateral backoffice, Elemento de menú, Paginación, Chip, Selector, Casilla, Cantidad, Aviso, Tarjeta de producto (Normal y Compacta), Línea de carrito, Opción, Pasos del checkout, Fila de resumen e íconos.
 - **Al implementar una pantalla:** la historia cita su frame; Claude Code compara una captura de Playwright en 375 y 1280 px con la del frame antes de cerrarla.
+
+---
+
+## 18. Sistema visual, movimiento y carga (FE-17)
+
+Pase de diseño (03-backlog, D1–D6). Cambia cómo se ve y cómo se siente; no cambia rutas, datos, validaciones, flujos, permisos ni textos, y las E2E pasan sin tocar sus aserciones.
+
+**Tokens (D1, `app/tema.css`).** Las colecciones de Figma (`:root`, `.dark`, `@theme` de Forma) no se tocan: los tokens del pase van aparte y `tema.test.ts` sigue comparando las de Figma una a una.
+
+| Token | Valor | Uso |
+|---|---|---|
+| `rounded-control` · `rounded-tarjeta` · `rounded-panel` | 10 · 16 · 20 px | Controles y botones · tarjetas · paneles grandes y diálogos |
+| `shadow-xs/sm/md/lg` | Sombras teñidas de azul marino; en oscuro, un borde de 1 px (`--input`) | La superficie oscura ya es un tono más clara que el fondo |
+| `titulo-display`, `titulo-1/2/3` | 48/52 (móvil 32/38), 36/40 (móvil 28/34), 24/30, 18/26; Space Grotesk 700, −0.02em | Montos con `tabular-nums` (`Monto`, `display-precio`) |
+| `max-w-contenido` | 1280 px, margen de 32 px (16 en móvil) | Tienda y cuenta |
+| `marca-azul-marino`, `marca-rojo`, `marca-celeste` | Iguales en los dos temas | Panel de Ingresar, franja diagonal (`franja-marca`), subrayado del menú activo |
+| `--alto-encabezado` | 64 px (+ borde); en móvil, 112 px | Alto mínimo de Ingresar y `top` de lo que se queda fijo |
+
+- **Controles** (`shared/ui/control.ts`): un solo marco de 44 px para campos, `<select>` y fechas nativos (el chevron sale de `chevron-select`) y checkbox con `accent-color`. Foco: anillo de 3 px al 30 % más el borde.
+- **Botones** (`shared/ui/button.tsx`): primario que se oscurece y se encoge al presionar (solo con movimiento), destructivo y `ghost-destructive` en `--oferta` (el rojo de texto, AA en los dos temas) y `cargando`: un spinner con `aria-hidden` que sale del relleno izquierdo, así no cambian ni el texto ni el ancho.
+- **Foco visible en todo:** lo que no trae su propio anillo (enlaces, checkbox) lleva un contorno de 2 px del color de foco (`:focus-visible` en `@layer base`).
+- **Contraste:** `tema.test.ts` verifica 4.5:1 en cada par de texto y superficie que usa la interfaz, en los dos temas.
+
+**Movimiento (D2, `app/movimiento.css` y `shared/hooks/useMovimiento.ts`).** Duraciones `--dur-rapida/base/lenta` (120/200/320 ms) y curvas `--curva-salida` y `--curva`. La entrada de página usa la Web Animations API con el **pathname** como clave (cambiar filtros o la página de una tabla no anima y nada se vuelve a montar) y sube los 8 px con `top` sobre el `<main>` en posición relativa, no con `transform`: un transform haría del `<main>` el bloque contenedor de las barras fijas de móvil mientras dura la animación (revisión de D7); la insignia del carrito rebota solo cuando la cantidad sube. Con `prefers-reduced-motion: reduce` una regla global anula los desplazamientos y escalas de tw-animate y deja toda animación en 100 ms (salvo el spinner); los hooks devuelven solo fundidos (probado en `useMovimiento.test.tsx`). Playwright corre con `reducedMotion: 'reduce'`.
+
+**Carga (D3).** `EstadoVista` anuncia la carga al instante y muestra el esqueleto solo si pasa de 150 ms (`useMostrarTrasRetraso`); mientras tanto ocupa su lugar sin verse, así no destella ni mueve nada. Cada pantalla de la tienda tiene un esqueleto con la forma y las medidas de su contenido (`Esqueleto*` de cada módulo). Entre páginas de una tabla: `BarraProgreso` de 2 px y el cuerpo al 60 %. Las áreas diferidas muestran la barra arriba de la ventana (`CargandoArea`).
+
+**Layout (D4).** Encabezado de la tienda fijo y translúcido, con sombra solo al desplazarse (`useDesplazado`); barras fijas abajo en móvil con el área segura (`shared/ui/barra-fija.ts`) y su alto reservado en la página. `e2e/diseno.spec.ts` (proyecto `diseno`, al final de la corrida) verifica que Ingresar no hace scroll en 1366×657, 1280×720, 375×667 y 360×640 y que la tienda no se desplaza a lo ancho en 360 px.
