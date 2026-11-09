@@ -1,6 +1,7 @@
 /*
  * D2 (03-backlog, pase de diseño): movimiento. Tokens de duración y curva, las animaciones con nombre y lo que
  * queda con `prefers-reduced-motion: reduce`: solo fundidos de 100 ms o menos, sin desplazamientos ni escalas.
+ * D3: el brillo de los esqueletos y la barra de carga de las áreas diferidas.
  */
 html {
   --dur-rapida: 120ms;
@@ -33,6 +34,21 @@ html {
 @keyframes trazar {
   from {
     stroke-dashoffset: 100;
+  }
+}
+
+@keyframes brillo {
+  to {
+    background-position-x: -200%;
+  }
+}
+
+@keyframes progreso-indeterminado {
+  from {
+    translate: -100% 0;
+  }
+  to {
+    translate: 250% 0;
   }
 }
 
@@ -78,6 +94,33 @@ html {
   }
 }
 
+/* Ilustraciones e imágenes que llegan con un fundido. */
+@utility animar-fundido {
+  animation: aparecer var(--dur-base) var(--curva) both;
+  --desplazamiento-entrada: 0;
+}
+
+/* D3: el esqueleto con un brillo que avanza en 1.4 s. */
+@utility esqueleto-brillo {
+  /* La base, un tono sobre `muted` para que se distinga del fondo; el brillo, `muted`. */
+  --esqueleto-base: color-mix(in oklab, var(--muted), var(--foreground) 6%);
+  background-image: linear-gradient(
+    90deg,
+    var(--esqueleto-base) 0%,
+    var(--muted) 50%,
+    var(--esqueleto-base) 100%
+  );
+  background-size: 200% 100%;
+  animation: brillo 1.4s linear infinite;
+}
+
+/* D3: barra de 2 px que avanza sin fin (carga de un área diferida y cambio de página de una tabla). */
+@utility barra-progreso {
+  & > span {
+    animation: progreso-indeterminado 1.1s var(--curva) infinite;
+  }
+}
+
 /* Avisos (sonner): entran bajando 8 px con fundido, en lugar de recorrer todo su alto. */
 :root [data-sonner-toast][data-y-position='top'][data-mounted='false'] {
   --y: translateY(calc(-1 * var(--desplazamiento-entrada)));
@@ -109,7 +152,9 @@ html {
     transition-duration: 100ms !important;
   }
   .animar-llenado,
-  .animar-trazo :is(path, circle, line, polyline) {
+  .animar-trazo :is(path, circle, line, polyline),
+  .esqueleto-brillo,
+  .barra-progreso > span {
     animation: none !important;
   }
 }

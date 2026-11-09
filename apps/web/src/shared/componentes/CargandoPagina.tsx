@@ -1,6 +1,17 @@
 import { LoaderCircle } from 'lucide-react';
+import { BarraProgreso } from './BarraProgreso';
 
-/** Mientras llega el código de una página o se verifica la sesión. */
+/** D3: mientras llega el código de un área diferida, una barra de 2 px arriba de la ventana. */
+export function CargandoArea() {
+  return (
+    <div role="status">
+      <span className="sr-only">Cargando…</span>
+      <BarraProgreso className="fixed inset-x-0 top-0 z-50" />
+    </div>
+  );
+}
+
+/** Mientras se verifica la sesión. */
 export function CargandoPagina({ mensaje = 'Cargando…' }: { mensaje?: string }) {
   return (
     <div

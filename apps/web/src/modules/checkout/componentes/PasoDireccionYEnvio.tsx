@@ -9,6 +9,7 @@ import { useMetodosEnvio, type MetodosEnvio } from '../../envios';
 import { useIniciarSesionPago } from '../hooks/useIniciarSesionPago';
 import { AvisoInicioPago } from './AvisoInicioPago';
 import { CostoEnvio } from './CostoEnvio';
+import { ESQUELETO_DIRECCION_Y_ENVIO, ESQUELETO_OPCIONES } from './EsqueletoCheckout';
 import { ResumenPedido } from './ResumenPedido';
 import { SeleccionDireccion } from './SeleccionDireccion';
 import { SeleccionEnvio } from './SeleccionEnvio';
@@ -84,7 +85,12 @@ function CuerpoDelPaso({ carrito, envios }: PropsCuerpo) {
     <div className="flex flex-col gap-8 md:flex-row md:items-start md:gap-12">
       <div className="flex min-w-0 flex-1 flex-col gap-8">
         <Seccion titulo="Dirección de entrega">
-          <EstadoVista consulta={direcciones} vacio={SIN_USO} esVacio={nuncaVacia}>
+          <EstadoVista
+            consulta={direcciones}
+            vacio={SIN_USO}
+            esVacio={nuncaVacia}
+            esqueleto={ESQUELETO_OPCIONES}
+          >
             {(lista) => (
               <SeleccionDireccion
                 direcciones={lista}
@@ -134,9 +140,19 @@ export function PasoDireccionYEnvio() {
   const carrito = useCarrito();
   const envios = useMetodosEnvio();
   return (
-    <EstadoVista consulta={carrito} vacio={CARRITO_VACIO} esVacio={sinLineas}>
+    <EstadoVista
+      consulta={carrito}
+      vacio={CARRITO_VACIO}
+      esVacio={sinLineas}
+      esqueleto={ESQUELETO_DIRECCION_Y_ENVIO}
+    >
       {(delCarrito) => (
-        <EstadoVista consulta={envios} vacio={SIN_METODOS} esVacio={sinMetodos}>
+        <EstadoVista
+          consulta={envios}
+          vacio={SIN_METODOS}
+          esVacio={sinMetodos}
+          esqueleto={ESQUELETO_DIRECCION_Y_ENVIO}
+        >
           {(delEnvio) => <CuerpoDelPaso carrito={delCarrito} envios={delEnvio} />}
         </EstadoVista>
       )}

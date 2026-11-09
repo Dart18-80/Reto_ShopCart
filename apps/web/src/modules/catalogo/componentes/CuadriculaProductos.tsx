@@ -32,10 +32,22 @@ export function CuadriculaProductos({ productos }: { productos: ProductoBusqueda
 export const ESQUELETO_CUADRICULA = (
   <Cuadricula>
     {Array.from({ length: TARJETAS_DEL_ESQUELETO }, (_, indice) => (
-      <li key={indice} className="flex flex-col gap-2">
-        <Skeleton className="aspect-square w-full rounded-tarjeta" />
-        <Skeleton className="h-4 w-2/3" />
-        <Skeleton className="h-6 w-1/3" />
+      <li key={indice} className="flex">
+        <div className="bg-card flex w-full flex-col overflow-hidden rounded-tarjeta border">
+          <Skeleton className="aspect-square w-full rounded-none" />
+          <div className="flex flex-col gap-2 p-3 md:p-4">
+            <div className="flex gap-1">
+              <Skeleton className="size-4 rounded-full" />
+              <Skeleton className="size-4 rounded-full" />
+              <Skeleton className="size-4 rounded-full" />
+            </div>
+            <Skeleton className="h-6 w-3/4" />
+            <Skeleton className="hidden h-4 w-1/2 md:block" />
+            <Skeleton className="h-5 w-20" />
+            <Skeleton className="h-4 w-10" />
+            <Skeleton className="h-7.5 w-24" />
+          </div>
+        </div>
       </li>
     ))}
   </Cuadricula>

@@ -2,6 +2,7 @@ import type { UseQueryResult } from '@tanstack/react-query';
 import { TriangleAlert } from 'lucide-react';
 import type { ReactNode } from 'react';
 import type { ErrorApi } from '../api';
+import { useMostrarTrasRetraso } from '../hooks/useMostrarTrasRetraso';
 import { Button } from '../ui/button';
 import { Skeleton } from '../ui/skeleton';
 import { Aviso } from './Aviso';
@@ -101,6 +102,20 @@ export function Vacio({ titulo, descripcion, accion }: ContenidoVacio) {
 }
 
 /**
+ * La carga se anuncia de inmediato; el esqueleto se ve solo si tarda más de 150 ms (D3). Mientras tanto ocupa su
+ * lugar sin verse, así que al aparecer no mueve nada.
+ */
+function Cargando({ esqueleto }: { esqueleto: ReactNode }) {
+  const visible = useMostrarTrasRetraso();
+  return (
+    <div role="status">
+      <span className="sr-only">Cargando…</span>
+      <div className={visible ? undefined : 'invisible'}>{esqueleto}</div>
+    </div>
+  );
+}
+
+/**
  * Toda consulta se muestra a través de aquí (enunciado: carga, vacío y error en todas las vistas): esqueleto al
  * cargar, vacío con un mensaje útil y error con el mensaje del backend, Reintentar y el requestId.
  */
@@ -115,14 +130,7 @@ export function EstadoVista<D>({
     void consulta.refetch();
   };
 
-  if (consulta.isPending) {
-    return (
-      <div role="status">
-        <span className="sr-only">Cargando…</span>
-        {esqueleto}
-      </div>
-    );
-  }
+  if (consulta.isPending) return <Cargando esqueleto={esqueleto} />;
   if (consulta.isLoadingError) {
     return <AvisoDeError error={consulta.error} onReintentar={reintentar} />;
   }

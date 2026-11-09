@@ -29,7 +29,7 @@ export function GaleriaProducto({ ilustracion, color, imagenes }: PropsGaleria) 
           <img
             src={elegida.url}
             alt={elegida.textoAlternativo}
-            className="size-full object-contain"
+            className="animar-fundido size-full object-contain"
           />
         ) : (
           <Prenda tipo={ilustracion} color={color} className="h-3/5 w-3/5" />

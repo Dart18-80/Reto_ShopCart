@@ -1,6 +1,7 @@
 import { Navigate } from 'react-router';
 import { EstadoVista } from '../../../shared/componentes/EstadoVista';
 import { useTituloPagina } from '../../../shared/hooks/useTituloPagina';
+import { ESQUELETO_PAGO } from '../componentes/EsqueletoCheckout';
 import { PasoPago } from '../componentes/PasoPago';
 import { PasosDelCheckout } from '../componentes/PasosDelCheckout';
 import { useSesionPago } from '../hooks/useSesionPago';
@@ -18,7 +19,7 @@ export function PagoPagina() {
     <div className="flex flex-col gap-6">
       <h1 className="titulo-1">Pagar</h1>
       <PasosDelCheckout actual={2} />
-      <EstadoVista consulta={sesion} vacio={SIN_USO}>
+      <EstadoVista consulta={sesion} vacio={SIN_USO} esqueleto={ESQUELETO_PAGO}>
         {(activa) =>
           activa ? <PasoPago sesion={activa} /> : <Navigate to={RUTAS.checkout} replace />
         }

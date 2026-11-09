@@ -8,6 +8,7 @@ import { Button } from '../ui/button';
 import { cn } from '../ui/cn';
 import { Skeleton } from '../ui/skeleton';
 import { Actualizando } from './Actualizando';
+import { BarraProgreso } from './BarraProgreso';
 import { EstadoVista, type ContenidoVacio } from './EstadoVista';
 import { Paginacion, type DatosPaginacion } from './Paginacion';
 
@@ -123,7 +124,8 @@ function Tabla<T>({
   cambiarVista: CambiarVista;
 }) {
   return (
-    <div className="bg-card overflow-x-auto rounded-tarjeta border">
+    <div className="bg-card relative overflow-x-auto rounded-tarjeta border">
+      {actualizando && <BarraProgreso className="absolute inset-x-0 top-0" />}
       <table
         aria-label={titulo}
         aria-busy={actualizando}
@@ -142,7 +144,7 @@ function Tabla<T>({
             ))}
           </tr>
         </thead>
-        <tbody>
+        <tbody className={cn('transition-opacity duration-200', actualizando && 'opacity-60')}>
           {filas.map((fila) => (
             <tr key={claveFila(fila)} className="border-t">
               {columnas.map((columna) => (
@@ -179,7 +181,15 @@ function Tarjetas<T>({
 }) {
   const visibles = columnas.filter((columna) => columna.prioridad === 1);
   return (
-    <ul aria-label={titulo} aria-busy={actualizando} className="flex flex-col gap-3">
+    <ul
+      aria-label={titulo}
+      aria-busy={actualizando}
+      className={cn(
+        'relative flex flex-col gap-3 transition-opacity duration-200',
+        actualizando && 'opacity-60',
+      )}
+    >
+      {actualizando && <BarraProgreso className="absolute inset-x-0 -top-2" />}
       {filas.map((fila) => (
         <li key={claveFila(fila)} className="bg-card rounded-tarjeta border p-4">
           <dl className="flex flex-col gap-2">

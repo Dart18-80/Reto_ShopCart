@@ -1,6 +1,6 @@
 import { lazy, Suspense, type ReactNode } from 'react';
 import type { RouteObject } from 'react-router';
-import { CargandoPagina } from '../shared/componentes/CargandoPagina';
+import { CargandoArea } from '../shared/componentes/CargandoPagina';
 import { ACCESO_DE_AREA, PAGINAS, RAIZ_DE_AREA, type Area, type DefinicionPagina } from './rutas';
 import { Guardian } from './Guardian';
 import { LayoutTienda } from './layouts/LayoutTienda';
@@ -17,7 +17,7 @@ const LayoutBackoffice = lazy(async () => ({
 }));
 
 const diferido = (contenido: ReactNode) => (
-  <Suspense fallback={<CargandoPagina />}>{contenido}</Suspense>
+  <Suspense fallback={<CargandoArea />}>{contenido}</Suspense>
 );
 
 function rutaDePagina({ ruta, acceso, pagina: Pagina }: DefinicionPagina): RouteObject {

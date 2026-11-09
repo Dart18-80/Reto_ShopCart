@@ -6,6 +6,7 @@ import { Button } from '../../../shared/ui/button';
 import type { Carrito } from '../carrito.api';
 import { ContinuarAlPago } from '../componentes/ContinuarAlPago';
 import { CuponCarrito } from '../componentes/CuponCarrito';
+import { ESQUELETO_CARRITO } from '../componentes/EsqueletoCarrito';
 import { FilaCarrito } from '../componentes/FilaCarrito';
 import { ResumenCarrito } from '../componentes/ResumenCarrito';
 import { useCarrito } from '../hooks/useCarrito';
@@ -38,7 +39,12 @@ export function CarritoPagina() {
           </p>
         )}
       </header>
-      <EstadoVista consulta={carrito} vacio={VACIO} esVacio={sinLineas}>
+      <EstadoVista
+        consulta={carrito}
+        vacio={VACIO}
+        esVacio={sinLineas}
+        esqueleto={ESQUELETO_CARRITO}
+      >
         {({ lineas, resumen: delCarrito }) => (
           <div className="flex flex-col gap-6 pb-36 md:flex-row md:items-start md:gap-12 md:pb-0">
             <ul aria-label="Productos del carrito" className="min-w-0 flex-1">

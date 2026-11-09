@@ -7,6 +7,7 @@ import { EstadoVista } from '../../../shared/componentes/EstadoVista';
 import { useParametrosUrl } from '../../../shared/hooks/useParametrosUrl';
 import { useTituloPagina } from '../../../shared/hooks/useTituloPagina';
 import { Button } from '../../../shared/ui/button';
+import { ESQUELETO_PRODUCTO } from '../componentes/EsqueletoProducto';
 import { FichaProducto } from '../componentes/FichaProducto';
 import { useProducto } from '../hooks/useProducto';
 
@@ -41,7 +42,12 @@ function DetalleProducto({ idProducto }: { idProducto: number }) {
     return <ProductoNoEncontrado />;
   }
   return (
-    <EstadoVista consulta={consulta} vacio={{ titulo: 'Sin producto' }} esVacio={NUNCA_VACIO}>
+    <EstadoVista
+      consulta={consulta}
+      vacio={{ titulo: 'Sin producto' }}
+      esVacio={NUNCA_VACIO}
+      esqueleto={ESQUELETO_PRODUCTO}
+    >
       {(producto) => (
         <FichaProducto
           producto={producto}

@@ -32,7 +32,7 @@ export function Prenda({ tipo, color, className }: PropsPrenda) {
       height="200"
       viewBox="0 0 200 200"
       fill="none"
-      className={cn(clasesDelColor(color).texto, className)}
+      className={cn('animar-fundido', clasesDelColor(color).texto, className)}
     >
       {/* El contorno y la costura son los del componente de Figma. */}
       <path

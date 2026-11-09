@@ -13,6 +13,7 @@ import { ArticulosPedido } from '../componentes/ArticulosPedido';
 import { AvisoCancelacion } from '../componentes/AvisoCancelacion';
 import { DialogoCancelarPedido } from '../componentes/DialogoCancelarPedido';
 import { EntregaPedido } from '../componentes/EntregaPedido';
+import { ESQUELETO_PEDIDO } from '../componentes/EsqueletoPedidos';
 import { PagoPedido } from '../componentes/PagoPedido';
 import { SeguimientoPedido } from '../componentes/SeguimientoPedido';
 import type { Pedido } from '../pedidos.api';
@@ -103,7 +104,12 @@ function DetallePedido({ idPedido }: { idPedido: number }) {
     return <PedidoNoEncontrado />;
   }
   return (
-    <EstadoVista consulta={consulta} vacio={SIN_USO} esVacio={NUNCA_VACIO}>
+    <EstadoVista
+      consulta={consulta}
+      vacio={SIN_USO}
+      esVacio={NUNCA_VACIO}
+      esqueleto={ESQUELETO_PEDIDO}
+    >
       {(pedido) => (
         <FichaPedido pedido={pedido} nuevo={parametros.valores.nuevo === '1'} cancelar={cancelar} />
       )}

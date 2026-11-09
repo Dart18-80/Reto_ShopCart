@@ -7,6 +7,7 @@ import { usePaginaEnRango } from '../../../shared/hooks/usePaginaEnRango';
 import { useParametrosUrl } from '../../../shared/hooks/useParametrosUrl';
 import { useTituloPagina } from '../../../shared/hooks/useTituloPagina';
 import { Button } from '../../../shared/ui/button';
+import { ESQUELETO_MIS_PEDIDOS } from '../componentes/EsqueletoPedidos';
 import { TarjetaPedido } from '../componentes/TarjetaPedido';
 import { useMisPedidos } from '../hooks/useMisPedidos';
 
@@ -31,7 +32,7 @@ export function MisPedidosPagina() {
     <div className="flex flex-col gap-6">
       <h1 className="titulo-1">Mis pedidos</h1>
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-3">
-        <EstadoVista consulta={pedidos} vacio={SIN_PEDIDOS}>
+        <EstadoVista consulta={pedidos} vacio={SIN_PEDIDOS} esqueleto={ESQUELETO_MIS_PEDIDOS}>
           {({ datos, paginacion }) => (
             <>
               <ul aria-label="Pedidos" className="flex flex-col gap-3">
