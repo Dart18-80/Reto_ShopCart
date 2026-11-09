@@ -18,7 +18,10 @@ export function MuestraColor({ color, seleccionada = false, className }: PropsMu
       aria-hidden
       className={cn(
         'flex size-8 shrink-0 items-center justify-center rounded-full border-2',
-        seleccionada ? 'border-primary' : 'border-border',
+        // D5: la muestra elegida lleva además un anillo.
+        seleccionada
+          ? 'border-primary ring-primary/30 ring-offset-background ring-2 ring-offset-2'
+          : 'border-border',
         className,
       )}
     >

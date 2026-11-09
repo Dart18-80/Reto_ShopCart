@@ -25,7 +25,7 @@ export function SeleccionDireccion({ direcciones, elegida, alElegir }: PropsSele
     return (
       <section
         aria-labelledby="titulo-primera-direccion"
-        className="bg-card flex flex-col gap-4 rounded-tarjeta border p-5"
+        className="bg-card flex flex-col gap-4 rounded-tarjeta border p-4 shadow-xs md:p-5"
       >
         <h3 id="titulo-primera-direccion" className="texto-base-fuerte">
           Tu primera dirección

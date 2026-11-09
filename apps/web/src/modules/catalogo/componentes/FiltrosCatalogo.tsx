@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { RotateCcw } from 'lucide-react';
 import { filtroPrecioSchema, type ConsultaBusqueda, type FiltroPrecio } from '@shopcart/shared';
 import { useId, useMemo, type FocusEvent } from 'react';
 import { useForm } from 'react-hook-form';
@@ -93,11 +94,16 @@ export function FiltrosCatalogo({ valores, onCambiar, onLimpiar }: PropsFiltrosC
           Solo con existencia
         </label>
       </div>
-      <div>
-        <Button type="button" variant="ghost" onClick={onLimpiar}>
-          Limpiar filtros
-        </Button>
-      </div>
+      {/* D5: alineado con los demás filtros, con su ícono y en rojo. */}
+      <Button
+        type="button"
+        variant="ghost-destructive"
+        onClick={onLimpiar}
+        className="self-start px-0 hover:bg-transparent hover:underline"
+      >
+        <RotateCcw aria-hidden />
+        Limpiar filtros
+      </Button>
     </div>
   );
 }

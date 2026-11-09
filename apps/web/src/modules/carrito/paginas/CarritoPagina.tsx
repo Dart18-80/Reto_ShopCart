@@ -17,6 +17,7 @@ const sinLineas = (carrito: Carrito) => carrito.lineas.length === 0;
 
 const VACIO = {
   titulo: 'Tu carrito está vacío',
+  ilustracion: 'Gorra' as const,
   descripcion: 'Agrega productos desde el catálogo.',
   accion: (
     <Button asChild variant="outline" size="sm">
@@ -54,12 +55,13 @@ export function CarritoPagina() {
               RESERVA_BARRA_TOTAL,
             )}
           >
-            <ul aria-label="Productos del carrito" className="min-w-0 flex-1">
+            <ul aria-label="Productos del carrito" className="flex min-w-0 flex-1 flex-col gap-3">
               {lineas.map((linea) => (
                 <FilaCarrito key={linea.idLinea} linea={linea} />
               ))}
             </ul>
-            <div className="md:w-100 md:shrink-0">
+            {/* D5: el resumen se queda a la vista en escritorio. */}
+            <div className="md:sticky md:top-[calc(var(--alto-encabezado)+1.5rem)] md:w-100 md:shrink-0">
               <ResumenCarrito
                 resumen={delCarrito}
                 antes={<CuponCarrito resumen={delCarrito} />}

@@ -5,6 +5,7 @@ import { AvisoFormulario } from '../../../shared/componentes/AvisoFormulario';
 import { Monto } from '../../../shared/componentes/Monto';
 import { useFormularioApi } from '../../../shared/hooks/useFormularioApi';
 import { Button } from '../../../shared/ui/button';
+import { CreditCard } from 'lucide-react';
 import { RESERVA_BARRA_TOTAL } from '../../../shared/ui/barra-fija';
 import { cn } from '../../../shared/ui/cn';
 import type { SesionPago } from '../checkout.api';
@@ -72,8 +73,13 @@ export function PasoPago({ sesion }: { sesion: SesionPago }) {
         RESERVA_BARRA_TOTAL,
       )}
     >
-      <section aria-labelledby="titulo-tarjeta" className="flex min-w-0 flex-1 flex-col gap-5">
-        <h2 id="titulo-tarjeta" className="titulo-2">
+      {/* D5: el aviso de la reserva y el formulario de la tarjeta, en una tarjeta con su ícono. */}
+      <section
+        aria-labelledby="titulo-tarjeta"
+        className="bg-card rounded-tarjeta flex min-w-0 flex-1 flex-col gap-5 border p-4 shadow-sm md:p-6"
+      >
+        <h2 id="titulo-tarjeta" className="titulo-2 flex items-center gap-3">
+          <CreditCard aria-hidden className="text-primary size-6" />
           Datos de la tarjeta
         </h2>
         {pagar.error && desenlace && (
@@ -96,7 +102,7 @@ export function PasoPago({ sesion }: { sesion: SesionPago }) {
           total={sesion.total}
         />
       </section>
-      <div className="md:w-105 md:shrink-0">
+      <div className="md:sticky md:top-[calc(var(--alto-encabezado)+1.5rem)] md:w-105 md:shrink-0">
         <ResumenPedido
           encabezado={
             <div className="flex flex-col gap-0.5">

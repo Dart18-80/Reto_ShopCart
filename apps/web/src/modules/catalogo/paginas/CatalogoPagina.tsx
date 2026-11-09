@@ -38,6 +38,7 @@ export function CatalogoPagina() {
   const vacio: ContenidoVacio = hayFiltros
     ? {
         titulo: 'Ningún producto con estos filtros',
+        ilustracion: 'Camisa',
         descripcion: 'Prueba con otros filtros o límpialos para ver todo el catálogo.',
         accion: (
           <Button variant="outline" size="sm" onClick={limpiarFiltros}>
@@ -47,22 +48,30 @@ export function CatalogoPagina() {
       }
     : {
         titulo: 'Todavía no hay productos',
+        ilustracion: 'Camisa',
         descripcion: 'Vuelve pronto: estamos preparando el catálogo.',
       };
 
   return (
-    <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        {categoria && (
-          <p className="texto-pequeno text-muted-foreground hidden md:block">{`Catálogo / ${categoria.nombre}`}</p>
-        )}
-        <div className="flex items-baseline gap-3">
-          <h1 className="titulo-1">{titulo}</h1>
-          {total !== undefined && (
-            <p className="texto-pequeno text-muted-foreground hidden md:block">
-              {productos(total)}
-            </p>
+    <div className="flex flex-col gap-8 md:gap-12">
+      {/* D5: la franja de cabecera, con fondo suave y la franja diagonal de la marca a la derecha (decorativa). */}
+      <header className="bg-secondary/70 md:rounded-panel relative -mx-4 -mt-4 overflow-hidden px-4 py-8 md:mx-0 md:mt-0 md:px-10 md:py-12">
+        <span
+          aria-hidden
+          className="franja-marca pointer-events-none absolute inset-y-0 right-0 w-1/2 md:w-2/5"
+        />
+        <div className="relative flex max-w-[70%] flex-col gap-2">
+          {categoria && (
+            <p className="texto-pequeno text-muted-foreground hidden md:block">{`Catálogo / ${categoria.nombre}`}</p>
           )}
+          <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+            <h1 className="titulo-display">{titulo}</h1>
+            {total !== undefined && (
+              <p className="texto-pequeno text-muted-foreground hidden md:block">
+                {productos(total)}
+              </p>
+            )}
+          </div>
         </div>
       </header>
 
@@ -84,9 +93,10 @@ export function CatalogoPagina() {
       </EstadoVista>
 
       <div className="flex flex-col gap-6 md:flex-row md:gap-8">
+        {/* D5: los filtros en una tarjeta que se queda a la vista en escritorio. */}
         <aside
           aria-labelledby="titulo-filtros"
-          className="hidden md:flex md:w-60 md:shrink-0 md:flex-col md:gap-5"
+          className="bg-card rounded-tarjeta hidden border p-5 shadow-sm md:sticky md:top-[calc(var(--alto-encabezado)+1.5rem)] md:flex md:w-64 md:shrink-0 md:flex-col md:gap-5 md:self-start"
         >
           <h2 id="titulo-filtros" className="titulo-2">
             Filtros

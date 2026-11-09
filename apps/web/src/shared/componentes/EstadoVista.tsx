@@ -1,6 +1,8 @@
 import type { UseQueryResult } from '@tanstack/react-query';
+import type { IlustracionPrenda } from '@shopcart/shared';
 import { TriangleAlert } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { IlustracionDecorativa } from './prenda/IlustracionDecorativa';
 import type { ErrorApi } from '../api';
 import { useMostrarTrasRetraso } from '../hooks/useMostrarTrasRetraso';
 import { Button } from '../ui/button';
@@ -11,6 +13,8 @@ export interface ContenidoVacio {
   titulo: string;
   descripcion?: string;
   accion?: ReactNode;
+  /** D5: la prenda que acompaña el vacío en la tienda (decorativa). */
+  ilustracion?: IlustracionPrenda;
 }
 
 interface PropsEstadoVista<D> {
@@ -91,9 +95,10 @@ export function AvisoConsultaFallida({
   );
 }
 
-export function Vacio({ titulo, descripcion, accion }: ContenidoVacio) {
+export function Vacio({ titulo, descripcion, accion, ilustracion }: ContenidoVacio) {
   return (
     <div className="flex flex-col items-center gap-2 py-12 text-center">
+      {ilustracion && <IlustracionDecorativa tipo={ilustracion} />}
       <p className="texto-base-fuerte">{titulo}</p>
       {descripcion && <p className="texto-pequeno text-muted-foreground">{descripcion}</p>}
       {accion}

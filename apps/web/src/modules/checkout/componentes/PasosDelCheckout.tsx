@@ -8,7 +8,7 @@ const PASOS = ['Dirección y envío', 'Pago'] as const;
  */
 export function PasosDelCheckout({ actual }: { actual: 1 | 2 }) {
   return (
-    <ol aria-label="Pasos del pago" className="flex items-center gap-3">
+    <ol aria-label="Pasos del pago" className="flex flex-wrap items-center gap-3">
       {PASOS.map((paso, indice) => {
         const numero = indice + 1;
         const esActual = numero === actual;
@@ -20,17 +20,22 @@ export function PasosDelCheckout({ actual }: { actual: 1 | 2 }) {
             className="flex items-center gap-3"
           >
             {indice > 0 && (
-              <span aria-hidden className="bg-border h-0.5 w-12 overflow-hidden">
+              <span
+                aria-hidden
+                className="bg-border h-0.5 w-10 overflow-hidden rounded-full md:w-20"
+              >
                 {alcanzado && <span className="animar-llenado bg-primary block h-full" />}
               </span>
             )}
             <span className="flex items-center gap-2">
               <span
                 className={cn(
-                  'texto-pequeno-fuerte flex size-7 items-center justify-center rounded-full',
+                  // D5: el paso actual resalta con un anillo; uno hecho conserva su número en azul.
+                  'texto-pequeno-fuerte flex size-8 items-center justify-center rounded-full tabular-nums',
                   alcanzado
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-muted text-muted-foreground',
+                  esActual && 'ring-primary/20 ring-4',
                 )}
               >
                 {numero}

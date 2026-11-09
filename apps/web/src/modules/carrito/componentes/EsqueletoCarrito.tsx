@@ -6,9 +6,9 @@ const LINEAS = 2;
 /** D3: el carrito mientras carga, con la forma de sus líneas (FilaCarrito) y el resumen a la derecha. */
 export const ESQUELETO_CARRITO = (
   <div className="flex flex-col gap-6 md:flex-row md:items-start md:gap-12">
-    <ul className="min-w-0 flex-1">
+    <ul className="flex min-w-0 flex-1 flex-col gap-3">
       {Array.from({ length: LINEAS }, (_, indice) => (
-        <li key={indice} className="flex gap-4 border-b py-4 md:py-5">
+        <li key={indice} className="bg-card rounded-tarjeta flex gap-4 border p-4 md:p-5">
           <Skeleton className="size-24 shrink-0 md:h-28" />
           <div className="flex min-w-0 flex-1 flex-col gap-2">
             <div className="flex items-start justify-between gap-3">

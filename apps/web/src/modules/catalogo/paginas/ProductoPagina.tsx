@@ -20,6 +20,7 @@ function ProductoNoEncontrado() {
   return (
     <AvisoDePagina
       icono={SearchX}
+      ilustracion="Camisa"
       titulo="No encontramos este producto"
       acciones={
         <Button asChild>

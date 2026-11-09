@@ -326,6 +326,19 @@ html.dark {
   );
 }
 
+/*
+ * D5: el fondo de una ilustración, teñido con el color de la prenda: quien lo usa pone ese color como texto
+ * (`clasesDelColor(color).texto`) y el degradado radial lo toma de `currentColor` al 10 %.
+ */
+@utility fondo-tenido {
+  background-color: var(--muted);
+  background-image: radial-gradient(
+    circle at 50% 45%,
+    color-mix(in oklab, currentColor 10%, transparent) 0%,
+    transparent 72%
+  );
+}
+
 @utility chevron-select {
   appearance: none;
   background-image: var(--chevron-select);

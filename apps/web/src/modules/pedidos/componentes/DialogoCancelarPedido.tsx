@@ -48,7 +48,7 @@ export function DialogoCancelarPedido({
     <Dialog open={abierto} onOpenChange={setAbierto}>
       {puedeCancelar && (
         <DialogTrigger asChild>
-          <Button variant="outline" className="px-6">
+          <Button variant="destructive" className="px-6">
             Cancelar pedido
           </Button>
         </DialogTrigger>

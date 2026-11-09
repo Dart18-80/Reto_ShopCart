@@ -40,7 +40,7 @@ export function ResumenPedido({
   return (
     <section
       aria-labelledby="titulo-tu-pedido"
-      className="bg-card flex flex-col gap-3.5 rounded-tarjeta border p-6"
+      className="bg-card flex flex-col gap-3.5 rounded-tarjeta border p-4 shadow-xs md:p-5"
     >
       <h2 id="titulo-tu-pedido" className="titulo-2">
         Tu pedido

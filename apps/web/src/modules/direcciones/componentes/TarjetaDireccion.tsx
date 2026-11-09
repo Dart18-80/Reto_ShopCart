@@ -13,7 +13,7 @@ export function TarjetaDireccion({ direccion }: { direccion: Direccion }) {
   const error = actualizar.error ?? eliminar.error;
 
   return (
-    <li className="bg-card flex flex-col gap-3 rounded-tarjeta border p-5">
+    <li className="bg-card flex flex-col gap-3 rounded-tarjeta border p-4 shadow-xs md:p-5">
       <div className="flex items-start justify-between gap-3">
         <h2 className="texto-base-fuerte">{titulo}</h2>
         {direccion.esPredeterminada && (

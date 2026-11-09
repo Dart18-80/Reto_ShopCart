@@ -6,7 +6,7 @@ export function SeccionPerfil({ titulo, children }: { titulo: string; children: 
   return (
     <section
       aria-labelledby={idTitulo}
-      className="bg-card flex max-w-[560px] flex-col gap-5 rounded-tarjeta border p-6"
+      className="bg-card flex max-w-[560px] flex-col gap-5 rounded-tarjeta border p-4 shadow-xs md:p-5"
     >
       <h2 id={idTitulo} className="titulo-2">
         {titulo}

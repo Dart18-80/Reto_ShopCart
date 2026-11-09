@@ -35,17 +35,19 @@ export const ESQUELETO_CUADRICULA = (
       <li key={indice} className="flex">
         <div className="bg-card flex w-full flex-col overflow-hidden rounded-tarjeta border">
           <Skeleton className="aspect-square w-full rounded-none" />
-          <div className="flex flex-col gap-2 p-3 md:p-4">
-            <div className="flex gap-1">
-              <Skeleton className="size-4 rounded-full" />
-              <Skeleton className="size-4 rounded-full" />
-              <Skeleton className="size-4 rounded-full" />
+          <div className="flex flex-col gap-1.5 p-4 md:p-5">
+            <div className="mb-1 flex gap-1.5">
+              <Skeleton className="size-5 rounded-full" />
+              <Skeleton className="size-5 rounded-full" />
+              <Skeleton className="size-5 rounded-full" />
             </div>
             <Skeleton className="h-6 w-3/4" />
             <Skeleton className="hidden h-4 w-1/2 md:block" />
             <Skeleton className="h-5 w-20" />
-            <Skeleton className="h-4 w-10" />
-            <Skeleton className="h-7.5 w-24" />
+            <div className="flex flex-col gap-0.5 pt-2">
+              <Skeleton className="h-4 w-10" />
+              <Skeleton className="h-7.5 w-24" />
+            </div>
           </div>
         </div>
       </li>

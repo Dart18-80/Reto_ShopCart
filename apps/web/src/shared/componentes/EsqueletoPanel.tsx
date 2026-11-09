@@ -7,7 +7,9 @@ import { Skeleton } from '../ui/skeleton';
  */
 export function EsqueletoPanel({ filas, className }: { filas: number; className?: string }) {
   return (
-    <div className={cn('bg-card flex flex-col gap-3.5 rounded-tarjeta border p-6', className)}>
+    <div
+      className={cn('bg-card flex flex-col gap-3.5 rounded-tarjeta border p-4 md:p-5', className)}
+    >
       <Skeleton className="h-7.5 w-1/3" />
       {Array.from({ length: filas }, (_, indice) => (
         <div key={indice} className="flex items-center justify-between gap-4">

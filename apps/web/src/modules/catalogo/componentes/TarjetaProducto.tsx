@@ -1,7 +1,9 @@
 import { Link } from 'react-router';
 import { Monto } from '../../../shared/componentes/Monto';
+import { clasesDelColor } from '../../../shared/componentes/prenda/colores';
 import { MuestraColor } from '../../../shared/componentes/prenda/MuestraColor';
 import { Prenda } from '../../../shared/componentes/prenda/Prenda';
+import { cn } from '../../../shared/ui/cn';
 import type { ProductoBusqueda } from '../catalogo.api';
 import { EtiquetaExistencia } from './EtiquetaExistencia';
 import { conId, RUTAS } from '../../../shared/rutas';
@@ -18,18 +20,29 @@ export function TarjetaProducto({ producto }: { producto: ProductoBusqueda }) {
       to={conId(RUTAS.producto, producto.idProducto)}
       className="group bg-card hover:border-primary focus-visible:ring-ring ease-salida flex w-full flex-col overflow-hidden rounded-tarjeta border shadow-sm transition-[translate,box-shadow,border-color] duration-200 hover:shadow-md focus-visible:ring-2 focus-visible:outline-none motion-safe:hover:-translate-y-1"
     >
-      <div className="bg-muted flex aspect-square items-center justify-center">
+      {/* D5: la ilustración ocupa cerca del 70 % sobre un fondo teñido con el primer color del producto. */}
+      <div
+        className={cn(
+          'fondo-tenido flex aspect-square items-center justify-center',
+          clasesDelColor(primerColor).texto,
+        )}
+      >
         <Prenda
           tipo={producto.ilustracion}
           color={primerColor}
-          className="ease-salida h-2/3 w-2/3 transition-[scale] duration-200 motion-safe:group-hover:scale-[1.04]"
+          className="ease-salida size-[70%] transition-[scale] duration-200 motion-safe:group-hover:scale-[1.04]"
         />
       </div>
-      <div className="flex flex-col gap-2 p-3 md:p-4">
+      <div className="flex flex-1 flex-col gap-1.5 p-4 md:p-5">
         {producto.colores.length > 0 && (
-          <div className="flex flex-wrap gap-1">
+          <div className="mb-1 flex flex-wrap gap-1.5">
             {producto.colores.map((color, indice) => (
-              <MuestraColor key={color} color={color} seleccionada={indice === 0} />
+              <MuestraColor
+                key={color}
+                color={color}
+                seleccionada={indice === 0}
+                className="size-5"
+              />
             ))}
             <span className="sr-only">{`Colores: ${producto.colores.join(', ')}`}</span>
           </div>
@@ -37,7 +50,7 @@ export function TarjetaProducto({ producto }: { producto: ProductoBusqueda }) {
         <h2 className="texto-base-fuerte">{producto.nombre}</h2>
         <p className="texto-nota text-muted-foreground hidden md:block">{producto.categoria}</p>
         <EtiquetaExistencia estado={producto.disponible ? 'Disponible' : 'Agotado'} />
-        <p className="flex flex-col">
+        <p className="mt-auto flex flex-col pt-2">
           <span className="texto-nota text-muted-foreground">Desde</span>
           <Monto valor={producto.precioMinimo} className="display-precio" />
         </p>

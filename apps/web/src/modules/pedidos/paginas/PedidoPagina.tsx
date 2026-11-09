@@ -2,7 +2,6 @@ import { idEnRutaSchema } from '@shopcart/shared';
 import { SearchX } from 'lucide-react';
 import { Link, useParams } from 'react-router';
 import { z } from 'zod';
-import { Aviso } from '../../../shared/componentes/Aviso';
 import { AvisoDePagina } from '../../../shared/componentes/AvisoDePagina';
 import { EstadoPedido } from '../../../shared/componentes/EstadoPedido';
 import { EstadoVista } from '../../../shared/componentes/EstadoVista';
@@ -13,6 +12,7 @@ import { ArticulosPedido } from '../componentes/ArticulosPedido';
 import { AvisoCancelacion } from '../componentes/AvisoCancelacion';
 import { DialogoCancelarPedido } from '../componentes/DialogoCancelarPedido';
 import { EntregaPedido } from '../componentes/EntregaPedido';
+import { ExitoDelPedido } from '../componentes/ExitoDelPedido';
 import { ESQUELETO_PEDIDO } from '../componentes/EsqueletoPedidos';
 import { PagoPedido } from '../componentes/PagoPedido';
 import { SeguimientoPedido } from '../componentes/SeguimientoPedido';
@@ -39,6 +39,7 @@ function PedidoNoEncontrado() {
   return (
     <AvisoDePagina
       icono={SearchX}
+      ilustracion="Chaqueta"
       titulo="No encontramos este pedido"
       acciones={
         <Button asChild>
@@ -60,7 +61,9 @@ interface PropsFichaPedido {
 function FichaPedido({ pedido, nuevo, cancelar }: PropsFichaPedido) {
   return (
     <div className="flex flex-col gap-6">
-      {nuevo && !cancelar.data && <Aviso tipo="exito">{AGRADECIMIENTO[pedido.estadoPago]}</Aviso>}
+      {nuevo && !cancelar.data && (
+        <ExitoDelPedido>{AGRADECIMIENTO[pedido.estadoPago]}</ExitoDelPedido>
+      )}
       {cancelar.data && <AvisoCancelacion cancelacion={cancelar.data} />}
       <nav aria-label="Ruta" className="texto-pequeno text-muted-foreground">
         <Link to={RUTAS.misPedidos} className="hover:underline">
@@ -70,7 +73,10 @@ function FichaPedido({ pedido, nuevo, cancelar }: PropsFichaPedido) {
       </nav>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="titulo-1">{`Pedido ${pedido.numeroPedido}`}</h1>
+          {/* D5: el número de pedido destacado; el nombre del encabezado no cambia. */}
+          <h1 className="titulo-1">
+            Pedido <span className="text-primary">{pedido.numeroPedido}</span>
+          </h1>
           <EstadoPedido estado={pedido.estado} />
         </div>
         <DialogoCancelarPedido

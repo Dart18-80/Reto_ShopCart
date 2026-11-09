@@ -54,7 +54,8 @@ export function FichaProducto({ producto, idVarianteEnUrl, alResolver }: PropsFi
             imagenes={producto.imagenes}
           />
         </div>
-        <div className="flex flex-col gap-5">
+        {/* D5: el panel de compra se queda a la vista en escritorio mientras se recorre la galería. */}
+        <div className="flex flex-col gap-5 md:sticky md:top-[calc(var(--alto-encabezado)+1.5rem)] md:self-start">
           <div className="flex flex-col gap-2">
             <p className="texto-pequeno text-muted-foreground">{producto.categoria}</p>
             <h1 className="titulo-1">{producto.nombre}</h1>
@@ -62,7 +63,7 @@ export function FichaProducto({ producto, idVarianteEnUrl, alResolver }: PropsFi
               {variante === undefined && (
                 <span className="texto-nota text-muted-foreground">Desde</span>
               )}
-              {precio !== undefined && <Monto valor={precio} className="titulo-2" />}
+              {precio !== undefined && <Monto valor={precio} className="titulo-1" />}
               {/* N-18: los precios del catálogo ya incluyen el IVA. */}
               <span className="texto-nota text-muted-foreground">Incluye IVA del 12 %</span>
             </p>
@@ -94,7 +95,7 @@ export function FichaProducto({ producto, idVarianteEnUrl, alResolver }: PropsFi
               agotada={variante?.estadoExistencia === 'Agotado'}
             />
           )}
-          <Aviso tipo="info">
+          <Aviso tipo="info" forma="tarjeta">
             {`Al agregarlo, su precio queda garantizado por ${String(producto.diasGarantiaPrecio)} días: si sube, pagas el anterior; si baja, pagas el nuevo.`}
           </Aviso>
           {producto.descripcion && (

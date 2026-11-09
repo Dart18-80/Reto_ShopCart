@@ -104,7 +104,8 @@ function CuerpoDelPaso({ carrito, envios }: PropsCuerpo) {
           <SeleccionEnvio metodos={envios.metodos} elegido={metodo} alElegir={setIdMetodoElegido} />
         </Seccion>
       </div>
-      <div className="md:w-105 md:shrink-0">
+      {/* D5: el resumen se queda a la vista en escritorio. */}
+      <div className="md:sticky md:top-[calc(var(--alto-encabezado)+1.5rem)] md:w-105 md:shrink-0">
         <ResumenPedido
           lineas={carrito.lineas.map((linea) => ({ ...linea, clave: linea.idLinea }))}
           subtotal={carrito.resumen.subtotal}

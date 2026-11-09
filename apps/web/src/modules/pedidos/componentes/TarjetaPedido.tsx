@@ -9,7 +9,8 @@ import { conId, RUTAS } from '../../../shared/rutas';
 /** Figma 47:1063: un pedido de la lista. La fecha es el día de pago en Guatemala (A-12), tal como llega. */
 export function TarjetaPedido({ pedido }: { pedido: ResumenPedido }) {
   return (
-    <li className="bg-card flex flex-wrap items-center gap-x-4 gap-y-2 rounded-tarjeta border px-6 py-4">
+    // D5: la tarjeta responde al pasar el cursor (sombra y borde); solo «Ver detalle» navega, como antes.
+    <li className="bg-card hover:border-primary/40 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-tarjeta border px-6 py-4 shadow-xs transition-[box-shadow,border-color] duration-200 hover:shadow-md">
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex flex-wrap items-center gap-3">
           <h2 className="texto-base-fuerte">{`Pedido ${pedido.numeroPedido}`}</h2>

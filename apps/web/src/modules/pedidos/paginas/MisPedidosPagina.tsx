@@ -13,6 +13,7 @@ import { useMisPedidos } from '../hooks/useMisPedidos';
 
 const SIN_PEDIDOS = {
   titulo: 'Todavía no tienes pedidos',
+  ilustracion: 'Camisa' as const,
   descripcion: 'Cuando compres, tus pedidos aparecen aquí.',
   accion: (
     <Button asChild variant="outline" size="sm">

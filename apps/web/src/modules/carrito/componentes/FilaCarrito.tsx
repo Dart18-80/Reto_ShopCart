@@ -3,7 +3,9 @@ import { Aviso } from '../../../shared/componentes/Aviso';
 import { Cantidad } from '../../../shared/componentes/Cantidad';
 import { Monto } from '../../../shared/componentes/Monto';
 import { Prenda } from '../../../shared/componentes/prenda/Prenda';
+import { clasesDelColor } from '../../../shared/componentes/prenda/colores';
 import { Button } from '../../../shared/ui/button';
+import { cn } from '../../../shared/ui/cn';
 import { avisoDeLinea } from '../avisoDeLinea';
 import type { LineaCarrito } from '../carrito.api';
 import {
@@ -66,8 +68,14 @@ export function FilaCarrito({ linea }: { linea: LineaCarrito }) {
   };
 
   return (
-    <li className="flex gap-4 border-b py-4 md:py-5">
-      <div className="bg-muted flex size-24 shrink-0 items-center justify-center rounded-control md:h-28">
+    // D5: cada línea en una tarjeta, con la ilustración sobre un fondo teñido con su color.
+    <li className="bg-card rounded-tarjeta flex gap-4 border p-4 shadow-xs md:p-5">
+      <div
+        className={cn(
+          'fondo-tenido flex size-24 shrink-0 items-center justify-center rounded-control md:h-28',
+          clasesDelColor(linea.color ?? undefined).texto,
+        )}
+      >
         <Prenda tipo={linea.ilustracion} color={linea.color ?? undefined} className="size-16" />
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-2">

@@ -15,6 +15,7 @@ export function ErrorDeArea({ area }: { area: Area }) {
   return (
     <AvisoDePagina
       icono={TriangleAlert}
+      ilustracion="Tenis"
       titulo={`Algo falló en ${NOMBRE_DEL_AREA[area]}`}
       acciones={
         <>

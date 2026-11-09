@@ -7,6 +7,7 @@ export function NoEncontrado() {
   return (
     <AvisoDePagina
       icono={SearchX}
+      ilustracion="Gorra"
       titulo="No encontramos esta página"
       acciones={
         <Button asChild>
