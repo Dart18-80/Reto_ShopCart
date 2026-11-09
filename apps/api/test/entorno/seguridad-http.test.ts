@@ -35,9 +35,10 @@ const ENCABEZADOS_HELMET = {
   'x-xss-protection': '0',
 };
 
-const error500Schema = z.strictObject({
+// Solo el código, el mensaje y el requestId: nada del error de mssql ni del stack (A-06).
+const errorSinBaseSchema = z.strictObject({
   error: z.strictObject({
-    codigo: z.literal('ERROR_INTERNO'),
+    codigo: z.literal('BASE_NO_DISPONIBLE'),
     mensaje: z.string(),
     requestId: z.uuid(),
   }),
@@ -110,11 +111,11 @@ describe('seguridad HTTP a través de nginx (verificación de entrega)', () => {
     expect(previa.headers.get('access-control-allow-origin')).toBeNull();
   });
 
-  it('con NODE_ENV=development, un 500 real no trae stack ni detalles internos', async () => {
+  it('con NODE_ENV=development, la base en pausa responde 503 sin stack ni detalles internos', async () => {
     const { stdout } = await compose('exec', '-T', 'api-1', 'printenv', 'NODE_ENV');
     expect(stdout.trim()).toBe('development');
 
-    // Con SQL Server en pausa, la consulta se cancela por timeout (DB_TIMEOUT_CONSULTA_MS) y la API responde 500.
+    // A-26: con SQL Server en pausa el pool no logra obtener una conexión: 503 BASE_NO_DISPONIBLE con Retry-After.
     await compose('pause', 'sqlserver');
     let respuesta: Response;
     try {
@@ -125,8 +126,11 @@ describe('seguridad HTTP a través de nginx (verificación de entrega)', () => {
     }
     const texto = await respuesta.text();
 
-    expect(respuesta.status).toBe(500);
-    expect(error500Schema.safeParse(JSON.parse(texto)).success).toBe(true);
-    expect(texto).not.toMatch(/stack|\bat \w|Timeout|ETIMEOUT|mssql|tedious|\.js:\d/i);
+    expect(respuesta.status).toBe(503);
+    expect(respuesta.headers.get('retry-after')).toBe('5');
+    expect(errorSinBaseSchema.safeParse(JSON.parse(texto)).success).toBe(true);
+    expect(texto).not.toMatch(
+      /stack|\bat \w|Timeout|ETIMEOUT|mssql|tedious|\.js:\d|sqlserver:1433/i,
+    );
   });
 });
