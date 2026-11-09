@@ -21,7 +21,7 @@ describe('ConfiguracionPagina (M9-H02)', () => {
   });
 
   it('guardar envía los números como enteros y el envío gratis vacío como null', async () => {
-    const recibidos = simularConfiguracion(configuracionDePrueba());
+    const { recibidos } = simularConfiguracion(configuracionDePrueba());
     const { usuario } = abrir();
 
     const minutos = await screen.findByLabelText('Minutos de reserva al pagar');
@@ -44,7 +44,7 @@ describe('ConfiguracionPagina (M9-H02)', () => {
   });
 
   it('un valor fuera de su rango lo marca el mismo esquema que la API, en español', async () => {
-    const recibidos = simularConfiguracion(configuracionDePrueba());
+    const { recibidos } = simularConfiguracion(configuracionDePrueba());
     const { usuario } = abrir();
 
     const minutos = await screen.findByLabelText('Minutos de reserva al pagar');
@@ -54,6 +54,20 @@ describe('ConfiguracionPagina (M9-H02)', () => {
 
     expect(await screen.findByText('No puede pasar de 60.')).toBeInTheDocument();
     expect(recibidos).toEqual([]);
+  });
+
+  it('al guardar toma la configuración de la respuesta: no la vuelve a pedir', async () => {
+    const { lecturas } = simularConfiguracion(configuracionDePrueba());
+    const { usuario } = abrir();
+
+    const minutos = await screen.findByLabelText('Minutos de reserva al pagar');
+    await usuario.clear(minutos);
+    await usuario.type(minutos, '20');
+    await usuario.click(screen.getByRole('button', { name: 'Guardar configuración' }));
+
+    expect(await screen.findByText('Guardamos la configuración.')).toBeInTheDocument();
+    expect(screen.getByText('Última actualización: 8 nov 2026, 04:00.')).toBeInTheDocument();
+    expect(lecturas.total).toBe(1);
   });
 
   it('un Operador ve «Sin permiso»', async () => {

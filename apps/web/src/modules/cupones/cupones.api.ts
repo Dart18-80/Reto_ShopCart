@@ -41,10 +41,10 @@ export async function actualizarCupon(idCupon: number, cuerpo: ActualizarCupon):
 }
 
 export async function cambiarEstadoCupon(idCupon: number, accion: AccionCupon): Promise<Cupon> {
-  const ruta =
+  const params = { path: { id: idCupon } };
+  const { data } =
     accion === 'activar'
-      ? '/api/v1/admin/cupones/{id}/activar'
-      : '/api/v1/admin/cupones/{id}/desactivar';
-  const { data } = await api.POST(ruta, { params: { path: { id: idCupon } } });
+      ? await api.POST('/api/v1/admin/cupones/{id}/activar', { params })
+      : await api.POST('/api/v1/admin/cupones/{id}/desactivar', { params });
   return cuerpoDe(data).datos;
 }

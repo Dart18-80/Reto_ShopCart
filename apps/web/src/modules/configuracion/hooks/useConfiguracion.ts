@@ -8,13 +8,20 @@ export function useConfiguracion() {
 }
 
 /**
- * A-14: un parámetro cambia lo que calculan muchos SPs (la reserva del checkout, la garantía, el envío gratis…).
- * Al guardar se descarta todo lo que hay en caché: lo que se vuelva a ver se pide con los parámetros nuevos.
+ * A-14: un parámetro cambia lo que calculan muchos SPs (la reserva del checkout, la garantía, el envío gratis, el
+ * plazo de devolución…). Al guardar se toma la configuración de la respuesta y se descarta el resto de la caché que
+ * depende de ella: lo que se vuelva a ver se pide con los parámetros nuevos.
  */
 export function useActualizarConfiguracion() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (cambios: ActualizarConfiguracion) => actualizarConfiguracion(cambios),
-    onSuccess: () => queryClient.invalidateQueries(),
+    onSuccess: (configuracion) => {
+      queryClient.setQueryData(configuracionKeys.todo, configuracion);
+      return queryClient.invalidateQueries({
+        // La configuración ya llegó en la respuesta: no se vuelve a pedir.
+        predicate: (consulta) => consulta.queryKey[0] !== configuracionKeys.todo[0],
+      });
+    },
   });
 }

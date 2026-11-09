@@ -75,7 +75,8 @@ export function formatearFechaCalendario(fecha: string): string {
 
 // --- Fecha y hora escritas en un formulario (`<input type="datetime-local">`, M9-H01: la vigencia de un cupón).
 
-// A-12: Guatemala está en UTC−6 todo el año (no tiene horario de verano).
+// M-03 (02 §1.2): la tienda vive en la hora de Guatemala, UTC−6 todo el año (sin horario de verano); la misma
+// regla que FU_Sistema_FechaLocal. Por eso el desfase es fijo: no depende de la zona del navegador del Admin.
 const DESFASE_GUATEMALA = '-06:00';
 const PATRON_ENTRADA_LOCAL = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 

@@ -13,5 +13,10 @@
     "metodo": "GET",
     "ruta": "/api/v1/inventario/bodega",
     "motivo": "Could de E3 (VW_Inventario_ExistenciaBodega): ninguna historia de la fase 2 tiene pantalla de bodega; /backoffice/inventario (M7-H01) muestra física, reservado y disponible."
+  },
+  {
+    "metodo": "GET",
+    "ruta": "/api/v1/admin/cupones/{id}",
+    "motivo": "GET /admin/cupones ya trae cada cupón completo: la edición (M9-H01) parte de su fila y, al guardar, la lista se vuelve a pedir."
   }
 ]

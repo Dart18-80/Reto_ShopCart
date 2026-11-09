@@ -60,12 +60,19 @@ export const configuracionDePrueba = (cambios: Partial<Configuracion> = {}): Con
   ...cambios,
 });
 
-/** `GET` y `PATCH /admin/configuracion`: el PATCH mezcla lo recibido, o responde el error indicado. */
+/**
+ * `GET` y `PATCH /admin/configuracion`: el PATCH mezcla lo recibido, o responde el error indicado. Devuelve los
+ * cuerpos recibidos y cuántas veces se leyó.
+ */
 export function simularConfiguracion(inicial: Configuracion, error?: ErrorSimulado) {
   let actual = inicial;
   const recibidos: unknown[] = [];
+  const lecturas = { total: 0 };
   servidor.use(
-    http.get('/api/v1/admin/configuracion', () => HttpResponse.json({ datos: actual })),
+    http.get('/api/v1/admin/configuracion', () => {
+      lecturas.total += 1;
+      return HttpResponse.json({ datos: actual });
+    }),
     http.patch('/api/v1/admin/configuracion', async ({ request }) => {
       const cuerpo = (await request.json()) as Partial<Configuracion>;
       recibidos.push(cuerpo);
@@ -74,5 +81,5 @@ export function simularConfiguracion(inicial: Configuracion, error?: ErrorSimula
       return HttpResponse.json({ datos: actual });
     }),
   );
-  return recibidos;
+  return { recibidos, lecturas };
 }
