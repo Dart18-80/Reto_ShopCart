@@ -843,6 +843,13 @@ El orden de construcción, por módulos (F1, módulos 1 a 11 y F6), está en [`0
 | **M10 Usuarios y bitácora** | Usuarios del personal y bitácora con sus cambios | 1.25 | Hecha |
 | **M11 Dashboard** | Gráficas, tiempo real y exportaciones | 2.25 | Hecha |
 | **F6 Cierre** | README final, matriz completa (`contrato:cobertura --estricto`) y verificación desde cero | 1.0 | Hecha |
+| **D1 Sistema visual** | Tokens de radio, sombra, tipografía, espaciado y color; controles y botones | 1.0 | Lista |
+| **D2 Movimiento** | Tokens de duración y curva; animaciones con movimiento reducido | 0.75 | Lista |
+| **D3 Carga** | Esqueletos con la forma del contenido, sin destellos ni saltos | 0.75 | Lista |
+| **D4 Layout y responsive** | Ingresar y Registro, encabezado, barra lateral, barras fijas y revisión por tamaños | 1.0 | Lista |
+| **D5 Tienda** | Catálogo, detalle, carrito, checkout, confirmación y mis pedidos | 2.0 | Lista |
+| **D6 Backoffice** | Barra lateral, encabezados, filtros, tablas y dashboard | 1.25 | Lista |
+| **D7 Cierre del diseño** | Revisión con la lista de diseño, FE-15 o FE-17, skill y verificación completa | 0.75 | Lista |
 
 ---
 
@@ -1564,3 +1571,172 @@ Como en FE-11 (05 §11): `useTiempoRealReportes` con `eventsource-parser`, inval
 - [ ] Todo en verde desde cero, con la salida real en el resumen.
 
 **Referencias:** enunciado §05 (Calidad y entorno), §07 y §08.
+
+---
+
+## D · Pase de diseño (rama `diseno`)
+
+### Reglas fijas (no negociables)
+
+1. **Solo se toca `apps/web` y `docs`.** Ni la API, ni la base, ni `packages/shared`, ni `packages/contrato`, ni la semilla. Antes de cada merge, `git diff --stat main..diseno` lo demuestra.
+2. **El comportamiento no cambia:** mismas rutas, datos, validaciones, flujos, permisos y textos. Cambia cómo se ve y cómo se siente.
+3. **Las E2E pasan sin tocar sus aserciones.** Los nombres accesibles se quedan iguales (botones, etiquetas, títulos, encabezados de tabla). Un ícono nuevo dentro de un botón lleva `aria-hidden`. Si una prueba necesita otro selector, se reporta con su porqué; la aserción no se toca nunca.
+4. **Los controles nativos se quedan nativos** (`<select>`, `input type="date"`, checkbox): se estilizan, no se reemplazan por componentes propios, porque las pruebas y la accesibilidad dependen de ellos.
+5. **Nada nuevo que parezca funcionar sin funcionar:** ni favoritos, ni marca o material, ni botón de carrito en la tarjeta, ni vista de lista.
+6. **Sin dependencias nuevas.** Las animaciones van con CSS y Tailwind (lo que ya trae shadcn). Si algo de verdad lo necesita, pregunta antes.
+7. **Tema oscuro:** cada cambio funciona en los dos temas, con contraste AA.
+8. **Si una duda cambia el comportamiento, detente y pregunta.**
+
+### Proceso
+
+- Rama `diseno` desde `main`. Se trabaja **por bloques**: D1, D2 + D3, D4, D5, D6 y D7.
+- Al cerrar cada bloque: capturas de antes y después en 375 y 1280 px (las de la tienda también en tema oscuro), lint, typecheck, unitarias de la web y **E2E completa**. Con todo en verde, `merge --ff-only` a `main` y aviso a Diego para que haga push. Así `main` siempre está entregable.
+- **El último merge a `main` se hace a más tardar a las 20:00.** Lo que no esté terminado se queda en la rama. No se mete a medias.
+- Playwright corre con `reducedMotion: 'reduce'` para que las animaciones no vuelvan inestables las pruebas.
+- Un commit por historia, sin atribución a Claude y sin push.
+
+---
+
+### D1 · Sistema visual — 1.0 h
+Tokens en el tema de Tailwind (claro y oscuro), usados en lugar de valores sueltos:
+
+- **Radios:** controles 10 px, tarjetas 16 px, paneles grandes 20 px, píldoras `full`.
+- **Sombras suaves teñidas de azul marino:**
+  - `xs`: `0 1px 2px rgb(15 23 42 / .06)`
+  - `sm`: `0 1px 3px rgb(15 23 42 / .08), 0 1px 2px rgb(15 23 42 / .04)`
+  - `md`: `0 8px 24px -8px rgb(11 45 92 / .18)`
+  - `lg`: `0 16px 40px -12px rgb(11 45 92 / .25)`
+  - En oscuro: borde de 1 px y superficie un tono más clara en lugar de sombra.
+- **Tipografía:**
+  - Display 48/52 (en móvil, 32/38).
+  - H1 36/40 (en móvil, 28/34).
+  - H2 24/30, H3 18/26, cuerpo 16/24, pequeño 14/20, nota 12/16.
+  - Los títulos van en Space Grotesk 700 con `tracking -0.02em`.
+  - **Todos los montos van con `tabular-nums`.**
+- **Espaciado:** contenedor máximo de 1280 px con margen de 32 px (16 en móvil); separación entre secciones de 48 px (32 en móvil); relleno de tarjeta de 20 px (16 en móvil).
+- **Color:** el azul marino Don Arturo es el principal. El rojo se usa poco y con intención (60-30-10): el subrayado del menú activo, la insignia del carrito, la franja decorativa (D5) y lo destructivo. Ningún texto sobre rojo baja de AA.
+- **Controles:**
+  - 44 px de alto, borde de 1 px que se oscurece al pasar el cursor.
+  - **Foco visible:** anillo de 3 px azul marino al 30 % más borde azul marino. En los botones va con `focus-visible`.
+  - Los `<select>` nativos llevan `appearance-none` y el mismo chevron que «Relevancia». Hoy «Agrupar por», «Mes» y «Año» se ven distintos.
+  - Las fechas nativas llevan el mismo marco que los demás campos.
+  - El checkbox usa `accent-color`.
+- **Botones:**
+  - Primario: azul marino, más oscuro al pasar el cursor, con sombra `xs`, y `scale(.98)` al presionar.
+  - Secundario: borde. Fantasma: sin borde.
+  - **Destructivo:** texto y borde rojos. Hoy «Eliminar producto» y «Eliminar» se ven igual que una acción neutra.
+  - **Cargando:** un spinner con `aria-hidden` a la izquierda, y el texto se mantiene, así que el ancho y el nombre accesible no cambian.
+
+**CA:** los botones y campos de la tienda y del backoffice usan los mismos componentes y tokens (lo muestra la búsqueda de colores o radios sueltos), y el contraste AA se verifica en los dos temas.
+
+### D2 · Movimiento — 0.75 h
+- **Tokens:**
+  - `--dur-rapida 120ms`, `--dur-base 200ms`, `--dur-lenta 320ms`
+  - `--curva-salida cubic-bezier(.2,.8,.2,1)`, `--curva cubic-bezier(.4,0,.2,1)`
+- **Animaciones:**
+  - **Cambio de página:** opacidad de 0 a 1 y `translateY` de 8 a 0 px, en 200 ms. La clave es el **pathname**, así que cambiar filtros o la página de una tabla no vuelve a animar.
+  - **Tarjeta de producto** (solo con `@media (hover:hover)`): sube 4 px, la sombra pasa de `sm` a `md` y la ilustración crece a `scale(1.04)`, en 200 ms.
+  - **Rejilla en la primera carga:** aparición escalonada de 30 ms por tarjeta, máximo 8.
+  - **Diálogos:** el fondo se desvanece en 150 ms; el contenido pasa de `scale(.96)` a 1 con opacidad en 200 ms; al cerrar, 150 ms.
+  - **Avisos:** bajan 8 px con fundido.
+  - **Menú móvil:** entra desde la izquierda en 240 ms.
+  - **Insignia del carrito:** rebote de escala 1 → 1.25 → 1 en 300 ms cuando la cantidad **sube**.
+  - **Barra de envío gratis:** el ancho cambia con una transición de 400 ms.
+  - **Pasos del checkout:** el conector se llena al avanzar.
+  - **Confirmación del pedido:** el ícono de check se dibuja una vez (`stroke-dashoffset`, 500 ms).
+- **Con `prefers-reduced-motion: reduce`:** solo quedan fundidos de 100 ms o menos. Sin desplazamientos ni escalas.
+
+**CA:** con movimiento reducido no hay transformaciones (prueba unitaria del hook o la clase), y la E2E sigue estable.
+
+### D3 · Carga — 0.75 h
+- **Esqueleto con brillo** (degradado que avanza, 1.4 s; sin brillo con movimiento reducido).
+- **Un esqueleto por pantalla, con la forma real del contenido:** catálogo (ya existe, se ajusta a la tarjeta nueva), **detalle de producto** (hoy son 3 barras: galería cuadrada, miniaturas, título, precio, muestras y botón), carrito, checkout, mis pedidos y detalle de pedido. Las medidas son las mismas que el contenido final: **sin saltos de diseño** al cargar.
+- **Sin destellos:** el esqueleto aparece solo si la carga pasa de 150 ms (`useMostrarTrasRetraso`).
+- **Entre páginas de una tabla** (datos anteriores mientras llega la siguiente): una barra de 2 px arriba de la tabla y el cuerpo al 60 % de opacidad. Sin esqueleto.
+- **Áreas que se cargan aparte** (`lazy`): una barra de progreso de 2 px azul marino arriba de la ventana, en lugar de una pantalla en blanco.
+- Las ilustraciones e imágenes aparecen con un fundido.
+
+**CA:** prueba unitaria del retraso de 150 ms. Capturas de cada esqueleto junto a su pantalla cargada, en las que coinciden las posiciones.
+
+### D4 · Layout y responsive — 1.0 h
+- **Ingresar y Registro:**
+  - Desde 1024 px: dos columnas. A la izquierda, un panel decorativo azul marino con la franja diagonal azul y roja, el logotipo y tres ilustraciones de prenda teñidas, todo con `aria-hidden`. A la derecha, el formulario.
+  - Por debajo de 1024 px: una sola columna.
+  - **Ingresar no hace scroll** en 1366×657, 1280×720, 375×667 y 360×640.
+  - Registro puede hacer scroll en móvil, pero el botón queda a la vista sin pasos extra en 1366×657.
+  - Usa `min-h` con `100dvh` menos el encabezado.
+- **Encabezado de la tienda:**
+  - Fijo arriba, con fondo translúcido con `backdrop-blur` y sombra `xs` solo después de hacer scroll. 64 px de alto.
+  - El buscador en píldora.
+  - El menú activo con un subrayado rojo de 2 px.
+- **Backoffice:**
+  - La barra lateral es `sticky top-0 h-dvh`. **Hoy su fondo termina a los 900 px y el resto de la página queda sin barra.**
+  - En móvil, un cajón lateral.
+- **Barras fijas abajo en móvil** (detalle, checkout): `padding-bottom: env(safe-area-inset-bottom)`, y el contenido reserva el alto de la barra. **Hoy, en el paso de pago en 375 px, la barra tapa «No guardamos los datos de tu tarjeta…».**
+- **Chips de categoría en móvil:** scroll horizontal con `scroll-snap` y un desvanecido en los bordes para indicar que hay más.
+- **Detalle en móvil:** la galería mide como máximo 45vh, para que el nombre y el precio se vean sin hacer scroll.
+- **Mis pedidos:** la lista se alinea con el título, en el mismo contenedor. Hoy el título está a la izquierda y la lista centrada.
+- **Revisión** en 360, 375, 768, 1024, 1280 y 1440 px: sin scroll horizontal y con áreas táctiles de 44 px o más.
+
+**CA:** una prueba de Playwright solo para el diseño verifica que Ingresar no hace scroll en los 4 tamaños y que ninguna pantalla de la tienda tiene scroll horizontal en 360 px.
+
+### D5 · Tienda — 2.0 h
+- **Catálogo:**
+  - Una franja de cabecera con fondo suave y, a la derecha, **la franja diagonal azul marino y roja** (CSS, decorativa, `aria-hidden`), con migas, título display y conteo.
+  - Los chips en píldora (activo en azul marino y relleno).
+  - **Filtros en una tarjeta** (`rounded-2xl`, sombra `sm`, `sticky` en escritorio). «Limpiar filtros» se alinea con su ícono, en rojo como en la referencia; hoy está desalineado.
+  - **Tarjeta de producto:** el área de la ilustración tiene un degradado radial teñido con el primer color del producto (al 8–10 %), y la ilustración ocupa cerca del 70 % del área (hoy se ve pequeña). Las muestras de color miden 20 px. Debajo van el nombre (16/600), la categoría, la disponibilidad y el precio (display, `tabular-nums`). Al pasar el cursor, se anima como en D2. La tarjeta entera sigue llevando al detalle.
+- **Detalle:**
+  - La galería en `rounded-2xl` con el fondo teñido y las miniaturas redondeadas.
+  - **El panel de compra es `sticky`** en escritorio.
+  - Las muestras miden 40 px, con anillo cuando están seleccionadas, y arriba dicen «Color: Negro» con el nombre que ya llega.
+  - El precio es grande. El aviso de garantía va como tarjeta informativa.
+- **Carrito:**
+  - Cada línea va en una tarjeta con la ilustración sobre fondo teñido.
+  - El resumen es `sticky`.
+  - La barra de envío gratis lleva un degradado azul marino y la animación de D2.
+  - El estado vacío lleva una ilustración y «Ver el catálogo».
+- **Checkout:** los pasos se ven más definidos. El aviso de reserva y el formulario de tarjeta van en una tarjeta con el ícono de tarjeta. El resumen es `sticky`.
+- **Confirmación (`?nuevo=1`):** un encabezado de éxito con el check animado y el número de pedido destacado. **Los textos son los mismos de hoy.**
+- **Mis pedidos y detalle:**
+  - Las tarjetas responden al pasar el cursor.
+  - El seguimiento es una línea de tiempo vertical con conectores y un ícono por estado.
+  - Las insignias de estado usan colores consistentes en las dos áreas.
+- **Estados vacíos y de error** con ilustración de prenda y su acción.
+
+**CA:** capturas de antes y después de cada pantalla en 375 y 1280 px, en claro y oscuro. La E2E completa pasa sin tocar ninguna aserción.
+
+### D6 · Backoffice — 1.25 h
+- **Barra lateral:** un ícono por opción (lucide, que ya está instalado). La opción activa lleva un fondo azul marino al 8 % y una barra de 3 px a la izquierda. Las etiquetas de sección van en mayúsculas, 11 px, con espaciado.
+- **Encabezado de página consistente:** título, descripción y acciones a la derecha.
+- **Filtros en una tarjeta,** con altura uniforme y los controles nativos estilizados (D1).
+- **Tablas:**
+  - El encabezado es `sticky` y la fila se resalta al pasar el cursor.
+  - Los números van a la derecha con `tabular-nums`.
+  - Las filas miden 52 px.
+  - La paginación muestra la página y el total.
+  - **Las acciones de fila** («Cambiar precio», «Editar», «Desactivar», «Eliminar») siguen visibles con su texto, como botones fantasma pequeños, y las destructivas en rojo. **No se meten en un menú** (romperían las E2E y añaden un clic).
+- **Dashboard:**
+  - Las tarjetas del resumen llevan un ícono en un círculo de color.
+  - Las cifras negativas van con su tono (N-11).
+  - **Gráficas:**
+    - Barras con las esquinas superiores redondeadas (4 px) y un tooltip con el estilo de tarjeta.
+    - Líneas de la cuadrícula más tenues.
+    - **Etiquetas de Top 10 y de categorías en una sola línea:** con elipsis, ancho del eje según la etiqueta más larga (con un máximo) y el nombre completo en el tooltip. Hoy se parten en dos líneas con «…».
+- **En móvil:** las tarjetas de las tablas son más compactas, con el estado arriba a la derecha y el número de pedido como título.
+
+**CA:** capturas de antes y después del Dashboard, Pedidos, Productos, Editar producto e Inventario en 375 y 1280 px. La E2E pasa.
+
+### D7 · Cierre del diseño — 0.75 h
+- `revisor-shopcart` sobre el diff de la rama, agregando esta lista de diseño:
+  - contraste AA en los dos temas
+  - foco visible en todo lo que se puede enfocar
+  - movimiento reducido respetado
+  - sin saltos de diseño al cargar
+  - sin scroll horizontal
+  - nombres accesibles sin cambios
+  
+  Corrección de lo CRÍTICO, ALTO y MEDIO.
+- `05-arquitectura-frontend.md`: amplía FE-15 con los tokens, el movimiento y la carga (o una decisión FE-17 si es más claro), y actualiza la sección de UI de la skill `modulo-react`.
+- **Verificación completa** (también las suites del backend, como comprobación de que no se tocó) y las capturas finales.
+- Merge a `main`. Después vienen el clon limpio, la revisión de Diego y el tag `fase-2`.
