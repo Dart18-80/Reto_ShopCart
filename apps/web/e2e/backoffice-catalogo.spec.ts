@@ -52,8 +52,9 @@ prueba.describe('backoffice: editor de producto (M6-H04)', () => {
       await page.getByRole('button', { name: 'Agregar variante' }).click();
       const dialogo = page.getByRole('dialog', { name: 'Agregar variante' });
       await dialogo.getByLabel('SKU').fill(nombreUnico('sku').slice(-40));
-      await dialogo.getByLabel('Color').selectOption('Azul');
-      await dialogo.getByLabel('Talla').selectOption('M');
+      // Exactos: otras pruebas crean atributos «Talla <sufijo>» en paralelo y también aparecen en el diálogo.
+      await dialogo.getByLabel('Color', { exact: true }).selectOption('Azul');
+      await dialogo.getByLabel('Talla', { exact: true }).selectOption('M');
       await dialogo.getByLabel('Precio inicial').fill('199.00');
       await dialogo.getByRole('button', { name: 'Guardar variante' }).click();
       await expect(dialogo).toBeHidden();

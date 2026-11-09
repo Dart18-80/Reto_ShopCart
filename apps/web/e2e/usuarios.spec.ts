@@ -78,7 +78,13 @@ test.describe('backoffice: usuarios (M10-H01)', () => {
       await admin.goto('/backoffice/usuarios?rol=Operador&activo=true');
       const fila = admin.getByRole('row').filter({ hasText: operador.correo });
       await fila.getByRole('button', { name: /^Desactivar a / }).click();
+      // Se espera la respuesta del backend: mientras el diálogo modal se cierra, el resto de la página está
+      // aria-hidden y la fila «desaparece» para el localizador antes de que la desactivación se confirme.
+      const desactivado = admin.waitForResponse(
+        (r) => r.request().method() === 'POST' && r.url().endsWith('/desactivar'),
+      );
       await admin.getByRole('alertdialog').getByRole('button', { name: 'Desactivar' }).click();
+      expect((await desactivado).status()).toBe(200);
       await expect(fila).toBeHidden();
     } finally {
       await contexto.close();
