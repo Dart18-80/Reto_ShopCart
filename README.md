@@ -41,7 +41,7 @@ Bash (Linux, macOS, Git Bash):
 git clone https://github.com/Dart18-80/Reto_ShopCart.git shopcart && cd shopcart
 cp .env.example .env              # los valores de ejemplo funcionan en local; cámbialos fuera de tu máquina
 docker compose up -d              # SQL Server, Redis, migrador, api-1, api-2 y nginx
-docker compose ps                 # todo "healthy"; db-migrator "Exited (0)"
+docker compose ps -a              # todo "healthy"; db-migrator "Exited (0)" (sin -a no aparece)
 ```
 
 PowerShell (Windows):
@@ -50,7 +50,7 @@ PowerShell (Windows):
 git clone https://github.com/Dart18-80/Reto_ShopCart.git shopcart; cd shopcart
 Copy-Item .env.example .env       # los valores de ejemplo funcionan en local; cámbialos fuera de tu máquina
 docker compose up -d              # SQL Server, Redis, migrador, api-1, api-2 y nginx
-docker compose ps                 # todo "healthy"; db-migrator "Exited (0)"
+docker compose ps -a              # todo "healthy"; db-migrator "Exited (0)" (sin -a no aparece)
 ```
 
 El primer arranque descarga las imágenes y construye la API y la web. El migrador crea la base y los logins, y aplica todos los scripts de `database/`, incluidos los datos demo. Cuando termina, las réplicas quedan `healthy`.
