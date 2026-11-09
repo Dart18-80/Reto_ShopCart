@@ -4,7 +4,7 @@
  * del color de foco al 30 % más el borde del mismo color. Los controles nativos se quedan nativos: solo se estilizan.
  */
 const MARCO =
-  'rounded-control border border-input bg-card transition-[color,border-color,box-shadow] hover:border-muted-foreground/60 aria-invalid:border-destructive aria-invalid:ring-[3px] aria-invalid:ring-destructive/20';
+  'rounded-control border border-borde-control bg-card transition-[color,border-color,box-shadow] hover:border-muted-foreground aria-invalid:border-destructive aria-invalid:ring-[3px] aria-invalid:ring-destructive/20';
 
 /** El foco del propio control (campos, `<select>`, fechas y botones). */
 export const FOCO_VISIBLE =

@@ -1,6 +1,7 @@
 import type { UseQueryResult } from '@tanstack/react-query';
 import { ArrowDown, ArrowUp } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
+import { useDesbordaAncho } from '../hooks/useDesbordaAncho';
 import { usePaginaEnRango } from '../hooks/usePaginaEnRango';
 import type { ModoHistorial, ParametrosUrl } from '../hooks/useParametrosUrl';
 import { usePantallaAncha } from '../hooks/usePantallaAncha';
@@ -128,17 +129,38 @@ function Tabla<T>({
   direccion: 'asc' | 'desc' | undefined;
   cambiarVista: CambiarVista;
 }) {
+  const contenedor = useRef<HTMLDivElement>(null);
+  const tabla = useRef<HTMLTableElement>(null);
+  const desborda = useDesbordaAncho(contenedor, tabla);
   return (
-    // D6: la tabla desplaza su cuerpo dentro de la tarjeta (como mucho, el alto de la ventana menos el
-    // encabezado de la página), así su encabezado se queda fijo arriba mientras se recorren las filas.
-    <div className="bg-card relative max-h-[calc(100dvh-10rem)] overflow-auto rounded-tarjeta border shadow-xs">
+    // D6: sin scroll anidado. Si la tabla cabe a lo ancho, su encabezado se queda fijo arriba de la ventana desde
+    // 1024 px (el backoffice no tiene encabezado de app desde md); si no cabe, se desplaza a lo ancho dentro de la
+    // tarjeta, con encabezado normal, y esa área se puede enfocar para desplazarla con el teclado.
+    <div
+      ref={contenedor}
+      tabIndex={desborda ? 0 : undefined}
+      role={desborda ? 'group' : undefined}
+      aria-label={desborda ? titulo : undefined}
+      className={cn(
+        'bg-card relative rounded-tarjeta border shadow-xs',
+        desborda
+          ? 'overflow-x-auto focus-visible:ring-2 focus-visible:ring-ring'
+          : 'overflow-visible',
+      )}
+    >
       {actualizando && <BarraProgreso className="absolute inset-x-0 top-0" />}
       <table
+        ref={tabla}
         aria-label={titulo}
         aria-busy={actualizando}
         className="w-full border-collapse text-left"
       >
-        <thead className="bg-muted sticky top-0 z-10 shadow-[0_1px_0_var(--border)]">
+        <thead
+          className={cn(
+            'bg-muted shadow-[0_1px_0_var(--border)] [&_th:first-child]:rounded-tl-tarjeta [&_th:last-child]:rounded-tr-tarjeta',
+            !desborda && 'lg:sticky lg:top-0 lg:z-10',
+          )}
+        >
           <tr>
             {columnas.map((columna) => (
               <Encabezado
@@ -151,7 +173,9 @@ function Tabla<T>({
             ))}
           </tr>
         </thead>
-        <tbody className={cn('transition-opacity duration-200', actualizando && 'opacity-60')}>
+        <tbody
+          className={cn('transition-opacity duration-(--dur-base)', actualizando && 'opacity-60')}
+        >
           {filas.map((fila) => (
             // D6: filas de 52 px que se resaltan al pasar el cursor.
             <tr key={claveFila(fila)} className="hover:bg-muted/50 h-13 border-t transition-colors">
@@ -197,7 +221,7 @@ function Tarjetas<T>({
       aria-label={titulo}
       aria-busy={actualizando}
       className={cn(
-        'relative flex flex-col gap-3 transition-opacity duration-200',
+        'relative flex flex-col gap-3 transition-opacity duration-(--dur-base)',
         actualizando && 'opacity-60',
       )}
     >

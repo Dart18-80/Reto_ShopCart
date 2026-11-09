@@ -100,3 +100,19 @@ describe('contraste AA de los textos en los dos temas (D1)', () => {
     });
   }
 });
+
+// WCAG 1.4.11: el contorno de los campos, select y fechas (`--borde-control`, fuera de las colecciones de Figma)
+// llega a 3:1 contra las superficies sobre las que va, en los dos temas.
+describe('contraste del contorno de los controles (1.4.11)', () => {
+  const bordes = {
+    claro: variablesDelBloque('html')['--borde-control'] ?? '',
+    oscuro: variablesDelBloque('html.dark')['--borde-control'] ?? '',
+  };
+  for (const [modo, colores] of Object.entries(figma.color)) {
+    const valores: Record<string, string> = colores;
+    const borde = bordes[modo as keyof typeof bordes];
+    it.each(['--card', '--background', '--muted'])(`${modo}: contra %s llega a 3:1`, (fondo) => {
+      expect(contraste(borde, valores[fondo] ?? '')).toBeGreaterThanOrEqual(3);
+    });
+  }
+});

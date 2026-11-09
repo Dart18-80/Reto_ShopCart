@@ -18,7 +18,7 @@ export function TarjetaProducto({ producto }: { producto: ProductoBusqueda }) {
   return (
     <Link
       to={conId(RUTAS.producto, producto.idProducto)}
-      className="group bg-card hover:border-primary focus-visible:ring-ring ease-salida flex w-full flex-col overflow-hidden rounded-tarjeta border shadow-sm transition-[translate,box-shadow,border-color] duration-200 hover:shadow-md focus-visible:ring-2 focus-visible:outline-none motion-safe:hover:-translate-y-1"
+      className="group bg-card hover:border-primary focus-visible:ring-ring ease-salida flex w-full flex-col overflow-hidden rounded-tarjeta border shadow-sm transition-[translate,box-shadow,border-color] duration-(--dur-base) hover:shadow-md focus-visible:ring-2 focus-visible:outline-none motion-safe:hover:-translate-y-1"
     >
       {/* D5: la ilustración ocupa cerca del 70 % sobre un fondo teñido con el primer color del producto. */}
       <div
@@ -30,7 +30,7 @@ export function TarjetaProducto({ producto }: { producto: ProductoBusqueda }) {
         <Prenda
           tipo={producto.ilustracion}
           color={primerColor}
-          className="ease-salida size-[70%] transition-[scale] duration-200 motion-safe:group-hover:scale-[1.04]"
+          className="ease-salida size-[70%] transition-[scale] duration-(--dur-base) motion-safe:group-hover:scale-[1.04]"
         />
       </div>
       <div className="flex flex-1 flex-col gap-1.5 p-4 md:p-5">

@@ -106,7 +106,7 @@ export function EncabezadoTienda() {
   return (
     <header
       data-desplazado={desplazado}
-      className="bg-card supports-[backdrop-filter]:bg-card/80 sticky top-0 z-40 border-b backdrop-blur-md transition-shadow duration-200 data-[desplazado=true]:shadow-xs"
+      className="bg-card supports-[backdrop-filter]:bg-card/80 sticky top-0 z-40 border-b backdrop-blur-md transition-shadow duration-(--dur-base) data-[desplazado=true]:shadow-xs"
     >
       <div className="max-w-contenido mx-auto flex flex-wrap items-center gap-x-3 px-4 md:h-16 md:flex-nowrap md:gap-8 md:px-8">
         <MenuMovil entradas={entradas} />

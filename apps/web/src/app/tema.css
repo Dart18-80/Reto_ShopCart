@@ -128,6 +128,7 @@
   --shadow-md: var(--sombra-md);
   --shadow-lg: var(--sombra-lg);
   --color-primario-hover: var(--primario-hover);
+  --color-borde-control: var(--borde-control);
   --color-marca-azul-marino: var(--marca-azul-marino);
   --color-marca-rojo: var(--marca-rojo);
 }
@@ -138,6 +139,9 @@
  * Figma y tema.test.ts las compara una a una.
  */
 html {
+  /* El contorno de los campos, select y fechas: 3:1 o más contra card, background y muted (WCAG 1.4.11). El
+     --input de Figma (#d9dfe8) daba 1.34:1 contra card. */
+  --borde-control: #808a99;
   --sombra-xs: 0 1px 2px rgb(15 23 42 / 0.06);
   --sombra-sm: 0 1px 3px rgb(15 23 42 / 0.08), 0 1px 2px rgb(15 23 42 / 0.04);
   --sombra-md: 0 8px 24px -8px rgb(11 45 92 / 0.18);
@@ -165,6 +169,8 @@ html {
 }
 
 html.dark {
+  /* El --input oscuro de Figma (#2a3852) daba 1.45:1 contra card. */
+  --borde-control: #6a7890;
   --sombra-xs: 0 0 0 1px var(--input);
   --sombra-sm: 0 0 0 1px var(--input);
   --sombra-md: 0 0 0 1px var(--input);

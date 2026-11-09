@@ -1,10 +1,12 @@
 import { render } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   animacionDeEntrada,
   animacionDeRebote,
+  leerTokens,
   useAnimarEntrada,
   useReboteAlSubir,
+  type TokensMovimiento,
 } from './useMovimiento';
 
 // D2: el movimiento respeta `prefers-reduced-motion: reduce`: solo fundidos de 100 ms o menos, sin transformaciones.
@@ -34,29 +36,70 @@ function espiarAnimate() {
   return animate;
 }
 
+// Las variables de app/movimiento.css, puestas en <html> como lo haría la hoja de estilos (jsdom no la carga).
+const VARIABLES = {
+  '--dur-base': '200ms',
+  '--dur-rebote': '0.3s',
+  '--dur-reducida': '100ms',
+  '--curva-salida': 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+  '--curva': 'cubic-bezier(0.4, 0, 0.2, 1)',
+};
+
+const TOKENS: TokensMovimiento = {
+  durBase: 200,
+  durRebote: 300,
+  durReducida: 100,
+  curvaSalida: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+  curva: 'cubic-bezier(0.4, 0, 0.2, 1)',
+};
+
+beforeEach(() => {
+  for (const [nombre, valor] of Object.entries(VARIABLES)) {
+    document.documentElement.style.setProperty(nombre, valor);
+  }
+});
+
 afterEach(() => {
   vi.unstubAllGlobals();
   Reflect.deleteProperty(HTMLElement.prototype, 'animate');
+  document.documentElement.removeAttribute('style');
+});
+
+describe('leerTokens (D2): una sola fuente, las variables de movimiento.css', () => {
+  it('lee las duraciones en ms o en s y las curvas', () => {
+    expect(leerTokens()).toEqual(TOKENS);
+  });
+
+  it('sin la hoja de estilos no hay duración y nada se anima', () => {
+    document.documentElement.removeAttribute('style');
+    simularMovimiento({ reducido: false });
+    const animate = espiarAnimate();
+
+    render(<Pagina ruta="/" />);
+
+    expect(Number.isNaN(leerTokens().durBase)).toBe(true);
+    expect(animate).not.toHaveBeenCalled();
+  });
 });
 
 describe('animaciones con nombre (D2)', () => {
   it('la entrada de página sube 8 px con fundido en 200 ms', () => {
-    const { fotogramas, opciones } = animacionDeEntrada(false);
+    const { fotogramas, opciones } = animacionDeEntrada(false, TOKENS);
 
     expect(fotogramas[0]).toEqual({ opacity: 0, top: '8px' });
     expect(opciones.duration).toBe(200);
   });
 
   it('con movimiento reducido la entrada es solo un fundido de 100 ms o menos', () => {
-    const { fotogramas, opciones } = animacionDeEntrada(true);
+    const { fotogramas, opciones } = animacionDeEntrada(true, TOKENS);
 
     expect(conTransformacion(fotogramas)).toBe(false);
     expect(Number(opciones.duration)).toBeLessThanOrEqual(100);
   });
 
   it('con movimiento reducido la insignia no rebota', () => {
-    expect(animacionDeRebote(true)).toBeNull();
-    expect(animacionDeRebote(false)?.opciones.duration).toBe(300);
+    expect(animacionDeRebote(true, TOKENS)).toBeNull();
+    expect(animacionDeRebote(false, TOKENS)?.opciones.duration).toBe(300);
   });
 });
 

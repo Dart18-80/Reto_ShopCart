@@ -1,14 +1,40 @@
 import { useLayoutEffect, useRef, useSyncExternalStore, type RefObject } from 'react';
 
-// D2: el movimiento que se hace con la Web Animations API (sin volver a montar nada). Las duraciones y curvas son
-// las de movimiento.css; con `prefers-reduced-motion: reduce` solo queda un fundido de 100 ms o menos.
+// D2: el movimiento que se hace con la Web Animations API (sin volver a montar nada). Las duraciones y curvas no se
+// repiten aquí: se leen de las variables de app/movimiento.css, su única fuente. Con `prefers-reduced-motion:
+// reduce` solo queda un fundido de --dur-reducida.
 
 const CONSULTA_REDUCIDO = '(prefers-reduced-motion: reduce)';
-const CURVA_SALIDA = 'cubic-bezier(0.2, 0.8, 0.2, 1)';
-const CURVA = 'cubic-bezier(0.4, 0, 0.2, 1)';
-const DURACION_BASE_MS = 200;
-const DURACION_REBOTE_MS = 300;
-const DURACION_REDUCIDA_MS = 100;
+const MS_POR_SEGUNDO = 1000;
+
+/** Las variables de movimiento.css que usan las animaciones de aquí. */
+export interface TokensMovimiento {
+  durBase: number;
+  durRebote: number;
+  durReducida: number;
+  curvaSalida: string;
+  curva: string;
+}
+
+/** «200ms» o «1.4s» en milisegundos; NaN si la variable no está (sin la hoja de estilos). */
+function aMilisegundos(valor: string): number {
+  const limpio = valor.trim();
+  const numero = Number.parseFloat(limpio);
+  return limpio.endsWith('ms') ? numero : numero * MS_POR_SEGUNDO;
+}
+
+/** Los tokens tal como los define la hoja de estilos en este momento. */
+export function leerTokens(raiz: HTMLElement = document.documentElement): TokensMovimiento {
+  const estilo = getComputedStyle(raiz);
+  const leer = (nombre: string) => estilo.getPropertyValue(nombre);
+  return {
+    durBase: aMilisegundos(leer('--dur-base')),
+    durRebote: aMilisegundos(leer('--dur-rebote')),
+    durReducida: aMilisegundos(leer('--dur-reducida')),
+    curvaSalida: leer('--curva-salida').trim(),
+    curva: leer('--curva').trim(),
+  };
+}
 
 export interface Animacion {
   fotogramas: Keyframe[];
@@ -37,11 +63,11 @@ export function useMovimientoReducido(): boolean {
  * `top` sobre el <main> en posición relativa y no con `transform`: un transform haría del <main> el bloque contenedor
  * de las barras fijas de móvil (CLASE_BARRA_FIJA) mientras dura la animación, y saltarían al terminar.
  */
-export function animacionDeEntrada(reducido: boolean): Animacion {
+export function animacionDeEntrada(reducido: boolean, tokens: TokensMovimiento): Animacion {
   if (reducido) {
     return {
       fotogramas: [{ opacity: 0 }, { opacity: 1 }],
-      opciones: { duration: DURACION_REDUCIDA_MS, easing: 'linear' },
+      opciones: { duration: tokens.durReducida, easing: 'linear' },
     };
   }
   return {
@@ -49,22 +75,23 @@ export function animacionDeEntrada(reducido: boolean): Animacion {
       { opacity: 0, top: '8px' },
       { opacity: 1, top: '0px' },
     ],
-    opciones: { duration: DURACION_BASE_MS, easing: CURVA_SALIDA },
+    opciones: { duration: tokens.durBase, easing: tokens.curvaSalida },
   };
 }
 
 /** El rebote de la insignia del carrito (1 → 1.25 → 1 en 300 ms). Con movimiento reducido no hay rebote. */
-export function animacionDeRebote(reducido: boolean): Animacion | null {
+export function animacionDeRebote(reducido: boolean, tokens: TokensMovimiento): Animacion | null {
   if (reducido) return null;
   return {
     fotogramas: [{ scale: '1' }, { scale: '1.25' }, { scale: '1' }],
-    opciones: { duration: DURACION_REBOTE_MS, easing: CURVA },
+    opciones: { duration: tokens.durRebote, easing: tokens.curva },
   };
 }
 
 function animar(elemento: HTMLElement | null, animacion: Animacion | null) {
-  // jsdom no implementa animate(): sin él, el elemento queda en su estado final.
+  // jsdom no implementa animate(), y sin la hoja de estilos no hay duración: el elemento queda en su estado final.
   if (!elemento || !animacion || typeof elemento.animate !== 'function') return;
+  if (Number.isNaN(Number(animacion.opciones.duration))) return;
   elemento.animate(animacion.fotogramas, animacion.opciones);
 }
 
@@ -80,7 +107,7 @@ export function useAnimarEntrada<E extends HTMLElement>(clave: string): RefObjec
     // Solo el cambio de clave anima; cambiar la preferencia a media página no repite la entrada.
     if (claveAnimada.current === clave) return;
     claveAnimada.current = clave;
-    animar(ref.current, animacionDeEntrada(reducido));
+    animar(ref.current, animacionDeEntrada(reducido, leerTokens()));
   }, [clave, reducido]);
   return ref;
 }
@@ -98,7 +125,7 @@ export function useReboteAlSubir<E extends HTMLElement>(
   useLayoutEffect(() => {
     if (valor === undefined) return;
     if (anterior.current !== undefined && valor > anterior.current) {
-      animar(ref.current, animacionDeRebote(reducido));
+      animar(ref.current, animacionDeRebote(reducido, leerTokens()));
     }
     anterior.current = valor;
   }, [valor, reducido]);
