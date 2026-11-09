@@ -117,6 +117,8 @@ Antes, la conexión esperaba exactamente lo que durara la ráfaga; con la CPU co
 
 **Por qué 8 y 4.** Con 8 hilos y como mucho 4 para argon2, siempre quedan 4 para `dns.lookup`, fs y zlib, sin importar cuántos logins lleguen. argon2 sigue con 4 hilos, igual que antes: mismo rendimiento y la misma memoria en una ráfaga (4 × 19 MiB por réplica). Solo subir `UV_THREADPOOL_SIZE` (por ejemplo a 16) no basta: en cuanto hay más hash que hilos, la fila vuelve.
 
+**El 503 con la base caída, en ≈ 5 s.** Antes de entregar una conexión libre, mssql la valida con un `SELECT 1`; con la base en pausa, ese `SELECT 1` espera todo el `requestTimeout` (15 s). Con dos conexiones libres eran 15 + 15 s más 2 s para fallar al crear otra: hasta 32 s (medido: 20.6 s). Con `acquireTimeoutMillis: 5000` la petición deja de esperar a los 5 s y responde 503 (medido: 5.0 s). Con la base arriba, una ráfaga de 200 peticiones simultáneas dio 200/200, ningún 503, p95 1.4 s: una conexión libre se entrega en milisegundos, nunca en 5 s.
+
 **Lo que se agregó con esto.** El pool mantiene 2 conexiones abiertas por réplica (una ráfaga no tiene que abrir conexiones nuevas) y una falla al obtener conexión responde `503 BASE_NO_DISPONIBLE` con `Retry-After: 5`, no 500: el SP nunca corrió. La web no cierra la sesión por un 5xx del refresh.
 
 | Qué | Dónde |
@@ -125,6 +127,8 @@ Antes, la conexión esperaba exactamente lo que durara la ráfaga; con la CPU co
 | Como mucho 4 hash a la vez | [auth.contrasenas.ts:20](../../../apps/api/src/modules/auth/auth.contrasenas.ts#L20 "const HASH_A_LA_VEZ = 4") |
 | El permiso se devuelve también si argon2 falla | [auth.concurrencia.ts:30](../../../apps/api/src/modules/auth/auth.concurrencia.ts#L30 "finally {") |
 | 2 conexiones abiertas por réplica | [pool.ts:8](../../../apps/api/src/shared/db/pool.ts#L8 "const CONEXIONES_MINIMAS = 2") |
+| La espera por una conexión, como mucho 5 s | [pool.ts:14](../../../apps/api/src/shared/db/pool.ts#L14 "const ESPERA_MAXIMA_CONEXION_MS = 5_000") |
+| El `TimeoutError` del pool se traduce a `ConnectionError` | [pool.ts:56](../../../apps/api/src/shared/db/pool.ts#L56 "error instanceof SinConexionATiempo") |
 | Sin conexión es 503, no 500 | [ejecutar-sp.ts:77](../../../apps/api/src/shared/db/ejecutar-sp.ts#L77 "error instanceof sql.ConnectionError") |
 | La prueba con la base que no responde | [base-no-disponible.api.test.ts:37](../../../apps/api/test/integracion/sistema/base-no-disponible.api.test.ts#L37 "no poder obtener una conexión responde 503") |
 
