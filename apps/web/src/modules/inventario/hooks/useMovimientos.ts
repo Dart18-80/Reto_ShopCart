@@ -2,6 +2,7 @@ import type { RegistrarAjuste, RegistrarEntrada } from '@shopcart/shared';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { listarKardex, registrarAjuste, registrarEntrada } from '../inventario.api';
 import { inventarioKeys } from '../inventario.keys';
+import { refrescar } from '../../../shared/api';
 
 /** Los movimientos de una variante, del más reciente al más antiguo (como los ordena el SP). */
 export function useKardex(idVariante: number, pagina: number) {
@@ -18,7 +19,7 @@ export function useKardex(idVariante: number, pagina: number) {
  */
 function useInvalidarInventario() {
   const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries({ queryKey: inventarioKeys.todo });
+  return () => refrescar(queryClient, { queryKey: inventarioKeys.todo });
 }
 
 export function useRegistrarEntrada() {

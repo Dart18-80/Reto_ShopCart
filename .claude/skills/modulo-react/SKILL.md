@@ -89,7 +89,8 @@ export function useCancelarPedido(id: number) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (cuerpo: CancelarPedido) => cancelarPedido(id, cuerpo),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: pedidosKeys.todo }),
+    // 05 §6 regla 5: refrescar cancela la lectura en vuelo antes de invalidar.
+    onSuccess: () => refrescar(queryClient, { queryKey: pedidosKeys.todo }),
   });
 }
 ```

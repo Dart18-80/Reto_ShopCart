@@ -9,6 +9,7 @@ import {
   type ConsultaMisPedidos,
 } from '../pedidos.api';
 import { pedidosKeys } from '../pedidos.keys';
+import { refrescar } from '../../../shared/api';
 
 export function useReembolsos(consulta: ConsultaReembolsos) {
   return useQuery({
@@ -32,7 +33,7 @@ export function usePagosEnRevision(consulta: ConsultaMisPedidos) {
  */
 function useRefrescarReembolsos() {
   const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries({ queryKey: pedidosKeys.reembolsos() });
+  return () => refrescar(queryClient, { queryKey: pedidosKeys.reembolsos() });
 }
 
 /** M8-H05: el estado nuevo llega de la lista vuelta a pedir, sin recargar la página. */
@@ -56,9 +57,9 @@ export function useResolverPago(idIntentoPago: number) {
     mutationFn: (cuerpo: ResolverPago) => resolverPago(idIntentoPago, cuerpo),
     onSettled: () =>
       Promise.all([
-        queryClient.invalidateQueries({ queryKey: pedidosKeys.pagosEnRevision() }),
-        queryClient.invalidateQueries({ queryKey: pedidosKeys.gestion() }),
-        queryClient.invalidateQueries({ queryKey: pedidosKeys.reembolsos() }),
+        refrescar(queryClient, { queryKey: pedidosKeys.pagosEnRevision() }),
+        refrescar(queryClient, { queryKey: pedidosKeys.gestion() }),
+        refrescar(queryClient, { queryKey: pedidosKeys.reembolsos() }),
       ]),
   });
 }

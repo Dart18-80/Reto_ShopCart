@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { crearQueryClient, debeReintentar, REINTENTOS_MAXIMOS } from './consultas';
+import { QueryObserver } from '@tanstack/react-query';
+import { describe, expect, it, vi } from 'vitest';
+import { crearQueryClient, debeReintentar, refrescar, REINTENTOS_MAXIMOS } from './consultas';
 import { ErrorApi } from './ErrorApi';
 
 const errorConStatus = (status: number) =>
@@ -37,5 +38,36 @@ describe('crearQueryClient (FE-02)', () => {
 
     expect(opciones.queries?.retry).toBe(debeReintentar);
     expect(opciones.mutations?.retry).toBe(false);
+  });
+});
+
+describe('refrescar (revisión de M10)', () => {
+  it('una lectura que empezó antes de la mutación no queda como la respuesta: se pide otra', async () => {
+    const queryClient = crearQueryClient();
+    const respuestas: ((datos: string[]) => void)[] = [];
+    // Una vista montada: la consulta tiene un observador activo, como la tabla de categorías.
+    const vista = new QueryObserver(queryClient, {
+      queryKey: ['categorias'],
+      queryFn: () =>
+        new Promise<string[]>((resolver) => {
+          respuestas.push(resolver);
+        }),
+    });
+    const dejarDeObservar = vista.subscribe(() => undefined);
+    await vi.waitFor(() => {
+      expect(respuestas).toHaveLength(1);
+    });
+
+    const refresco = refrescar(queryClient, { queryKey: ['categorias'] });
+    // La lectura vieja (sin la categoría nueva) termina después de la mutación: no debe quedar como respuesta.
+    respuestas[0]?.(['Camisas']);
+    await vi.waitFor(() => {
+      expect(respuestas).toHaveLength(2);
+    });
+    respuestas[1]?.(['Camisas', 'Gorras']);
+    await refresco;
+
+    expect(queryClient.getQueryData(['categorias'])).toEqual(['Camisas', 'Gorras']);
+    dejarDeObservar();
   });
 });

@@ -16,6 +16,7 @@ import {
   type AccionEstado,
 } from '../catalogo.api';
 import { catalogoKeys } from '../catalogo.keys';
+import { refrescar } from '../../../shared/api';
 
 export function useProductoAdmin(idProducto: number) {
   return useQuery({
@@ -37,13 +38,13 @@ function useMutacionDelProducto<Datos>(
     mutationFn: operacion,
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: catalogoKeys.productoAdmin(idProducto) }),
-        queryClient.invalidateQueries({
+        refrescar(queryClient, { queryKey: catalogoKeys.productoAdmin(idProducto) }),
+        refrescar(queryClient, {
           queryKey: catalogoKeys.productosAdmin(),
           refetchType: 'none',
         }),
-        queryClient.invalidateQueries({ queryKey: catalogoKeys.busquedas(), refetchType: 'none' }),
-        queryClient.invalidateQueries({
+        refrescar(queryClient, { queryKey: catalogoKeys.busquedas(), refetchType: 'none' }),
+        refrescar(queryClient, {
           queryKey: catalogoKeys.producto(idProducto),
           refetchType: 'none',
         }),

@@ -8,6 +8,7 @@ import {
   type AccionUsuario,
 } from '../usuarios.api';
 import { usuariosKeys } from '../usuarios.keys';
+import { refrescar } from '../../../shared/api';
 
 export function useUsuarios(consulta: ConsultaUsuarios) {
   return useQuery({
@@ -22,7 +23,7 @@ function useMutacionDeUsuarios<Datos, Respuesta>(operacion: (datos: Datos) => Pr
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: operacion,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: usuariosKeys.listas() }),
+    onSuccess: () => refrescar(queryClient, { queryKey: usuariosKeys.listas() }),
   });
 }
 

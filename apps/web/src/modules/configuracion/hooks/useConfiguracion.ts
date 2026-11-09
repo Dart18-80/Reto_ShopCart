@@ -2,6 +2,7 @@ import type { ActualizarConfiguracion } from '@shopcart/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { actualizarConfiguracion, obtenerConfiguracion } from '../configuracion.api';
 import { configuracionKeys } from '../configuracion.keys';
+import { refrescar } from '../../../shared/api';
 
 export function useConfiguracion() {
   return useQuery({ queryKey: configuracionKeys.todo, queryFn: obtenerConfiguracion });
@@ -18,7 +19,7 @@ export function useActualizarConfiguracion() {
     mutationFn: (cambios: ActualizarConfiguracion) => actualizarConfiguracion(cambios),
     onSuccess: (configuracion) => {
       queryClient.setQueryData(configuracionKeys.todo, configuracion);
-      return queryClient.invalidateQueries({
+      return refrescar(queryClient, {
         // La configuración ya llegó en la respuesta: no se vuelve a pedir.
         predicate: (consulta) => consulta.queryKey[0] !== configuracionKeys.todo[0],
       });

@@ -2,6 +2,7 @@ import type { DatosPrecio } from '@shopcart/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { cambiarPrecio, historialPrecios } from '../catalogo.api';
 import { catalogoKeys } from '../catalogo.keys';
+import { refrescar } from '../../../shared/api';
 
 /** El historial se pide al abrir el diálogo, no por cada fila de la tabla. */
 export function usePreciosVariante(idVariante: number, { habilitado }: { habilitado: boolean }) {
@@ -23,9 +24,9 @@ export function useCambiarPrecio(idProducto: number, idVariante: number) {
     onSuccess: async (historial) => {
       queryClient.setQueryData(catalogoKeys.preciosVariante(idVariante), historial);
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: catalogoKeys.productoAdmin(idProducto) }),
-        queryClient.invalidateQueries({ queryKey: catalogoKeys.busquedas(), refetchType: 'none' }),
-        queryClient.invalidateQueries({
+        refrescar(queryClient, { queryKey: catalogoKeys.productoAdmin(idProducto) }),
+        refrescar(queryClient, { queryKey: catalogoKeys.busquedas(), refetchType: 'none' }),
+        refrescar(queryClient, {
           queryKey: catalogoKeys.producto(idProducto),
           refetchType: 'none',
         }),

@@ -8,6 +8,7 @@ import {
   type AccionCategoria,
 } from '../catalogo.api';
 import { catalogoKeys } from '../catalogo.keys';
+import { refrescar } from '../../../shared/api';
 
 export function useCategoriasAdmin() {
   return useQuery({ queryKey: catalogoKeys.categoriasAdmin(), queryFn: listarCategoriasAdmin });
@@ -23,8 +24,8 @@ function useMutacionDeCategorias<Datos>(operacion: (datos: Datos) => Promise<voi
     mutationFn: operacion,
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: catalogoKeys.categoriasAdmin() }),
-        queryClient.invalidateQueries({ queryKey: catalogoKeys.categorias() }),
+        refrescar(queryClient, { queryKey: catalogoKeys.categoriasAdmin() }),
+        refrescar(queryClient, { queryKey: catalogoKeys.categorias() }),
       ]);
     },
   });

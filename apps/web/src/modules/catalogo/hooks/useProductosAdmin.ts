@@ -2,6 +2,7 @@ import type { ConsultaProductosAdmin, CrearProducto } from '@shopcart/shared';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { crearProducto, listarProductosAdmin } from '../catalogo.api';
 import { catalogoKeys } from '../catalogo.keys';
+import { refrescar } from '../../../shared/api';
 
 /** FE-06: al cambiar un filtro, el orden o la página se conserva la tabla anterior mientras llega la nueva. */
 export function useProductosAdmin(consulta: ConsultaProductosAdmin) {
@@ -17,6 +18,6 @@ export function useCrearProducto() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (cuerpo: CrearProducto) => crearProducto(cuerpo),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: catalogoKeys.productosAdmin() }),
+    onSuccess: () => refrescar(queryClient, { queryKey: catalogoKeys.productosAdmin() }),
   });
 }

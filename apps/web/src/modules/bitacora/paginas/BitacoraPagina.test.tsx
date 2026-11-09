@@ -48,20 +48,19 @@ describe('BitacoraPagina (M10-H02)', () => {
     expect(precio.getByText('— → 2026-11-08T10:00:00')).toBeVisible();
   });
 
-  it('filtrar por módulo, entidad y rango va en la URL y al servidor', async () => {
+  // El rango de días lo prueba FiltroRangoFechas (componentes.gestion.test.tsx).
+  it('filtrar por módulo y entidad va en la URL y al servidor', async () => {
     const consultas = simularBitacora([PRECIO]);
     const { usuario, router } = abrir();
 
     await usuario.selectOptions(await screen.findByLabelText('Módulo'), 'Catálogo');
     await usuario.click(screen.getByLabelText('Entidad'));
     await usuario.paste('PrecioVariante');
-    await usuario.type(screen.getByLabelText('Desde'), '2026-11-01');
 
     await waitFor(() => {
       expect(Object.fromEntries(consultas.at(-1) ?? [])).toMatchObject({
         modulo: 'Catalogo',
         entidad: 'PrecioVariante',
-        desde: '2026-11-01',
       });
     });
     expect(router.state.location.search).toContain('modulo=Catalogo');

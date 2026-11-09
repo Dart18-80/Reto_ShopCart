@@ -8,6 +8,7 @@ import {
   type AccionCupon,
 } from '../cupones.api';
 import { cuponesKeys } from '../cupones.keys';
+import { refrescar } from '../../../shared/api';
 
 export function useCupones(consulta: ConsultaCupones) {
   return useQuery({
@@ -22,7 +23,7 @@ function useMutacionDeCupones<Datos, Respuesta>(operacion: (datos: Datos) => Pro
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: operacion,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: cuponesKeys.todo }),
+    onSuccess: () => refrescar(queryClient, { queryKey: cuponesKeys.todo }),
   });
 }
 

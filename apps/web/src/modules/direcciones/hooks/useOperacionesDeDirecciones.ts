@@ -2,6 +2,7 @@ import type { ActualizarDireccion, CrearDireccion } from '@shopcart/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { actualizarDireccion, crearDireccion, eliminarDireccion } from '../direcciones.api';
 import { direccionesKeys } from '../direcciones.keys';
+import { refrescar } from '../../../shared/api';
 
 /**
  * Crear, editar o eliminar una dirección puede cambiar otras (la predeterminada es una sola, N-17): se vuelve a
@@ -13,7 +14,7 @@ function useMutacionDeDirecciones<Datos, Respuesta>(
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: operacion,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: direccionesKeys.lista() }),
+    onSuccess: () => refrescar(queryClient, { queryKey: direccionesKeys.lista() }),
   });
 }
 

@@ -1,6 +1,6 @@
 import type { Pagar } from '@shopcart/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ErrorApi } from '../../../shared/api';
+import { ErrorApi, refrescar } from '../../../shared/api';
 import { carritoKeys } from '../../carrito';
 import { pagar, type Pedido } from '../checkout.api';
 import { checkoutKeys } from '../checkout.keys';
@@ -39,15 +39,15 @@ export function usePagar({ intento, alResponder, alPagar, alPerderSesion }: Opci
       intento.terminar();
       // El carrito se convirtió en el pedido y la sesión ya no está Activa: se vuelven a pedir cuando hagan
       // falta, sin recargar ahora la sesión de la pantalla que se está dejando.
-      void queryClient.invalidateQueries({ queryKey: checkoutKeys.sesion(), refetchType: 'none' });
-      void queryClient.invalidateQueries({ queryKey: carritoKeys.todo });
+      void refrescar(queryClient, { queryKey: checkoutKeys.sesion(), refetchType: 'none' });
+      void refrescar(queryClient, { queryKey: carritoKeys.todo });
       alPagar(pedido);
     },
     onError: (error) => {
       const desenlace = desenlaceDelPago(error);
       if (desenlace.tipo !== 'reintentar') intento.terminar();
       if (!esSesionPerdida(desenlace)) return;
-      void queryClient.invalidateQueries({ queryKey: checkoutKeys.sesion(), refetchType: 'none' });
+      void refrescar(queryClient, { queryKey: checkoutKeys.sesion(), refetchType: 'none' });
       alPerderSesion(desenlace, error.mensaje);
     },
     onSettled: alResponder,

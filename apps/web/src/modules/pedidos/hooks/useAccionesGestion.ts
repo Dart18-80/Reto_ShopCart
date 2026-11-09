@@ -2,15 +2,16 @@ import type { CambiarEstadoPedido, CancelarPedido, RegistrarDevolucion } from '@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { cambiarEstadoPedido, cancelarPedidoGestion, registrarDevolucion } from '../pedidos.api';
 import { pedidosKeys } from '../pedidos.keys';
+import { refrescar } from '../../../shared/api';
 
 // La respuesta trae el pedido sin los campos de la gestión (transiciones, devolvible): se vuelve a pedir el
 // detalle de la gestión y la lista, y se olvida el detalle del Cliente si estaba en caché.
 function useRefrescarPedido(idPedido: number) {
   const queryClient = useQueryClient();
   return () => {
-    void queryClient.invalidateQueries({ queryKey: pedidosKeys.detalleGestion(idPedido) });
-    void queryClient.invalidateQueries({ queryKey: pedidosKeys.listasGestion() });
-    void queryClient.invalidateQueries({ queryKey: pedidosKeys.detalle(idPedido) });
+    void refrescar(queryClient, { queryKey: pedidosKeys.detalleGestion(idPedido) });
+    void refrescar(queryClient, { queryKey: pedidosKeys.listasGestion() });
+    void refrescar(queryClient, { queryKey: pedidosKeys.detalle(idPedido) });
   };
 }
 

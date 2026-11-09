@@ -1,4 +1,4 @@
-import { QueryClient } from '@tanstack/react-query';
+import { QueryClient, type InvalidateQueryFilters } from '@tanstack/react-query';
 import { ErrorApi } from './ErrorApi';
 
 export const REINTENTOS_MAXIMOS = 2;
@@ -19,6 +19,16 @@ export function crearQueryClient(): QueryClient {
       mutations: { retry: false, networkMode: 'always' },
     },
   });
+}
+
+/**
+ * FE-02: vuelve a pedir lo que una mutación cambió. Primero cancela la lectura que esté en vuelo: si empezó antes de
+ * que el backend confirmara el cambio, TanStack la reutilizaría (las peticiones no se abortan) y la vista quedaría
+ * con los datos viejos. Todo hook de mutación refresca a través de aquí, no con `invalidateQueries`.
+ */
+export async function refrescar(queryClient: QueryClient, filtros: InvalidateQueryFilters) {
+  await queryClient.cancelQueries(filtros);
+  await queryClient.invalidateQueries(filtros);
 }
 
 declare module '@tanstack/react-query' {
