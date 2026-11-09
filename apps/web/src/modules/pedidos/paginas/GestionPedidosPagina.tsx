@@ -10,6 +10,7 @@ import { FiltrosPedidosGestion } from '../componentes/FiltrosPedidosGestion';
 import { usePedidosGestion } from '../hooks/usePedidosGestion';
 import type { ResumenGestion } from '../pedidos.api';
 import { conId, RUTAS } from '../../../shared/rutas';
+import { EncabezadoPagina } from '../../../shared/componentes/EncabezadoPagina';
 
 const rutaPedidoGestion = (idPedido: number) => conId(RUTAS.pedidoGestion, idPedido);
 
@@ -18,6 +19,7 @@ const columnas: ColumnaTabla<ResumenGestion, OrdenPedidosGestion['orden']>[] = [
     id: 'numero',
     etiqueta: 'Pedido',
     prioridad: 1,
+    enTarjeta: 'titulo',
     ordenable: 'numero',
     celda: (p) => (
       <Link
@@ -46,6 +48,7 @@ const columnas: ColumnaTabla<ResumenGestion, OrdenPedidosGestion['orden']>[] = [
     id: 'estado',
     etiqueta: 'Estado',
     prioridad: 1,
+    enTarjeta: 'esquina',
     ordenable: 'estado',
     celda: (p) => <EstadoPedido estado={p.estado} />,
   },
@@ -70,12 +73,10 @@ export function GestionPedidosPagina() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="titulo-1">Pedidos</h1>
-        <p className="texto-base text-muted-foreground">
-          Prepara, despacha y da seguimiento a los pedidos pagados.
-        </p>
-      </div>
+      <EncabezadoPagina
+        titulo="Pedidos"
+        descripcion="Prepara, despacha y da seguimiento a los pedidos pagados."
+      />
       <TablaServidor
         titulo="Pedidos"
         columnas={columnas}

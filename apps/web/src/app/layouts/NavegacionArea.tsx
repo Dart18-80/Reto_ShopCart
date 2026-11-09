@@ -32,25 +32,31 @@ function ListaDelGrupo({ titulo, entradas, onNavegar }: Grupo & { onNavegar?: ()
   return (
     <div className="flex flex-col gap-0.5">
       {titulo && (
-        <p id={idTitulo} className="texto-nota text-muted-foreground">
+        // D6: las etiquetas de sección en mayúsculas, 11 px y con espaciado.
+        <p
+          id={idTitulo}
+          className="text-muted-foreground px-3 pb-1 text-[0.6875rem] leading-4 font-semibold tracking-[0.08em] uppercase"
+        >
           {titulo}
         </p>
       )}
       <ul aria-labelledby={titulo ? idTitulo : undefined} className="flex flex-col gap-0.5">
-        {entradas.map(({ ruta, menu: { etiqueta } }) => (
+        {entradas.map(({ ruta, menu: { etiqueta, icono: Icono } }) => (
           <li key={ruta}>
             <NavLink
               to={ruta}
               onClick={onNavegar}
               className={({ isActive }) =>
                 cn(
-                  'texto-pequeno-fuerte flex items-center rounded-control px-3 py-2',
+                  // D6: la opción activa con fondo azul marino al 8 % y una barra de 3 px a la izquierda.
+                  'texto-pequeno-fuerte relative flex min-h-10 items-center gap-3 rounded-control px-3 py-2 transition-colors',
                   isActive
-                    ? 'bg-secondary text-secondary-foreground'
+                    ? 'bg-primary/8 text-primary before:bg-primary before:absolute before:inset-y-1.5 before:left-0 before:w-[3px] before:rounded-full'
                     : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
                 )
               }
             >
+              <Icono aria-hidden className="size-4.5 shrink-0" />
               {etiqueta}
             </NavLink>
           </li>

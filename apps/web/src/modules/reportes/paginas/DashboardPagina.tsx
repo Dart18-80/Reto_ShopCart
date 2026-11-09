@@ -11,6 +11,7 @@ import { IndicadorTiempoReal } from '../componentes/IndicadorTiempoReal';
 import { TablaCarritos } from '../componentes/TablaCarritos';
 import { TarjetasResumen } from '../componentes/TarjetasResumen';
 import { useTiempoRealReportes } from '../hooks/useTiempoRealReportes';
+import { EncabezadoPagina } from '../../../shared/componentes/EncabezadoPagina';
 
 /**
  * M11-H01 (RF-08, FE-07): el dashboard del Administrador. El rango de días de Guatemala va en la URL y lo usan todos
@@ -25,16 +26,17 @@ export function DashboardPagina() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <h1 className="titulo-1">Dashboard</h1>
-          <p className="texto-base text-muted-foreground">Ventas y carritos de la tienda.</p>
-          <IndicadorTiempoReal estado={tiempoReal} />
-        </div>
-        <div className="grid grid-cols-2 gap-4 sm:w-80">
-          <FiltroRangoFechas parametros={parametros} />
-        </div>
-      </div>
+      <EncabezadoPagina
+        titulo="Dashboard"
+        descripcion="Ventas y carritos de la tienda."
+        acciones={
+          <div className="grid w-full grid-cols-2 gap-4 sm:w-80">
+            <FiltroRangoFechas parametros={parametros} />
+          </div>
+        }
+      >
+        <IndicadorTiempoReal estado={tiempoReal} />
+      </EncabezadoPagina>
       <TarjetasResumen rango={rango} />
       <ReporteVentasPorPeriodo parametros={parametros} />
       <div className="grid gap-6 lg:grid-cols-2">

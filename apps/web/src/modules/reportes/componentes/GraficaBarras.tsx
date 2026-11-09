@@ -7,6 +7,7 @@ import {
   XAxis,
   YAxis,
   type BarShapeProps,
+  type YAxisTickContentProps,
   type TooltipContentProps,
 } from 'recharts';
 import {
@@ -32,9 +33,13 @@ const CONFIG = {
 
 const ALTO_POR_BARRA = 36;
 const MARGEN_DEL_EJE = 40;
-const ANCHO_DE_LOS_NOMBRES = 136;
-const LARGO_MAXIMO_DEL_NOMBRE = 20;
-const RADIO = 3;
+// D6: el eje de los nombres mide lo que pide el nombre más largo, hasta un máximo; cada nombre va en una línea.
+const ANCHO_MAXIMO_DE_LOS_NOMBRES = 200;
+const PX_POR_CARACTER = 7;
+const AIRE_DEL_NOMBRE = 12;
+// D6: las barras con las esquinas del extremo redondeadas (4 px).
+const RADIO_COLUMNA: [number, number, number, number] = [4, 4, 0, 0];
+const RADIO_BARRA: [number, number, number, number] = [0, 4, 4, 0];
 
 // 05 §11: el eje siempre incluye el cero, también cuando todo es negativo o todo es positivo.
 const dominioConCero = ([minimo, maximo]: readonly [number, number]): [number, number] => [
@@ -42,11 +47,41 @@ const dominioConCero = ([minimo, maximo]: readonly [number, number]): [number, n
   Math.max(0, maximo),
 ];
 
+const anchoDeLosNombres = (puntos: readonly PuntoGrafica[]) =>
+  Math.min(
+    ANCHO_MAXIMO_DE_LOS_NOMBRES,
+    Math.max(0, ...puntos.map((p) => p.etiqueta.length)) * PX_POR_CARACTER + AIRE_DEL_NOMBRE,
+  );
+
 // El nombre completo está en el tooltip y en la tabla; el eje solo tiene espacio para el principio.
-const acortar = (nombre: string) =>
-  nombre.length > LARGO_MAXIMO_DEL_NOMBRE
-    ? `${nombre.slice(0, LARGO_MAXIMO_DEL_NOMBRE - 1)}…`
-    : nombre;
+const acortar = (nombre: string, caben: number) =>
+  nombre.length > caben ? `${nombre.slice(0, Math.max(1, caben - 1))}…` : nombre;
+
+/** Un nombre del eje en una sola línea, con elipsis si no cabe (Recharts lo partiría en dos). */
+function NombreDelEje({
+  x,
+  y,
+  nombre,
+  caben,
+}: {
+  x: number;
+  y: number;
+  nombre: string;
+  caben: number;
+}) {
+  return (
+    <text
+      x={x}
+      y={y}
+      dx={-6}
+      dy="0.32em"
+      textAnchor="end"
+      className="fill-muted-foreground text-xs"
+    >
+      {acortar(nombre, caben)}
+    </text>
+  );
+}
 
 function Tooltip({ punto }: { punto: PuntoGrafica }) {
   return (
@@ -97,7 +132,7 @@ export function GraficaBarras({
       y={y}
       width={width}
       height={height}
-      radius={RADIO}
+      radius={orientacion === 'columnas' ? RADIO_COLUMNA : RADIO_BARRA}
       fill={puntos[index]?.negativo ? 'var(--color-negativo)' : 'var(--color-valor)'}
     />
   );
@@ -108,12 +143,15 @@ export function GraficaBarras({
   };
   const escalar = (valor: number) => formatearEscala(valor, escala);
   const hayNegativos = puntos.some((p) => p.negativo);
+  const anchoNombres = anchoDeLosNombres(puntos);
+  const caben = Math.floor((anchoNombres - AIRE_DEL_NOMBRE) / PX_POR_CARACTER);
 
   return (
     <figure aria-label={descripcion} className="flex flex-col gap-3">
       {orientacion === 'columnas' ? (
         <ChartContainer config={CONFIG} className="aspect-auto h-64 w-full">
-          <BarChart data={[...puntos]} accessibilityLayer>
+          {/* D6: un margen a la izquierda para que el eje no recorte la «Q» de los montos. */}
+          <BarChart data={[...puntos]} margin={{ left: 8 }} accessibilityLayer>
             <CartesianGrid vertical={false} />
             <XAxis dataKey="etiqueta" tickLine={false} axisLine={false} tickMargin={8} />
             <YAxis
@@ -149,10 +187,17 @@ export function GraficaBarras({
               <YAxis
                 type="category"
                 dataKey="etiqueta"
-                tickFormatter={acortar}
+                tick={({ x, y, index }: YAxisTickContentProps) => (
+                  <NombreDelEje
+                    x={Number(x)}
+                    y={Number(y)}
+                    nombre={puntos[index]?.etiqueta ?? ''}
+                    caben={caben}
+                  />
+                )}
                 tickLine={false}
                 axisLine={false}
-                width={ANCHO_DE_LOS_NOMBRES}
+                width={anchoNombres}
               />
               {hayNegativos && <ReferenceLine x={0} stroke="var(--border)" />}
               <ChartTooltip cursor content={tooltip} />

@@ -11,7 +11,7 @@ export type ChartConfig = Record<string, { color: string }>;
 
 // Las clases con las que shadcn adapta las piezas internas de Recharts a los tokens del tema.
 const CLASES_RECHARTS =
-  "flex aspect-video justify-center text-xs [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50 [&_.recharts-layer]:outline-hidden [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_[stroke='#ccc']]:stroke-border [&_.recharts-surface]:outline-hidden";
+  "flex aspect-video justify-center text-xs [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/40 [&_.recharts-layer]:outline-hidden [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_[stroke='#ccc']]:stroke-border [&_.recharts-surface]:outline-hidden";
 
 // Antes de medir su contenedor, ResponsiveContainer dibuja con este tamaño (también en las pruebas, sin diseño).
 const DIMENSION_INICIAL = { width: 320, height: 200 } as const;
@@ -50,7 +50,7 @@ function ChartTooltipContent({ className, ...props }: ComponentProps<'div'>) {
   return (
     <div
       className={cn(
-        'border-border/50 bg-background grid min-w-[8rem] items-start gap-1.5 rounded-control border px-2.5 py-1.5 text-xs shadow-md',
+        'bg-card texto-pequeno grid min-w-[8rem] items-start gap-1 rounded-tarjeta border px-3 py-2 shadow-md',
         className,
       )}
       {...props}

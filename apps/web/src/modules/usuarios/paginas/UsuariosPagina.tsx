@@ -17,6 +17,7 @@ import { Button } from '../../../shared/ui/button';
 import { DialogoEditarUsuario, DialogoNuevoUsuario } from '../componentes/DialogosUsuario';
 import { useCambiarEstadoUsuario, useUsuarios } from '../hooks/useUsuariosAdmin';
 import type { AccionUsuario, UsuarioAdmin } from '../usuarios.api';
+import { EncabezadoPagina } from '../../../shared/componentes/EncabezadoPagina';
 
 const esRol = (valor: string): valor is RolDeUsuario =>
   (ROLES_DE_USUARIO as readonly string[]).includes(valor);
@@ -179,15 +180,11 @@ export function UsuariosPagina() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <h1 className="titulo-1">Usuarios</h1>
-          <p className="texto-base text-muted-foreground">
-            Clientes, operadores y administradores de la tienda.
-          </p>
-        </div>
-        <DialogoNuevoUsuario />
-      </div>
+      <EncabezadoPagina
+        titulo="Usuarios"
+        descripcion="Clientes, operadores y administradores de la tienda."
+        acciones={<DialogoNuevoUsuario />}
+      />
       {estado.error && (
         <Aviso
           tipo="error"

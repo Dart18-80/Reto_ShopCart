@@ -13,6 +13,7 @@ import { usePagosEnRevision } from '../hooks/useRevisionManual';
 import type { PagoEnRevision, PagoResuelto } from '../pedidos.api';
 import { RESOLUCION } from '../revision';
 import { conId, RUTAS } from '../../../shared/rutas';
+import { EncabezadoPagina } from '../../../shared/componentes/EncabezadoPagina';
 
 const CAUSA: Record<PagoEnRevision['causa'], string> = {
   AutorizacionInexistente: 'La autorización ya no existía',
@@ -103,12 +104,10 @@ export function PagosEnRevisionPagina() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="titulo-1">Pagos en revisión</h1>
-        <p className="texto-base text-muted-foreground">
-          Cobros que la conciliación no pudo cerrar sola: resuélvelos con lo que dice la pasarela.
-        </p>
-      </div>
+      <EncabezadoPagina
+        titulo="Pagos en revisión"
+        descripcion="Cobros que la conciliación no pudo cerrar sola: resuélvelos con lo que dice la pasarela."
+      />
       {resuelto && <Aviso tipo="exito">{resumenDe(resuelto)}</Aviso>}
       <TablaServidor
         titulo="Pagos en revisión"

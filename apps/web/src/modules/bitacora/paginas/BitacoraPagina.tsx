@@ -16,6 +16,7 @@ import { useTituloPagina } from '../../../shared/hooks/useTituloPagina';
 import type { RegistroBitacora } from '../bitacora.api';
 import { cambiosDe } from '../cambios';
 import { useBitacora } from '../hooks/useBitacora';
+import { EncabezadoPagina } from '../../../shared/componentes/EncabezadoPagina';
 
 // Los módulos como los lee la persona; el código es el de CK_Bitacora_Modulo.
 const MODULO: Record<ModuloBitacora, string> = {
@@ -137,12 +138,10 @@ export function BitacoraPagina() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="titulo-1">Bitácora</h1>
-        <p className="texto-base text-muted-foreground">
-          Quién cambió qué y cuándo, con el valor anterior y el nuevo.
-        </p>
-      </div>
+      <EncabezadoPagina
+        titulo="Bitácora"
+        descripcion="Quién cambió qué y cuándo, con el valor anterior y el nuevo."
+      />
       <TablaServidor
         titulo="Bitácora"
         columnas={columnas}

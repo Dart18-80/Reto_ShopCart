@@ -22,6 +22,11 @@ export interface ColumnaTabla<T, Orden extends string> {
   ordenable?: Orden;
   /** Montos a la derecha (Figma: Fila de tabla · Pedido). */
   alineacion?: 'inicio' | 'fin';
+  /**
+   * D6: dónde va en la tarjeta de móvil: `titulo` arriba a la izquierda (el número de pedido) y `esquina` arriba a
+   * la derecha (el estado), sin su etiqueta. Las demás columnas de prioridad 1 van debajo.
+   */
+  enTarjeta?: 'titulo' | 'esquina';
 }
 
 export interface RespuestaPaginada<T> {
@@ -74,7 +79,7 @@ function Encabezado<T>({
   cambiarVista: CambiarVista;
 }) {
   const clases = cn(
-    'texto-pequeno-fuerte text-muted-foreground h-auto px-4 py-3',
+    'texto-pequeno-fuerte text-muted-foreground bg-muted h-11 px-4',
     columna.alineacion === 'fin' && 'text-right',
   );
   if (!columna.ordenable) return <th className={clases}>{columna.etiqueta}</th>;
@@ -124,14 +129,16 @@ function Tabla<T>({
   cambiarVista: CambiarVista;
 }) {
   return (
-    <div className="bg-card relative overflow-x-auto rounded-tarjeta border">
+    // D6: la tabla desplaza su cuerpo dentro de la tarjeta (como mucho, el alto de la ventana menos el
+    // encabezado de la página), así su encabezado se queda fijo arriba mientras se recorren las filas.
+    <div className="bg-card relative max-h-[calc(100dvh-10rem)] overflow-auto rounded-tarjeta border shadow-xs">
       {actualizando && <BarraProgreso className="absolute inset-x-0 top-0" />}
       <table
         aria-label={titulo}
         aria-busy={actualizando}
         className="w-full border-collapse text-left"
       >
-        <thead className="bg-muted">
+        <thead className="bg-muted sticky top-0 z-10 shadow-[0_1px_0_var(--border)]">
           <tr>
             {columnas.map((columna) => (
               <Encabezado
@@ -146,13 +153,14 @@ function Tabla<T>({
         </thead>
         <tbody className={cn('transition-opacity duration-200', actualizando && 'opacity-60')}>
           {filas.map((fila) => (
-            <tr key={claveFila(fila)} className="border-t">
+            // D6: filas de 52 px que se resaltan al pasar el cursor.
+            <tr key={claveFila(fila)} className="hover:bg-muted/50 h-13 border-t transition-colors">
               {columnas.map((columna) => (
                 <td
                   key={columna.id}
                   className={cn(
-                    'texto-pequeno px-4 py-3',
-                    columna.alineacion === 'fin' && 'text-right',
+                    'texto-pequeno px-4 py-2',
+                    columna.alineacion === 'fin' && 'text-right tabular-nums',
                   )}
                 >
                   {columna.celda(fila)}
@@ -179,7 +187,11 @@ function Tarjetas<T>({
   claveFila: (fila: T) => string | number;
   actualizando: boolean;
 }) {
-  const visibles = columnas.filter((columna) => columna.prioridad === 1);
+  const columnaTitulo = columnas.find((columna) => columna.enTarjeta === 'titulo');
+  const esquina = columnas.find((columna) => columna.enTarjeta === 'esquina');
+  const visibles = columnas.filter(
+    (columna) => columna.prioridad === 1 && columna.enTarjeta === undefined,
+  );
   return (
     <ul
       aria-label={titulo}
@@ -191,8 +203,17 @@ function Tarjetas<T>({
     >
       {actualizando && <BarraProgreso className="absolute inset-x-0 -top-2" />}
       {filas.map((fila) => (
-        <li key={claveFila(fila)} className="bg-card rounded-tarjeta border p-4">
-          <dl className="flex flex-col gap-2">
+        <li
+          key={claveFila(fila)}
+          className="bg-card rounded-tarjeta flex flex-col gap-2 border p-3.5 shadow-xs"
+        >
+          {(columnaTitulo ?? esquina) && (
+            <div className="flex items-start justify-between gap-3">
+              <span className="texto-base-fuerte min-w-0">{columnaTitulo?.celda(fila)}</span>
+              {esquina?.celda(fila)}
+            </div>
+          )}
+          <dl className="flex flex-col gap-1.5">
             {visibles.map((columna) => (
               <div key={columna.id} className="flex items-baseline justify-between gap-4">
                 <dt className="texto-nota text-muted-foreground">{columna.etiqueta}</dt>
@@ -241,7 +262,10 @@ export function TablaServidor<T, C extends ConsultaTabla>({
 
   return (
     <section className="flex flex-col gap-6">
-      {filtros}
+      {/* D6: los filtros en una tarjeta, con los controles a la misma altura (D1). */}
+      {filtros && (
+        <div className="bg-card rounded-tarjeta border p-4 shadow-xs md:p-5">{filtros}</div>
+      )}
       <EstadoVista consulta={consulta} vacio={vacioDeLaVista} esqueleto={ESQUELETO}>
         {(respuesta) => {
           const actualizando = consulta.isPlaceholderData;

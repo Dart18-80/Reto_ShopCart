@@ -848,7 +848,7 @@ El orden de construcción, por módulos (F1, módulos 1 a 11 y F6), está en [`0
 | **D3 Carga** | Esqueletos con la forma del contenido, sin destellos ni saltos | 0.75 | Hecha |
 | **D4 Layout y responsive** | Ingresar y Registro, encabezado, barra lateral, barras fijas y revisión por tamaños | 1.0 | Hecha |
 | **D5 Tienda** | Catálogo, detalle, carrito, checkout, confirmación y mis pedidos | 2.0 | Hecha |
-| **D6 Backoffice** | Barra lateral, encabezados, filtros, tablas y dashboard | 1.25 | Lista |
+| **D6 Backoffice** | Barra lateral, encabezados, filtros, tablas y dashboard | 1.25 | Hecha |
 | **D7 Cierre del diseño** | Revisión con la lista de diseño, FE-15 o FE-17, skill y verificación completa | 0.75 | Lista |
 
 ---

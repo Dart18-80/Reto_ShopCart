@@ -6,6 +6,7 @@ import { DialogoMetodoEnvio } from '../componentes/DialogoMetodoEnvio';
 import { diasDeEntrega } from '../diasDeEntrega';
 import type { MetodoEnvioAdmin } from '../envios.api';
 import { useMetodosAdmin } from '../hooks/useMetodosAdmin';
+import { EncabezadoPagina } from '../../../shared/componentes/EncabezadoPagina';
 
 const columnas: ColumnaTabla<MetodoEnvioAdmin, never>[] = [
   {
@@ -63,12 +64,10 @@ export function MetodosEnvioPagina() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="titulo-1">Envíos</h1>
-        <p className="texto-base text-muted-foreground">
-          Los métodos de envío con su tarifa y su plazo de entrega.
-        </p>
-      </div>
+      <EncabezadoPagina
+        titulo="Envíos"
+        descripcion="Los métodos de envío con su tarifa y su plazo de entrega."
+      />
       <EstadoVista
         consulta={metodos}
         esVacio={sinMetodos}

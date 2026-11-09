@@ -16,6 +16,7 @@ import { FiltrosExistencias } from '../componentes/FiltrosExistencias';
 import { useExistencias } from '../hooks/useExistencias';
 import type { Existencia } from '../inventario.api';
 import { nombreDeVariante } from '../nombreDeVariante';
+import { EncabezadoPagina } from '../../../shared/componentes/EncabezadoPagina';
 
 const cantidad = (valor: number) => <span className="tabular-nums">{String(valor)}</span>;
 
@@ -111,15 +112,11 @@ export function InventarioPagina() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <h1 className="titulo-1">Inventario</h1>
-          <p className="texto-base text-muted-foreground">
-            Existencias por variante, entradas, ajustes y kardex.
-          </p>
-        </div>
-        <DialogoRegistrarEntrada />
-      </div>
+      <EncabezadoPagina
+        titulo="Inventario"
+        descripcion="Existencias por variante, entradas, ajustes y kardex."
+        acciones={<DialogoRegistrarEntrada />}
+      />
       <AvisoConciliacion />
       <TablaServidor
         titulo="Existencias"

@@ -22,6 +22,7 @@ import {
 import { useReembolsos, useReintentarReembolso } from '../hooks/useRevisionManual';
 import type { Reembolso } from '../pedidos.api';
 import { conId, RUTAS } from '../../../shared/rutas';
+import { EncabezadoPagina } from '../../../shared/componentes/EncabezadoPagina';
 
 const ORIGEN: Record<Reembolso['origen'], string> = {
   Cancelacion: 'Cancelación',
@@ -147,13 +148,10 @@ export function ReembolsosPagina() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="titulo-1">Reembolsos</h1>
-        <p className="texto-base text-muted-foreground">
-          Las devoluciones de dinero de cancelaciones y devoluciones; los fallidos se reintentan o
-          se resuelven a mano.
-        </p>
-      </div>
+      <EncabezadoPagina
+        titulo="Reembolsos"
+        descripcion="Las devoluciones de dinero de cancelaciones y devoluciones; los fallidos se reintentan o se resuelven a mano."
+      />
       {reintento.error && <Aviso tipo="error">{reintento.error.mensaje}</Aviso>}
       {reintento.data && (
         <Aviso tipo={reintento.data.estado === 'Fallido' ? 'advertencia' : 'exito'}>

@@ -11,12 +11,14 @@ import { FiltrosProductosAdmin } from '../componentes/FiltrosProductosAdmin';
 import { useCategoriasAdmin } from '../hooks/useCategoriasAdmin';
 import { useProductosAdmin } from '../hooks/useProductosAdmin';
 import { conId, RUTAS } from '../../../shared/rutas';
+import { EncabezadoPagina } from '../../../shared/componentes/EncabezadoPagina';
 
 const columnas: ColumnaTabla<ProductoResumenAdmin, OrdenProductosAdmin['orden']>[] = [
   {
     id: 'nombre',
     etiqueta: 'Producto',
     prioridad: 1,
+    enTarjeta: 'titulo',
     ordenable: 'nombre',
     celda: (p) => <span className="texto-pequeno-fuerte">{p.nombre}</span>,
   },
@@ -39,6 +41,7 @@ const columnas: ColumnaTabla<ProductoResumenAdmin, OrdenProductosAdmin['orden']>
     id: 'estado',
     etiqueta: 'Estado',
     prioridad: 1,
+    enTarjeta: 'esquina',
     celda: (p) => (
       <span className={p.activo ? 'text-exito' : 'text-muted-foreground'}>
         {p.activo ? 'Activo' : 'Inactivo'}
@@ -50,14 +53,13 @@ const columnas: ColumnaTabla<ProductoResumenAdmin, OrdenProductosAdmin['orden']>
     etiqueta: 'Acciones',
     prioridad: 1,
     alineacion: 'fin',
+    // D6: la acción de la fila, visible con su texto, como botón fantasma pequeño.
     celda: (p) => (
-      <Link
-        to={conId(RUTAS.productoAdmin, p.idProducto)}
-        aria-label={`Editar ${p.nombre}`}
-        className="texto-pequeno-fuerte text-primary hover:underline"
-      >
-        Editar
-      </Link>
+      <Button asChild variant="ghost" size="sm" className="text-primary">
+        <Link to={conId(RUTAS.productoAdmin, p.idProducto)} aria-label={`Editar ${p.nombre}`}>
+          Editar
+        </Link>
+      </Button>
     ),
   },
 ];
@@ -75,20 +77,18 @@ export function GestionCatalogoPagina() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <h1 className="titulo-1">Productos y precios</h1>
-          <p className="texto-base text-muted-foreground">
-            Catálogo de la tienda, sus variantes y precios.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline">
-            <Link to={RUTAS.categorias}>Categorías y atributos</Link>
-          </Button>
-          <DialogoNuevoProducto categorias={lista} />
-        </div>
-      </div>
+      <EncabezadoPagina
+        titulo="Productos y precios"
+        descripcion="Catálogo de la tienda, sus variantes y precios."
+        acciones={
+          <>
+            <Button asChild variant="outline">
+              <Link to={RUTAS.categorias}>Categorías y atributos</Link>
+            </Button>
+            <DialogoNuevoProducto categorias={lista} />
+          </>
+        }
+      />
       <AvisoConsultaFallida consulta={categorias} titulo="No pudimos cargar las categorías." />
       <TablaServidor
         titulo="Productos"

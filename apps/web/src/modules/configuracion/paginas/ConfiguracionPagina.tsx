@@ -13,6 +13,7 @@ import { Button } from '../../../shared/ui/button';
 import { Form } from '../../../shared/ui/form';
 import type { Configuracion } from '../configuracion.api';
 import { useActualizarConfiguracion, useConfiguracion } from '../hooks/useConfiguracion';
+import { EncabezadoPagina } from '../../../shared/componentes/EncabezadoPagina';
 
 type Entero = keyof typeof RANGOS_CONFIGURACION;
 
@@ -159,12 +160,10 @@ export function ConfiguracionPagina() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="titulo-1">Configuración</h1>
-        <p className="texto-base text-muted-foreground">
-          Los parámetros con que trabaja la tienda. Cada cambio queda en la bitácora.
-        </p>
-      </div>
+      <EncabezadoPagina
+        titulo="Configuración"
+        descripcion="Los parámetros con que trabaja la tienda. Cada cambio queda en la bitácora."
+      />
       <EstadoVista consulta={configuracion} esVacio={NUNCA_VACIA} vacio={{ titulo: '' }}>
         {(datos) => <FormularioConfiguracion configuracion={datos} />}
       </EstadoVista>

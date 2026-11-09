@@ -17,6 +17,7 @@ import { Button } from '../../../shared/ui/button';
 import { DialogoEditarCupon, DialogoNuevoCupon } from '../componentes/DialogoCupon';
 import type { AccionCupon, Cupon } from '../cupones.api';
 import { useCambiarEstadoCupon, useCupones } from '../hooks/useCupones';
+import { EncabezadoPagina } from '../../../shared/componentes/EncabezadoPagina';
 
 const SIN_MINIMO = '0';
 
@@ -169,15 +170,11 @@ export function CuponesPagina() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <h1 className="titulo-1">Cupones</h1>
-          <p className="texto-base text-muted-foreground">
-            Descuentos por código para toda la tienda o una categoría.
-          </p>
-        </div>
-        <DialogoNuevoCupon />
-      </div>
+      <EncabezadoPagina
+        titulo="Cupones"
+        descripcion="Descuentos por código para toda la tienda o una categoría."
+        acciones={<DialogoNuevoCupon />}
+      />
       {estado.error && <Aviso tipo="error">{estado.error.mensaje}</Aviso>}
       <TablaServidor
         titulo="Cupones"

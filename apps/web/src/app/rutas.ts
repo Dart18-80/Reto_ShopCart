@@ -1,3 +1,22 @@
+import {
+  Boxes,
+  FileDown,
+  LayoutDashboard,
+  MapPin,
+  Package,
+  ScrollText,
+  Settings,
+  ShieldAlert,
+  ShoppingBag,
+  Store,
+  Tag,
+  TicketPercent,
+  Truck,
+  Undo2,
+  UserRound,
+  Users,
+  type LucideIcon,
+} from 'lucide-react';
 import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
 import type { EstadoSesion } from '../shared/api';
 import {
@@ -20,6 +39,8 @@ export type GrupoMenu = 'Ventas' | 'Catálogo' | 'Administración';
 export interface EntradaMenu {
   etiqueta: string;
   grupo?: GrupoMenu;
+  /** D6: el ícono de la opción (lucide), decorativo: la etiqueta es el nombre. */
+  icono: LucideIcon;
 }
 
 export interface DefinicionPagina {
@@ -55,7 +76,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ruta: RUTAS.catalogo,
     area: 'tienda',
     acceso: PUBLICO,
-    menu: { etiqueta: 'Catálogo' },
+    menu: { etiqueta: 'Catálogo', icono: Store },
     pagina: diferida(
       () => import('../modules/catalogo/paginas/CatalogoPagina'),
       (m) => m.CatalogoPagina,
@@ -101,7 +122,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ruta: RUTAS.misPedidos,
     area: 'tienda',
     acceso: SOLO_CLIENTE,
-    menu: { etiqueta: 'Mis pedidos' },
+    menu: { etiqueta: 'Mis pedidos', icono: Package },
     pagina: diferida(
       () => import('../modules/pedidos/paginas/MisPedidosPagina'),
       (m) => m.MisPedidosPagina,
@@ -138,7 +159,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ruta: RUTAS.perfil,
     area: 'cuenta',
     acceso: CON_SESION,
-    menu: { etiqueta: 'Perfil' },
+    menu: { etiqueta: 'Perfil', icono: UserRound },
     pagina: diferida(
       () => import('../modules/usuarios/paginas/PerfilPagina'),
       (m) => m.PerfilPagina,
@@ -148,7 +169,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ruta: RUTAS.direcciones,
     area: 'cuenta',
     acceso: SOLO_CLIENTE,
-    menu: { etiqueta: 'Direcciones' },
+    menu: { etiqueta: 'Direcciones', icono: MapPin },
     pagina: diferida(
       () => import('../modules/direcciones/paginas/DireccionesPagina'),
       (m) => m.DireccionesPagina,
@@ -158,7 +179,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ruta: RUTAS.dashboard,
     area: 'backoffice',
     acceso: SOLO_ADMINISTRADOR,
-    menu: { etiqueta: 'Dashboard', grupo: 'Ventas' },
+    menu: { etiqueta: 'Dashboard', grupo: 'Ventas', icono: LayoutDashboard },
     pagina: diferida(
       () => import('../modules/reportes/paginas/DashboardPagina'),
       (m) => m.DashboardPagina,
@@ -168,7 +189,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ruta: RUTAS.gestionPedidos,
     area: 'backoffice',
     acceso: PERSONAL,
-    menu: { etiqueta: 'Pedidos', grupo: 'Ventas' },
+    menu: { etiqueta: 'Pedidos', grupo: 'Ventas', icono: ShoppingBag },
     pagina: diferida(
       () => import('../modules/pedidos/paginas/GestionPedidosPagina'),
       (m) => m.GestionPedidosPagina,
@@ -187,7 +208,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ruta: RUTAS.pagosEnRevision,
     area: 'backoffice',
     acceso: SOLO_ADMINISTRADOR,
-    menu: { etiqueta: 'Pagos en revisión', grupo: 'Ventas' },
+    menu: { etiqueta: 'Pagos en revisión', grupo: 'Ventas', icono: ShieldAlert },
     pagina: diferida(
       () => import('../modules/pedidos/paginas/PagosEnRevisionPagina'),
       (m) => m.PagosEnRevisionPagina,
@@ -197,7 +218,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ruta: RUTAS.reembolsos,
     area: 'backoffice',
     acceso: SOLO_ADMINISTRADOR,
-    menu: { etiqueta: 'Reembolsos', grupo: 'Ventas' },
+    menu: { etiqueta: 'Reembolsos', grupo: 'Ventas', icono: Undo2 },
     pagina: diferida(
       () => import('../modules/pedidos/paginas/ReembolsosPagina'),
       (m) => m.ReembolsosPagina,
@@ -207,7 +228,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ruta: RUTAS.exportaciones,
     area: 'backoffice',
     acceso: SOLO_ADMINISTRADOR,
-    menu: { etiqueta: 'Exportaciones', grupo: 'Ventas' },
+    menu: { etiqueta: 'Exportaciones', grupo: 'Ventas', icono: FileDown },
     pagina: diferida(
       () => import('../modules/exportaciones/paginas/ExportacionesPagina'),
       (m) => m.ExportacionesPagina,
@@ -217,7 +238,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ruta: RUTAS.gestionCatalogo,
     area: 'backoffice',
     acceso: SOLO_ADMINISTRADOR,
-    menu: { etiqueta: 'Productos y precios', grupo: 'Catálogo' },
+    menu: { etiqueta: 'Productos y precios', grupo: 'Catálogo', icono: Tag },
     pagina: diferida(
       () => import('../modules/catalogo/paginas/GestionCatalogoPagina'),
       (m) => m.GestionCatalogoPagina,
@@ -246,7 +267,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ruta: RUTAS.inventario,
     area: 'backoffice',
     acceso: PERSONAL,
-    menu: { etiqueta: 'Inventario', grupo: 'Catálogo' },
+    menu: { etiqueta: 'Inventario', grupo: 'Catálogo', icono: Boxes },
     pagina: diferida(
       () => import('../modules/inventario/paginas/InventarioPagina'),
       (m) => m.InventarioPagina,
@@ -256,7 +277,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ruta: RUTAS.cupones,
     area: 'backoffice',
     acceso: SOLO_ADMINISTRADOR,
-    menu: { etiqueta: 'Cupones', grupo: 'Catálogo' },
+    menu: { etiqueta: 'Cupones', grupo: 'Catálogo', icono: TicketPercent },
     pagina: diferida(
       () => import('../modules/cupones/paginas/CuponesPagina'),
       (m) => m.CuponesPagina,
@@ -266,7 +287,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ruta: RUTAS.envios,
     area: 'backoffice',
     acceso: SOLO_ADMINISTRADOR,
-    menu: { etiqueta: 'Envíos', grupo: 'Administración' },
+    menu: { etiqueta: 'Envíos', grupo: 'Administración', icono: Truck },
     pagina: diferida(
       () => import('../modules/envios/paginas/MetodosEnvioPagina'),
       (m) => m.MetodosEnvioPagina,
@@ -276,7 +297,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ruta: RUTAS.configuracion,
     area: 'backoffice',
     acceso: SOLO_ADMINISTRADOR,
-    menu: { etiqueta: 'Configuración', grupo: 'Administración' },
+    menu: { etiqueta: 'Configuración', grupo: 'Administración', icono: Settings },
     pagina: diferida(
       () => import('../modules/configuracion/paginas/ConfiguracionPagina'),
       (m) => m.ConfiguracionPagina,
@@ -286,7 +307,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ruta: RUTAS.usuarios,
     area: 'backoffice',
     acceso: SOLO_ADMINISTRADOR,
-    menu: { etiqueta: 'Usuarios', grupo: 'Administración' },
+    menu: { etiqueta: 'Usuarios', grupo: 'Administración', icono: Users },
     pagina: diferida(
       () => import('../modules/usuarios/paginas/UsuariosPagina'),
       (m) => m.UsuariosPagina,
@@ -296,7 +317,7 @@ export const PAGINAS: readonly DefinicionPagina[] = [
     ruta: RUTAS.bitacora,
     area: 'backoffice',
     acceso: SOLO_ADMINISTRADOR,
-    menu: { etiqueta: 'Bitácora', grupo: 'Administración' },
+    menu: { etiqueta: 'Bitácora', grupo: 'Administración', icono: ScrollText },
     pagina: diferida(
       () => import('../modules/bitacora/paginas/BitacoraPagina'),
       (m) => m.BitacoraPagina,
