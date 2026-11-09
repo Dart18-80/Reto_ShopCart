@@ -10,7 +10,7 @@ import { useCancelarSesionPago } from '../hooks/useCancelarSesionPago';
 import { useCuentaRegresiva } from '../hooks/useCuentaRegresiva';
 import { useIntentoDePago } from '../hooks/useIntentoDePago';
 import { usePagar } from '../hooks/usePagar';
-import { diasDeEntrega } from '../diasDeEntrega';
+import { diasDeEntrega } from '../../envios';
 import { desenlaceDelPago } from '../politicaDePago';
 import { AvisoPago } from './AvisoPago';
 import { AvisoReserva } from './AvisoReserva';

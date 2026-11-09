@@ -46,6 +46,16 @@ function aEnvioGratis(fila: FilaEnvioGratis): EnvioGratis | null {
       };
 }
 
+const aMetodo = (fila: FilaMetodo): MetodoEnvio => ({
+  idMetodoEnvio: fila.IDMetodoEnvio,
+  codigo: fila.Codigo,
+  nombre: fila.Nombre,
+  costo: aMonto(fila.Costo),
+  diasMin: fila.DiasMin,
+  diasMax: fila.DiasMax,
+  activo: fila.Activo,
+});
+
 export const enviosRepository = {
   /** N-04: el carrito sale de la sesión o del hash de la cookie, igual que en SP_Carrito_Obtener. */
   async listarParaCarrito(hash: Buffer | null): Promise<MetodosParaCarrito> {
@@ -76,6 +86,12 @@ export const enviosRepository = {
     };
   },
 
+  /** M9-H02: todos los métodos, también los inactivos, para el Admin. */
+  async listarMetodosAdmin(): Promise<MetodoEnvio[]> {
+    const filas = await ejecutarSP<FilaMetodo>('SP_Envios_ListarMetodosAdmin');
+    return filas.map(aMetodo);
+  },
+
   async actualizarMetodo(idMetodoEnvio: number, datos: ActualizarMetodo): Promise<MetodoEnvio> {
     const [fila] = await ejecutarSP<FilaMetodo>('SP_Envios_ActualizarMetodo', {
       IDMetodoEnvio: { tipo: sql.Int, valor: idMetodoEnvio },
@@ -86,15 +102,7 @@ export const enviosRepository = {
       Activo: { tipo: sql.Bit, valor: datos.activo },
     });
     if (fila === undefined) throw new Error('SP_Envios_ActualizarMetodo no devolvió el método');
-    return {
-      idMetodoEnvio: fila.IDMetodoEnvio,
-      codigo: fila.Codigo,
-      nombre: fila.Nombre,
-      costo: aMonto(fila.Costo),
-      diasMin: fila.DiasMin,
-      diasMax: fila.DiasMax,
-      activo: fila.Activo,
-    };
+    return aMetodo(fila);
   },
 };
 

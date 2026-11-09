@@ -2,7 +2,7 @@ import type { RequestHandler } from 'express';
 import { montoATexto } from '../../shared/dinero/index.js';
 import { manejar } from '../../shared/http/index.js';
 import { COOKIE_CARRITO, cookiesCarritoSchema } from '../carrito/index.js';
-import { actualizarMetodoSchema, paramsIdMetodoSchema } from './envios.schemas.js';
+import { actualizarMetodoEntradaSchema, paramsIdMetodoSchema } from './envios.schemas.js';
 import type { EnviosService } from './envios.service.js';
 import type { EnvioGratis, MetodoEnvio, MetodosParaCarrito } from './envios.types.js';
 
@@ -30,6 +30,7 @@ const metodoARespuesta = (metodo: MetodoEnvio) => ({ ...metodo, costo: montoATex
 
 export interface EnviosController {
   listarParaCarrito: RequestHandler;
+  listarMetodosAdmin: RequestHandler;
   actualizarMetodo: RequestHandler;
 }
 
@@ -41,8 +42,12 @@ export function crearEnviosController(servicio: EnviosService): EnviosController
       });
     }),
 
+    listarMetodosAdmin: manejar({}, async (_entrada, res) => {
+      res.json({ datos: (await servicio.listarMetodosAdmin()).map(metodoARespuesta) });
+    }),
+
     actualizarMetodo: manejar(
-      { params: paramsIdMetodoSchema, body: actualizarMetodoSchema },
+      { params: paramsIdMetodoSchema, body: actualizarMetodoEntradaSchema },
       async ({ params, body }, res) => {
         res.json({ datos: metodoARespuesta(await servicio.actualizarMetodo(params.id, body)) });
       },

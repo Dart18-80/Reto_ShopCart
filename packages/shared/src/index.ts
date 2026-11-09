@@ -16,6 +16,7 @@ export {
   type AplicarCupon,
 } from './carrito.js';
 export { pagarSchema, type Pagar } from './checkout.js';
+export { enteroEntre } from './numeros.js';
 export {
   actualizarCategoriaSchema,
   actualizarProductoSchema,
@@ -67,6 +68,11 @@ export {
   TAMANO_MAXIMO_PAGINA,
 } from './consultas.js';
 export {
+  actualizarConfiguracionSchema,
+  RANGOS_CONFIGURACION,
+  type ActualizarConfiguracion,
+} from './configuracion.js';
+export {
   actualizarCuponSchema,
   consultaCuponesSchema,
   crearCuponSchema,
@@ -85,6 +91,7 @@ export {
   type ActualizarDireccion,
   type CrearDireccion,
 } from './direcciones.js';
+export { actualizarMetodoEnvioSchema, type ActualizarMetodoEnvio } from './envios.js';
 export {
   CANTIDAD_MAXIMA_MOVIMIENTO,
   consultaExistenciasSchema,

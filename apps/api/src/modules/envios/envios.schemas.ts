@@ -1,27 +1,19 @@
-import { montoSchema, textoNvarchar } from '@shopcart/shared';
+import { actualizarMetodoEnvioSchema, montoSchema } from '@shopcart/shared';
 import { Decimal } from 'decimal.js';
 import { idEnRutaSchema } from '../../shared/http/index.js';
+import { registroOpenApi } from '../../shared/openapi/index.js';
 import { z } from '../../shared/openapi/zod.js';
 
-// MetodoEnvio.DiasMin y DiasMax son TINYINT.
-const DIAS_MAXIMOS = 255;
-const diasSchema = z.number().int().min(0).max(DIAS_MAXIMOS);
-
-// PUT: la representación completa de lo que el Admin puede cambiar; el código no cambia.
-export const actualizarMetodoSchema = z
-  .object({
-    nombre: textoNvarchar(50),
-    costo: montoSchema.transform((valor) => new Decimal(valor)),
-    diasMin: diasSchema,
-    diasMax: diasSchema,
-    activo: z.boolean(),
-  })
-  .strict()
-  .refine((metodo) => metodo.diasMax >= metodo.diasMin, {
-    message: 'Los días máximos no pueden ser menos que los mínimos.',
-    path: ['diasMax'],
-  })
-  .openapi('ActualizarMetodoEnvio');
+// M9-H02 (FE-03): el PUT vive en @shopcart/shared. La ruta documenta el esquema compartido; el controlador valida
+// con la versión de entrada, que además pasa el costo a Decimal (A-21).
+export const actualizarMetodoSchema = registroOpenApi.register(
+  'ActualizarMetodoEnvio',
+  actualizarMetodoEnvioSchema,
+);
+export const actualizarMetodoEntradaSchema = actualizarMetodoSchema.transform((metodo) => ({
+  ...metodo,
+  costo: new Decimal(metodo.costo),
+}));
 
 export const paramsIdMetodoSchema = z.object({ id: idEnRutaSchema });
 
@@ -69,4 +61,4 @@ export const metodoEnvioSchema = z
   })
   .openapi('MetodoEnvio');
 
-export type ActualizarMetodo = z.infer<typeof actualizarMetodoSchema>;
+export type ActualizarMetodo = z.output<typeof actualizarMetodoEntradaSchema>;

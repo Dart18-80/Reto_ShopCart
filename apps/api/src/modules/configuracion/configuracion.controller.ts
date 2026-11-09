@@ -1,7 +1,7 @@
 import type { RequestHandler } from 'express';
 import { montoATexto } from '../../shared/dinero/index.js';
 import { manejar } from '../../shared/http/index.js';
-import { actualizarConfiguracionSchema } from './configuracion.schemas.js';
+import { actualizarConfiguracionEntradaSchema } from './configuracion.schemas.js';
 import type { ConfiguracionService } from './configuracion.service.js';
 import type { Configuracion } from './configuracion.types.js';
 
@@ -25,7 +25,7 @@ export function crearConfiguracionController(
       res.json({ datos: aRespuesta(await servicio.obtener()) });
     }),
 
-    actualizar: manejar({ body: actualizarConfiguracionSchema }, async ({ body }, res) => {
+    actualizar: manejar({ body: actualizarConfiguracionEntradaSchema }, async ({ body }, res) => {
       res.json({ datos: aRespuesta(await servicio.actualizar(body)) });
     }),
   };

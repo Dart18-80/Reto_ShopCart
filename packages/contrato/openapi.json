@@ -5528,6 +5528,62 @@
         ]
       }
     },
+    "/api/v1/admin/envios/metodos": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "datos": {
+                      "items": {
+                        "$ref": "#/components/schemas/MetodoEnvio"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "datos"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Los métodos"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Sin sesión o token inválido"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "El rol no tiene permiso"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "M9-H02: todos los métodos, también los inactivos, con su costo base, sus días y su estado (solo Admin)",
+        "tags": [
+          "Envíos"
+        ]
+      }
+    },
     "/api/v1/admin/envios/metodos/{id}": {
       "put": {
         "parameters": [

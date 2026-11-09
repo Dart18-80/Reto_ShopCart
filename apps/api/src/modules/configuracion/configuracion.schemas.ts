@@ -1,30 +1,25 @@
-import { montoSchema } from '@shopcart/shared';
+import {
+  actualizarConfiguracionSchema as actualizarConfiguracionCompartido,
+  montoSchema,
+} from '@shopcart/shared';
 import { Decimal } from 'decimal.js';
+import { registroOpenApi } from '../../shared/openapi/index.js';
 import { z } from '../../shared/openapi/zod.js';
 
-// A-14: los mismos rangos que los CHECK de ParametroSistema (V006); la base es la última defensa.
-const entre = (minimo: number, maximo: number) => z.number().int().min(minimo).max(maximo);
-
-// PATCH: lo que no llega se conserva; montoEnvioGratis en null deja la tienda sin envío gratis.
-export const actualizarConfiguracionSchema = z
-  .object({
-    diasGarantiaPrecio: entre(1, 30).optional(),
-    minutosReserva: entre(5, 60).optional(),
-    horasCarritoAbandonado: entre(1, 720).optional(),
-    diasExpiracionCarritoInvitado: entre(1, 365).optional(),
-    umbralUltimasUnidades: entre(1, 100).optional(),
-    montoEnvioGratis: montoSchema
-      .transform((valor) => new Decimal(valor))
-      .refine((valor) => valor.greaterThan(0), 'Debe ser mayor que cero.')
-      .nullable()
-      .optional(),
-    maxIntentosPagoRechazados: entre(1, 10).optional(),
-    diasPlazoDevolucion: entre(1, 365).optional(),
-    maxLineasCarrito: entre(1, 200).optional(),
-  })
-  .strict()
-  .refine((cambios) => Object.keys(cambios).length > 0, 'Indica al menos un parámetro.')
-  .openapi('ActualizarConfiguracion');
+// M9-H02 (FE-03): el PATCH vive en @shopcart/shared. La ruta documenta el esquema compartido; el controlador valida
+// con la versión de entrada, que además pasa el monto del envío gratis a Decimal (A-21).
+export const actualizarConfiguracionSchema = registroOpenApi.register(
+  'ActualizarConfiguracion',
+  actualizarConfiguracionCompartido,
+);
+export const actualizarConfiguracionEntradaSchema = actualizarConfiguracionSchema.transform(
+  ({ montoEnvioGratis, ...resto }) => ({
+    ...resto,
+    ...(montoEnvioGratis === undefined
+      ? {}
+      : { montoEnvioGratis: montoEnvioGratis === null ? null : new Decimal(montoEnvioGratis) }),
+  }),
+);
 
 export const configuracionSchema = z
   .object({
@@ -41,4 +36,4 @@ export const configuracionSchema = z
   })
   .openapi('Configuracion');
 
-export type ActualizarConfiguracion = z.infer<typeof actualizarConfiguracionSchema>;
+export type ActualizarConfiguracion = z.output<typeof actualizarConfiguracionEntradaSchema>;

@@ -39,8 +39,8 @@ sequenceDiagram
 | --- | --- | --- | --- |
 | Una sola fila | Constraint `CK_ParametroSistema_UnaSolaFila` | [V006__carrito_cupones_envios.sql:120](../../../database/migrations/V006__carrito_cupones_envios.sql#L120 "CHECK (IDParametroSistema = 1)") | A-14 |
 | Cada parámetro con su tipo (TINYINT, SMALLINT, DECIMAL) | Columnas tipadas | [V006__carrito_cupones_envios.sql:102](../../../database/migrations/V006__carrito_cupones_envios.sql#L102 "una sola fila tipada"), [V006__carrito_cupones_envios.sql:111](../../../database/migrations/V006__carrito_cupones_envios.sql#L111 "DECIMAL(12,2)") | A-14, M-02 |
-| Rangos (por ejemplo garantía 1 a 30 días, reserva 5 a 60 min) | `CHECK` en la tabla (autoridad) + Zod con los mismos rangos | [V006__carrito_cupones_envios.sql:121](../../../database/migrations/V006__carrito_cupones_envios.sql#L121 "DiasGarantiaPrecio BETWEEN 1 AND 30"), [configuracion.schemas.ts:11](../../../apps/api/src/modules/configuracion/configuracion.schemas.ts#L11 "diasGarantiaPrecio: entre(1, 30).optional()") | A-14, A-02 |
-| Envío gratis mayor que cero o NULL (sin envío gratis) | `CHECK` + Zod con `Decimal` | [V006__carrito_cupones_envios.sql:126](../../../database/migrations/V006__carrito_cupones_envios.sql#L126 "CHECK (MontoEnvioGratis > 0)"), [configuracion.schemas.ts:18](../../../apps/api/src/modules/configuracion/configuracion.schemas.ts#L18 "valor.greaterThan(0)") | N-04 |
+| Rangos (por ejemplo garantía 1 a 30 días, reserva 5 a 60 min) | `CHECK` en la tabla (autoridad) + Zod con los mismos rangos | [V006__carrito_cupones_envios.sql:121](../../../database/migrations/V006__carrito_cupones_envios.sql#L121 "DiasGarantiaPrecio BETWEEN 1 AND 30"), [configuracion.ts:8](../../../packages/shared/src/configuracion.ts#L8 "diasGarantiaPrecio: [1, 30]") | A-14, A-02 |
+| Envío gratis mayor que cero o NULL (sin envío gratis) | `CHECK` + Zod con `Decimal` | [V006__carrito_cupones_envios.sql:126](../../../database/migrations/V006__carrito_cupones_envios.sql#L126 "CHECK (MontoEnvioGratis > 0)"), [configuracion.ts:35](../../../packages/shared/src/configuracion.ts#L35 "montoMenorOIgual(valor, '0')") | N-04 |
 | Valores iniciales = DEFAULT de la tabla | Semilla | [S001__catalogos.sql:81](../../../database/seeds/S001__catalogos.sql#L81 "INSERT INTO dbo.ParametroSistema DEFAULT VALUES;") | A-14 |
 | PATCH: lo ausente se conserva; `montoEnvioGratis: null` lo quita | Repositorio (NULL + bandera) y SP (`COALESCE`) | [configuracion.repository.ts:58](../../../apps/api/src/modules/configuracion/configuracion.repository.ts#L58 "QuitarMontoEnvioGratis: { tipo: sql.Bit, valor: cambios.montoEnvioGratis === null }"), [R__SP_Configuracion_Actualizar.sql:33](../../../database/programmability/R__SP_Configuracion_Actualizar.sql#L33 "COALESCE(@DiasGarantiaPrecio, p.DiasGarantiaPrecio)") | A-02 |
 | No se puede enviar un monto y quitarlo a la vez | SP | [R__SP_Configuracion_Actualizar.sql:26](../../../database/programmability/R__SP_Configuracion_Actualizar.sql#L26 "IF @QuitarMontoEnvioGratis = 1 AND @MontoEnvioGratis IS NOT NULL") | A-02 |
@@ -100,7 +100,7 @@ El `CHECK` de la columna. La API además tiene `shopcart_app` con `DENY UPDATE` 
 ### Si la regla está en el CHECK, ¿para qué validar con Zod?
 
 Para dar un 400 con el detalle del campo antes de ir a la base. Zod replica los mismos rangos; la base es la última defensa.
-**Muéstralo en:** [configuracion.schemas.ts:5](../../../apps/api/src/modules/configuracion/configuracion.schemas.ts#L5 "los mismos rangos que los CHECK de ParametroSistema")
+**Muéstralo en:** [configuracion.ts:5](../../../packages/shared/src/configuracion.ts#L5 "los mismos rangos que los CHECK de ParametroSistema")
 
 ### ¿Qué pasa si los rangos de Zod y del CHECK se desalinean?
 

@@ -2,7 +2,7 @@
 
 ## Qué hace
 
-Expone los métodos de envío con su costo para el carrito de quien pregunta y permite al Administrador cambiar cada método. `GET /envios/metodos` es público: un invitado usa su cookie de carrito y un cliente su sesión ([envios.routes.ts:52](../../../apps/api/src/modules/envios/envios.routes.ts#L52 "router.get('/envios/metodos', autenticarOpcional(autenticar)")); `PUT /admin/envios/metodos/:id` es solo del Administrador ([envios.routes.ts:56](../../../apps/api/src/modules/envios/envios.routes.ts#L56 "autorizar('Administrador')")). SPs y funciones clave: `SP_Envios_ListarMetodos`, `SP_Envios_ActualizarMetodo`, `FU_Envios_Costos` (la usa también el checkout) y `FU_Envios_EnvioGratis`. El monto mínimo del envío gratis se configura en otro módulo, `PATCH /admin/configuracion` ([configuracion.routes.ts:43](../../../apps/api/src/modules/configuracion/configuracion.routes.ts#L43 "router.patch('/admin/configuracion'")).
+Expone los métodos de envío con su costo para el carrito de quien pregunta y permite al Administrador cambiar cada método. `GET /envios/metodos` es público: un invitado usa su cookie de carrito y un cliente su sesión ([envios.routes.ts:64](../../../apps/api/src/modules/envios/envios.routes.ts#L64 "router.get('/envios/metodos', autenticarOpcional(autenticar)")); `PUT /admin/envios/metodos/:id` es solo del Administrador ([envios.routes.ts:74](../../../apps/api/src/modules/envios/envios.routes.ts#L74 "autorizar('Administrador')")). SPs y funciones clave: `SP_Envios_ListarMetodos`, `SP_Envios_ActualizarMetodo`, `FU_Envios_Costos` (la usa también el checkout) y `FU_Envios_EnvioGratis`. El monto mínimo del envío gratis se configura en otro módulo, `PATCH /admin/configuracion` ([configuracion.routes.ts:43](../../../apps/api/src/modules/configuracion/configuracion.routes.ts#L43 "router.patch('/admin/configuracion'")).
 
 ## Flujo crítico
 
@@ -37,7 +37,7 @@ sequenceDiagram
 | --- | --- | --- | --- |
 | Tarifa en `DECIMAL(12,2)` y no negativa | Tipo + `CHECK` | [V006__carrito_cupones_envios.sql:98](../../../database/migrations/V006__carrito_cupones_envios.sql#L98 "CK_MetodoEnvio_Costo CHECK (Costo >= 0)") | M-02 |
 | Días máximos ≥ días mínimos | Zod + `CHECK` (547 → 50003) | [V006__carrito_cupones_envios.sql:99](../../../database/migrations/V006__carrito_cupones_envios.sql#L99 "CK_MetodoEnvio_Dias CHECK (DiasMax >= DiasMin)") | N-04 |
-| El código del método no cambia | El `PUT` no lo recibe; `UNIQUE` | [envios.schemas.ts:10](../../../apps/api/src/modules/envios/envios.schemas.ts#L10 "el código no cambia") | N-04 |
+| El código del método no cambia | El `PUT` no lo recibe; `UNIQUE` | [envios.ts:12](../../../packages/shared/src/envios.ts#L12 "el código no cambia") | N-04 |
 | Solo se ofrecen los métodos activos | `FU_Envios_Costos` | [R__FU_Envios_Costos.sql:15](../../../database/programmability/R__FU_Envios_Costos.sql#L15 "m.Activo = 1") | N-04 |
 | Envío gratis para todos los métodos al alcanzar el mínimo | `FU_Envios_Costos` | [R__FU_Envios_Costos.sql:11](../../../database/programmability/R__FU_Envios_Costos.sql#L11 "CASE WHEN g.Alcanzado = 1 THEN 0 ELSE m.Costo END") | N-04 |
 | El mínimo es un parámetro del sistema (500.00 por defecto; NULL = sin envío gratis) | `ParametroSistema` | [V006__carrito_cupones_envios.sql:111](../../../database/migrations/V006__carrito_cupones_envios.sql#L111 "DF_ParametroSistema_MontoEnvioGratis DEFAULT 500.00") | A-14 |
@@ -62,7 +62,7 @@ sequenceDiagram
 
 ## Modos de falla
 
-- **Entrada inválida** (días al revés, costo con 3 decimales, campo extra): `400 VALIDACION_FALLIDA` desde Zod ([envios.schemas.ts:20](../../../apps/api/src/modules/envios/envios.schemas.ts#L20 "metodo.diasMax >= metodo.diasMin")); si llegara a la base, el `CHECK` se traduce a `400 PARAMETRO_INVALIDO` ([R__SP_Envios_ActualizarMetodo.sql:47](../../../database/programmability/R__SP_Envios_ActualizarMetodo.sql#L47 "THROW 50003")).
+- **Entrada inválida** (días al revés, costo con 3 decimales, campo extra): `400 VALIDACION_FALLIDA` desde Zod ([envios.ts:23](../../../packages/shared/src/envios.ts#L23 "metodo.diasMax >= metodo.diasMin")); si llegara a la base, el `CHECK` se traduce a `400 PARAMETRO_INVALIDO` ([R__SP_Envios_ActualizarMetodo.sql:47](../../../database/programmability/R__SP_Envios_ActualizarMetodo.sql#L47 "THROW 50003")).
 - **Método inexistente:** `404 NO_ENCONTRADO` ([R__SP_Envios_ActualizarMetodo.sql:33](../../../database/programmability/R__SP_Envios_ActualizarMetodo.sql#L33 "THROW 50001")), probado en [configuracion-envios.api.test.ts:229](../../../apps/api/test/integracion/secuencial/configuracion-envios.api.test.ts#L229 "un método inexistente responde 404 y días al revés 400").
 - **Desactivar el último método activo:** `409 METODO_ENVIO_ULTIMO_ACTIVO` ([R__SP_Envios_ActualizarMetodo.sql:35](../../../database/programmability/R__SP_Envios_ActualizarMetodo.sql#L35 "THROW 50901")); sin ningún método, ningún checkout podría empezar.
 - **Token inválido en la consulta pública:** `401` (si hay `Authorization`, se verifica) ([envios.api.test.ts:171](../../../apps/api/test/integracion/carrito/envios.api.test.ts#L171 "un token inválido responde 401")).
@@ -114,7 +114,7 @@ No. El endpoint no recibe ningún ID: el cliente sale de `@IDUsuarioActor` y `@R
 ### ¿Por qué se manda el hash de la cookie y no la cookie?
 
 La base solo guarda el hash del token de invitado (N-05); el servicio lo calcula antes de llamar al SP, y una prueba unitaria verifica que el token en claro nunca llega al repositorio.
-**Muéstralo en:** [envios.service.test.ts:23](../../../apps/api/test/unit/modules/envios/envios.service.test.ts#L23 "el carrito del invitado viaja como el hash de su cookie")
+**Muéstralo en:** [envios.service.test.ts:24](../../../apps/api/test/unit/modules/envios/envios.service.test.ts#L24 "el carrito del invitado viaja como el hash de su cookie")
 
 ### ¿Dónde queda registrado quién cambió una tarifa?
 

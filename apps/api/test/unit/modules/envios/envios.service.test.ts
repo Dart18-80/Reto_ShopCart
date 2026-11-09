@@ -12,6 +12,7 @@ function preparar() {
     listarParaCarrito: vi.fn((_hash: Buffer | null) =>
       Promise.resolve({ metodos: [], minutosReserva: 15, envioGratis: null }),
     ),
+    listarMetodosAdmin: vi.fn(() => Promise.resolve([])),
     actualizarMetodo: vi.fn((_id: number, datos: ActualizarMetodo) =>
       Promise.resolve({ idMetodoEnvio: 1, codigo: 'Estandar', ...datos }),
     ),

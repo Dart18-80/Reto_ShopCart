@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { enteroEntre } from './numeros.js';
 import { booleanoConsultaSchema, consultaPaginacionSchema, idSchema } from './consultas.js';
 import { montoMenorOIgual, montoSchema } from './monto.js';
 import { ordenConsultaSchema } from './orden.js';
@@ -29,7 +30,7 @@ const montoPositivoSchema = montoSchema.refine((valor) => !montoMenorOIgual(valo
   message: 'Debe ser mayor que cero.',
 });
 const fechaSchema = z.iso.datetime({ offset: true });
-const limiteUsosSchema = z.number().int().min(1).max(LIMITE_MAXIMO_USOS);
+const limiteUsosSchema = enteroEntre(1, LIMITE_MAXIMO_USOS);
 
 const porcentajeValido = (cupon: { tipo?: string; valor?: string }) =>
   cupon.tipo !== 'Porcentaje' ||

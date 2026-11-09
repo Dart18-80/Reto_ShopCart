@@ -1,6 +1,5 @@
 import { RadioGroup } from '../../../shared/ui/radio-group';
-import type { MetodoEnvio } from '../../envios';
-import { diasDeEntrega } from '../diasDeEntrega';
+import { diasDeEntrega, type MetodoEnvio } from '../../envios';
 import { CostoEnvio } from './CostoEnvio';
 import { Opcion } from './Opcion';
 

@@ -29,6 +29,18 @@ registroOpenApi.registerPath({
   },
 });
 registroOpenApi.registerPath({
+  method: 'get',
+  path: '/api/v1/admin/envios/metodos',
+  tags: ['Envíos'],
+  summary:
+    'M9-H02: todos los métodos, también los inactivos, con su costo base, sus días y su estado (solo Admin)',
+  security: [{ bearer: [] }],
+  responses: {
+    200: { description: 'Los métodos', ...json(z.object({ datos: z.array(metodoEnvioSchema) })) },
+    ...respuestasError(401, 403),
+  },
+});
+registroOpenApi.registerPath({
   method: 'put',
   path: '/api/v1/admin/envios/metodos/{id}',
   tags: ['Envíos'],
@@ -50,6 +62,12 @@ export function crearEnviosRouter(
 
   // Pública (01 §5.1): sin sesión usa el carrito de la cookie; con un token, lo verifica (inválido → 401).
   router.get('/envios/metodos', autenticarOpcional(autenticar), controller.listarParaCarrito);
+  router.get(
+    '/admin/envios/metodos',
+    autenticar,
+    autorizar('Administrador'),
+    controller.listarMetodosAdmin,
+  );
   router.put(
     '/admin/envios/metodos/:id',
     autenticar,

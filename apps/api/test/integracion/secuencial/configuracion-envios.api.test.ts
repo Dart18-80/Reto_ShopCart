@@ -236,4 +236,57 @@ describe('tarifas de envío (E4-H06, N-04, RF-09)', () => {
     expect(inexistente.status).toBe(404);
     expect(leerError(alReves).codigo).toBe('VALIDACION_FALLIDA');
   });
+
+  it('M9-H02: el Admin lista todos los métodos, también los inactivos, con su costo base y su estado', async () => {
+    const activos = leerDatos(
+      await request(app).get('/api/v1/envios/metodos'),
+      z.object({ metodos: z.array(metodoActivoSchema) }),
+    ).metodos;
+    const [uno] = activos;
+    if (uno === undefined) throw new Error('La semilla no tiene métodos activos');
+    const listar = async () =>
+      leerDatos(
+        await request(app).get('/api/v1/admin/envios/metodos').set(conToken(admin.token)),
+        z.array(metodoSchema),
+      );
+    const cuerpo = (activo: boolean) => ({
+      nombre: uno.nombre,
+      costo: uno.tarifa,
+      diasMin: uno.diasMin,
+      diasMax: uno.diasMax,
+      activo,
+    });
+    try {
+      expect((await actualizarMetodo(uno.idMetodoEnvio, cuerpo(false))).status).toBe(200);
+
+      const todos = await listar();
+
+      expect(todos.find((m) => m.idMetodoEnvio === uno.idMetodoEnvio)).toMatchObject({
+        nombre: uno.nombre,
+        costo: uno.tarifa,
+        activo: false,
+      });
+      expect(todos.length).toBeGreaterThan(activos.length - 1);
+      expect(todos.map((m) => m.idMetodoEnvio)).toEqual(
+        [...todos.map((m) => m.idMetodoEnvio)].sort((a, b) => a - b),
+      );
+    } finally {
+      await actualizarMetodo(uno.idMetodoEnvio, cuerpo(true));
+    }
+  });
+
+  it('M9-H02: el listado de administración es solo del Admin (Operador y Cliente reciben 403)', async () => {
+    const operador = leerSesion(
+      await iniciarSesion(app, 'operador@shopcart.gt', 'Operador2026!'),
+    ).accessToken;
+    const cliente = leerSesion(await registrar(app)).accessToken;
+
+    const respuestas = await Promise.all(
+      [operador, cliente].map((token) =>
+        request(app).get('/api/v1/admin/envios/metodos').set(conToken(token)),
+      ),
+    );
+
+    expect(respuestas.map((r) => r.status)).toEqual([403, 403]);
+  });
 });

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { enteroEntre } from './numeros.js';
 import { LARGO_MAXIMO_TEXTO_BUSQUEDA } from './catalogo.js';
 import { consultaPaginacionSchema, idEnRutaSchema, idSchema } from './consultas.js';
 import { ordenConsultaSchema } from './orden.js';
@@ -32,7 +33,7 @@ const idVarianteEntradaSchema = z.int32({ error: ELIGE_UNA_VARIANTE }).positive(
 export const registrarEntradaSchema = z
   .object({
     idVariante: idVarianteEntradaSchema,
-    cantidad: z.number().int().min(1).max(CANTIDAD_MAXIMA_MOVIMIENTO),
+    cantidad: enteroEntre(1, CANTIDAD_MAXIMA_MOVIMIENTO),
     motivo: motivoSchema,
     referencia: textoNvarchar(100).optional(),
   })
@@ -41,12 +42,10 @@ export const registrarEntradaSchema = z
 export const registrarAjusteSchema = z
   .object({
     idVariante: idSchema,
-    cantidad: z
-      .number()
-      .int()
-      .min(-CANTIDAD_MAXIMA_MOVIMIENTO)
-      .max(CANTIDAD_MAXIMA_MOVIMIENTO)
-      .refine((cantidad) => cantidad !== 0, 'La cantidad del ajuste no puede ser cero.'),
+    cantidad: enteroEntre(-CANTIDAD_MAXIMA_MOVIMIENTO, CANTIDAD_MAXIMA_MOVIMIENTO).refine(
+      (cantidad) => cantidad !== 0,
+      'La cantidad del ajuste no puede ser cero.',
+    ),
     motivo: motivoSchema,
   })
   .strict();

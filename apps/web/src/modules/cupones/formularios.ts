@@ -7,16 +7,12 @@ import {
 } from '@shopcart/shared';
 import { z } from 'zod';
 import { aEntradaLocal, deEntradaLocal, esEntradaLocal } from '../../shared/formato/fecha';
+import { enteroDelCampo } from '../../shared/formularios';
 import type { Cupon } from './cupones.api';
 
 // Los campos de texto entregan lo que se escribió; las reglas son las de los esquemas compartidos (FE-03). Aquí
 // solo se convierte: un texto vacío es «no llegó», los límites a enteros y la vigencia (hora de Guatemala) a un
 // instante ISO.
-const enteroDelCampo = z
-  .string()
-  .trim()
-  .regex(/^\d+$/, 'Escribe un número entero.')
-  .transform(Number);
 const fechaDelCampo = z.string().refine(esEntradaLocal, 'Elige la fecha y la hora.');
 const textoOpcional = (texto: string) => (texto.trim() === '' ? undefined : texto.trim());
 

@@ -234,3 +234,44 @@ pruebaDeCompra.describe('gestión de pedidos (M8)', () => {
     },
   );
 });
+
+// Cambia un parámetro global: va en este archivo porque su proyecto corre al final y solo, así no altera las
+// demás pruebas; deja el valor como estaba.
+pruebaDeCompra.describe('configuración (M9-H02)', () => {
+  pruebaDeCompra(
+    'cambiar los minutos de reserva cambia el texto del paso 1 del checkout',
+    async ({ browser, apiAdmin, crearEnTienda, comprador }, informacion) => {
+      const { datos: original } = (await (
+        await apiAdmin.get('/api/v1/admin/configuracion')
+      ).json()) as { datos: { minutosReserva: number } };
+      const nuevos = original.minutosReserva === 20 ? 25 : 20;
+      const idProducto = await crearEnTienda(`Gorra ${nombreUnico('reserva')}`, [
+        { valores: [], precio: '70.00', existencia: 5 },
+      ]);
+      await agregarAlCarrito(comprador.api, await varianteDe(comprador.api, idProducto));
+      await direccionDe(comprador.api);
+
+      const contexto = await browser.newContext({ baseURL: informacion.project.use.baseURL });
+      const admin = await contexto.newPage();
+      try {
+        await iniciarSesionPorApi(admin, await crearAdministrador(apiAdmin));
+        await admin.goto('/backoffice/configuracion');
+        await admin.getByLabel('Minutos de reserva al pagar').fill(String(nuevos));
+        await admin.getByRole('button', { name: 'Guardar configuración' }).click();
+        await expect(admin.getByText('Guardamos la configuración.')).toBeVisible();
+
+        await pagina.goto('/checkout');
+        await expect(
+          pagina.getByText(
+            `Al continuar apartamos tus productos por ${String(nuevos)} minutos mientras pagas.`,
+          ),
+        ).toBeVisible();
+      } finally {
+        await contexto.close();
+        await apiAdmin.patch('/api/v1/admin/configuracion', {
+          data: { minutosReserva: original.minutosReserva },
+        });
+      }
+    },
+  );
+});

@@ -15,6 +15,8 @@ export function crearEnviosService({ repositorio }: Dependencias) {
         tokenInvitado === undefined ? null : hashearTokenOpaco(tokenInvitado),
       ),
 
+    listarMetodosAdmin: (): Promise<MetodoEnvio[]> => repositorio.listarMetodosAdmin(),
+
     actualizarMetodo: (idMetodoEnvio: number, datos: ActualizarMetodo): Promise<MetodoEnvio> =>
       repositorio.actualizarMetodo(idMetodoEnvio, datos),
   };
