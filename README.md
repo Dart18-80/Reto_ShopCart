@@ -14,6 +14,20 @@ Tienda en línea de una cadena guatemalteca de ropa, calzado y accesorios: catá
 | [docs/04-verificacion-fase-1.md](docs/04-verificacion-fase-1.md)     | Checklist de penalizaciones y la prueba que demuestra cada criterio de RF-01 a RF-09      |
 | [docs/05-arquitectura-frontend.md](docs/05-arquitectura-frontend.md) | Decisiones del frontend (`FE-xx`): estructura, sesión, estado, contrato, pruebas y diseño |
 
+## Capturas
+
+Sobre la semilla demo recién cargada, en tema claro (la SPA también tiene tema oscuro).
+
+| Catálogo (1280 px)                                                   | Catálogo en teléfono (375 px)                                                                |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| ![Catálogo de la tienda en 1280 px](docs/capturas/catalogo-1280.png) | <img src="docs/capturas/catalogo-375.png" alt="Catálogo de la tienda en 375 px" width="260"> |
+
+| Detalle de producto                                                                        | Checkout, paso de pago                                                                          |
+| ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| ![Detalle de un producto con su variante elegida](docs/capturas/detalle-producto-1280.png) | ![Checkout en el paso de pago, con el resumen del pedido](docs/capturas/checkout-pago-1280.png) |
+
+![Dashboard del backoffice con los indicadores y las ventas por día](docs/capturas/dashboard-1280.png)
+
 ---
 
 ## 1. Instalación desde cero
@@ -160,7 +174,7 @@ Para pasar a otra versión:
 
 **Cupones demo**, uno por cada mensaje de rechazo de RF-05: `DEMO10` (vigente, 10 %), `DEMOVENCIDO`, `DEMOFUTURO`, `DEMOINACTIVO`, `DEMOAGOTADO`, `DEMOUNAVEZ` (ya usado por `cliente@shopcart.gt`), `DEMOMINIMO` y `DEMOCATEGORIA`.
 
-**Datos demo.** Las semillas cargan los catálogos fijos, los 22 departamentos y 340 municipios de Guatemala, un catálogo de 61 productos y 244 variantes (imágenes en `apps/web/public/static/productos/`) y, con `S006`, unos 200 clientes con 1,500 pedidos en los últimos 90 días (cancelaciones y devoluciones incluidas) y carritos abandonados: el dashboard tiene datos desde el primer arranque. La variante `DEMO-CONCURRENCIA` es la única con una sola unidad, para la demo de compra simultánea.
+**Datos demo.** Las semillas cargan los catálogos fijos, los 22 departamentos y 340 municipios de Guatemala, un catálogo de 61 productos y 244 variantes, del que la tienda muestra 59 (los otros 2, la camisa de cuadros de franela y el short de mezclilla, están inactivos: solo se ven en el backoffice) (imágenes en `apps/web/public/static/productos/`) y, con `S006`, unos 200 clientes con 1,500 pedidos en los últimos 90 días (cancelaciones y devoluciones incluidas) y carritos abandonados: el dashboard tiene datos desde el primer arranque. La variante `DEMO-CONCURRENCIA` es la única con una sola unidad, para la demo de compra simultánea.
 
 ---
 
@@ -533,7 +547,7 @@ pnpm contrato:cobertura --estricto  # cada ruta del contrato tiene pantalla o un
 - **Web:** pruebas unitarias de las funciones puras (formato de montos y fechas, la sesión, el bucle del tiempo real con un stream simulado) y de componentes con MSW, que simula la API con los tipos del contrato.
 
 - **Integración:** `pnpm test:integracion` recrea `shopcart_test` desde cero (las tablas ledger no admiten `DELETE`), aplica todos los scripts y, solo en esa base, los SPs de `database/test/`. Las pruebas no escriben SQL: preparan sus datos con esos `SP_Pruebas_*` y cada una crea datos únicos. Nunca tocan la base `ShopCart` del entorno.
-- **E2E de la web:** 43 escenarios contra el backend real (la compra, el checkout con sus fallas, la gestión de pedidos, el inventario, los cupones, la bitácora, el dashboard en tiempo real y las exportaciones, entre otros). Cada corrida registra un cliente nuevo (`e2e-<corrida>-…@prueba.gt`) por la API pública, así que no depende de la semilla demo ni de otra corrida. El registro admite 3 por minuto por IP (A-07): no conviene repetirla más de unas 3 veces por minuto. Otra URL con `SHOPCART_URL`; el _fixture_ `apiAdmin` usa `SHOPCART_ADMIN_CORREO` y `SHOPCART_ADMIN_CONTRASENA` (por defecto, el Administrador de la tabla de usuarios).
+- **E2E de la web:** 57 escenarios en 16 archivos contra el backend real: 44 de flujos (la compra, el checkout con sus fallas, la gestión de pedidos, el inventario, los cupones, la bitácora, el dashboard en tiempo real y las exportaciones, entre otros) y 13 del diseño (`diseno.spec.ts`, el último proyecto: el ingreso sin scroll vertical, ninguna pantalla con scroll horizontal en 360 px y el encabezado de las tablas en 1024 y 1280 px). Cada corrida registra un cliente nuevo (`e2e-<corrida>-…@prueba.gt`) por la API pública, así que no depende de la semilla demo ni de otra corrida. El registro admite 3 por minuto por IP (A-07): no conviene repetirla más de unas 3 veces por minuto. Otra URL con `SHOPCART_URL`; el _fixture_ `apiAdmin` usa `SHOPCART_ADMIN_CORREO` y `SHOPCART_ADMIN_CONTRASENA` (por defecto, el Administrador de la tabla de usuarios).
 - **Concurrencia:** escenario 1, la última unidad de una variante: 1 pedido y 19 × `409 STOCK_INSUFICIENTE`. Escenario 2, el último uso de un cupón: 1 pedido y 19 × `422 CUPON_AGOTADO`. Verifica además la existencia final, la conciliación de inventario vacía, el contador del cupón y que respondieron las dos réplicas. Crea sus propios datos con la API, así que se puede repetir sin reiniciar nada; como cada corrida inicia sesión una vez por cliente y el login admite 5 intentos por minuto por IP y correo (A-07), no conviene repetirla más de unas 4 veces por minuto. Otra URL con `SHOPCART_URL`.
 
 **Balanceo y tolerancia a fallas (demo):**
@@ -549,7 +563,7 @@ docker compose start api-1        # nginx la reincorpora sola
 
 **Migraciones.** `db-migrator` aplica `migrations/V###` → `programmability/R__*` → `seeds/S###` y, si aplicó algo, actualiza las estadísticas para que la primera consulta de cada lista no las construya ([A-27](docs/01-arquitectura.md)); después termina. Tras agregar scripts: `docker compose up -d --build db-migrator`. Un `V###` o `S###` aplicado **no se edita**: si cambia, el migrador falla; se crea el siguiente número.
 
-**La API fuera de Docker** (con SQL Server y Redis levantados y la base migrada): `pnpm --filter @shopcart/api build && pnpm --filter @shopcart/api start` → <http://localhost:3000/api/docs>. La API usa timeouts explícitos hacia SQL Server (`DB_TIMEOUT_CONEXION_MS`, por defecto 2000; `DB_TIMEOUT_CONSULTA_MS`, por defecto 15000): con la base caída, el health responde `503` en unos 2 s.
+**La API fuera de Docker** (con SQL Server y Redis levantados y la base migrada): `pnpm --filter @shopcart/api build && pnpm --filter @shopcart/api start` → <http://localhost:3000/api/docs>. La API usa timeouts explícitos hacia SQL Server (`DB_TIMEOUT_CONEXION_MS`, por defecto 2000; `DB_TIMEOUT_CONSULTA_MS`, por defecto 15000): con la base caída, el health responde `503` en 5 s como mucho. Medido con `docker compose pause sqlserver`: la primera petición de cada réplica tarda 5.0 s (el pool valida una conexión abierta y deja de esperar en su límite de 5 s, [A-26](docs/01-arquitectura.md)) y las siguientes 2.0 s (`DB_TIMEOUT_CONEXION_MS`, al intentar abrir una conexión nueva).
 
 ---
 
@@ -560,6 +574,7 @@ Lo que queda fuera de la entrega, a propósito y con su porqué. Las exclusiones
 - **Pantalla de existencias por bodega:** `GET /api/v1/inventario/bodega` (E3) existe, pero ninguna historia de la Fase 2 tiene esa pantalla; `/backoffice/inventario` muestra física, reservado y disponible. Las cuatro rutas sin pantalla, cada una con su motivo, están en `packages/contrato/exclusiones.json`.
 - **Responder 503 al instante mientras la base está caída (breaker):** hoy cada petición espera hasta 5 s a que el pool le entregue una conexión antes de responder `503 BASE_NO_DISPONIBLE` ([A-26](docs/01-arquitectura.md)). Después de un fallo de conexión, un interruptor podría responder 503 sin esperar durante unos segundos: con la base caída, las peticiones no se acumulan esperando. No se hizo porque agrega estado por réplica y la espera ya está acotada.
 - **Límite de la fila de logins:** como mucho 4 hash de argon2 corren a la vez y los demás esperan en una fila sin límite ([A-26](docs/01-arquitectura.md)). El rate limit de `/auth` cuenta por IP y correo, así que un ataque con muchos correos o muchas IP puede alargar esa fila; hoy eso solo hace lentos los logins, no el resto de la API (los hilos de dns, fs y zlib quedan libres). Un límite de la fila respondería 429 o 503 a los que no caben.
+- **Una ilustración por producto:** hoy la ilustración es por categoría (`Categoria.Ilustracion`, [FE-15](docs/05-arquitectura-frontend.md)), con el color de la variante. Es una limitación conocida: en Accesorios, la billetera, la bufanda y los calcetines (también el cincho, el bolso, la mochila y el sombrero) muestran la gorra, y en Ropa deportiva e Infantil los pantalones muestran la camisa. La mejora es una ilustración por producto, con la de la categoría como respaldo.
 - **Recuperación de contraseña y correos** (como el aviso de exportación terminada): requieren SMTP; con sesión iniciada, el usuario cambia la suya.
 - **Carga pesada (F5):** el script `database/load/L001` con el generador de datos demo a 50,000 pedidos. Ya se midió en una base desechable: ningún listado ni reporte pasa de 1 s ([docs/revision/estado-backend.md](docs/revision/estado-backend.md) §7).
 - **Producción:** SQL Server Standard o Enterprise en lugar de Developer, HTTPS en nginx y secretos fuera de `.env`.
