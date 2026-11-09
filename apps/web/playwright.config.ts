@@ -12,6 +12,10 @@ export default defineConfig({
   // los R__ y la caché de planes se vacía): con cuatro navegadores en la misma máquina, una búsqueda puede tardar
   // más de los 5 s por omisión aunque en caliente responda en 0.25 s. Medido con sys.dm_exec_procedure_stats.
   expect: { timeout: 10_000 },
+  // El plazo total de cada prueba (30 s por omisión). Las que abren un segundo contexto (el Admin junto al
+  // comprador) pagan al cerrarlo la escritura de su traza: bajo la carga de un entorno recién construido se midió
+  // 15 s solo en ese cierre (backoffice-cupones, 9 nov). Las aserciones siguen con sus 10 s.
+  timeout: 60_000,
   reporter: [['list']],
   use: {
     baseURL: URL_TIENDA,
