@@ -1,18 +1,10 @@
-import { rangoDeFechasSchema, consultaPaginacionSchema } from '../../shared/http/index.js';
-// Después de shared/http: @shopcart/shared se evalúa con Zod ya extendido con .openapi().
-import { ordenConsultaSchema } from '@shopcart/shared';
+// A-08: z extendido antes de evaluar @shopcart/shared (ver shared/openapi/zod.ts).
 import { z } from '../../shared/openapi/zod.js';
-import { MODULOS_BITACORA } from './bitacora.types.js';
+// FE-03 (M10-H02): la consulta vive en @shopcart/shared, la misma que valida la URL del backoffice.
+import { consultaBitacoraSchema } from '@shopcart/shared';
 
-// A-12: las fechas son días de Guatemala.
-export const consultaBitacoraSchema = rangoDeFechasSchema.safeExtend({
-  ...consultaPaginacionSchema.shape,
-  modulo: z.enum(MODULOS_BITACORA).optional(),
-  entidad: z.string().trim().min(1).max(50).optional(),
-  ...ordenConsultaSchema(['fecha'], 'fecha', 'desc').shape,
-});
-
-export type ConsultaBitacora = z.infer<typeof consultaBitacoraSchema>;
+export { consultaBitacoraSchema };
+export type { ConsultaBitacora } from '@shopcart/shared';
 
 export const registroBitacoraSchema = z
   .object({

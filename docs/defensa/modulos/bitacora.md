@@ -51,7 +51,7 @@ sequenceDiagram
 | Nunca se registra `HashContrasena` | Trigger con columnas explícitas | [R__TR_Usuarios_Bitacora.sql:30](../../../database/programmability/R__TR_Usuarios_Bitacora.sql#L30 "SELECT i.Correo, i.Nombre, i.IDRol, i.Activo FOR JSON PATH") | §10 |
 | El dinero se audita como texto (`"149.90"`) | Trigger con `CONVERT(VARCHAR)` | [R__TR_Configuracion_Bitacora.sql:27](../../../database/programmability/R__TR_Configuracion_Bitacora.sql#L27 "CONVERT(VARCHAR(20), i.MontoEnvioGratis)") | A-21 |
 | Solo el Administrador la consulta | Ruta + el SP vuelve a validar el rol | [R__SP_Bitacora_Listar.sql:23](../../../database/programmability/R__SP_Bitacora_Listar.sql#L23 "IF @RolActor IS NULL OR @RolActor <> 'Administrador'") | RF-09, A-02 |
-| Filtro por módulo con lista cerrada | Zod (`MODULOS_BITACORA`) | [bitacora.schemas.ts:10](../../../apps/api/src/modules/bitacora/bitacora.schemas.ts#L10 "modulo: z.enum(MODULOS_BITACORA).optional()") | RF-09 |
+| Filtro por módulo con lista cerrada | Zod (`MODULOS_BITACORA`) | [bitacora.ts:23](../../../packages/shared/src/bitacora.ts#L23 "modulo: z.enum(MODULOS_BITACORA).optional()") | RF-09 |
 | Días de Guatemala (UTC-6) en el filtro de fechas | SP | [R__SP_Bitacora_Listar.sql:36](../../../database/programmability/R__SP_Bitacora_Listar.sql#L36 "@HorasUtcGuatemala INT = 6") | A-12 |
 | Paginación en el servidor, lo más reciente primero | SP con `OFFSET/FETCH` e índices por fecha | [R__SP_Bitacora_Listar.sql:50](../../../database/programmability/R__SP_Bitacora_Listar.sql#L50 "THEN b.Fecha END DESC"), [V018__indice_bitacora_modulo_ordenado.sql:4](../../../database/migrations/V018__indice_bitacora_modulo_ordenado.sql#L4 "IX_Bitacora_ModuloFecha") | RNF-1 |
 

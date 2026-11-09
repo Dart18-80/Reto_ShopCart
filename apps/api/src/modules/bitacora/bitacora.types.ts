@@ -1,14 +1,5 @@
-/** RF-09: los módulos que registran en la bitácora (CK_Bitacora_Modulo). */
-export const MODULOS_BITACORA = [
-  'Catalogo',
-  'Inventario',
-  'Cupones',
-  'Pedidos',
-  'Envios',
-  'Usuarios',
-  'Configuracion',
-] as const;
-export type ModuloBitacora = (typeof MODULOS_BITACORA)[number];
+// RF-09: los módulos viven en @shopcart/shared con la consulta (M10-H02).
+export { MODULOS_BITACORA, type ModuloBitacora } from '@shopcart/shared';
 
 export interface RegistroBitacora {
   idBitacora: string;

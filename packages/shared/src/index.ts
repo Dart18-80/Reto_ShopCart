@@ -1,5 +1,11 @@
 // Esquemas Zod y tipos compartidos entre la API y la web; se llenan módulo por módulo.
 export {
+  consultaBitacoraSchema,
+  MODULOS_BITACORA,
+  type ConsultaBitacora,
+  type ModuloBitacora,
+} from './bitacora.js';
+export {
   contrasenaSchema,
   correoSchema,
   loginSchema,

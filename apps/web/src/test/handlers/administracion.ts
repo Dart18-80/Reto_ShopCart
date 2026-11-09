@@ -83,3 +83,41 @@ export function simularConfiguracion(inicial: Configuracion, error?: ErrorSimula
   );
   return { recibidos, lecturas };
 }
+
+export type RegistroBitacora = Respuesta<'/api/v1/bitacora', 'get'>['datos'][number];
+
+export const registroBitacoraDePrueba = (
+  cambios: Partial<RegistroBitacora> = {},
+): RegistroBitacora => ({
+  idBitacora: '900',
+  modulo: 'Catalogo',
+  entidad: 'PrecioVariante',
+  idEntidad: '77',
+  accion: 'Modificar',
+  valorAnterior: { IDPrecioVariante: 70, IDVariante: 50, Precio: '100.00' },
+  valorNuevo: {
+    IDPrecioVariante: 77,
+    IDVariante: 50,
+    Precio: '150.00',
+    VigenteDesde: '2026-11-08T10:00:00',
+  },
+  usuario: { idUsuario: 1, nombre: 'Ana Admin' },
+  requestId: 'req-1',
+  fecha: '2026-11-08T16:00:00.000Z',
+  ...cambios,
+});
+
+/** `GET /bitacora` con los registros indicados; guarda la consulta de cada petición. */
+export function simularBitacora(registros: RegistroBitacora[]) {
+  const consultas: URLSearchParams[] = [];
+  servidor.use(
+    http.get('/api/v1/bitacora', ({ request }) => {
+      consultas.push(new URL(request.url).searchParams);
+      return HttpResponse.json({
+        datos: registros,
+        paginacion: { pagina: 1, tamano: 20, total: registros.length, totalPaginas: 1 },
+      });
+    }),
+  );
+  return consultas;
+}
