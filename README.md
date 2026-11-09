@@ -170,7 +170,7 @@ Para pasar a otra versión:
 1. Abre <http://localhost:8080> y elige un producto del catálogo (la búsqueda no distingue tildes).
 2. En el detalle, elige la talla y el color si los tiene y pulsa **Agregar al carrito** → **Ver carrito**. Opcional: en «¿Tienes un cupón?» escribe `DEMO10` y pulsa **Aplicar**.
 3. Pulsa **Continuar al pago**. Como invitado te pide ingresar: usa `cliente@shopcart.gt` / `Cliente2026!` (tu carrito se fusiona con el de la cuenta).
-4. En **Pagar**, elige la dirección y el método de envío (con el total de cada uno) y pulsa **Continuar al pago**: las unidades quedan apartadas por los minutos que dice la pantalla.
+4. En **Pagar**, la primera vez registra la dirección de entrega (quién recibe, teléfono de 8 dígitos, departamento, municipio y dirección) y pulsa **Guardar dirección**; las siguientes veces se elige de la lista. Elige el método de envío y pulsa **Continuar al pago**: las unidades quedan apartadas por los minutos que dice la pantalla.
 5. Escribe la tarjeta `4242424242424242`, un mes y un año futuros y el CVV `123`, y pulsa **Pagar Q…**. Llegas a tu pedido (`SC-…`, estado Pagado) con el desglose de IVA; queda en **Mis pedidos**.
 6. Para ver las fallas: con `4000000000000002` el pago se rechaza con los intentos restantes; con `4000000000000119` la respuesta «se pierde» y **Reintentar** confirma el mismo pago sin cobrar dos veces.
 7. Cierra sesión e ingresa como `operador@shopcart.gt` / `Operador2026!`: en **Pedidos** lleva tu pedido a En preparación, Despachado y Entregado. Como `admin@shopcart.gt` / `Admin2026!`, el **Dashboard** muestra la venta, y se actualiza solo si lo dejas abierto mientras compras en otra ventana.
