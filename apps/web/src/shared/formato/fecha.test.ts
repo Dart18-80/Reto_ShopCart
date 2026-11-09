@@ -4,8 +4,10 @@ import {
   deEntradaLocal,
   formatearDia,
   formatearDiaYMes,
+  formatearDiaCortoCalendario,
   formatearFechaCalendario,
   formatearFechaHora,
+  formatearMesCalendario,
 } from './fecha';
 
 // 23:30 del 3 de noviembre en Guatemala (UTC-6) es 05:30 del 4 de noviembre en UTC.
@@ -59,6 +61,21 @@ describe('formatearFechaCalendario (FE-10)', () => {
   it('un texto que no es AAAA-MM-DD es un error del programa', () => {
     expect(() => formatearFechaCalendario('03/11/2026')).toThrow(/AAAA-MM-DD/);
     expect(() => formatearFechaCalendario('2026-13-01')).toThrow(/AAAA-MM-DD/);
+  });
+});
+
+describe('formatos cortos de una fecha sin hora (M11-H01: los ejes del dashboard)', () => {
+  it('el día y el mes, sin año: «3 nov»', () => {
+    expect(formatearDiaCortoCalendario('2026-11-03')).toBe('3 nov');
+  });
+
+  it('el mes y el año, sin día: «nov 2026»', () => {
+    expect(formatearMesCalendario('2026-11-01')).toBe('nov 2026');
+  });
+
+  it('validan igual que formatearFechaCalendario', () => {
+    expect(() => formatearDiaCortoCalendario('2026-02-30')).toThrow(/AAAA-MM-DD/);
+    expect(() => formatearMesCalendario('2026-11')).toThrow(/AAAA-MM-DD/);
   });
 });
 

@@ -72,6 +72,7 @@ export {
   idSchema,
   rangoDeFechasSchema,
   TAMANO_MAXIMO_PAGINA,
+  type RangoDeFechas,
 } from './consultas.js';
 export {
   actualizarConfiguracionSchema,
@@ -135,6 +136,16 @@ export {
   type ResolverPago,
   type ResolverReembolso,
 } from './pedidos.js';
+export {
+  AGRUPACIONES,
+  consultaCarritosSchema,
+  consultaVentasSchema,
+  ordenCarritosSchema,
+  type Agrupacion,
+  type ConsultaCarritos,
+  type ConsultaVentas,
+  type OrdenCarritos,
+} from './reportes.js';
 export { ROLES_DE_USUARIO, type RolDeUsuario } from './roles.js';
 export { telefonoSchema } from './telefono.js';
 export { textoNvarchar } from './texto.js';

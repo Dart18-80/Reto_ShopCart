@@ -18,9 +18,6 @@ export interface Resumen extends Rango {
   montoPotencialPerdido: Decimal;
 }
 
-export const AGRUPACIONES = ['dia', 'semana', 'mes'] as const;
-export type Agrupacion = (typeof AGRUPACIONES)[number];
-
 export interface VentasDelPeriodo {
   /** El primer día del periodo (el día, el lunes de la semana o el primero del mes). */
   periodo: string;

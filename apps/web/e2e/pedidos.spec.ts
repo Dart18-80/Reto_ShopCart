@@ -275,3 +275,50 @@ pruebaDeCompra.describe('configuración (M9-H02)', () => {
     },
   );
 });
+
+/** El día de hoy en Guatemala (A-12), como lo espera el filtro del dashboard. */
+const hoyEnGuatemala = () =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guatemala' }).format(new Date());
+
+const cifraDelResumen = (admin: Page, etiqueta: string) =>
+  admin
+    .getByRole('region', { name: 'Resumen del periodo' })
+    .locator('div', { has: admin.locator('dt', { hasText: new RegExp(`^${etiqueta}$`) }) })
+    .locator('dd')
+    .first();
+
+// «Q12,500.50» → 1250050 centavos: la prueba compara cifras de la pantalla sin pasar por decimales binarios.
+const centavos = (texto: string) => Number(texto.replace(/[^\d-]/g, ''));
+
+pruebaDeCompra.describe('dashboard (M11)', () => {
+  pruebaDeCompra(
+    'después de un pedido de prueba, el resumen del día lo incluye',
+    async ({ browser, apiAdmin, crearEnTienda, comprador }, informacion) => {
+      const idProducto = await crearEnTienda(`Gorra ${nombreUnico('dashboard')}`, [
+        { valores: [], precio: '80.00', existencia: 5 },
+      ]);
+      const hoy = hoyEnGuatemala();
+      const contexto = await browser.newContext({ baseURL: informacion.project.use.baseURL });
+      const admin = await contexto.newPage();
+      try {
+        await iniciarSesionPorApi(admin, await crearAdministrador(apiAdmin));
+        await admin.goto(`/backoffice/dashboard?desde=${hoy}&hasta=${hoy}`);
+        const pedidos = cifraDelResumen(admin, 'Pedidos');
+        const ventas = cifraDelResumen(admin, 'Ventas netas');
+        await expect(pedidos).toHaveText(/^\d[\d,]*$/);
+        const pedidosAntes = Number((await pedidos.innerText()).replace(/,/g, ''));
+        const ventasAntes = centavos(await ventas.innerText());
+
+        await agregarAlCarrito(comprador.api, await varianteDe(comprador.api, idProducto));
+        await direccionDe(comprador.api);
+        await comprarCarrito(comprador.api);
+        await admin.reload();
+
+        await expect(pedidos).toHaveText(String(pedidosAntes + 1));
+        expect(centavos(await ventas.innerText())).toBe(ventasAntes + 8000);
+      } finally {
+        await contexto.close();
+      }
+    },
+  );
+});

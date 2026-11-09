@@ -803,7 +803,7 @@ El orden de construcción, por módulos (F1, módulos 1 a 11 y F6), está en [`0
 | M9-H02 | Envíos y configuración | Should | 0.5 | Hecha |
 | M10-H01 | Usuarios | Must | 0.75 | Hecha |
 | M10-H02 | Bitácora | Must | 0.5 | Hecha |
-| M11-H01 | Dashboard con gráficas | Must | 1.25 | Lista |
+| M11-H01 | Dashboard con gráficas | Must | 1.25 | Hecha |
 | M11-H02 | Tiempo real | Could | 0.5 | Lista |
 | M11-H03 | Exportaciones | Could | 0.5 | Lista |
 | F6-H01 | Entrega | Must | 1.0 | Lista |
@@ -841,7 +841,7 @@ El orden de construcción, por módulos (F1, módulos 1 a 11 y F6), está en [`0
 | **M8 Gestión de pedidos** | Detalle y filtros del personal, estados, cancelación, devoluciones, reembolsos y pagos en revisión | 3.0 | Hecha |
 | **M9 Cupones, envíos y configuración** | Cupones, métodos de envío y parámetros del sistema | 1.25 | Hecha |
 | **M10 Usuarios y bitácora** | Usuarios del personal y bitácora con sus cambios | 1.25 | Hecha |
-| **M11 Dashboard** | Gráficas, tiempo real y exportaciones | 2.25 | Lista |
+| **M11 Dashboard** | Gráficas, tiempo real y exportaciones | 2.25 | En curso |
 | **F6 Cierre** | README final, matriz completa (`contrato:cobertura --estricto`) y verificación desde cero | 1.0 | Lista |
 
 ---

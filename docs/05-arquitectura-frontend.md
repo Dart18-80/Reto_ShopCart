@@ -204,7 +204,7 @@ Convención de la API (`01-arquitectura.md` §5.1): `?pagina=1&tamano=20&orden=f
 
 ## 11. Dashboard: gráficas y tiempo real (FE-07, FE-11)
 
-**Gráficas:** Recharts, a través del componente `Chart` de shadcn (colores del tema, tooltips, modo oscuro).
+**Gráficas:** Recharts, a través del componente `Chart` de shadcn (colores del tema, tooltips, modo oscuro). La copia en `shared/ui/chart.tsx` se queda con lo que usa el dashboard: el contenedor con un color por serie como variable CSS y el recuadro del tooltip. El texto del tooltip lo pone cada gráfica con el monto del backend ya formateado (FE-10), nunca con el número de la geometría.
 
 | Reporte | Forma | Por qué |
 |---|---|---|

@@ -63,6 +63,23 @@ export const formatearDiaYMes = (instante: string): string =>
  * el día anterior en Guatemala. Se arma con sus partes.
  */
 export function formatearFechaCalendario(fecha: string): string {
+  const { dia, mes, anio } = partesDelCalendario(fecha);
+  return `${dia} ${mes} ${anio}`;
+}
+
+/** Una fecha sin hora como día y mes: «3 nov» (el eje de las ventas por día o por semana, M11-H01). */
+export function formatearDiaCortoCalendario(fecha: string): string {
+  const { dia, mes } = partesDelCalendario(fecha);
+  return `${dia} ${mes}`;
+}
+
+/** Una fecha sin hora como mes y año: «nov 2026» (las ventas por mes, M11-H01). */
+export function formatearMesCalendario(fecha: string): string {
+  const { mes, anio } = partesDelCalendario(fecha);
+  return `${mes} ${anio}`;
+}
+
+function partesDelCalendario(fecha: string): { dia: string; mes: string; anio: string } {
   const noExiste = () => new Error(`«${fecha}» no es una fecha AAAA-MM-DD que exista.`);
   const partes = PATRON_CALENDARIO.exec(fecha);
   if (!partes) throw noExiste();
@@ -70,7 +87,7 @@ export function formatearFechaCalendario(fecha: string): string {
   const numeroMes = parseInt(mes, 10);
   const numeroDia = parseInt(dia, 10);
   if (numeroDia > diasDelMes(parseInt(anio, 10), numeroMes)) throw noExiste();
-  return `${String(numeroDia)} ${MESES[numeroMes - 1] ?? ''} ${anio}`;
+  return { dia: String(numeroDia), mes: MESES[numeroMes - 1] ?? '', anio };
 }
 
 // --- Fecha y hora escritas en un formulario (`<input type="datetime-local">`, M9-H01: la vigencia de un cupón).

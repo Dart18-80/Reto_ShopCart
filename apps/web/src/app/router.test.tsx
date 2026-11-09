@@ -9,10 +9,13 @@ import { servidor } from '../test/servidor';
 import { crearRutas } from './router';
 import { simularCarrito } from '../test/handlers/carrito';
 import { simularPedidosGestion } from '../test/handlers/pedidos';
+import { simularDashboard } from '../test/handlers/reportes';
 
-// La primera página del Operador (/backoffice/pedidos) pide la lista de la gestión.
+// La primera página del Operador (/backoffice/pedidos) pide la lista de la gestión; la del Administrador
+// (/backoffice/dashboard), sus reportes.
 beforeEach(() => {
   simularPedidosGestion([]);
+  simularDashboard();
 });
 
 // Una página del backoffice que falla al renderizar, para ver el errorElement de su área.

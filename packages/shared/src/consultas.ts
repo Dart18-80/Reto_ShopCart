@@ -32,3 +32,5 @@ export const rangoDeFechasSchema = z
     message: 'La fecha inicial no puede ser posterior a la final.',
     path: ['desde'],
   });
+
+export type RangoDeFechas = z.infer<typeof rangoDeFechasSchema>;
