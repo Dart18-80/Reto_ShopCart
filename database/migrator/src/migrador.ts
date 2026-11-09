@@ -6,7 +6,7 @@ import { conectar, LOGIN_MIGRADOR } from './conexion.ts';
 import { leerConsulta } from './consultas.ts';
 import { ErrorMigracion, mensajeDe } from './errores.ts';
 import { planificar, validarIntegridad, validarOrden, type ScriptAplicado } from './plan.ts';
-import { prepararServidor } from './preparacion.ts';
+import { actualizarEstadisticas, prepararServidor } from './preparacion.ts';
 import { carpetasPara, leerScripts, type Script } from './scripts.ts';
 
 const RECURSO_BLOQUEO = 'ShopCart.Migrador';
@@ -24,7 +24,8 @@ export async function migrar(config: Configuracion, logger: Logger): Promise<voi
     const trabajo = await conectar(config, credenciales, config.baseDatos);
     try {
       await adquirirBloqueo(bloqueo);
-      await aplicarPendientes(trabajo, scripts, config.baseDatos, logger);
+      const aplicados = await aplicarPendientes(trabajo, scripts, config.baseDatos, logger);
+      if (aplicados > 0) await actualizarEstadisticas(config, logger);
     } finally {
       await trabajo.close();
     }
@@ -38,7 +39,7 @@ async function aplicarPendientes(
   scripts: Script[],
   baseDatos: string,
   logger: Logger,
-): Promise<void> {
+): Promise<number> {
   const aplicados = await leerHistorial(trabajo);
   validarIntegridad(scripts, aplicados);
   validarOrden(scripts, aplicados);
@@ -52,6 +53,7 @@ async function aplicarPendientes(
     { baseDatos, aplicados: pendientes.length, total: scripts.length },
     pendientes.length === 0 ? 'La base ya estaba al día' : 'Migración completada',
   );
+  return pendientes.length;
 }
 
 async function adquirirBloqueo(pool: sql.ConnectionPool): Promise<void> {

@@ -8,9 +8,9 @@ export default defineConfig({
   globalSetup: './e2e/preparacion-global.ts',
   // Sin reintentos: una prueba que falla a veces es un error que hay que ver, no esconder.
   retries: 0,
-  // Contra el entorno real recién levantado, la primera ejecución de cada SP compila su plan (el migrador reaplica
-  // los R__ y la caché de planes se vacía): con cuatro navegadores en la misma máquina, una búsqueda puede tardar
-  // más de los 5 s por omisión aunque en caliente responda en 0.25 s. Medido con sys.dm_exec_procedure_stats.
+  // Contra el entorno real recién levantado, la primera ejecución de cada SP compila su plan. Desde A-27 las
+  // estadísticas ya vienen construidas del migrador y la primera carga de cada lista queda bajo 0.3 s, pero la
+  // máquina se comparte con cuatro navegadores: las aserciones tienen 10 s en lugar de los 5 s por omisión.
   expect: { timeout: 10_000 },
   // El plazo total de cada prueba (30 s por omisión). Las que abren un segundo contexto (el Admin junto al
   // comprador) pagan al cerrarlo la escritura de su traza: bajo la carga de un entorno recién construido se midió

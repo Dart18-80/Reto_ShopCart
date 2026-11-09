@@ -99,6 +99,39 @@ describe('migrar contra SQL Server (E0-H03, A-09)', () => {
   });
 });
 
+describe('estadísticas al día después de migrar (A-27)', () => {
+  it('si aplicó scripts, actualiza las estadísticas: la primera consulta no paga su actualización', async () => {
+    const config = configuracion('con-datos', true);
+    const { logger, lineas } = registro();
+
+    await migrar(config, logger);
+
+    const pool = await conectar(
+      config,
+      { usuario: LOGIN_MIGRADOR, contrasena: config.contrasenaMigrador },
+      config.baseDatos,
+    );
+    try {
+      const { recordset } = await pool
+        .request()
+        .query<{ Pendientes: number }>(await consulta('estadisticas-pendientes.sql'));
+      expect(recordset[0]?.Pendientes).toBe(0);
+    } finally {
+      await pool.close();
+    }
+    expect(lineas.map((linea) => linea.msg)).toContain('Estadísticas actualizadas');
+  });
+
+  it('si no había nada que aplicar, no las toca', async () => {
+    await migrar(configuracion('con-datos', true), registro().logger);
+    const segunda = registro();
+
+    await migrar(configuracion('con-datos', false), segunda.logger);
+
+    expect(segunda.lineas.map((linea) => linea.msg)).not.toContain('Estadísticas actualizadas');
+  });
+});
+
 describe('permisos de shopcart_app tras migrar los scripts reales (E0-H03, §10)', () => {
   it('ejecuta SP_Sistema_Health, pero un SELECT directo a una tabla devuelve error de permisos', async () => {
     const config = configuracion(undefined, true);

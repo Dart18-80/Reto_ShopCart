@@ -69,7 +69,7 @@ La prueba de entorno lee el UID del PID 1 de `api-1`, `api-2`, `sqlserver` y `re
 
 - Todas las imágenes de un registro (SQL Server, Redis, Grafana LGTM, Node y nginx) llevan versión exacta y el digest del contenido que pasó las suites (decisión del PO en E9); se actualizan a propósito con el procedimiento del README. Las pruebas lo exigen en el compose y en cada `FROM`: [penalizaciones.test.ts:251](../../../database/migrator/test/penalizaciones.test.ts#L251 "toda imagen del compose que viene de un registro tiene versión exacta y digest") y [penalizaciones.test.ts:257](../../../database/migrator/test/penalizaciones.test.ts#L257 "toda imagen base de los Dockerfile tiene versión exacta y digest").
 - El migrador termina y no se reinicia [docker-compose.yml:123](../../../docker-compose.yml#L123 "restart: 'no'"). Como `sa` crea la base, activa RCSI (A-05) [preparar-servidor.sql:21](../../../database/migrator/sql/preparar-servidor.sql#L21 "SET READ_COMMITTED_SNAPSHOT ON") y crea los logins; luego aplica los scripts como `shopcart_migrator` [preparar-servidor.sql:45](../../../database/migrator/sql/preparar-servidor.sql#L45 "LOGIN shopcart_migrator").
-- Dos migradores a la vez no se pisan: `sp_getapplock` de sesión [migrador.ts:26](../../../database/migrator/src/migrador.ts#L26 "await adquirirBloqueo(bloqueo)"). Cada script corre en su transacción con su fila de historial, con el contexto `Sistema` fijado antes [migrador.ts:93](../../../database/migrator/src/migrador.ts#L93 "establecer-contexto-sistema").
+- Dos migradores a la vez no se pisan: `sp_getapplock` de sesión [migrador.ts:26](../../../database/migrator/src/migrador.ts#L26 "await adquirirBloqueo(bloqueo)"). Cada script corre en su transacción con su fila de historial, con el contexto `Sistema` fijado antes [migrador.ts:95](../../../database/migrator/src/migrador.ts#L95 "establecer-contexto-sistema").
 - Las réplicas no arrancan si el migrador falla, porque esperan `service_completed_successfully` [docker-compose.yml:45](../../../docker-compose.yml#L45 "service_completed_successfully").
 
 ## Volumen de exportaciones compartido (A-24)
@@ -124,7 +124,7 @@ Antes, la conexión esperaba exactamente lo que durara la ráfaga; con la CPU co
 | 8 hilos, antes de que arranque Node | [docker-compose.yml:35](../../../docker-compose.yml#L35 "UV_THREADPOOL_SIZE: '8'") |
 | Como mucho 4 hash a la vez | [auth.contrasenas.ts:20](../../../apps/api/src/modules/auth/auth.contrasenas.ts#L20 "const HASH_A_LA_VEZ = 4") |
 | El permiso se devuelve también si argon2 falla | [auth.concurrencia.ts:30](../../../apps/api/src/modules/auth/auth.concurrencia.ts#L30 "finally {") |
-| 2 conexiones abiertas por réplica | [pool.ts:7](../../../apps/api/src/shared/db/pool.ts#L7 "const CONEXIONES_MINIMAS = 2") |
+| 2 conexiones abiertas por réplica | [pool.ts:8](../../../apps/api/src/shared/db/pool.ts#L8 "const CONEXIONES_MINIMAS = 2") |
 | Sin conexión es 503, no 500 | [ejecutar-sp.ts:77](../../../apps/api/src/shared/db/ejecutar-sp.ts#L77 "error instanceof sql.ConnectionError") |
 | La prueba con la base que no responde | [base-no-disponible.api.test.ts:37](../../../apps/api/test/integracion/sistema/base-no-disponible.api.test.ts#L37 "no poder obtener una conexión responde 503") |
 

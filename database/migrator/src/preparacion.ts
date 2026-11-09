@@ -39,3 +39,21 @@ export async function prepararServidor(config: Configuracion, logger: Logger): P
 
   logger.info({ baseDatos: config.baseDatos }, 'Base, RCSI, logins y HistorialMigracion listos');
 }
+
+/**
+ * A-27: después de aplicar scripts (la semilla llena tablas que se crearon vacías), las estadísticas se construyen
+ * aquí y no en la primera consulta de la API, que lo haría de forma síncrona dentro de su compilación y con el
+ * bloqueo de compilación del SP tomado (medido en frío: esperas de hasta 1.5 s por estadística y de 4 s en la cola
+ * de compilación). sp_updatestats exige ser el dueño de la base o sysadmin: corre como administrador.
+ */
+export async function actualizarEstadisticas(config: Configuracion, logger: Logger): Promise<void> {
+  const admin = { usuario: LOGIN_ADMIN, contrasena: config.contrasenaAdmin };
+  const inicio = performance.now();
+  const base = await conectar(config, admin, config.baseDatos);
+  try {
+    await base.request().batch(await leerConsulta('actualizar-estadisticas'));
+  } finally {
+    await base.close();
+  }
+  logger.info({ duracionMs: Math.round(performance.now() - inicio) }, 'Estadísticas actualizadas');
+}

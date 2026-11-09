@@ -13,7 +13,8 @@ export type NombreConsulta =
   | 'registrar-script'
   | 'establecer-contexto-sistema'
   | 'generar-digest-ledger'
-  | 'verificar-ledger';
+  | 'verificar-ledger'
+  | 'actualizar-estadisticas';
 
 const leidas = new Map<NombreConsulta, Promise<string>>();
 

@@ -93,7 +93,7 @@ El detalle de cada escenario de falla está en [infraestructura.md](infraestruct
 - Idempotente: [migrador.test.ts:52](../../../database/migrator/test/integracion/migrador.test.ts#L52 "ejecutarlo dos veces seguidas no aplica nada la segunda vez").
 - Un `V###` modificado hace fallar: [migrador.test.ts:62](../../../database/migrator/test/integracion/migrador.test.ts#L62 "modificar un V### ya aplicado").
 - Dos migradores a la vez no duplican: [migrador.test.ts:83](../../../database/migrator/test/integracion/migrador.test.ts#L83 "dos migradores a la vez").
-- `shopcart_app` no puede leer tablas: [migrador.test.ts:103](../../../database/migrator/test/integracion/migrador.test.ts#L103 "un SELECT directo a una tabla devuelve error de permisos").
+- `shopcart_app` no puede leer tablas: [migrador.test.ts:136](../../../database/migrator/test/integracion/migrador.test.ts#L136 "un SELECT directo a una tabla devuelve error de permisos").
 - Penalizaciones sobre los scripts: tipos prohibidos [penalizaciones.test.ts:130](../../../database/migrator/test/penalizaciones.test.ts#L130 "ningún FLOAT, REAL, MONEY") y concatenación en SQL dinámico [penalizaciones.test.ts:146](../../../database/migrator/test/penalizaciones.test.ts#L146 "nunca concatena valores").
 
 ## Qué prueba demuestra cada requisito importante
