@@ -1,4 +1,5 @@
--- RF-09: una fila de bitácora por cada creación, cambio o desactivación de un producto.
+-- RF-09: una fila de bitácora por cada creación, cambio o desactivación de un producto. La categoría se registra con
+-- su ID (la identidad) y su nombre en ese momento (decisión del PO al cerrar M11), como Pedido con su Estado.
 CREATE OR ALTER TRIGGER dbo.TR_Catalogo_ProductoBitacora
 ON dbo.Producto
 AFTER INSERT, UPDATE, DELETE
@@ -24,12 +25,16 @@ BEGIN
                 ELSE 'Modificar'
             END,
             CASE WHEN d.IDProducto IS NULL THEN NULL ELSE
-                (SELECT d.IDCategoria, d.Nombre, d.Descripcion, d.Activo FOR JSON PATH, WITHOUT_ARRAY_WRAPPER) END,
+                (SELECT d.IDCategoria, cd.Nombre AS Categoria, d.Nombre, d.Descripcion, d.Activo
+                 FOR JSON PATH, WITHOUT_ARRAY_WRAPPER) END,
             CASE WHEN i.IDProducto IS NULL THEN NULL ELSE
-                (SELECT i.IDCategoria, i.Nombre, i.Descripcion, i.Activo FOR JSON PATH, WITHOUT_ARRAY_WRAPPER) END,
+                (SELECT i.IDCategoria, ci.Nombre AS Categoria, i.Nombre, i.Descripcion, i.Activo
+                 FOR JSON PATH, WITHOUT_ARRAY_WRAPPER) END,
             @IDUsuario, @RequestId
     FROM    inserted AS i
     FULL OUTER JOIN deleted AS d ON d.IDProducto = i.IDProducto
+    LEFT JOIN dbo.Categoria AS cd ON cd.IDCategoria = d.IDCategoria
+    LEFT JOIN dbo.Categoria AS ci ON ci.IDCategoria = i.IDCategoria
     WHERE   i.IDProducto IS NULL OR d.IDProducto IS NULL
        OR   EXISTS (SELECT i.IDCategoria, i.Nombre, i.Descripcion, i.Activo
                     EXCEPT SELECT d.IDCategoria, d.Nombre, d.Descripcion, d.Activo);

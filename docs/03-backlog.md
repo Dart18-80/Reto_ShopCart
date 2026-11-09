@@ -1510,6 +1510,8 @@ No hay frames nuevos: el backoffice reutiliza el layout y la tabla de `26:519`, 
 **CA**
 - [ ] Después de cambiar un precio en M6, la bitácora muestra el cambio con el valor anterior y el nuevo (E2E).
 
+**Decisiones del PO:** `TR_Usuarios_Bitacora` registra el código del rol en lugar de `IDRol` (cierre de M10). Al cerrar M11, `TR_Catalogo_ProductoBitacora` y `TR_Cupones_Bitacora` registran el nombre de la categoría **junto a** `IDCategoria`: el ID es la identidad y el nombre dice cómo se llamaba en ese momento, igual que `Pedido` con `IDEstadoPedido` y `Estado`. Las filas anteriores no cambian.
+
 **Referencias:** RF-09, M-01, E7-H02.
 
 ---

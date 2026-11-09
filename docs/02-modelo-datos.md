@@ -796,9 +796,9 @@ UQ `(IDPedido, IDVariante)`. Índices: `IX_DetallePedido_Variante (IDVariante) I
 
 | Tabla | Trigger | Qué se registra | Módulo |
 |---|---|---|---|
-| `Categoria`, `Producto`, `Variante` | `TR_Catalogo_CategoriaBitacora`, `TR_Catalogo_ProductoBitacora`, `TR_Catalogo_VarianteBitacora` | Creación, cambios, desactivación y existencia física | Catalogo / Inventario |
+| `Categoria`, `Producto`, `Variante` | `TR_Catalogo_CategoriaBitacora`, `TR_Catalogo_ProductoBitacora`, `TR_Catalogo_VarianteBitacora` | Creación, cambios, desactivación y existencia física. El producto registra `IDCategoria` y, junto a él, `Categoria` con el nombre que tenía en ese momento | Catalogo / Inventario |
 | `PrecioVariante` | `TR_Catalogo_PrecioVarianteBitacora` | Cada nueva versión de precio, con el precio anterior. `IDEntidad` es el `IDPrecioVariante` de la nueva versión (siempre la PK del registro afectado) y `ValorAnterior`/`ValorNuevo` incluyen `IDVariante` y el precio. El historial de precios de una variante se lee de `PrecioVariante` con `SP_Catalogo_HistorialPrecios`, no de la bitácora | Catalogo |
-| `Cupon` | `TR_Cupones_Bitacora` | Creación, cambios y desactivación | Cupones |
+| `Cupon` | `TR_Cupones_Bitacora` | Creación, cambios y desactivación; el alcance con `IDCategoria` y `Categoria` (el nombre en ese momento), ninguno de los dos si vale para toda la tienda | Cupones |
 | `Pedido` | `TR_Pedidos_Bitacora` | **Solo cuando cambia `IDEstadoPedido`** | Pedidos |
 | `MetodoEnvio`, `ParametroSistema` | `TR_Envios_Bitacora`, `TR_Configuracion_Bitacora` | Cambios de tarifas y parámetros (N-04) | Envios / Configuracion |
 | `Usuario` | `TR_Usuarios_Bitacora` | Rol y activación, **nunca `HashContrasena`** | Usuarios |

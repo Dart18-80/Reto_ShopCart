@@ -1,5 +1,6 @@
 -- RF-09: creación, cambios y desactivación de cupones. UsosComprometidos es un contador técnico:
--- no se registra, o cada pago llenaría la bitácora.
+-- no se registra, o cada pago llenaría la bitácora. La categoría del alcance va con su ID y su nombre en ese momento
+-- (decisión del PO al cerrar M11); un cupón para toda la tienda no tiene ninguno de los dos (FOR JSON omite NULL).
 CREATE OR ALTER TRIGGER dbo.TR_Cupones_Bitacora
 ON dbo.Cupon
 AFTER INSERT, UPDATE, DELETE
@@ -29,17 +30,21 @@ BEGIN
                 (SELECT d.Codigo, d.Descripcion, d.Tipo, CONVERT(VARCHAR(20), d.Valor) AS Valor,
                         CONVERT(VARCHAR(20), d.MontoMaximoDescuento) AS MontoMaximoDescuento,
                         CONVERT(VARCHAR(20), d.MontoMinimoCompra) AS MontoMinimoCompra,
-                        d.IDCategoria, d.FechaInicio, d.FechaFin, d.LimiteUsosTotal, d.LimiteUsosPorCliente, d.Activo
+                        d.IDCategoria, cd.Nombre AS Categoria,
+                        d.FechaInicio, d.FechaFin, d.LimiteUsosTotal, d.LimiteUsosPorCliente, d.Activo
                  FOR JSON PATH, WITHOUT_ARRAY_WRAPPER) END,
             CASE WHEN i.IDCupon IS NULL THEN NULL ELSE
                 (SELECT i.Codigo, i.Descripcion, i.Tipo, CONVERT(VARCHAR(20), i.Valor) AS Valor,
                         CONVERT(VARCHAR(20), i.MontoMaximoDescuento) AS MontoMaximoDescuento,
                         CONVERT(VARCHAR(20), i.MontoMinimoCompra) AS MontoMinimoCompra,
-                        i.IDCategoria, i.FechaInicio, i.FechaFin, i.LimiteUsosTotal, i.LimiteUsosPorCliente, i.Activo
+                        i.IDCategoria, ci.Nombre AS Categoria,
+                        i.FechaInicio, i.FechaFin, i.LimiteUsosTotal, i.LimiteUsosPorCliente, i.Activo
                  FOR JSON PATH, WITHOUT_ARRAY_WRAPPER) END,
             @IDUsuario, @RequestId
     FROM    inserted AS i
     FULL OUTER JOIN deleted AS d ON d.IDCupon = i.IDCupon
+    LEFT JOIN dbo.Categoria AS cd ON cd.IDCategoria = d.IDCategoria
+    LEFT JOIN dbo.Categoria AS ci ON ci.IDCategoria = i.IDCategoria
     WHERE   i.IDCupon IS NULL OR d.IDCupon IS NULL
        OR   EXISTS (SELECT i.Codigo, i.Descripcion, i.Tipo, i.Valor, i.MontoMaximoDescuento, i.MontoMinimoCompra,
                            i.IDCategoria, i.FechaInicio, i.FechaFin, i.LimiteUsosTotal, i.LimiteUsosPorCliente, i.Activo

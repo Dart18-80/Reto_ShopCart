@@ -8,6 +8,8 @@ import { iniciarSesion, leerSesion } from '../auth/apoyo-auth.js';
 import { usarBaseDePruebas } from '../base-de-pruebas.js';
 import { comoCliente } from '../carrito/apoyo-carrito.js';
 import { crearCupon } from '../checkout/apoyo-checkout.js';
+import { crearProducto, sufijo } from '../catalogo/apoyo-catalogo.js';
+import { leerDatos } from '../../unit/respuestas.js';
 import { unaFila } from '../datos-de-prueba.js';
 
 usarBaseDePruebas();
@@ -52,6 +54,83 @@ const hoyEnGuatemala = async () =>
       FechaUtc: { tipo: sql.DateTime2(3), valor: new Date() },
     })
   ).FechaLocal;
+
+/** Una categoría con un nombre conocido, para leerlo después en la bitácora. */
+async function categoria(prefijo: string) {
+  const nombre = `${prefijo} ${sufijo()}`;
+  const respuesta = await request(app)
+    .post('/api/v1/admin/categorias')
+    .set(comoCliente(admin.token))
+    .send({ nombre });
+  return {
+    nombre,
+    idCategoria: leerDatos(respuesta, z.object({ idCategoria: z.number() })).idCategoria,
+  };
+}
+
+async function ultimoCambio(modulo: string, entidad: string, idEntidad: number) {
+  const { datos } = await bitacora(`modulo=${modulo}&entidad=${entidad}&tamano=100`);
+  const cambio = datos.find((r) => r.idEntidad === String(idEntidad) && r.accion === 'Modificar');
+  if (!cambio)
+    throw new Error(`No hay un cambio de ${entidad} ${String(idEntidad)} en la bitácora`);
+  return cambio;
+}
+
+describe('la categoría en la bitácora (M10-H02, decisión del PO al cerrar M11)', () => {
+  it('mover un producto de categoría registra el ID y el nombre de las dos: «Categoría: X → Y»', async () => {
+    const origen = await categoria('Origen');
+    const destino = await categoria('Destino');
+    const producto = await crearProducto(app, admin.token, origen.idCategoria);
+
+    await request(app)
+      .patch(`/api/v1/admin/productos/${String(producto.idProducto)}`)
+      .set(comoCliente(admin.token))
+      .send({ idCategoria: destino.idCategoria });
+
+    const cambio = await ultimoCambio('Catalogo', 'Producto', producto.idProducto);
+    expect(cambio.valorAnterior).toMatchObject({
+      IDCategoria: origen.idCategoria,
+      Categoria: origen.nombre,
+    });
+    expect(cambio.valorNuevo).toMatchObject({
+      IDCategoria: destino.idCategoria,
+      Categoria: destino.nombre,
+    });
+  });
+
+  it('cambiar el alcance de un cupón registra la categoría de antes y la de después', async () => {
+    const antes = await categoria('Alcance');
+    const despues = await categoria('Alcance nuevo');
+    const { idCupon } = await crearCupon(app, admin.token, {
+      limiteUsosTotal: 2,
+      idCategoria: antes.idCategoria,
+    });
+
+    await request(app)
+      .patch(`/api/v1/admin/cupones/${String(idCupon)}`)
+      .set(comoCliente(admin.token))
+      .send({ idCategoria: despues.idCategoria });
+
+    const cambio = await ultimoCambio('Cupones', 'Cupon', idCupon);
+    expect(cambio.valorAnterior).toMatchObject({
+      IDCategoria: antes.idCategoria,
+      Categoria: antes.nombre,
+    });
+    expect(cambio.valorNuevo).toMatchObject({
+      IDCategoria: despues.idCategoria,
+      Categoria: despues.nombre,
+    });
+  });
+
+  it('un cupón para toda la tienda no tiene categoría: el campo no aparece', async () => {
+    const { idCupon } = await crearCupon(app, admin.token, { limiteUsosTotal: 2 });
+
+    const { datos } = await bitacora('modulo=Cupones&entidad=Cupon&tamano=100');
+    const alta = datos.find((r) => r.idEntidad === String(idCupon) && r.accion === 'Crear');
+
+    expect(alta?.valorNuevo).not.toHaveProperty('Categoria');
+  });
+});
 
 describe('consulta de la bitácora (E7-H02, RF-09)', () => {
   it('filtra por módulo y entidad: el alta de un cupón con quién la hizo y el valor nuevo', async () => {

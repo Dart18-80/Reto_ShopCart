@@ -59,7 +59,7 @@ sequenceDiagram
 | Un cupón por sesión de pago | Constraint `UQ_UsoCupon_IDSesionCheckout` | [V007__checkout.sql:126](../../../database/migrations/V007__checkout.sql#L126 "UQ_UsoCupon_IDSesionCheckout UNIQUE (IDSesionCheckout)") | N-12 |
 | Un cupón usado solo cambia vigencia, límites y estado | `SP_Cupones_Actualizar` bajo `UPDLOCK` del cupón | [R__SP_Cupones_Actualizar.sql:68](../../../database/programmability/R__SP_Cupones_Actualizar.sql#L68 "EXISTS (SELECT 1 FROM dbo.UsoCupon AS u WHERE u.IDCupon = @IDCupon)") | N-12 |
 | El límite total no baja de los usos comprometidos | `CK_Cupon_UsosComprometidos`, traducido a 50511 | [R__SP_Cupones_Actualizar.sql:104](../../../database/programmability/R__SP_Cupones_Actualizar.sql#L104 "THROW 50511, @Error, 1;") | A-13, A-19 |
-| Crear, editar y desactivar quedan en la bitácora; el contador no | Trigger `TR_Cupones_Bitacora` | [R__TR_Cupones_Bitacora.sql:46](../../../database/programmability/R__TR_Cupones_Bitacora.sql#L46 "EXCEPT") | RF-09 |
+| Crear, editar y desactivar quedan en la bitácora; el contador no | Trigger `TR_Cupones_Bitacora` | [R__TR_Cupones_Bitacora.sql:51](../../../database/programmability/R__TR_Cupones_Bitacora.sql#L51 "EXCEPT") | RF-09 |
 | Montos como `DECIMAL(12,2)` en la base y como texto en JSON | Repositorio + controlador | [cupones.repository.ts:55](../../../apps/api/src/modules/cupones/cupones.repository.ts#L55 "sql.Decimal(12, 2)"), [cupones.controller.ts:17](../../../apps/api/src/modules/cupones/cupones.controller.ts#L17 "montoATexto(cupon.valor)") | M-02 |
 
 ## Concurrencia y réplicas

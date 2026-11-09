@@ -49,6 +49,7 @@ sequenceDiagram
 | Anterior y nuevo siempre son JSON válido | `CHECK (ISJSON(...) = 1)` | [V009__bitacora.sql:22](../../../database/migrations/V009__bitacora.sql#L22 "ISJSON(ValorAnterior) = 1") | RF-09 |
 | Módulos y acciones cerrados | `CHECK` de módulo y acción | [V009__bitacora.sql:18](../../../database/migrations/V009__bitacora.sql#L18 "CK_Bitacora_Modulo"), [V009__bitacora.sql:20](../../../database/migrations/V009__bitacora.sql#L20 "CK_Bitacora_Accion") | RF-09 |
 | Nunca se registra `HashContrasena` | Trigger con columnas explícitas | [R__TR_Usuarios_Bitacora.sql:31](../../../database/programmability/R__TR_Usuarios_Bitacora.sql#L31 "SELECT i.Correo, i.Nombre, ri.Codigo AS Rol, i.Activo FOR JSON PATH") | §10 |
+| Una referencia a otra entidad va con su ID y su nombre en ese momento («Categoria: X → Y» al mover un producto o cambiar el alcance de un cupón) | Trigger con `LEFT JOIN` a la entidad | [R__TR_Catalogo_ProductoBitacora.sql:28](../../../database/programmability/R__TR_Catalogo_ProductoBitacora.sql#L28 "cd.Nombre AS Categoria"), [R__TR_Cupones_Bitacora.sql:40](../../../database/programmability/R__TR_Cupones_Bitacora.sql#L40 "ci.Nombre AS Categoria"), [bitacora.api.test.ts:80](../../../apps/api/test/integracion/bitacora/bitacora.api.test.ts#L80 "mover un producto de categoría") | RF-09, decisión del PO |
 | El dinero se audita como texto (`"149.90"`) | Trigger con `CONVERT(VARCHAR)` | [R__TR_Configuracion_Bitacora.sql:27](../../../database/programmability/R__TR_Configuracion_Bitacora.sql#L27 "CONVERT(VARCHAR(20), i.MontoEnvioGratis)") | A-21 |
 | Solo el Administrador la consulta | Ruta + el SP vuelve a validar el rol | [R__SP_Bitacora_Listar.sql:23](../../../database/programmability/R__SP_Bitacora_Listar.sql#L23 "IF @RolActor IS NULL OR @RolActor <> 'Administrador'") | RF-09, A-02 |
 | Filtro por módulo con lista cerrada | Zod (`MODULOS_BITACORA`) | [bitacora.ts:23](../../../packages/shared/src/bitacora.ts#L23 "modulo: z.enum(MODULOS_BITACORA).optional()") | RF-09 |
@@ -67,7 +68,7 @@ sequenceDiagram
 
 - **Intentar `UPDATE` o `DELETE` sobre `Bitacora`:** el motor lo rechaza con el error 37359 al compilar; nunca llega a la API ([ledger.test.ts:19](../../../apps/api/test/integracion/esquema/ledger.test.ts#L19 "rechaza %s")).
 - **Escritura auditada sin contexto** (un SP nuevo que olvidó `SP_Sistema_EstablecerContexto`, o un script manual): 500 `CONTEXTO_NO_ESTABLECIDO` (50004) y no queda nada ([catalogo.ts:38](../../../apps/api/src/shared/errors/catalogo.ts#L38 "CONTEXTO_NO_ESTABLECIDO"), [bitacora.test.ts:119](../../../apps/api/test/integracion/esquema/bitacora.test.ts#L119 "una escritura auditada sin contexto falla con CONTEXTO_NO_ESTABLECIDO")).
-- **Cliente u Operador en `GET /bitacora`:** 403 `SIN_PERMISO` en la ruta ([bitacora.api.test.ts:87](../../../apps/api/test/integracion/bitacora/bitacora.api.test.ts#L87 "es solo para el Admin (403)")). Si el SP se llamara sin rol Administrador, lanza 50005 `INVARIANTE_INTERNA` (500): es un error de programación, no un caso de usuario ([R__SP_Bitacora_Listar.sql:24](../../../database/programmability/R__SP_Bitacora_Listar.sql#L24 "THROW 50005")).
+- **Cliente u Operador en `GET /bitacora`:** 403 `SIN_PERMISO` en la ruta ([bitacora.api.test.ts:166](../../../apps/api/test/integracion/bitacora/bitacora.api.test.ts#L166 "es solo para el Admin (403)")). Si el SP se llamara sin rol Administrador, lanza 50005 `INVARIANTE_INTERNA` (500): es un error de programación, no un caso de usuario ([R__SP_Bitacora_Listar.sql:24](../../../database/programmability/R__SP_Bitacora_Listar.sql#L24 "THROW 50005")).
 - **Filtros inválidos** (módulo fuera de la lista, `desde` posterior a `hasta`, página fuera de rango): 400 `VALIDACION_FALLIDA` ([consultas.ts:31](../../../packages/shared/src/consultas.ts#L31 "desde === undefined || hasta === undefined || desde <= hasta")).
 - **Base caída:** 500 `ERROR_INTERNO`; Redis no interviene (la consulta no tiene caché).
 
@@ -134,7 +135,7 @@ Se revierte con él: el trigger corre dentro de la misma transacción y el SP us
 ### ¿El filtro por fecha usa UTC o la hora de Guatemala?
 
 Días de Guatemala: el SP convierte `desde` y `hasta` a UTC sumando 6 horas, sin aplicar funciones sobre la columna `Fecha`, así que el filtro puede usar el índice por fecha.
-**Muéstralo en:** [bitacora.api.test.ts:74](../../../apps/api/test/integracion/bitacora/bitacora.api.test.ts#L74 "el rango usa días de Guatemala")
+**Muéstralo en:** [bitacora.api.test.ts:153](../../../apps/api/test/integracion/bitacora/bitacora.api.test.ts#L153 "el rango usa días de Guatemala")
 
 ### ¿La consulta pagina en el servidor con muchos registros?
 

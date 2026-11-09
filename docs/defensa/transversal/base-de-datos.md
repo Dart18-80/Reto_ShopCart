@@ -18,7 +18,7 @@ SQL Server es la autoridad de las reglas críticas: el backend **no contiene SQL
 - Nunca los acepta del llamador: si un repositorio intenta pasarlos (aunque cambie mayúsculas), lanza ([ejecutar-sp.ts:104](../../../apps/api/src/shared/db/ejecutar-sp.ts#L104 "lo agrega ejecutarSP desde el contexto; no se pasa a mano")). Prueba: [ejecutar-sp.test.ts:75](../../../apps/api/test/unit/shared/db/ejecutar-sp.test.ts#L75 "RF-01: rechaza que el llamador envíe un parámetro estándar").
 - Fuera de una petición (un job) el rol es `Sistema` ([ejecutar-sp.ts:110](../../../apps/api/src/shared/db/ejecutar-sp.ts#L110 "contexto === undefined ? ROL_SISTEMA : contexto.rol")).
 - Todo SP que escribe llama primero a `SP_Sistema_EstablecerContexto`, que fija `SESSION_CONTEXT` en cada llamada, también con `NULL`, porque las conexiones del pool se reutilizan ([R__SP_Sistema_EstablecerContexto.sql:13](../../../database/programmability/R__SP_Sistema_EstablecerContexto.sql#L13 "sp_set_session_context @key = N'IDUsuario'")). Prueba contra la base: [contexto-de-sesion.test.ts:38](../../../apps/api/test/integracion/shared/contexto-de-sesion.test.ts#L38 "una llamada sin actor (job) limpia el contexto que dejó la petición anterior").
-- Los triggers de bitácora exigen el rol: sin él, `THROW 50004` y nada se escribe ([R__TR_Catalogo_ProductoBitacora.sql:12](../../../database/programmability/R__TR_Catalogo_ProductoBitacora.sql#L12 "THROW 50004")). Prueba: [bitacora.test.ts:119](../../../apps/api/test/integracion/esquema/bitacora.test.ts#L119 "una escritura auditada sin contexto falla con CONTEXTO_NO_ESTABLECIDO").
+- Los triggers de bitácora exigen el rol: sin él, `THROW 50004` y nada se escribe ([R__TR_Catalogo_ProductoBitacora.sql:13](../../../database/programmability/R__TR_Catalogo_ProductoBitacora.sql#L13 "THROW 50004")). Prueba: [bitacora.test.ts:119](../../../apps/api/test/integracion/esquema/bitacora.test.ts#L119 "una escritura auditada sin contexto falla con CONTEXTO_NO_ESTABLECIDO").
 
 ## Nomenclatura y tipos
 
@@ -151,7 +151,7 @@ Solo en `SP_Catalogo_BuscarProductos`: se concatenan fragmentos constantes, los 
 ### ¿Cómo sabe la bitácora quién hizo el cambio si el trigger no recibe parámetros?
 
 Cada SP que escribe llama a `SP_Sistema_EstablecerContexto`, que deja usuario, rol y `RequestId` en `SESSION_CONTEXT`; el trigger los lee y falla con 50004 si falta el rol.
-**Muéstralo en:** [R__TR_Catalogo_ProductoBitacora.sql:12](../../../database/programmability/R__TR_Catalogo_ProductoBitacora.sql#L12 "THROW 50004")
+**Muéstralo en:** [R__TR_Catalogo_ProductoBitacora.sql:13](../../../database/programmability/R__TR_Catalogo_ProductoBitacora.sql#L13 "THROW 50004")
 
 ### ¿Puede un administrador borrar una fila del kardex o de la bitácora?
 

@@ -233,6 +233,8 @@ const DIA_MS = 24 * 60 * 60 * 1000;
 export interface LimitesCupon {
   limiteUsosTotal: number;
   limiteUsosPorCliente?: number;
+  /** Sin ella, el cupón vale para toda la tienda. */
+  idCategoria?: number;
 }
 
 /** Un cupón vigente de Q5.00 con los límites dados, creado por el Admin. */
