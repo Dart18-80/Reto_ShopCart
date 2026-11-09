@@ -7791,6 +7791,10 @@ export interface components {
             numeroPedido: string | null;
             /** @enum {string} */
             origen: "Cancelacion" | "Devolucion" | "SinPedido";
+            /** @description M8-H05: si el Admin puede reintentarlo ahora (un Fallido, o un Pendiente sin reclamo vigente) */
+            puedeReintentar: boolean;
+            /** @description M8-H05: si el Admin puede resolverlo a mano ahora (Fallido y pasado el plazo desde su último intento) */
+            puedeResolver: boolean;
             referenciaResolucion: string | null;
             ultimoError: string | null;
         };

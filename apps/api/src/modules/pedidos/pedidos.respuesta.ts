@@ -214,6 +214,14 @@ export const reembolsoSchema = z
     motivoResolucion: z.string().nullable(),
     referenciaResolucion: z.string().nullable(),
     fechaResolucion: z.iso.datetime().nullable(),
+    puedeReintentar: z.boolean().openapi({
+      description:
+        'M8-H05: si el Admin puede reintentarlo ahora (un Fallido, o un Pendiente sin reclamo vigente)',
+    }),
+    puedeResolver: z.boolean().openapi({
+      description:
+        'M8-H05: si el Admin puede resolverlo a mano ahora (Fallido y pasado el plazo desde su último intento)',
+    }),
   })
   .openapi('Reembolso');
 

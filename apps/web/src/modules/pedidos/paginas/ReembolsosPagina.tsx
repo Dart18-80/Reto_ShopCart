@@ -112,10 +112,10 @@ const columnas = (
     etiqueta: 'Acciones',
     prioridad: 1,
     alineacion: 'fin',
-    // N-09: solo un Fallido se reintenta o se resuelve a mano; lo demás lo procesa el job.
-    celda: (r) =>
-      r.estado === 'Fallido' && (
-        <span className="inline-flex gap-1">
+    // M8-H05: el backend dice qué se puede hacer con cada uno (las mismas funciones que exigen sus SPs).
+    celda: (r) => (
+      <span className="inline-flex gap-1">
+        {r.puedeReintentar && (
           <Button
             variant="link"
             size="sm"
@@ -127,9 +127,10 @@ const columnas = (
           >
             Reintentar
           </Button>
-          <DialogoResolverReembolso reembolso={r} />
-        </span>
-      ),
+        )}
+        {r.puedeResolver && <DialogoResolverReembolso reembolso={r} />}
+      </span>
+    ),
   },
 ];
 

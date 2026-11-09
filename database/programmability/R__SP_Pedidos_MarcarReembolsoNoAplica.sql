@@ -47,7 +47,8 @@ BEGIN
             THROW 50709, N'Solo se resuelve a mano un reembolso Fallido; este ya no lo está.', 1;
         IF @FechaActualizacion <> @FechaActualizacionLeida
             THROW 50002, N'El reembolso cambió mientras lo resolvías. Recarga y vuelve a intentarlo.', 1;
-        IF @FechaActualizacion > DATEADD(SECOND, -@SegundosEsperaMinima, SYSUTCDATETIME())
+        IF EXISTS (SELECT 1 FROM dbo.FU_Pedidos_ReembolsoResoluble(@Estado, @FechaActualizacion, @SegundosEsperaMinima) AS a
+                   WHERE a.PlazoCumplido = 0)
             THROW 50711, N'Este reembolso falló hace muy poco y la pasarela aún podría estar procesándolo. Espera un momento y vuelve a intentarlo.', 1;
 
         UPDATE dbo.Reembolso

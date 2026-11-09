@@ -49,7 +49,8 @@ BEGIN
         -- sqlserver-sp §9.4: concurrencia optimista contra lo que el servicio consultó en la pasarela.
         IF @FechaActualizacion <> @FechaActualizacionLeida
             THROW 50002, N'El reembolso cambió mientras lo resolvías. Recarga y vuelve a intentarlo.', 1;
-        IF @FechaActualizacion > DATEADD(SECOND, -@SegundosEsperaMinima, SYSUTCDATETIME())
+        IF EXISTS (SELECT 1 FROM dbo.FU_Pedidos_ReembolsoResoluble(@Estado, @FechaActualizacion, @SegundosEsperaMinima) AS a
+                   WHERE a.PlazoCumplido = 0)
             THROW 50711, N'Este reembolso falló hace muy poco y la pasarela aún podría estar procesándolo. Espera un momento y vuelve a intentarlo.', 1;
 
         UPDATE dbo.Reembolso
@@ -68,9 +69,12 @@ BEGIN
 
     SELECT r.IDReembolso, r.IDPedido, p.NumeroPedido, r.IDIntentoPago, r.IDDevolucion, r.Origen, r.Monto, r.Estado,
            r.Intentos, r.UltimoError, r.IDTransaccionReembolso, r.FechaProximoIntento, r.FechaCompletado,
-           r.FechaCreacion, r.MotivoResolucion, r.ReferenciaResolucion, r.FechaResolucion
+           r.FechaCreacion, r.MotivoResolucion, r.ReferenciaResolucion, r.FechaResolucion,
+           a.PuedeReintentar, b.PuedeResolver
     FROM   dbo.Reembolso AS r
     LEFT JOIN dbo.Pedido AS p ON p.IDPedido = r.IDPedido
+    CROSS APPLY dbo.FU_Pedidos_ReembolsoReintentable(r.Estado, r.TokenReclamo, r.FechaProximoIntento) AS a
+    CROSS APPLY dbo.FU_Pedidos_ReembolsoResoluble(r.Estado, r.FechaActualizacion, @SegundosEsperaMinima) AS b
     WHERE  r.IDReembolso = @IDReembolso;
 END
 GO

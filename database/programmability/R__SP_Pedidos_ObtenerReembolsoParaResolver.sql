@@ -17,12 +17,11 @@ BEGIN
     IF @RolActor IS NULL OR @RolActor <> 'Administrador'
         THROW 50005, N'Solo el Administrador consulta un reembolso para resolverlo.', 1;
 
-    SELECT r.Estado, r.LlaveIdempotencia, i.LlaveIdempotencia AS LlaveIntento, r.FechaActualizacion,
-           CONVERT(BIT, IIF(r.FechaActualizacion > DATEADD(SECOND, -@SegundosEsperaMinima, SYSUTCDATETIME()), 0, 1))
-               AS PlazoCumplido
+    SELECT r.Estado, r.LlaveIdempotencia, i.LlaveIdempotencia AS LlaveIntento, r.FechaActualizacion, a.PlazoCumplido
     FROM   dbo.Reembolso AS r
     LEFT JOIN dbo.Pedido AS p ON p.IDPedido = r.IDPedido
     JOIN   dbo.IntentoPago AS i ON i.IDIntentoPago = COALESCE(p.IDIntentoPago, r.IDIntentoPago)
+    CROSS APPLY dbo.FU_Pedidos_ReembolsoResoluble(r.Estado, r.FechaActualizacion, @SegundosEsperaMinima) AS a
     WHERE  r.IDReembolso = @IDReembolso;
 END
 GO

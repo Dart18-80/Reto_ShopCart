@@ -412,6 +412,51 @@ describe('reembolsos Fallido resueltos a mano (E9-H04)', () => {
     return pedido;
   }
 
+  const accionesEnLista = async (idReembolso: number) => {
+    const lista = z
+      .object({
+        datos: z.array(
+          z.object({
+            idReembolso: z.number(),
+            estado: z.string(),
+            puedeReintentar: z.boolean(),
+            puedeResolver: z.boolean(),
+          }),
+        ),
+      })
+      .parse(
+        (
+          await request(app)
+            .get('/api/v1/admin/reembolsos')
+            .query({ tamano: 100 })
+            .set(comoCliente(tokenAdmin))
+        ).body,
+      );
+    return lista.datos.find((r) => r.idReembolso === idReembolso);
+  };
+
+  it('el listado dice lo que el Admin puede hacer con cada uno, con las reglas de los SPs (M8-H05)', async () => {
+    const reciente = await reembolsoFallido(sinReembolsos, 0);
+    const viejo = await reembolsoFallido();
+
+    expect(await accionesEnLista(reciente.idReembolso)).toMatchObject({
+      estado: 'Fallido',
+      puedeReintentar: true,
+      puedeResolver: false,
+    });
+    expect(await accionesEnLista(viejo.idReembolso)).toMatchObject({
+      puedeReintentar: true,
+      puedeResolver: true,
+    });
+
+    expect((await resolverReembolso(tokenAdmin, viejo.idReembolso)).status).toBe(200);
+    expect(await accionesEnLista(viejo.idReembolso)).toMatchObject({
+      estado: 'ResueltoManual',
+      puedeReintentar: false,
+      puedeResolver: false,
+    });
+  });
+
   it('uno que falló hace menos del plazo no se resuelve: 409 REEMBOLSO_RECIENTE, y los SPs también lo exigen', async () => {
     const { idPedido, idReembolso } = await reembolsoFallido(sinReembolsos, 0);
     const leido = await leerParaResolver(idReembolso);

@@ -3245,6 +3245,14 @@
             ],
             "type": "string"
           },
+          "puedeReintentar": {
+            "description": "M8-H05: si el Admin puede reintentarlo ahora (un Fallido, o un Pendiente sin reclamo vigente)",
+            "type": "boolean"
+          },
+          "puedeResolver": {
+            "description": "M8-H05: si el Admin puede resolverlo a mano ahora (Fallido y pasado el plazo desde su último intento)",
+            "type": "boolean"
+          },
           "referenciaResolucion": {
             "type": [
               "string",
@@ -3275,7 +3283,9 @@
           "fechaCreacion",
           "motivoResolucion",
           "referenciaResolucion",
-          "fechaResolucion"
+          "fechaResolucion",
+          "puedeReintentar",
+          "puedeResolver"
         ],
         "type": "object"
       },

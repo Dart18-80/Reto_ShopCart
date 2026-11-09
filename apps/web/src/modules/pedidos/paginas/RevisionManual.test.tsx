@@ -24,13 +24,15 @@ const COMPLETADO = reembolsoDePrueba({
   estado: 'Completado',
   ultimoError: null,
   intentos: 1,
+  puedeReintentar: false,
+  puedeResolver: false,
 });
 
 const fila = async (texto: string) =>
   within((await screen.findByText(texto)).closest('tr') ?? document.body);
 
 describe('ReembolsosPagina (M8-H05)', () => {
-  it('lista los reembolsos con su estado y ofrece Reintentar y Resolver solo a un Fallido', async () => {
+  it('lista los reembolsos con su estado y ofrece Reintentar y Resolver según lo que dice el backend', async () => {
     simularReembolsos([FALLIDO, COMPLETADO]);
     abrir('/backoffice/reembolsos');
 
@@ -43,6 +45,19 @@ describe('ReembolsosPagina (M8-H05)', () => {
     expect(completado.getByText('Intento 900')).toBeInTheDocument();
     expect(completado.getByText('Cobro sin pedido')).toBeInTheDocument();
     expect(completado.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('uno que falló hace muy poco se puede reintentar pero todavía no resolver (puedeResolver del backend)', async () => {
+    simularReembolsos([reembolsoDePrueba({ puedeResolver: false })]);
+    abrir('/backoffice/reembolsos');
+
+    const reciente = await fila('#12');
+    expect(
+      reciente.getByRole('button', { name: 'Reintentar el reembolso 12' }),
+    ).toBeInTheDocument();
+    expect(
+      reciente.queryByRole('button', { name: 'Resolver el reembolso 12' }),
+    ).not.toBeInTheDocument();
   });
 
   it('filtrar por estado va en la URL y al servidor', async () => {
@@ -63,7 +78,14 @@ describe('ReembolsosPagina (M8-H05)', () => {
     const { usuario } = abrir('/backoffice/reembolsos');
 
     const fallido = await fila('#12');
-    lista.reemplazar([reembolsoDePrueba({ estado: 'Completado', ultimoError: null })]);
+    lista.reemplazar([
+      reembolsoDePrueba({
+        estado: 'Completado',
+        ultimoError: null,
+        puedeReintentar: false,
+        puedeResolver: false,
+      }),
+    ]);
     await usuario.click(fallido.getByRole('button', { name: 'Reintentar el reembolso 12' }));
 
     expect(

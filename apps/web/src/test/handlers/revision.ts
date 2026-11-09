@@ -39,6 +39,8 @@ export const reembolsoDePrueba = (cambios: Partial<ReembolsoDePrueba> = {}): Ree
   motivoResolucion: null,
   referenciaResolucion: null,
   fechaResolucion: null,
+  puedeReintentar: true,
+  puedeResolver: true,
   ...cambios,
 });
 

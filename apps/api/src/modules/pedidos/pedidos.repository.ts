@@ -139,6 +139,8 @@ interface FilaReembolso {
   MotivoResolucion: string | null;
   ReferenciaResolucion: string | null;
   FechaResolucion: Date | null;
+  PuedeReintentar: boolean;
+  PuedeResolver: boolean;
 }
 
 // IDIntentoPago es BIGINT: el driver lo entrega como texto; los IDs caben de sobra en un number.
@@ -209,6 +211,8 @@ const aReembolso = (fila: FilaReembolso): Reembolso => ({
   motivoResolucion: fila.MotivoResolucion,
   referenciaResolucion: fila.ReferenciaResolucion,
   fechaResolucion: fila.FechaResolucion,
+  puedeReintentar: fila.PuedeReintentar,
+  puedeResolver: fila.PuedeResolver,
 });
 
 const aCambio = (fila: FilaHistorial): CambioDeEstado => ({
@@ -473,13 +477,18 @@ export const pedidosRepository = {
     return ejecutada ? tomados.map((t) => t.IDReembolso) : null;
   },
 
-  async listarReembolsos(filtros: ListarReembolsos): Promise<PaginaSP<Reembolso>> {
+  /** M8-H05: con el plazo para resolver a mano, el SP calcula puedeReintentar y puedeResolver de cada uno. */
+  async listarReembolsos(
+    filtros: ListarReembolsos,
+    segundosEsperaMinima: number,
+  ): Promise<PaginaSP<Reembolso>> {
     const { filas, total } = await ejecutarSPPaginado<FilaReembolso>(
       'SP_Pedidos_ListarReembolsos',
       {
         Estado: { tipo: sql.VarChar(14), valor: filtros.estado ?? null },
         Pagina: { tipo: sql.Int, valor: filtros.pagina },
         Tamano: { tipo: sql.Int, valor: filtros.tamano },
+        SegundosEsperaMinima: { tipo: sql.Int, valor: segundosEsperaMinima },
       },
     );
     return { filas: filas.map(aReembolso), total };

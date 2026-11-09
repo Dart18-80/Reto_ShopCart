@@ -123,6 +123,9 @@ export interface Reembolso {
   motivoResolucion: string | null;
   referenciaResolucion: string | null;
   fechaResolucion: Date | null;
+  /** M8-H05: lo que el Admin puede hacer ahora, con las mismas funciones que exigen los SPs. */
+  puedeReintentar: boolean;
+  puedeResolver: boolean;
 }
 
 export const CAUSAS_REVISION = ['AutorizacionInexistente', 'CobroSinPedido'] as const;

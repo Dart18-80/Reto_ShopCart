@@ -20,12 +20,13 @@ BEGIN
     BEGIN TRY
         BEGIN TRAN;
 
-        UPDATE dbo.Reembolso
-        SET    Estado = 'Pendiente', Intentos = IIF(Estado = 'Fallido', 0, Intentos),
+        -- La regla de quién se puede reintentar vive en FU_Pedidos_ReembolsoReintentable (la misma que ofrece el botón).
+        UPDATE r
+        SET    Estado = 'Pendiente', Intentos = IIF(r.Estado = 'Fallido', 0, r.Intentos),
                FechaProximoIntento = SYSUTCDATETIME(), FechaActualizacion = SYSUTCDATETIME()
-        WHERE  IDReembolso = @IDReembolso
-          AND  (Estado = 'Fallido'
-                OR (Estado = 'Pendiente' AND (TokenReclamo IS NULL OR FechaProximoIntento <= SYSUTCDATETIME())));
+        FROM   dbo.Reembolso AS r
+        CROSS APPLY dbo.FU_Pedidos_ReembolsoReintentable(r.Estado, r.TokenReclamo, r.FechaProximoIntento) AS a
+        WHERE  r.IDReembolso = @IDReembolso AND a.PuedeReintentar = 1;
 
         COMMIT;
     END TRY

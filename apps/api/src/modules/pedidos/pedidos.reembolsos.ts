@@ -221,7 +221,7 @@ export function crearReembolsosService({ repositorio, pasarela, logger, reportes
     },
 
     listar: (filtros: ListarReembolsos): Promise<PaginaSP<Reembolso>> =>
-      repositorio.listarReembolsos(filtros),
+      repositorio.listarReembolsos(filtros, SEGUNDOS_ANTES_DE_RESOLVER_A_MANO),
 
     async reintentar(idReembolso: number): Promise<EstadoReembolso> {
       const estado = await repositorio.reintentarReembolso(idReembolso);
