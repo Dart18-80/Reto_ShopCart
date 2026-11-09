@@ -11,7 +11,9 @@ import { iniciarSesion, leerSesion, registrar } from '../auth/apoyo-auth.js';
 import { usarBaseDePruebas } from '../base-de-pruebas.js';
 import { varianteVendible } from '../carrito/apoyo-carrito.js';
 import { conToken, crearCategoria } from '../catalogo/apoyo-catalogo.js';
-import { crearUsuario, leerBitacora, unaFila } from '../datos-de-prueba.js';
+import { Decimal } from 'decimal.js';
+import { cuponesRepository } from '../../../src/modules/cupones/cupones.repository.js';
+import { comoActor, crearUsuario, leerBitacora, unaFila } from '../datos-de-prueba.js';
 
 usarBaseDePruebas();
 
@@ -308,7 +310,7 @@ describe('editar cupones (E4-H04, N-12)', () => {
       'fechaFin',
     ],
   ])(
-    '%s responde 400 con el campo en detalles (CHECK de la base)',
+    '%s responde 400 con el campo en la forma estándar de detalles (CHECK de la base, M9-H01)',
     async (_caso, inicial, cambio, campo) => {
       const { idCupon } = await cuponNuevo(inicial);
 
@@ -317,10 +319,35 @@ describe('editar cupones (E4-H04, N-12)', () => {
       expect(respuesta.status).toBe(400);
       expect(leerError(respuesta)).toMatchObject({
         codigo: 'PARAMETRO_INVALIDO',
-        detalles: { campo },
+        detalles: { errores: [{ campo: `body.${campo}`, mensaje: expect.any(String) as unknown }] },
       });
     },
   );
+
+  it('el SP de alta traduce un CHECK a la forma estándar de detalles (M9-H01, A-19)', async () => {
+    // Zod lo rechazaría antes: se llama al SP directo para probar su última defensa.
+    const fallo = await comoActor(admin.idUsuario, 'Administrador', () =>
+      cuponesRepository.crear({
+        codigo: codigoUnico().toUpperCase(),
+        descripcion: 'Porcentaje imposible',
+        tipo: 'Porcentaje',
+        valor: new Decimal(150),
+        montoMaximoDescuento: null,
+        montoMinimoCompra: new Decimal(0),
+        idCategoria: null,
+        fechaInicio: new Date(Date.now() + DIA_MS),
+        fechaFin: new Date(Date.now() + 2 * DIA_MS),
+        limiteUsosTotal: 10,
+        limiteUsosPorCliente: 1,
+        activo: true,
+      }),
+    ).catch((error: unknown) => error);
+
+    expect(fallo).toMatchObject({
+      codigo: 'PARAMETRO_INVALIDO',
+      detalles: { errores: [{ campo: 'body.valor', mensaje: expect.any(String) as unknown }] },
+    });
+  });
 
   it('cambiar a un código que ya existe responde 409', async () => {
     const existente = await cuponNuevo();

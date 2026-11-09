@@ -2,8 +2,8 @@ import type { RequestHandler } from 'express';
 import { montoATexto } from '../../shared/dinero/index.js';
 import { manejar, paginar } from '../../shared/http/index.js';
 import {
-  actualizarCuponSchema,
-  crearCuponSchema,
+  actualizarCuponEntradaSchema,
+  crearCuponEntradaSchema,
   listarCuponesSchema,
   paramsIdCuponSchema,
 } from './cupones.schemas.js';
@@ -42,12 +42,12 @@ export function crearCuponesController(servicio: CuponesService): CuponesControl
       res.json({ datos: aRespuesta(await servicio.obtener(params.id)) });
     }),
 
-    crear: manejar({ body: crearCuponSchema }, async ({ body }, res) => {
+    crear: manejar({ body: crearCuponEntradaSchema }, async ({ body }, res) => {
       res.status(HTTP_CREADO).json({ datos: aRespuesta(await servicio.crear(body)) });
     }),
 
     actualizar: manejar(
-      { params: paramsIdCuponSchema, body: actualizarCuponSchema },
+      { params: paramsIdCuponSchema, body: actualizarCuponEntradaSchema },
       async ({ params, body }, res) => {
         res.json({ datos: aRespuesta(await servicio.actualizar(params.id, body)) });
       },

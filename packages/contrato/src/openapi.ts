@@ -7229,15 +7229,7 @@ export interface components {
             limiteUsosPorCliente: number;
             limiteUsosTotal: number;
             montoMaximoDescuento?: string;
-            /**
-             * @default {
-             *       "d": [
-             *         0
-             *       ],
-             *       "e": 0,
-             *       "s": 1
-             *     }
-             */
+            /** @default 0.00 */
             montoMinimoCompra: string;
             /** @enum {string} */
             tipo: "Porcentaje" | "MontoFijo";

@@ -913,13 +913,7 @@
             "type": "string"
           },
           "montoMinimoCompra": {
-            "default": {
-              "d": [
-                0
-              ],
-              "e": 0,
-              "s": 1
-            },
+            "default": "0.00",
             "pattern": "^\\d{1,10}(\\.\\d{1,2})?$",
             "type": "string"
           },

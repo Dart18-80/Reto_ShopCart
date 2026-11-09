@@ -4,7 +4,7 @@
 --   tipo, valor, categoría, compra mínima, tope y código son inmutables: 50509 con el campo en los detalles.
 --   Se decide bajo el bloqueo del cupón, el mismo que toma la reserva de un uso (sqlserver-sp §9.2).
 -- - Un CHECK violado con los valores ya combinados (por ejemplo, una fecha final anterior a la inicial
---   guardada) se traduce a 50003 con el campo en los detalles (FU_Cupones_RestriccionViolada).
+--   guardada) se traduce a 50003 con el campo en detalles.errores (FU_Cupones_RestriccionViolada).
 -- - Bajar LimiteUsosTotal por debajo de UsosComprometidos lo rechaza CK_Cupon_UsosComprometidos (A-13);
 --   el CATCH traduce esa constraint a 50511 con los usos comprometidos en los detalles (A-19).
 -- Devuelve el cupón.
@@ -113,8 +113,11 @@ BEGIN
             FROM   dbo.FU_Cupones_RestriccionViolada(ERROR_MESSAGE()) AS r;
             IF @Campo IS NOT NULL
             BEGIN
+                -- M9-H01 (A-19, 05 §7): la forma de todo 400 con campos, como los de manejar: errores[{campo, mensaje}].
                 SET @Error = (SELECT @MensajeCampo AS mensaje,
-                                     JSON_QUERY((SELECT @Campo AS campo FOR JSON PATH, WITHOUT_ARRAY_WRAPPER)) AS detalles
+                                     JSON_QUERY((SELECT JSON_QUERY((SELECT N'body.' + @Campo AS campo, @MensajeCampo AS mensaje
+                                                                    FOR JSON PATH)) AS errores
+                                                 FOR JSON PATH, WITHOUT_ARRAY_WRAPPER)) AS detalles
                               FOR JSON PATH, WITHOUT_ARRAY_WRAPPER);
                 THROW 50003, @Error, 1;
             END

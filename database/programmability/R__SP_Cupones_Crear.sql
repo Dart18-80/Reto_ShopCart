@@ -1,7 +1,7 @@
 -- RF-05, N-12: el Admin crea un cupón. El código se guarda en mayúsculas y es único sin distinguir
 -- mayúsculas: UQ_Cupon_Codigo es la autoridad (dos altas simultáneas del mismo código: una responde 50510).
 -- Los CHECK de la tabla son la última defensa de las reglas que Zod ya valida; cada uno se traduce a 50003 con
--- el campo en los detalles (FU_Cupones_RestriccionViolada, A-19). Devuelve el cupón.
+-- el campo en detalles.errores, la forma estándar de un 400 (FU_Cupones_RestriccionViolada, A-19). Devuelve el cupón.
 CREATE OR ALTER PROCEDURE dbo.SP_Cupones_Crear
     @Codigo               VARCHAR(30),
     @Descripcion          NVARCHAR(200),
@@ -51,8 +51,11 @@ BEGIN
             FROM   dbo.FU_Cupones_RestriccionViolada(ERROR_MESSAGE()) AS r;
             IF @Campo IS NOT NULL
             BEGIN
+                -- M9-H01 (A-19, 05 §7): la forma de todo 400 con campos, como los de manejar: errores[{campo, mensaje}].
                 SET @Error = (SELECT @MensajeCampo AS mensaje,
-                                     JSON_QUERY((SELECT @Campo AS campo FOR JSON PATH, WITHOUT_ARRAY_WRAPPER)) AS detalles
+                                     JSON_QUERY((SELECT JSON_QUERY((SELECT N'body.' + @Campo AS campo, @MensajeCampo AS mensaje
+                                                                    FOR JSON PATH)) AS errores
+                                                 FOR JSON PATH, WITHOUT_ARRAY_WRAPPER)) AS detalles
                               FOR JSON PATH, WITHOUT_ARRAY_WRAPPER);
                 THROW 50003, @Error, 1;
             END

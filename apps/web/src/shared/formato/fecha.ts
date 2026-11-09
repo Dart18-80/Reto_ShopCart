@@ -72,3 +72,38 @@ export function formatearFechaCalendario(fecha: string): string {
   if (numeroDia > diasDelMes(parseInt(anio, 10), numeroMes)) throw noExiste();
   return `${String(numeroDia)} ${MESES[numeroMes - 1] ?? ''} ${anio}`;
 }
+
+// --- Fecha y hora escritas en un formulario (`<input type="datetime-local">`, M9-H01: la vigencia de un cupón).
+
+// A-12: Guatemala está en UTC−6 todo el año (no tiene horario de verano).
+const DESFASE_GUATEMALA = '-06:00';
+const PATRON_ENTRADA_LOCAL = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+
+const formatoEntradaLocal = new Intl.DateTimeFormat('en-CA', {
+  timeZone: ZONA_DE_LA_TIENDA,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+});
+
+/** Un instante del backend como lo muestra `datetime-local` en la hora de Guatemala: «2026-11-03T23:30». */
+export function aEntradaLocal(instante: string): string {
+  const partes = Object.fromEntries(
+    formatoEntradaLocal.formatToParts(aInstante(instante)).map((p) => [p.type, p.value]),
+  );
+  return `${partes.year ?? ''}-${partes.month ?? ''}-${partes.day ?? ''}T${partes.hour ?? ''}:${partes.minute ?? ''}`;
+}
+
+/** Si el texto es lo que entrega `datetime-local` («2026-11-03T23:30»). */
+export const esEntradaLocal = (texto: string): boolean => PATRON_ENTRADA_LOCAL.test(texto);
+
+/** Lo que se escribió en `datetime-local`, leído como hora de Guatemala, como instante ISO con su zona. */
+export function deEntradaLocal(local: string): string {
+  if (!esEntradaLocal(local)) {
+    throw new Error(`«${local}» no es una fecha y hora AAAA-MM-DDTHH:mm.`);
+  }
+  return `${local}:00${DESFASE_GUATEMALA}`;
+}

@@ -1,100 +1,59 @@
-import { montoSchema, ordenConsultaSchema, textoNvarchar } from '@shopcart/shared';
-import { Decimal } from 'decimal.js';
 import {
-  booleanoConsultaSchema,
-  consultaPaginacionSchema,
-  idEnRutaSchema,
-  idSchema,
-} from '../../shared/http/index.js';
+  actualizarCuponSchema as actualizarCompartido,
+  consultaCuponesSchema,
+  crearCuponSchema as crearCompartido,
+  montoSchema,
+  TIPOS_CUPON,
+} from '@shopcart/shared';
+import { Decimal } from 'decimal.js';
+import { idEnRutaSchema } from '../../shared/http/index.js';
+import { registroOpenApi } from '../../shared/openapi/index.js';
 import { z } from '../../shared/openapi/zod.js';
-import { TIPOS_CUPON } from './cupones.types.js';
 
-// Tope técnico de los límites de uso, lejos del desborde de INT.
-const LIMITE_MAXIMO_USOS = 1_000_000;
-const PORCENTAJE_MAXIMO = new Decimal(100);
+// M9-H01 (FE-03): los cuerpos y la consulta viven en @shopcart/shared, con los montos y las fechas como texto
+// (FE-10). Las rutas documentan el esquema compartido; el controlador valida con la versión de entrada, que
+// además pasa los montos a Decimal (A-21) y las fechas a Date.
+export const crearCuponSchema = registroOpenApi.register('CrearCupon', crearCompartido);
+export const actualizarCuponSchema = registroOpenApi.register(
+  'ActualizarCupon',
+  actualizarCompartido,
+);
 
-const codigoSchema = z
-  .string()
-  .trim()
-  .regex(
-    /^[A-Za-z0-9_-]{3,30}$/,
-    'El código lleva de 3 a 30 letras, números, guiones o guiones bajos.',
-  )
-  .openapi({ description: 'Se guarda en mayúsculas; único sin distinguir mayúsculas' });
-const montoDecimalSchema = montoSchema.transform((valor) => new Decimal(valor));
-const montoPositivoSchema = montoDecimalSchema.refine((valor) => valor.greaterThan(0), {
-  message: 'Debe ser mayor que cero.',
-});
-const fechaSchema = z.iso.datetime({ offset: true }).transform((valor) => new Date(valor));
-const limiteUsosSchema = z.number().int().min(1).max(LIMITE_MAXIMO_USOS);
+// Un campo que no llegó sigue ausente (PATCH: se conserva); null en el tope lo quita (sqlserver-sp §9.5).
+export const crearCuponEntradaSchema = crearCuponSchema.transform(
+  ({ valor, montoMaximoDescuento, montoMinimoCompra, fechaInicio, fechaFin, ...resto }) => ({
+    ...resto,
+    valor: new Decimal(valor),
+    montoMinimoCompra: new Decimal(montoMinimoCompra),
+    fechaInicio: new Date(fechaInicio),
+    fechaFin: new Date(fechaFin),
+    ...(montoMaximoDescuento === undefined
+      ? {}
+      : { montoMaximoDescuento: new Decimal(montoMaximoDescuento) }),
+  }),
+);
 
-const porcentajeValido = (cupon: { tipo?: string; valor?: Decimal }) =>
-  cupon.tipo !== 'Porcentaje' ||
-  cupon.valor === undefined ||
-  cupon.valor.lessThanOrEqualTo(PORCENTAJE_MAXIMO);
-const vigenciaValida = (cupon: { fechaInicio?: Date; fechaFin?: Date }) =>
-  cupon.fechaInicio === undefined ||
-  cupon.fechaFin === undefined ||
-  cupon.fechaFin > cupon.fechaInicio;
-
-export const crearCuponSchema = z
-  .object({
-    codigo: codigoSchema,
-    descripcion: textoNvarchar(200),
-    tipo: z.enum(TIPOS_CUPON),
-    valor: montoPositivoSchema,
-    montoMaximoDescuento: montoPositivoSchema.optional(),
-    montoMinimoCompra: montoDecimalSchema.default(new Decimal(0)),
-    idCategoria: idSchema.optional(),
-    fechaInicio: fechaSchema,
-    fechaFin: fechaSchema,
-    limiteUsosTotal: limiteUsosSchema,
-    limiteUsosPorCliente: limiteUsosSchema.default(1),
-    activo: z.boolean().default(true),
-  })
-  .strict()
-  .refine(porcentajeValido, { message: 'Un porcentaje no puede pasar de 100.', path: ['valor'] })
-  .refine((cupon) => cupon.tipo === 'Porcentaje' || cupon.montoMaximoDescuento === undefined, {
-    message: 'El tope de descuento solo aplica a cupones de porcentaje.',
-    path: ['montoMaximoDescuento'],
-  })
-  .refine(vigenciaValida, {
-    message: 'La fecha final debe ser posterior a la inicial.',
-    path: ['fechaFin'],
-  })
-  .openapi('CrearCupon');
-
-// PATCH: lo que no llega se conserva; montoMaximoDescuento e idCategoria en null se quitan.
-export const actualizarCuponSchema = z
-  .object({
-    codigo: codigoSchema.optional(),
-    descripcion: textoNvarchar(200).optional(),
-    tipo: z.enum(TIPOS_CUPON).optional(),
-    valor: montoPositivoSchema.optional(),
-    montoMaximoDescuento: montoPositivoSchema.nullable().optional(),
-    montoMinimoCompra: montoDecimalSchema.optional(),
-    idCategoria: idSchema.nullable().optional(),
-    fechaInicio: fechaSchema.optional(),
-    fechaFin: fechaSchema.optional(),
-    limiteUsosTotal: limiteUsosSchema.optional(),
-    limiteUsosPorCliente: limiteUsosSchema.optional(),
-  })
-  .strict()
-  .refine((cambios) => Object.keys(cambios).length > 0, 'Indica al menos un campo.')
-  .refine(porcentajeValido, { message: 'Un porcentaje no puede pasar de 100.', path: ['valor'] })
-  .refine(vigenciaValida, {
-    message: 'La fecha final debe ser posterior a la inicial.',
-    path: ['fechaFin'],
-  })
-  .openapi('ActualizarCupon');
+export const actualizarCuponEntradaSchema = actualizarCuponSchema.transform(
+  ({ valor, montoMaximoDescuento, montoMinimoCompra, fechaInicio, fechaFin, ...resto }) => ({
+    ...resto,
+    ...(valor === undefined ? {} : { valor: new Decimal(valor) }),
+    ...(montoMinimoCompra === undefined
+      ? {}
+      : { montoMinimoCompra: new Decimal(montoMinimoCompra) }),
+    ...(fechaInicio === undefined ? {} : { fechaInicio: new Date(fechaInicio) }),
+    ...(fechaFin === undefined ? {} : { fechaFin: new Date(fechaFin) }),
+    ...(montoMaximoDescuento === undefined
+      ? {}
+      : {
+          montoMaximoDescuento:
+            montoMaximoDescuento === null ? null : new Decimal(montoMaximoDescuento),
+        }),
+  }),
+);
 
 export const paramsIdCuponSchema = z.object({ id: idEnRutaSchema });
 
-export const listarCuponesSchema = consultaPaginacionSchema.extend({
-  activo: booleanoConsultaSchema.optional(),
-  // M6-H01: vigencia ordena por FechaInicio.
-  ...ordenConsultaSchema(['codigo', 'vigencia', 'usos'], 'vigencia', 'desc').shape,
-});
+export const listarCuponesSchema = consultaCuponesSchema;
 
 export const cuponSchema = z
   .object({
@@ -116,6 +75,6 @@ export const cuponSchema = z
   })
   .openapi('Cupon');
 
-export type CrearCupon = z.infer<typeof crearCuponSchema>;
-export type ActualizarCupon = z.infer<typeof actualizarCuponSchema>;
+export type CrearCupon = z.output<typeof crearCuponEntradaSchema>;
+export type ActualizarCupon = z.output<typeof actualizarCuponEntradaSchema>;
 export type ListarCupones = z.infer<typeof listarCuponesSchema>;

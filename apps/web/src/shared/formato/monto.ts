@@ -22,3 +22,18 @@ export function formatearMonto(monto: string): string {
     .map((parte) => parte.value)
     .join('');
 }
+
+/**
+ * FE-10: un porcentaje del backend (texto decimal, «12.50») como lo lee la persona: «12.5 %». Solo quita los ceros
+ * sobrantes del texto; no lo convierte a `number`.
+ */
+export function formatearPorcentaje(valor: string): string {
+  if (!esMonto(valor)) {
+    throw new Error(
+      `«${valor}» no es un porcentaje: el backend lo manda como texto decimal ("10.00").`,
+    );
+  }
+  const [enteros = '', decimales = ''] = valor.split('.');
+  const significativos = decimales.replace(/0+$/, '');
+  return `${enteros}${significativos === '' ? '' : `.${significativos}`} %`;
+}

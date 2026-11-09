@@ -1,9 +1,9 @@
 import { RESOLUCIONES_PAGO, resolverPagoSchema, type ResolucionPago } from '@shopcart/shared';
-import { useId, useState } from 'react';
+import { useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { AvisoFormulario } from '../../../shared/componentes/AvisoFormulario';
 import { CampoFormulario } from '../../../shared/componentes/CampoFormulario';
-import { CLASE_SELECT } from '../../../shared/componentes/CampoSeleccion';
+import { CampoOpciones } from '../../../shared/componentes/CampoOpciones';
 import { formatearMonto } from '../../../shared/formato/monto';
 import { useFormularioApi } from '../../../shared/hooks/useFormularioApi';
 import { Button } from '../../../shared/ui/button';
@@ -15,14 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '../../../shared/ui/dialog';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '../../../shared/ui/form';
+import { Form } from '../../../shared/ui/form';
 import { useResolverPago } from '../hooks/useRevisionManual';
 import { RESOLUCION } from '../revision';
 import type { PagoEnRevision, PagoResuelto } from '../pedidos.api';
@@ -32,51 +25,17 @@ interface FormularioResolverPago {
   motivo: string;
 }
 
-const esResolucion = (valor: string): valor is ResolucionPago =>
-  (RESOLUCIONES_PAGO as readonly string[]).includes(valor);
+const OPCIONES = RESOLUCIONES_PAGO.map((valor) => ({ valor, etiqueta: RESOLUCION[valor].nombre }));
 
 function CampoResolucion() {
-  const { control, watch } = useFormContext<FormularioResolverPago>();
-  const idDetalle = useId();
-  const elegida = watch('resolucion');
+  const elegida = useFormContext<FormularioResolverPago>().watch('resolucion');
   return (
-    <FormField
-      control={control}
-      name="resolucion"
-      render={({ field }) => (
-        <FormItem className="flex flex-col gap-1.5">
-          <FormLabel className="control-etiqueta text-foreground data-[error=true]:text-foreground">
-            Resolución
-          </FormLabel>
-          <FormControl>
-            <select
-              name={field.name}
-              ref={field.ref}
-              onBlur={field.onBlur}
-              value={field.value ?? ''}
-              aria-describedby={elegida ? idDetalle : undefined}
-              onChange={(evento) => {
-                const valor = evento.target.value;
-                field.onChange(esResolucion(valor) ? valor : undefined);
-              }}
-              className={CLASE_SELECT}
-            >
-              <option value="">Elige cómo se resuelve</option>
-              {RESOLUCIONES_PAGO.map((resolucion) => (
-                <option key={resolucion} value={resolucion}>
-                  {RESOLUCION[resolucion].nombre}
-                </option>
-              ))}
-            </select>
-          </FormControl>
-          {elegida && (
-            <p id={idDetalle} className="texto-nota text-muted-foreground">
-              {RESOLUCION[elegida].detalle}
-            </p>
-          )}
-          <FormMessage className="texto-nota text-oferta" />
-        </FormItem>
-      )}
+    <CampoOpciones<FormularioResolverPago, ResolucionPago>
+      nombre="resolucion"
+      etiqueta="Resolución"
+      sinElegir="Elige cómo se resuelve"
+      opciones={OPCIONES}
+      {...(elegida ? { descripcion: RESOLUCION[elegida].detalle } : {})}
     />
   );
 }

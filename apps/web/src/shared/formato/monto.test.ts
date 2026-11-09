@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { formatearMonto } from './monto';
+import { formatearMonto, formatearPorcentaje } from './monto';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -34,5 +34,20 @@ describe('formatearMonto (FE-10)', () => {
   it('un texto que no es un monto es un error del programa, no un «NaN» en pantalla', () => {
     expect(() => formatearMonto('Q12')).toThrow(/no es un monto/);
     expect(() => formatearMonto('')).toThrow(/no es un monto/);
+  });
+});
+
+describe('formatearPorcentaje (M9-H01, FE-10)', () => {
+  it.each([
+    ['10.00', '10 %'],
+    ['12.50', '12.5 %'],
+    ['7.25', '7.25 %'],
+    ['100', '100 %'],
+  ])('«%s» se lee «%s»', (valor, esperado) => {
+    expect(formatearPorcentaje(valor)).toBe(esperado);
+  });
+
+  it('un texto que no es decimal es un error del programa', () => {
+    expect(() => formatearPorcentaje('diez')).toThrow(/no es un porcentaje/);
   });
 });

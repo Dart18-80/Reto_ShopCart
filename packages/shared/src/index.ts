@@ -67,6 +67,19 @@ export {
   TAMANO_MAXIMO_PAGINA,
 } from './consultas.js';
 export {
+  actualizarCuponSchema,
+  consultaCuponesSchema,
+  crearCuponSchema,
+  MONTO_MINIMO_POR_OMISION,
+  ordenCuponesSchema,
+  TIPOS_CUPON,
+  type ActualizarCupon,
+  type ConsultaCupones,
+  type CrearCupon,
+  type OrdenCupones,
+  type TipoCupon,
+} from './cupones.js';
+export {
   actualizarDireccionSchema,
   crearDireccionSchema,
   type ActualizarDireccion,

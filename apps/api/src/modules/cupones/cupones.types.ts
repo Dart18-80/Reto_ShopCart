@@ -1,7 +1,10 @@
 import type { Decimal } from 'decimal.js';
 
-export const TIPOS_CUPON = ['Porcentaje', 'MontoFijo'] as const;
-export type TipoCupon = (typeof TIPOS_CUPON)[number];
+// RF-05: los tipos viven en @shopcart/shared, con los esquemas de entrada (M9-H01).
+import type { TipoCupon } from '@shopcart/shared';
+
+export { TIPOS_CUPON } from '@shopcart/shared';
+export type { TipoCupon };
 
 export interface Cupon {
   idCupon: number;

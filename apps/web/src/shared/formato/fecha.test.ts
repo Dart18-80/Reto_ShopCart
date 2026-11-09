@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  aEntradaLocal,
+  deEntradaLocal,
   formatearDia,
   formatearDiaYMes,
   formatearFechaCalendario,
@@ -73,5 +75,28 @@ describe('formatearDiaYMes (FE-10)', () => {
 describe('formatearDia (FE-10)', () => {
   it('el día de Guatemala de un instante, sin hora: el de la noche ya es otro día en UTC', () => {
     expect(formatearDia(MEDIA_NOCHE_DE_GUATEMALA_EN_UTC)).toBe('3 nov 2026');
+  });
+});
+
+describe('fecha y hora de un formulario en la hora de Guatemala (M9-H01, A-12)', () => {
+  it('un instante de la noche de Guatemala (otro día en UTC) se escribe con el día y la hora de Guatemala', () => {
+    expect(aEntradaLocal('2026-11-04T05:30:00.000Z')).toBe('2026-11-03T23:30');
+  });
+
+  it('lo escrito se lee como hora de Guatemala: el mismo instante con su zona', () => {
+    const instante = deEntradaLocal('2026-11-03T23:30');
+
+    expect(instante).toBe('2026-11-03T23:30:00-06:00');
+    expect(new Date(instante).toISOString()).toBe('2026-11-04T05:30:00.000Z');
+  });
+
+  it('ida y vuelta conserva el instante', () => {
+    expect(new Date(deEntradaLocal(aEntradaLocal('2026-02-28T12:15:00.000Z'))).toISOString()).toBe(
+      '2026-02-28T12:15:00.000Z',
+    );
+  });
+
+  it('un texto que no es AAAA-MM-DDTHH:mm es un error del programa', () => {
+    expect(() => deEntradaLocal('2026-11-03')).toThrow(/AAAA-MM-DDTHH:mm/);
   });
 });
