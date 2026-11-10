@@ -97,7 +97,7 @@ describe('DashboardPagina (M11-H01)', () => {
 
     const top = await panel('Top 10 productos');
     await top.findByRole('figure', { name: 'Los 10 productos más vendidos por unidades' });
-    expect(await screen.findByText('Q12,500.50')).toBeInTheDocument();
+    expect(await (await panel('Resumen del periodo')).findByText('Q12,500.50')).toBeInTheDocument();
     expect(await screen.findByText('Carla Cliente')).toBeInTheDocument();
   });
 

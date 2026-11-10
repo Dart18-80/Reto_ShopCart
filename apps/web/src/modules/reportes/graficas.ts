@@ -21,6 +21,8 @@ export interface PuntoGrafica {
   titulo: string;
   valor: number;
   detalle: string;
+  /** Lo que se lee sobre la barra: el monto o el conteo, armado del texto del backend como `detalle` (FE-10). */
+  cifra: string;
   negativo: boolean;
 }
 
@@ -74,6 +76,8 @@ export function puntosDeVentas(
       titulo: tituloDelPeriodo(fila.periodo, agrupacion),
       valor: metrica === 'quetzales' ? aNumeroDeGeometria(fila.ventas) : fila.pedidos,
       detalle: ventasYPedidos(fila),
+      cifra:
+        metrica === 'quetzales' ? formatearMonto(fila.ventas) : formatearCantidad(fila.pedidos),
     }),
   );
 }
@@ -87,6 +91,7 @@ export const puntosDeCategorias = (filas: readonly VentasDeCategoria[]): PuntoGr
       titulo: fila.categoria,
       valor: aNumeroDeGeometria(fila.ventas),
       detalle: `${formatearMonto(fila.ventas)} · ${formatearConteo(fila.unidades, 'unidad', 'unidades')}`,
+      cifra: formatearMonto(fila.ventas),
     }),
   );
 
@@ -99,6 +104,7 @@ export const puntosDeTop = (filas: readonly ProductoVendido[]): PuntoGrafica[] =
       titulo: fila.producto,
       valor: fila.unidades,
       detalle: `${formatearConteo(fila.unidades, 'unidad', 'unidades')} · ${formatearMonto(fila.ventas)}`,
+      cifra: formatearCantidad(fila.unidades),
     }),
   );
 

@@ -23,6 +23,7 @@ describe('puntosDeVentas (M11-H01)', () => {
       titulo: '2 nov 2026',
       valor: 1500.5,
       detalle: 'Q1,500.50 · 3 pedidos',
+      cifra: 'Q1,500.50',
       negativo: false,
     });
   });
@@ -31,6 +32,20 @@ describe('puntosDeVentas (M11-H01)', () => {
     const [, segundo] = puntosDeVentas(ventas, 'dia', 'quetzales');
 
     expect(segundo).toMatchObject({ valor: -120, negativo: true, detalle: '-Q120.00 · 0 pedidos' });
+  });
+
+  it('la cifra sobre la barra es el monto del backend formateado, o el conteo en pedidos (FE-10)', () => {
+    expect(puntosDeVentas(ventas, 'dia', 'quetzales').map((p) => p.cifra)).toEqual([
+      'Q1,500.50',
+      '-Q120.00',
+    ]);
+    expect(
+      puntosDeVentas(
+        [{ periodo: '2026-11-02', ventas: '1500.50', pedidos: 1532 }],
+        'dia',
+        'pedidos',
+      )[0]?.cifra,
+    ).toBe('1,532');
   });
 
   it('en pedidos, la barra es el conteo y nunca es negativa', () => {
@@ -71,6 +86,7 @@ describe('puntosDeCategorias y puntosDeTop (M11-H01)', () => {
         titulo: 'Camisas',
         valor: 980,
         detalle: 'Q980.00 · 12 unidades',
+        cifra: 'Q980.00',
         negativo: false,
       },
       {
@@ -79,6 +95,7 @@ describe('puntosDeCategorias y puntosDeTop (M11-H01)', () => {
         titulo: 'Gorras',
         valor: -35,
         detalle: '-Q35.00 · 1 unidad',
+        cifra: '-Q35.00',
         negativo: true,
       },
     ]);
@@ -94,6 +111,7 @@ describe('puntosDeCategorias y puntosDeTop (M11-H01)', () => {
       etiqueta: 'Camisa Oxford',
       valor: 7,
       detalle: '7 unidades · Q1,050.00',
+      cifra: '7',
     });
   });
 });

@@ -1,11 +1,13 @@
-import type { CSSProperties } from 'react';
+import type { CSSProperties, SVGProps } from 'react';
 import {
   Bar,
   BarChart,
   CartesianGrid,
   Rectangle,
   ReferenceLine,
+  LabelList,
   useActiveTooltipDataPoints,
+  usePlotArea,
   XAxis,
   YAxis,
   type BarShapeProps,
@@ -46,6 +48,73 @@ const AIRE_DEL_NOMBRE = 12;
 // Las barras con las esquinas del extremo redondeadas (6 px): arriba en columnas, al final en horizontal.
 const RADIO_COLUMNA: [number, number, number, number] = [6, 6, 0, 0];
 const RADIO_BARRA: [number, number, number, number] = [0, 6, 6, 0];
+
+// La cifra sobre cada barra: solo si cabe. En columnas, con más de 8 o si la columna es más angosta que la cifra más
+// larga, se ocultan todas (el tooltip y la tabla siguen teniendo los montos).
+const MAXIMO_DE_COLUMNAS_CON_CIFRA = 8;
+const SEPARACION_DE_LA_CIFRA = 6;
+const ESPACIO_PARA_LAS_CIFRAS = 20;
+
+const anchoDeLaCifra = (puntos: readonly PuntoGrafica[]) =>
+  Math.max(0, ...puntos.map((p) => p.cifra.length)) * PX_POR_CARACTER;
+
+const cabenLasCifrasEnColumnas = (puntos: readonly PuntoGrafica[], anchoDelArea: number) =>
+  puntos.length <= MAXIMO_DE_COLUMNAS_CON_CIFRA &&
+  anchoDelArea / puntos.length >= anchoDeLaCifra(puntos);
+
+interface CajaDeBarra {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+}
+
+/**
+ * El monto o el conteo de una barra, tal como lo armó graficas.ts del texto del backend (FE-10): encima de la
+ * columna (debajo en las negativas) o al final de la barra horizontal. Aparece con un fundido después de su barra.
+ */
+function CifraDeBarra({
+  puntos,
+  orientacion,
+  viewBox,
+  index,
+}: {
+  puntos: readonly PuntoGrafica[];
+  orientacion: Orientacion;
+  viewBox?: CajaDeBarra | object;
+  index?: number;
+}) {
+  const area = usePlotArea();
+  const punto = index === undefined ? undefined : puntos[index];
+  if (!punto || !area || !viewBox || !('width' in viewBox)) return null;
+  if (orientacion === 'columnas' && !cabenLasCifrasEnColumnas(puntos, area.width)) return null;
+  const { x = 0, y = 0, width = 0, height = 0 } = viewBox;
+  const [arriba, abajo] = [Math.min(y, y + height), Math.max(y, y + height)];
+  const [izquierda, derecha] = [Math.min(x, x + width), Math.max(x, x + width)];
+  const posicion: SVGProps<SVGTextElement> =
+    orientacion === 'columnas'
+      ? {
+          x: x + width / 2,
+          y: punto.negativo ? abajo + SEPARACION_DE_LA_CIFRA : arriba - SEPARACION_DE_LA_CIFRA,
+          textAnchor: 'middle',
+          dominantBaseline: punto.negativo ? 'hanging' : 'auto',
+        }
+      : {
+          x: punto.negativo ? izquierda - SEPARACION_DE_LA_CIFRA : derecha + SEPARACION_DE_LA_CIFRA,
+          y: y + height / 2,
+          textAnchor: punto.negativo ? 'end' : 'start',
+          dominantBaseline: 'central',
+        };
+  return (
+    <text
+      {...posicion}
+      className="etiqueta-barra fill-foreground text-xs font-semibold tabular-nums"
+      style={{ '--i': index } as CSSProperties}
+    >
+      {punto.cifra}
+    </text>
+  );
+}
 
 // Hacia dónde crece cada barra desde el cero (su origen al crecer, en movimiento.css).
 type Direccion = 'arriba' | 'abajo' | 'derecha' | 'izquierda';
@@ -199,7 +268,15 @@ export function GraficaBarras({
       {orientacion === 'columnas' ? (
         <ChartContainer config={CONFIG} className="aspect-auto h-64 w-full">
           {/* D6: un margen a la izquierda para que el eje no recorte la «Q» de los montos. */}
-          <BarChart data={[...puntos]} margin={{ left: 8 }} accessibilityLayer>
+          <BarChart
+            data={[...puntos]}
+            margin={{
+              left: 8,
+              top:
+                puntos.length <= MAXIMO_DE_COLUMNAS_CON_CIFRA ? ESPACIO_PARA_LAS_CIFRAS : undefined,
+            }}
+            accessibilityLayer
+          >
             <CartesianGrid vertical={false} />
             <XAxis dataKey="etiqueta" tickLine={false} axisLine={false} tickMargin={8} />
             <YAxis
@@ -211,7 +288,12 @@ export function GraficaBarras({
             />
             {hayNegativos && <ReferenceLine y={0} stroke="var(--border)" />}
             <ChartTooltip cursor content={tooltip} />
-            <Bar dataKey="valor" shape={barra} isAnimationActive={false} />
+            <Bar dataKey="valor" shape={barra} isAnimationActive={false}>
+              <LabelList
+                dataKey="cifra"
+                content={<CifraDeBarra puntos={puntos} orientacion="columnas" />}
+              />
+            </Bar>
           </BarChart>
         </ChartContainer>
       ) : (
@@ -223,7 +305,13 @@ export function GraficaBarras({
             className="aspect-auto w-full"
             style={{ height: puntos.length * ALTO_POR_BARRA + MARGEN_DEL_EJE }}
           >
-            <BarChart data={[...puntos]} layout="vertical" accessibilityLayer>
+            <BarChart
+              data={[...puntos]}
+              layout="vertical"
+              // El espacio a la derecha para la cifra al final de la barra más larga.
+              margin={{ right: anchoDeLaCifra(puntos) + SEPARACION_DE_LA_CIFRA }}
+              accessibilityLayer
+            >
               <CartesianGrid horizontal={false} />
               <XAxis
                 type="number"
@@ -249,7 +337,12 @@ export function GraficaBarras({
               />
               {hayNegativos && <ReferenceLine x={0} stroke="var(--border)" />}
               <ChartTooltip cursor content={tooltip} />
-              <Bar dataKey="valor" shape={barra} isAnimationActive={false} />
+              <Bar dataKey="valor" shape={barra} isAnimationActive={false}>
+                <LabelList
+                  dataKey="cifra"
+                  content={<CifraDeBarra puntos={puntos} orientacion="barras" />}
+                />
+              </Bar>
             </BarChart>
           </ChartContainer>
         </div>

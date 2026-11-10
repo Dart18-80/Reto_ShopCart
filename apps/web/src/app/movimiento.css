@@ -193,6 +193,12 @@ html {
     & .barra-grafica:is([data-direccion='derecha'], [data-direccion='izquierda']) {
       animation-name: crecer-barra;
     }
+    /* La cifra de cada barra aparece con un fundido cuando su barra termina de crecer. */
+    & .etiqueta-barra {
+      --desplazamiento-entrada: 0px;
+      animation: aparecer var(--dur-base) var(--curva) both;
+      animation-delay: calc(var(--i, 0) * var(--paso-cascada) + var(--dur-realce));
+    }
   }
 }
 
