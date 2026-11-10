@@ -54,18 +54,26 @@ export function CatalogoPagina() {
 
   return (
     <div className="flex flex-col gap-8 md:gap-12">
-      {/* D5: la franja de cabecera, con fondo suave y la franja diagonal de la marca a la derecha (decorativa). */}
-      <header className="bg-secondary/70 md:rounded-panel relative -mx-4 -mt-4 overflow-hidden px-4 py-8 md:mx-0 md:mt-0 md:px-10 md:py-12">
+      {/*
+       * D5: la banda de cabecera en los colores de la marca, con líneas diagonales que avanzan al fondo y la franja
+       * diagonal a la derecha (decorativas; sobre el azul, el azul de la franja es celeste). La franja y el texto van
+       * posicionados después de las líneas, así quedan por encima. Ya está a la vista al cargar: `data-visible` va
+       * fijo y el subrayado se dibuja al montar.
+       */}
+      <header
+        data-visible=""
+        className="fondo-marca lineas-marca texto-sobre-marca md:rounded-panel relative -mx-4 -mt-4 overflow-hidden px-4 py-8 md:mx-0 md:mt-0 md:px-10 md:py-12"
+      >
         <span
           aria-hidden
-          className="franja-marca pointer-events-none absolute inset-y-0 right-0 w-1/2 md:w-2/5"
+          className="franja-marca pointer-events-none absolute inset-y-0 right-0 w-1/2 [--franja-azul:var(--marca-celeste)] md:w-2/5"
         />
         <div className="relative flex max-w-[70%] flex-col gap-2">
           {categoria && (
             <p className="texto-pequeno text-muted-foreground hidden md:block">{`Catálogo / ${categoria.nombre}`}</p>
           )}
           <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-            <h1 className="titulo-display min-w-0 break-words">{titulo}</h1>
+            <h1 className="titulo-display subrayado-marca min-w-0 break-words">{titulo}</h1>
             {total !== undefined && (
               <p className="texto-pequeno text-muted-foreground hidden md:block">
                 {productos(total)}

@@ -1,15 +1,19 @@
+import type { CSSProperties } from 'react';
 import {
   Bar,
   BarChart,
   CartesianGrid,
   Rectangle,
   ReferenceLine,
+  useActiveTooltipDataPoints,
   XAxis,
   YAxis,
   type BarShapeProps,
   type YAxisTickContentProps,
   type TooltipContentProps,
 } from 'recharts';
+import { useEntradaInicial } from '../../../shared/hooks/useEntradaInicial';
+import { cn } from '../../../shared/ui/cn';
 import {
   ChartContainer,
   ChartTooltip,
@@ -39,9 +43,49 @@ const ANCHO_MAXIMO_DE_LOS_NOMBRES = 200;
 const ANCHO_MAXIMO_EN_TELEFONO = 112;
 const PX_POR_CARACTER = 7;
 const AIRE_DEL_NOMBRE = 12;
-// D6: las barras con las esquinas del extremo redondeadas (4 px).
-const RADIO_COLUMNA: [number, number, number, number] = [4, 4, 0, 0];
-const RADIO_BARRA: [number, number, number, number] = [0, 4, 4, 0];
+// Las barras con las esquinas del extremo redondeadas (6 px): arriba en columnas, al final en horizontal.
+const RADIO_COLUMNA: [number, number, number, number] = [6, 6, 0, 0];
+const RADIO_BARRA: [number, number, number, number] = [0, 6, 6, 0];
+
+// Hacia dónde crece cada barra desde el cero (su origen al crecer, en movimiento.css).
+type Direccion = 'arriba' | 'abajo' | 'derecha' | 'izquierda';
+const DIRECCION: Record<Orientacion, { positiva: Direccion; negativa: Direccion }> = {
+  columnas: { positiva: 'arriba', negativa: 'abajo' },
+  barras: { positiva: 'derecha', negativa: 'izquierda' },
+};
+
+/**
+ * La forma de cada barra. Con una barra activa (la del tooltip, por cursor o teclado), las demás quedan al 45 %: el
+ * punto activo sale de Recharts, no del :hover del SVG. `--i` escalona su crecimiento al montar.
+ */
+function BarraGrafica({
+  forma,
+  punto,
+  orientacion,
+}: {
+  forma: BarShapeProps;
+  punto: PuntoGrafica | undefined;
+  orientacion: Orientacion;
+}) {
+  const [activo] = useActiveTooltipDataPoints<PuntoGrafica>() ?? [];
+  const estado =
+    activo === undefined ? undefined : activo.clave === punto?.clave ? 'activa' : 'atenuada';
+  const direccion = DIRECCION[orientacion][punto?.negativo ? 'negativa' : 'positiva'];
+  return (
+    <Rectangle
+      x={forma.x}
+      y={forma.y}
+      width={forma.width}
+      height={forma.height}
+      radius={orientacion === 'columnas' ? RADIO_COLUMNA : RADIO_BARRA}
+      fill={punto?.negativo ? 'var(--color-negativo)' : 'var(--color-valor)'}
+      className="barra-grafica"
+      data-direccion={direccion}
+      data-estado={estado}
+      style={{ '--i': forma.index } as CSSProperties}
+    />
+  );
+}
 
 // 05 §11: el eje siempre incluye el cero, también cuando todo es negativo o todo es positivo.
 const dominioConCero = ([minimo, maximo]: readonly [number, number]): [number, number] => [
@@ -128,16 +172,11 @@ export function GraficaBarras({
   /** El nombre accesible de la gráfica; la tabla tiene los mismos datos. */
   descripcion: string;
 }) {
-  const barra = ({ x, y, width, height, index }: BarShapeProps) => (
-    <Rectangle
-      x={x}
-      y={y}
-      width={width}
-      height={height}
-      radius={orientacion === 'columnas' ? RADIO_COLUMNA : RADIO_BARRA}
-      fill={puntos[index]?.negativo ? 'var(--color-negativo)' : 'var(--color-valor)'}
-    />
+  const barra = (forma: BarShapeProps) => (
+    <BarraGrafica forma={forma} punto={puntos[forma.index]} orientacion={orientacion} />
   );
+  // Las barras crecen solo al montar la gráfica; si cambian los periodos o los nombres, aparecen sin animar.
+  const creciendo = useEntradaInicial(puntos.map((p) => p.clave).join('|'));
   // Recharts da el índice del dato activo como texto.
   const tooltip = ({ active, activeIndex }: TooltipContentProps) => {
     const punto = active && activeIndex != null ? puntos[Number(activeIndex)] : undefined;
@@ -153,7 +192,10 @@ export function GraficaBarras({
   const caben = Math.floor((anchoNombres - AIRE_DEL_NOMBRE) / PX_POR_CARACTER);
 
   return (
-    <figure aria-label={descripcion} className="flex flex-col gap-3">
+    <figure
+      aria-label={descripcion}
+      className={cn('flex flex-col gap-3', creciendo && 'barras-creciendo')}
+    >
       {orientacion === 'columnas' ? (
         <ChartContainer config={CONFIG} className="aspect-auto h-64 w-full">
           {/* D6: un margen a la izquierda para que el eje no recorte la «Q» de los montos. */}

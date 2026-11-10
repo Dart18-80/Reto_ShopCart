@@ -2,6 +2,7 @@ import type { UseQueryResult } from '@tanstack/react-query';
 import { ArrowDown, ArrowUp } from 'lucide-react';
 import { useRef, type ReactNode } from 'react';
 import { useDesbordaAncho } from '../hooks/useDesbordaAncho';
+import { useEntradaInicial } from '../hooks/useEntradaInicial';
 import { usePaginaEnRango } from '../hooks/usePaginaEnRango';
 import type { ModoHistorial, ParametrosUrl } from '../hooks/useParametrosUrl';
 import { usePantallaAncha } from '../hooks/usePantallaAncha';
@@ -60,10 +61,11 @@ type CambiarVista = (cambios: Partial<ConsultaTabla>, historial?: ModoHistorial)
 
 const FILAS_ESQUELETO = 5;
 
+// Bajo md, la tarjeta de siempre; desde md, el panel de filas flotantes con filas del alto de las reales.
 const ESQUELETO = (
-  <div className="bg-card flex flex-col gap-4 rounded-tarjeta border p-4">
+  <div className="bg-card md:bg-muted flex flex-col gap-4 rounded-tarjeta border p-4 md:gap-2 md:border-0 md:px-3 md:pt-11 md:pb-2">
     {Array.from({ length: FILAS_ESQUELETO }, (_, i) => (
-      <Skeleton key={i} className="h-5 w-full" />
+      <Skeleton key={i} className="h-5 w-full md:h-14 md:rounded-[12px]" />
     ))}
   </div>
 );
@@ -79,8 +81,10 @@ function Encabezado<T>({
   direccion: 'asc' | 'desc' | undefined;
   cambiarVista: CambiarVista;
 }) {
+  // Sin fondo propio sobre el panel: el bg-muted es el mismo del panel y solo se nota cuando el encabezado se queda
+  // fijo arriba de la ventana, donde evita que las filas se transparenten.
   const clases = cn(
-    'texto-pequeno-fuerte text-muted-foreground bg-muted h-11 px-4',
+    'encabezado-tabla text-muted-foreground bg-muted h-9 px-4',
     columna.alineacion === 'fin' && 'text-right',
   );
   if (!columna.ordenable) return <th className={clases}>{columna.etiqueta}</th>;
@@ -132,35 +136,37 @@ function Tabla<T>({
   const contenedor = useRef<HTMLDivElement>(null);
   const tabla = useRef<HTMLTableElement>(null);
   const desborda = useDesbordaAncho(contenedor, tabla);
+  // Las filas entran escalonadas solo la primera vez que llegan; al cambiar de página, orden o filtro quedan la
+  // barra de 2 px y el 60 % de opacidad mientras cargan (D3).
+  const entrando = useEntradaInicial(filas.map(claveFila).join('|'));
   return (
     // D6: sin scroll anidado. Si la tabla cabe a lo ancho, su encabezado se queda fijo arriba de la ventana desde
-    // 1024 px (el backoffice no tiene encabezado de app desde md); si no cabe, se desplaza a lo ancho dentro de la
-    // tarjeta, con encabezado normal, y esa área se puede enfocar para desplazarla con el teclado.
+    // 1024 px (el backoffice no tiene encabezado de app desde md); si no cabe, se desplaza a lo ancho dentro del
+    // panel, con encabezado normal, y esa área se puede enfocar para desplazarla con el teclado. La tabla es hija
+    // directa del panel: el panel es el que se desplaza. Los 12 px de los lados son un borde transparente (el fondo
+    // muted pasa por debajo) y no relleno: clientWidth no cuenta los bordes, así «cabe» se mide contra el ancho
+    // real de la tabla.
     <div
       ref={contenedor}
       tabIndex={desborda ? 0 : undefined}
       role={desborda ? 'group' : undefined}
       aria-label={desborda ? titulo : undefined}
       className={cn(
-        'bg-card relative rounded-tarjeta border shadow-xs',
+        'bg-muted relative rounded-tarjeta border-x-12 border-transparent pt-1',
         desborda
           ? 'overflow-x-auto focus-visible:ring-2 focus-visible:ring-ring'
           : 'overflow-visible',
       )}
     >
       {actualizando && <BarraProgreso className="absolute inset-x-0 top-0" />}
+      {/* Filas flotantes: cada fila es una tarjeta separada 8 px de la siguiente. */}
       <table
         ref={tabla}
         aria-label={titulo}
         aria-busy={actualizando}
-        className="w-full border-collapse text-left"
+        className="w-full border-separate border-spacing-x-0 border-spacing-y-2 text-left"
       >
-        <thead
-          className={cn(
-            'bg-muted shadow-[0_1px_0_var(--border)] [&_th:first-child]:rounded-tl-tarjeta [&_th:last-child]:rounded-tr-tarjeta',
-            !desborda && 'lg:sticky lg:top-0 lg:z-10',
-          )}
-        >
+        <thead className={cn(!desborda && 'lg:sticky lg:top-0 lg:z-10')}>
           <tr>
             {columnas.map((columna) => (
               <Encabezado
@@ -174,16 +180,20 @@ function Tabla<T>({
           </tr>
         </thead>
         <tbody
-          className={cn('transition-opacity duration-(--dur-base)', actualizando && 'opacity-60')}
+          className={cn(
+            'transition-opacity duration-(--dur-base)',
+            actualizando && 'opacity-60',
+            entrando && 'filas-escalonadas',
+          )}
         >
           {filas.map((fila) => (
-            // D6: filas de 52 px que se resaltan al pasar el cursor.
-            <tr key={claveFila(fila)} className="hover:bg-muted/50 h-13 border-t transition-colors">
+            // Filas de 56 px como tarjetas, con las esquinas de sus extremos redondeadas.
+            <tr key={claveFila(fila)} className="fila-flotante">
               {columnas.map((columna) => (
                 <td
                   key={columna.id}
                   className={cn(
-                    'texto-pequeno px-4 py-2',
+                    'bg-card texto-pequeno h-14 px-4 py-2 first:rounded-l-[12px] last:rounded-r-[12px]',
                     columna.alineacion === 'fin' && 'text-right tabular-nums',
                   )}
                 >

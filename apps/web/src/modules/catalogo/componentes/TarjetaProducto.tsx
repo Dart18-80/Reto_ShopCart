@@ -18,19 +18,22 @@ export function TarjetaProducto({ producto }: { producto: ProductoBusqueda }) {
   return (
     <Link
       to={conId(RUTAS.producto, producto.idProducto)}
-      className="group bg-card hover:border-primary focus-visible:ring-ring ease-salida flex w-full flex-col overflow-hidden rounded-tarjeta border shadow-sm transition-[translate,box-shadow,border-color] duration-(--dur-base) hover:shadow-md focus-visible:ring-2 focus-visible:outline-none motion-safe:hover:-translate-y-1"
+      className="group brillo-barrido bg-card focus-visible:ring-ring ease-salida flex w-full flex-col overflow-hidden rounded-tarjeta border shadow-sm transition-[translate,box-shadow,border-color] duration-(--dur-base) hover:border-transparent hover:shadow-glow focus-visible:ring-2 focus-visible:outline-none motion-safe:hover:-translate-y-1.5"
     >
-      {/* D5: la ilustración ocupa cerca del 70 % sobre un fondo teñido con el primer color del producto. */}
+      {/*
+       * D5: la ilustración ocupa cerca del 70 % sobre un fondo teñido con el primer color del producto. Detrás, un
+       * círculo del mismo tinte al 14 % (decorativo) que crece al pasar el cursor mientras la prenda se endereza.
+       */}
       <div
         className={cn(
-          'fondo-tenido flex aspect-square items-center justify-center',
+          "fondo-tenido before:ease-salida relative flex aspect-square items-center justify-center before:absolute before:size-[62%] before:rounded-full before:bg-current/14 before:transition-[scale] before:duration-(--dur-realce) before:content-[''] motion-safe:group-hover:before:scale-140",
           clasesDelColor(primerColor).texto,
         )}
       >
         <Prenda
           tipo={producto.ilustracion}
           color={primerColor}
-          className="ease-salida size-[70%] transition-[scale] duration-(--dur-base) motion-safe:group-hover:scale-[1.04]"
+          className="ease-salida relative size-[70%] -rotate-6 transition-[translate,rotate,scale] duration-(--dur-realce) motion-safe:group-hover:-translate-y-[4%] motion-safe:group-hover:rotate-3 motion-safe:group-hover:scale-108"
         />
       </div>
       <div className="flex flex-1 flex-col gap-1.5 p-4 md:p-5">

@@ -7,12 +7,13 @@ import { Slot } from 'radix-ui';
 
 // D1: botones con los tokens del sistema visual (radio de control, 44 px, foco con anillo al 30 %).
 const buttonVariants = cva(
-  `control-boton inline-flex shrink-0 items-center justify-center gap-2 rounded-control whitespace-nowrap transition-[color,background-color,border-color,box-shadow,scale] disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 ${FOCO_VISIBLE}`,
+  `control-boton inline-flex shrink-0 items-center justify-center gap-2 rounded-control whitespace-nowrap transition-[color,background-color,border-color,box-shadow,scale,translate] disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 ${FOCO_VISIBLE}`,
   {
     variants: {
       variant: {
+        // El principal se levanta 3 px sobre su brillo; un ícono al final (nunca el spinner) avanza 4 px.
         default:
-          'bg-primary text-primary-foreground shadow-xs hover:bg-primario-hover motion-safe:active:scale-[.98]',
+          'bg-primary text-primary-foreground shadow-glow-boton hover:bg-primario-hover motion-safe:active:scale-[.98] motion-safe:hover:-translate-y-[3px] [&>svg]:transition-[translate] [&>svg]:duration-(--dur-base) motion-safe:hover:[&>svg:last-child:not(.animate-spin)]:translate-x-1',
         // D1: lo destructivo en rojo (texto y borde); `oferta` es el rojo de texto del tema, AA en los dos temas.
         destructive:
           'border border-oferta/60 bg-card text-oferta hover:border-oferta hover:bg-destructive-suave focus-visible:border-oferta focus-visible:ring-oferta/30',

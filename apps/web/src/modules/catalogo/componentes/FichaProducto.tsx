@@ -3,6 +3,7 @@ import { Aviso } from '../../../shared/componentes/Aviso';
 import { Monto } from '../../../shared/componentes/Monto';
 import { RESERVA_BARRA_BOTON } from '../../../shared/ui/barra-fija';
 import { cn } from '../../../shared/ui/cn';
+import { useRevelarAlEntrar } from '../../../shared/hooks/useRevelarAlEntrar';
 import { useSesion } from '../../../shared/hooks/useSesion';
 import type { ProductoTienda } from '../catalogo.api';
 import { useSeleccionVariante } from '../hooks/useSeleccionVariante';
@@ -33,6 +34,7 @@ export function FichaProducto({ producto, idVarianteEnUrl, alResolver }: PropsFi
     ? (seleccion.valorElegido(atributoColor) ?? atributoColor.valores[0]?.valor)
     : undefined;
   const precio = variante?.precio ?? precioMenor(producto.variantes);
+  const revelarDescripcion = useRevelarAlEntrar<HTMLElement>();
 
   return (
     <div className={cn('flex flex-col gap-6', RESERVA_BARRA_BOTON)}>
@@ -98,8 +100,9 @@ export function FichaProducto({ producto, idVarianteEnUrl, alResolver }: PropsFi
           <Aviso tipo="info" forma="tarjeta">
             {`Al agregarlo, su precio queda garantizado por ${String(producto.diasGarantiaPrecio)} días: si sube, pagas el anterior; si baja, pagas el nuevo.`}
           </Aviso>
+          {/* En móvil la descripción queda bajo el pliegue: sube con fundido al llegar a ella. */}
           {producto.descripcion && (
-            <section className="flex flex-col gap-2">
+            <section ref={revelarDescripcion} className="revelar-al-entrar flex flex-col gap-2">
               <h2 className="titulo-2">Descripción</h2>
               <p className="texto-base text-muted-foreground">{producto.descripcion}</p>
             </section>

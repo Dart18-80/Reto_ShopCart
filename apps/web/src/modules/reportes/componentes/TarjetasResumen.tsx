@@ -4,7 +4,7 @@ import { EstadoVista } from '../../../shared/componentes/EstadoVista';
 import { Monto } from '../../../shared/componentes/Monto';
 import { formatearCantidad } from '../../../shared/formato/conteo';
 import { formatearFechaCalendario } from '../../../shared/formato/fecha';
-import { Skeleton } from '../../../shared/ui/skeleton';
+import { useConteoAnimado } from '../../../shared/hooks/useConteoAnimado';
 import { DialogoExportar } from '../../exportaciones';
 import { useResumen } from '../hooks/useReportes';
 import type { Resumen } from '../reportes.api';
@@ -96,14 +96,36 @@ const TARJETAS: readonly Tarjeta[] = [
 
 // Una columna en teléfonos: un monto de millones no cabe en media pantalla con la cifra del tamaño de las tarjetas.
 const CLASE_REJILLA = 'grid gap-3 sm:grid-cols-2 lg:grid-cols-4';
+// La banda de marca que agrupa las tarjetas de vidrio; el texto encima, en blanco (AA en los dos temas).
+const CLASE_BANDA = 'fondo-marca texto-sobre-marca rounded-panel p-3 md:p-5';
+const CLASE_VIDRIO = 'vidrio-marca rounded-tarjeta border';
 
+// Con la misma banda y las mismas tarjetas, para que nada salte cuando llegan los datos.
 const ESQUELETO = (
-  <div className={CLASE_REJILLA}>
-    {TARJETAS.map((tarjeta) => (
-      <Skeleton key={tarjeta.etiqueta} className="h-28 w-full" />
-    ))}
+  <div className={CLASE_BANDA}>
+    <div className={CLASE_REJILLA}>
+      {TARJETAS.map((tarjeta) => (
+        <div key={tarjeta.etiqueta} className={cn(CLASE_VIDRIO, 'h-28 w-full')} />
+      ))}
+    </div>
   </div>
 );
+
+/**
+ * La cifra cuenta desde cero la primera vez que se muestra (useConteoAnimado). El texto real nunca sale del DOM:
+ * mientras dura el conteo queda solo para lectores de pantalla y el conteo, aria-hidden, ocupa su lugar.
+ */
+function CifraConConteo({ children }: { children: ReactNode }) {
+  const { real, conteo } = useConteoAnimado<HTMLSpanElement>();
+  return (
+    <>
+      <span ref={real} className="peer data-contando:sr-only">
+        {children}
+      </span>
+      <span ref={conteo} aria-hidden className="hidden peer-data-contando:inline" />
+    </>
+  );
+}
 
 /** FE-07: el resumen del periodo en tarjetas de KPI, con el rango que el backend usó (sin rango, 30 días). */
 export function TarjetasResumen({ rango }: { rango: RangoDeFechas }) {
@@ -120,11 +142,14 @@ export function TarjetasResumen({ rango }: { rango: RangoDeFechas }) {
               </p>
               <DialogoExportar reporte="resumen" filtros={rango} />
             </div>
-            <dl className={CLASE_REJILLA}>
+            <dl className={cn(CLASE_BANDA, CLASE_REJILLA)}>
               {TARJETAS.map(({ etiqueta, cifra, nota, icono: Icono, tono }) => (
                 <div
                   key={etiqueta}
-                  className="bg-card flex flex-col gap-1 rounded-tarjeta border p-4 shadow-xs md:p-5"
+                  className={cn(
+                    CLASE_VIDRIO,
+                    'ease-salida flex flex-col gap-1 p-4 transition-[translate,scale] duration-(--dur-base) motion-safe:hover:-translate-y-1.5 motion-safe:hover:scale-103 md:p-5',
+                  )}
                 >
                   <dt className="texto-pequeno text-muted-foreground flex items-center gap-2.5">
                     <span
@@ -138,7 +163,9 @@ export function TarjetasResumen({ rango }: { rango: RangoDeFechas }) {
                     </span>
                     {etiqueta}
                   </dt>
-                  <dd className="titulo-2 tabular-nums">{cifra(datos)}</dd>
+                  <dd className="titulo-2 tabular-nums">
+                    <CifraConConteo>{cifra(datos)}</CifraConConteo>
+                  </dd>
                   {nota && <dd className="texto-nota text-muted-foreground">{nota}</dd>}
                 </div>
               ))}

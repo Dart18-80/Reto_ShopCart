@@ -23,14 +23,19 @@ function aMilisegundos(valor: string): number {
   return limpio.endsWith('ms') ? numero : numero * MS_POR_SEGUNDO;
 }
 
+/** Una duración de movimiento.css en milisegundos; NaN sin la hoja de estilos. */
+export function leerDuracion(nombre: string, raiz: HTMLElement = document.documentElement): number {
+  return aMilisegundos(getComputedStyle(raiz).getPropertyValue(nombre));
+}
+
 /** Los tokens tal como los define la hoja de estilos en este momento. */
 export function leerTokens(raiz: HTMLElement = document.documentElement): TokensMovimiento {
   const estilo = getComputedStyle(raiz);
   const leer = (nombre: string) => estilo.getPropertyValue(nombre);
   return {
-    durBase: aMilisegundos(leer('--dur-base')),
-    durRebote: aMilisegundos(leer('--dur-rebote')),
-    durReducida: aMilisegundos(leer('--dur-reducida')),
+    durBase: leerDuracion('--dur-base', raiz),
+    durRebote: leerDuracion('--dur-rebote', raiz),
+    durReducida: leerDuracion('--dur-reducida', raiz),
     curvaSalida: leer('--curva-salida').trim(),
     curva: leer('--curva').trim(),
   };

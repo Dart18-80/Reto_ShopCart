@@ -127,6 +127,8 @@
   --shadow-sm: var(--sombra-sm);
   --shadow-md: var(--sombra-md);
   --shadow-lg: var(--sombra-lg);
+  --shadow-glow: var(--sombra-glow);
+  --shadow-glow-boton: var(--sombra-glow-boton);
   --color-primario-hover: var(--primario-hover);
   --color-borde-control: var(--borde-control);
   --color-marca-azul-marino: var(--marca-azul-marino);
@@ -146,6 +148,18 @@ html {
   --sombra-sm: 0 1px 3px rgb(15 23 42 / 0.08), 0 1px 2px rgb(15 23 42 / 0.04);
   --sombra-md: 0 8px 24px -8px rgb(11 45 92 / 0.18);
   --sombra-lg: 0 16px 40px -12px rgb(11 45 92 / 0.25);
+  /*
+   * Brillo de marca bajo lo que se levanta al pasar el cursor (tarjetas, el botón principal y las filas de las
+   * tablas). --brillo-marca es su color, con el que se arma la sombra de las filas al 70 %.
+   */
+  --brillo-marca: rgb(6 72 138 / 0.55);
+  --sombra-glow: 0 30px 50px -22px var(--brillo-marca);
+  --sombra-glow-boton: 0 10px 24px -8px rgb(6 72 138 / 0.6);
+  /* Las filas flotantes de las tablas: apenas una sombra en reposo y el brillo al pasar el cursor. */
+  --sombra-fila: drop-shadow(0 1px 2px rgb(15 23 42 / 0.06));
+  --sombra-fila-activa: drop-shadow(
+    0 10px 14px color-mix(in srgb, var(--brillo-marca) 70%, transparent)
+  );
   /* D1: el primario se oscurece al pasar el cursor, en los dos temas. */
   --primario-hover: color-mix(in oklab, var(--primary), black 18%);
   /* El chevron de los <select> nativos: el mismo ChevronDown de lucide, en el color del texto. */
@@ -161,6 +175,8 @@ html {
   --marca-azul-marino: #06488a;
   --marca-rojo: #de2418;
   --marca-celeste: #38b8f8;
+  /* El azul más oscuro de las bandas de marca (fondo-marca). */
+  --marca-profundo: #052a57;
 }
 @media (width >= 48rem) {
   html {
@@ -175,6 +191,9 @@ html.dark {
   --sombra-sm: 0 0 0 1px var(--input);
   --sombra-md: 0 0 0 1px var(--input);
   --sombra-lg: 0 0 0 1px var(--input);
+  /* En oscuro el brillo es celeste: una sombra azul marino no se vería sobre el fondo. */
+  --brillo-marca: rgb(56 184 248 / 0.28);
+  --sombra-glow-boton: 0 10px 24px -8px rgb(56 184 248 / 0.45);
   --chevron-select: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23e6ecf4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
 
@@ -330,6 +349,163 @@ html.dark {
     var(--marca-rojo) 62% 68%,
     transparent 68%
   );
+}
+
+/*
+ * La banda de marca (cabecera del catálogo y resumen del dashboard): azul profundo con dos luces, blanca arriba a la
+ * izquierda y roja abajo a la derecha. Igual en los dos temas; el texto encima va en blanco.
+ */
+@utility fondo-marca {
+  background-color: var(--marca-profundo);
+  background-image:
+    radial-gradient(circle at 20% 30%, rgb(255 255 255 / 0.12), transparent 40%),
+    radial-gradient(
+      circle at 80% 80%,
+      color-mix(in oklab, var(--marca-rojo) 25%, transparent),
+      transparent 40%
+    ),
+    linear-gradient(110deg, var(--marca-profundo), var(--marca-azul-marino) 60%, #0a3a73);
+}
+
+/*
+ * Líneas diagonales tenues que avanzan sobre fondo-marca, solo decorativas (un pseudo-elemento: no llega al árbol de
+ * accesibilidad). Van debajo de todo lo posicionado que sigue en el DOM: quien la usa pone su texto y su franja con
+ * `relative` o `absolute`, y recorta con overflow-hidden. Con movimiento reducido las líneas se quedan quietas.
+ * El ::before sobra a la izquierda todo su recorrido y se desplaza con `translate` (lo compone el navegador, sin
+ * repintar la banda): su borde nunca entra a la vista, así que no hay costura.
+ */
+@utility lineas-marca {
+  position: relative;
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 0 calc(-1 * var(--lineas-recorrido));
+    pointer-events: none;
+    background-image: repeating-linear-gradient(
+      var(--lineas-angulo),
+      transparent 0 calc(var(--lineas-periodo) - 2px),
+      rgb(255 255 255 / 0.05) calc(var(--lineas-periodo) - 2px) var(--lineas-periodo)
+    );
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    &::before {
+      will-change: translate;
+      animation: carretera var(--dur-carretera) linear infinite;
+    }
+  }
+}
+
+/* El encabezado de una tabla de filas flotantes: 11 px en mayúsculas, espaciado, sin fondo propio. */
+@utility encabezado-tabla {
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 16px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  /* El botón de un encabezado ordenable no hereda las mayúsculas por sí solo. */
+  & button {
+    text-transform: inherit;
+  }
+}
+
+/*
+ * Una fila de tabla como tarjeta flotante (la tabla va con border-separate y sus celdas con bg-card). Al pasar el
+ * cursor se levanta 2 px con el brillo de marca y su primera celda muestra una barra del primario; con movimiento
+ * reducido solo cambian la sombra y la barra.
+ */
+@utility fila-flotante {
+  filter: var(--sombra-fila);
+  transition:
+    filter var(--dur-fila) var(--curva-salida),
+    translate var(--dur-fila) var(--curva-salida);
+  & > td:first-child {
+    transition: box-shadow var(--dur-fila) var(--curva-salida);
+  }
+  @media (hover: hover) {
+    &:hover {
+      filter: var(--sombra-fila-activa);
+    }
+    &:hover > td:first-child {
+      box-shadow: inset 3px 0 0 var(--primary);
+    }
+  }
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    &:hover {
+      translate: 0 -2px;
+    }
+  }
+}
+
+/*
+ * El texto sobre fondo-marca, en los dos temas: blanco, y lo secundario (text-muted-foreground) al 80 %. El monto
+ * negativo (text-chart-negativo) pasa a un rojo claro: el rojo del tema no llega a 4.5:1 sobre el azul.
+ */
+@utility texto-sobre-marca {
+  color: #fff;
+  --muted-foreground: rgb(255 255 255 / 0.8);
+  --chart-negativo: #ffe0db;
+}
+
+/* Una tarjeta de vidrio sobre fondo-marca: deja ver la banda detrás, con su borde claro. */
+@utility vidrio-marca {
+  border-color: rgb(255 255 255 / 0.18);
+  background-color: rgb(255 255 255 / 0.1);
+  backdrop-filter: blur(6px);
+}
+
+/*
+ * Un reflejo que cruza el elemento cuando el cursor entra en su `group` (o en él, si es el group). Solo con un
+ * puntero que de verdad pasa por encima y sin movimiento reducido; fuera de eso, el reflejo no existe. Al salir el
+ * cursor vuelve a su sitio sin transición, para que no cruce de regreso.
+ */
+@utility brillo-barrido {
+  position: relative;
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background-image: linear-gradient(
+        120deg,
+        transparent 30%,
+        rgb(255 255 255 / 0.35) 50%,
+        transparent 70%
+      );
+      translate: -110% 0;
+    }
+    &:is(:where(.group):hover, :where(.group):hover *)::after {
+      translate: 110% 0;
+      transition: translate var(--dur-barrido) var(--curva);
+    }
+  }
+}
+
+/*
+ * El trazo rojo inclinado bajo un título. Crece de 0 al 92 % cuando un ancestro tiene `data-visible` (lo pone
+ * useRevelarAlEntrar, o va fijo si el título ya está a la vista); @starting-style lo dibuja al montar en ese caso.
+ */
+@utility subrayado-marca {
+  position: relative;
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: -0.25rem;
+    width: 0;
+    height: 8px;
+    background-color: var(--marca-rojo);
+    border-radius: 0 0 4px 4px;
+    transform: skewX(-20deg);
+    transition: width var(--dur-realce) var(--curva-salida);
+  }
+  :where([data-visible]) &::after {
+    width: 92%;
+    @starting-style {
+      width: 0;
+    }
+  }
 }
 
 /*

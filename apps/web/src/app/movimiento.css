@@ -19,7 +19,24 @@ html {
   --dur-trazo: 500ms;
   --dur-progreso: 1.1s;
   --dur-brillo: 1.4s;
+  /* Los realces de la marca: el reflejo que cruza una tarjeta, lo que crece bajo la prenda y el conteo de cifras. */
+  --dur-barrido: 800ms;
+  --dur-realce: 600ms;
+  --dur-conteo: 1.6s;
+  /*
+   * Las líneas diagonales de la cabecera, que avanzan sin fin (lineas-marca). El recorrido de un ciclo son 6 periodos
+   * medidos a lo ancho (periodo / sin del ángulo, unos 238.3 px): al reiniciar, cada línea cae donde estaba la de
+   * seis lugares atrás y no se nota el salto.
+   */
+  --dur-carretera: 6s;
+  --lineas-periodo: 36px;
+  --lineas-angulo: 115deg;
+  --lineas-recorrido: calc(6 * var(--lineas-periodo) / sin(var(--lineas-angulo)));
   --paso-escalonado: 30ms;
+  /* Las filas de las tablas y las barras de las gráficas: entran en cascada, una cada 60 ms. */
+  --paso-cascada: 60ms;
+  --dur-fila: 300ms;
+  --desplazamiento-fila: 6px;
   --curva-salida: cubic-bezier(0.2, 0.8, 0.2, 1);
   --curva: cubic-bezier(0.4, 0, 0.2, 1);
   /* Lo que se desplaza al entrar; con movimiento reducido, nada. */
@@ -53,6 +70,27 @@ html {
 @keyframes brillo {
   to {
     background-position-x: -200%;
+  }
+}
+
+@keyframes carretera {
+  from {
+    translate: 0 0;
+  }
+  to {
+    translate: var(--lineas-recorrido) 0;
+  }
+}
+
+@keyframes crecer-columna {
+  from {
+    scale: 1 0;
+  }
+}
+
+@keyframes crecer-barra {
+  from {
+    scale: 0 1;
   }
 }
 
@@ -90,6 +128,71 @@ html {
   }
   & > :nth-child(n + 8) {
     animation-delay: calc(var(--paso-escalonado) * 7);
+  }
+}
+
+/*
+ * Las filas de una tabla la primera vez que llegan: fundido y 6 px, una cada 60 ms hasta la octava. Quien la usa
+ * la quita en cuanto cambian las filas (página, orden o filtro), así las nuevas no se animan.
+ */
+@utility filas-escalonadas {
+  & > tr {
+    --desplazamiento-entrada: var(--desplazamiento-fila);
+    animation: aparecer var(--dur-base) var(--curva-salida) both;
+  }
+  & > tr:nth-child(2) {
+    animation-delay: calc(var(--paso-cascada) * 1);
+  }
+  & > tr:nth-child(3) {
+    animation-delay: calc(var(--paso-cascada) * 2);
+  }
+  & > tr:nth-child(4) {
+    animation-delay: calc(var(--paso-cascada) * 3);
+  }
+  & > tr:nth-child(5) {
+    animation-delay: calc(var(--paso-cascada) * 4);
+  }
+  & > tr:nth-child(6) {
+    animation-delay: calc(var(--paso-cascada) * 5);
+  }
+  & > tr:nth-child(7) {
+    animation-delay: calc(var(--paso-cascada) * 6);
+  }
+  & > tr:nth-child(n + 8) {
+    animation-delay: calc(var(--paso-cascada) * 7);
+  }
+}
+
+/*
+ * Una barra de gráfica (la forma propia sobre Rectangle de Recharts). Crece desde su base mientras su gráfica tiene
+ * `barras-creciendo`, una cada 60 ms según su `--i`; queda al 45 % cuando otra barra está activa (data-estado).
+ */
+@utility barra-grafica {
+  transform-box: fill-box;
+  transform-origin: bottom;
+  transition: opacity var(--dur-base) var(--curva);
+  &[data-direccion='abajo'] {
+    transform-origin: top;
+  }
+  &[data-direccion='derecha'] {
+    transform-origin: left;
+  }
+  &[data-direccion='izquierda'] {
+    transform-origin: right;
+  }
+  &[data-estado='atenuada'] {
+    opacity: 0.45;
+  }
+}
+@utility barras-creciendo {
+  @media (prefers-reduced-motion: no-preference) {
+    & .barra-grafica {
+      animation: crecer-columna var(--dur-realce) var(--curva-salida) both;
+      animation-delay: calc(var(--i, 0) * var(--paso-cascada));
+    }
+    & .barra-grafica:is([data-direccion='derecha'], [data-direccion='izquierda']) {
+      animation-name: crecer-barra;
+    }
   }
 }
 
@@ -134,6 +237,20 @@ html {
   }
 }
 
+/*
+ * Una sección bajo el pliegue que sube con fundido la primera vez que entra a la vista: useRevelarAlEntrar le pone
+ * `data-visible`. Con movimiento reducido el hook la marca visible desde el principio y nunca se oculta.
+ */
+@utility revelar-al-entrar {
+  transition:
+    opacity var(--dur-realce) var(--curva-salida),
+    translate var(--dur-realce) var(--curva-salida);
+  &:not([data-visible]) {
+    opacity: 0;
+    translate: 0 calc(var(--desplazamiento-entrada) * 3);
+  }
+}
+
 /* Avisos (sonner): entran bajando 8 px con fundido, en lugar de recorrer todo su alto. */
 :root [data-sonner-toast][data-y-position='top'][data-mounted='false'] {
   --y: translateY(calc(-1 * var(--desplazamiento-entrada)));
@@ -142,6 +259,7 @@ html {
 @media (prefers-reduced-motion: reduce) {
   html {
     --desplazamiento-entrada: 0px;
+    --desplazamiento-fila: 0px;
   }
   /* Las animaciones de tw-animate (diálogos, menú lateral) quedan en un fundido: sin desplazarse ni escalar. */
   *,

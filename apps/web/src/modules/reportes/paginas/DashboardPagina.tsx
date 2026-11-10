@@ -1,5 +1,6 @@
 import { FiltroRangoFechas } from '../../../shared/componentes/FiltroRangoFechas';
 import { useParametrosUrl } from '../../../shared/hooks/useParametrosUrl';
+import { useRevelarAlEntrar } from '../../../shared/hooks/useRevelarAlEntrar';
 import { useTituloPagina } from '../../../shared/hooks/useTituloPagina';
 import { consultaDashboardSchema, rangoDe } from '../consultaDashboard';
 import {
@@ -23,6 +24,10 @@ export function DashboardPagina() {
   const parametros = useParametrosUrl(consultaDashboardSchema);
   const rango = rangoDe(parametros.valores);
   const tiempoReal = useTiempoRealReportes();
+  // Los reportes bajo el resumen suben con fundido la primera vez que llegan a la vista.
+  const revelarPeriodo = useRevelarAlEntrar<HTMLDivElement>();
+  const revelarDistribucion = useRevelarAlEntrar<HTMLDivElement>();
+  const revelarCarritos = useRevelarAlEntrar<HTMLDivElement>();
 
   return (
     <div className="flex flex-col gap-6">
@@ -38,12 +43,16 @@ export function DashboardPagina() {
         <IndicadorTiempoReal estado={tiempoReal} />
       </EncabezadoPagina>
       <TarjetasResumen rango={rango} />
-      <ReporteVentasPorPeriodo parametros={parametros} />
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div ref={revelarPeriodo} className="revelar-al-entrar">
+        <ReporteVentasPorPeriodo parametros={parametros} />
+      </div>
+      <div ref={revelarDistribucion} className="revelar-al-entrar grid gap-6 lg:grid-cols-2">
         <ReporteVentasPorCategoria rango={rango} />
         <ReporteTopProductos rango={rango} />
       </div>
-      <TablaCarritos parametros={parametros} />
+      <div ref={revelarCarritos} className="revelar-al-entrar">
+        <TablaCarritos parametros={parametros} />
+      </div>
     </div>
   );
 }
