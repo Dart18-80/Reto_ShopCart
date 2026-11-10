@@ -55,6 +55,13 @@ const MAXIMO_DE_COLUMNAS_CON_CIFRA = 8;
 const SEPARACION_DE_LA_CIFRA = 6;
 const ESPACIO_PARA_LAS_CIFRAS = 20;
 
+// El espacio a la derecha de las barras horizontales, holgado: la cifra va en negrita de 12 px y mide más que los
+// 7 px por carácter de los nombres del eje.
+const PX_RESERVADOS_POR_CARACTER = 10;
+const AIRE_DE_LA_CIFRA = 8;
+const anchoReservadoParaLaCifra = (puntos: readonly PuntoGrafica[]) =>
+  Math.max(0, ...puntos.map((p) => p.cifra.length)) * PX_RESERVADOS_POR_CARACTER + AIRE_DE_LA_CIFRA;
+
 const anchoDeLaCifra = (puntos: readonly PuntoGrafica[]) =>
   Math.max(0, ...puntos.map((p) => p.cifra.length)) * PX_POR_CARACTER;
 
@@ -309,7 +316,7 @@ export function GraficaBarras({
               data={[...puntos]}
               layout="vertical"
               // El espacio a la derecha para la cifra al final de la barra más larga.
-              margin={{ right: anchoDeLaCifra(puntos) + SEPARACION_DE_LA_CIFRA }}
+              margin={{ right: anchoReservadoParaLaCifra(puntos) }}
               accessibilityLayer
             >
               <CartesianGrid horizontal={false} />
